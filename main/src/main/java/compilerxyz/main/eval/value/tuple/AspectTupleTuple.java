@@ -13,8 +13,8 @@ public record AspectTupleTuple(Tuple type) implements AspectTuple {
 
     @Override
     public TList<Type> aspectTupleElementTypes() {
-        var out = new TList<Type>(type.elements.size());
-        for (var e : type.elements) {
+        var out = new TList<Type>(type.elements().size());
+        for (var e : type.elements()) {
             TupleElement.Dynamic d;
             switch (e) {
                 case TupleElement.Dynamic dyn -> d = dyn;
@@ -31,8 +31,8 @@ public record AspectTupleTuple(Tuple type) implements AspectTuple {
         if (!(value instanceof Tuple t)) {
             throw new IllegalArgumentException("Tuple::takeElements: expected Tuple value, got " + value.getClass());
         }
-        var out = new TList<EResult<CodeValue>>(t.elements.size());
-        for (var e : t.elements) {
+        var out = new TList<EResult<CodeValue>>(t.elements().size());
+        for (var e : t.elements()) {
             TupleElement.EvalRes r;
             switch (e) {
                 case TupleElement.EvalRes res -> r = res;

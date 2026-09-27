@@ -22,6 +22,8 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jspecify.version>1.0.0</jspecify.version>
+        <errorprone.version>2.36.0</errorprone.version>
+        <nullaway.version>0.12.4</nullaway.version>
         <javapoet.version>1.13.0</javapoet.version>
         <palantir.version>2.57.0</palantir.version>
         <spotless.version>2.44.5</spotless.version>
@@ -158,7 +160,22 @@
                         <release>21</release>
                         <compilerArgs>
                             <arg>-parameters</arg>
+                            <arg>-XDcompilePolicy=simple</arg>
+                            <arg>--should-stop=ifError=FLOW</arg>
+                            <arg>-Xplugin:ErrorProne -XepDisableAllChecks -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=compilerxyz -XepOpt:NullAway:JSpecifyMode=true</arg>
                         </compilerArgs>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>com.google.errorprone</groupId>
+                                <artifactId>error_prone_core</artifactId>
+                                <version>${errorprone.version}</version>
+                            </path>
+                            <path>
+                                <groupId>com.uber.nullaway</groupId>
+                                <artifactId>nullaway</artifactId>
+                                <version>${nullaway.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
                     </configuration>
                 </plugin>
                 <plugin>

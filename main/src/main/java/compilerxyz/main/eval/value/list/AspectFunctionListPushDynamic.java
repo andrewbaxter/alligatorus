@@ -16,7 +16,6 @@ import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import java.util.List;
 
 public record AspectFunctionListPushDynamic(TypeListPushDynamic type) implements AspectFunction {
 
@@ -29,13 +28,13 @@ public record AspectFunctionListPushDynamic(TypeListPushDynamic type) implements
         if (argRes.hasErrors()) return argRes.reerr();
         var selfRes = DynUtil.valueReg(loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
-        var listName = JavaInternalName.fromClass(List.class);
+        var listName = JavaInternalName.fromClass(TList.class);
         var descObject = JavaDataDescriptor.fromClass(Object.class);
-        var addDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of(descObject));
+        var addDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(descObject));
         var b = new JavaBytecodeBuilder(loc);
         var selfReg = b.reg(selfRes.requireValue("selfDyn"));
         var argReg = b.reg(argRes.requireValue("toDynamic"));
-        b.invokeInterface(listName, "add", addDesc, selfReg, argReg);
+        b.invokeVirtualVoid(listName, "add", addDesc, selfReg, argReg);
         return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
     }
 

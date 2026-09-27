@@ -41,7 +41,7 @@ public final class T0010DefineFuncTest {
                                                                                                 mb.typesOption(),
                                                                                                 mb.evalType()),
                                                                                         mb.str("none")),
-                                                                                mb.literalNull())),
+                                                                                mb.tupleOf())),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
                                                                         mb.stage(
@@ -50,7 +50,7 @@ public final class T0010DefineFuncTest {
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.call(mb.scopeUse("act"), mb.tupleOf()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
@@ -92,7 +92,7 @@ public final class T0010DefineFuncTest {
                                                                                                 mb.typesOption(),
                                                                                                 mb.evalType()),
                                                                                         mb.str("none")),
-                                                                                mb.literalNull())),
+                                                                                mb.tupleOf())),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
                                                                         mb.stage(
@@ -101,7 +101,7 @@ public final class T0010DefineFuncTest {
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.call(mb.scopeUse("hello"), mb.tupleOf()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
@@ -149,7 +149,7 @@ public final class T0010DefineFuncTest {
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.call(mb.log(), mb.call(mb.scopeUse("my_func"), mb.str("hello world"))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
@@ -197,7 +197,7 @@ public final class T0010DefineFuncTest {
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.call(mb.log(), mb.call(mb.scopeUse("my_func"), mb.str("hello world"))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
@@ -381,7 +381,7 @@ public final class T0010DefineFuncTest {
 
     private static Compile.CompileResult compileOk(TMap<String, SourceModule> modules) {
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> {
                 return o.value();

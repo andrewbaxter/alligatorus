@@ -35,10 +35,10 @@ public record AspectBindRecord(Record type) implements AspectBind {
         }
         var carry = cv.code();
 
-        if (type.base.optIsSome()) {
+        if (type.base().optIsSome()) {
             Type recordType = type;
             var scopeFields = new TOrderedMap<ConstKey, RecordScopeField>();
-            for (var entry : type.fields.entrySet()) {
+            for (var entry : type.fields()) {
                 RecordField.Dynamic d;
                 switch (entry.getValue()) {
                     case RecordField.Dynamic df -> d = df;
@@ -49,8 +49,8 @@ public record AspectBindRecord(Record type) implements AspectBind {
             }
             var subBuilder = new JavaBytecodeBuilder(loc);
             var carryAdd = subBuilder.addCode(loc, carry);
-            if (carryAdd.hasErrors()) return carryAdd.reerr();
-            var baseReg = DynUtil.sourceReg(subBuilder, type.base.optUnwrap().source());
+            if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
+            var baseReg = DynUtil.sourceReg(subBuilder, type.base().optUnwrap().source());
             var sub = new BindSubDynamic(subBuilder.code(baseReg), recordType);
             var bound = jvmTarget.bindSlot(loc, sub);
             return EResult.ok(
@@ -59,9 +59,9 @@ public record AspectBindRecord(Record type) implements AspectBind {
 
         TList<ExprErr> errors = null;
         record FieldBindResult(ConstKey key, Opt<BindSubDynamic> targetSub, Opt<CodeValue> constCv) {}
-        var bindResults = new TList<FieldBindResult>(record.fields.size());
+        var bindResults = new TList<FieldBindResult>(record.fields().size());
         boolean hasTarget = false;
-        for (var entry : record.fields.entrySet()) {
+        for (var entry : record.fields()) {
             var key = entry.getKey();
             var field = entry.getValue();
             switch (field) {

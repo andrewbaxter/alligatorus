@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.source_union_new;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
@@ -11,7 +10,6 @@ import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
@@ -26,7 +24,6 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataSourceUnionNewCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
@@ -69,10 +66,6 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type, int varia
         return Opt.none();
     }
 
-    private static Artifact nullArtifact() {
-        return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root()));
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
@@ -94,17 +87,13 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type, int varia
                         "TypeTypeSourceUnionNewConst::exporterExport: variant index " + variantIndex + " out of range");
             }
             var variant = tu.variants.get(variantIndex);
-            var errors = new TList<ExprErr>();
-            var artifact = ArtifactSupport.implExportIndependentArtifact(
-                    xx.vx.ix.gx.artifacts, variant.newArtifactIdCell, () -> {
-                        var tuArtRes = Artifactable.exportArtifact(xx, loc, tu);
-                        tuArtRes.drainInto(errors);
-                        var tuArt = tuArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                        var body = new ArtifactDataSourceUnionNew(tuArt, variantIndex);
-                        return makeBody.apply(ArtifactDataSourceUnionNewCodec.toValue(body));
-                    });
-            if (errors.isEmpty()) return EResult.ok(artifact);
-            return EResult.mixed(artifact, errors);
+            return ArtifactSupport.implExportIndependentArtifact(xx, variant.newArtifactIdCell, () -> {
+                var tuArtRes = Artifactable.exportArtifact(xx, loc, tu);
+                if (tuArtRes.hasErrors()) return tuArtRes.reerr();
+                var body = new ArtifactDataSourceUnionNew(
+                        tuArtRes.requireValue("TypeTypeSourceUnionNewConst::export union"), variantIndex);
+                return EResult.ok(makeBody.apply(ArtifactDataSourceUnionNewCodec.toValue(body)));
+            });
         }
 
         @Override

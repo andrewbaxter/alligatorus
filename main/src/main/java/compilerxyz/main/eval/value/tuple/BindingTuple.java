@@ -18,6 +18,7 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
+import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -65,7 +66,8 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
         }
         var combined = Eval.codeConcat(xx, loc, code, baseCode);
         return new CodeValue(
-                combined.requireValue("BindingTuple use"), EvalOutcome.ofValue(new Tuple(base, resultElements)));
+                combined.requireValue("BindingTuple use"),
+                EvalOutcome.ofValue(new Tuple(base, IList.from(resultElements))));
     }
 
     @Override

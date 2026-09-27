@@ -63,10 +63,11 @@ public record AspectFieldOptionDynamic<T extends Type>(TypeOptionDynamic<T> type
             var out = b.instanceOf(JavaInternalName.fromClass(Opt.Some.class), b.reg(selfRes.requireValue("selfDyn")));
             return EResult.ok(DynUtil.regToValue(b.code(), out, new TypeBoolDynamic()));
         }
-        var factory = OptionFieldSpecs.factories(type.elementType).getOrNull(ck);
-        if (factory == null) {
+        var factoryOpt = OptionFieldSpecs.factories(type.elementType).getOpt(ck);
+        if (factoryOpt.optIsNone()) {
             return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on option");
         }
+        var factory = factoryOpt.optUnwrap();
         return EResult.ok(new CodeValue(
                 Code.none(loc), EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), factory))));
     }
@@ -89,7 +90,6 @@ public record AspectFieldOptionDynamic<T extends Type>(TypeOptionDynamic<T> type
         if (keyStr.optIsSome() && keyStr.optUnwrap().value().equals("value")) {
             return Opt.some(type.elementType);
         }
-        var factory = OptionFieldSpecs.factories(type.elementType).getOrNull(key);
-        return factory == null ? Opt.none() : Opt.some(factory);
+        return OptionFieldSpecs.factories(type.elementType).getOpt(key).optMap(factory -> factory);
     }
 }

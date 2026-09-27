@@ -13,6 +13,7 @@ import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_object_new.TypeSourceObjectNewDynamic;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 
 @BuiltinFull(uniqueId = 6347L)
@@ -52,11 +53,22 @@ public final class SourceObjectBuilder {
         for (var entry : record.entrySet()) {
             impls.put(entry.getKey(), mustCast(Expr.class, entry.getValue().value()));
         }
+        var names = new TList<ConstKey>();
         for (var name : ifaceRef.methodNames()) {
-            if (impls.getOrNull(new ConstKey.Str(name)) == null) {
+            var key = new ConstKey.Str(name);
+            if (impls.getOpt(key).optIsNone()) {
                 throw new IllegalStateException("Missing implementation for interface method '" + name + "'");
             }
+            names.add(key);
         }
+        var extra = new TList<String>();
+        for (var key : impls.keySet()) {
+            if (!names.contains(key)) extra.add(key.constKeyToCanonical());
+        }
+        if (!extra.isEmpty()) {
+            throw new IllegalStateException("Implementation of methods not on the interface: " + extra);
+        }
+        ifaceRef.markImplemented();
         this.type.interfaceImpls.add(new SourceObjectInterfaceImplData(ifaceRef, impls));
     }
 }

@@ -32,7 +32,7 @@ module compilerxyz.main {
     exports compilerxyz.main.eval.value.function;
     exports compilerxyz.main.eval.value.list;
     exports compilerxyz.main.eval.value.map;
-    exports compilerxyz.main.eval.value.null_;
+    exports compilerxyz.main.eval.value.jvm_object;
     exports compilerxyz.main.eval.value.int_;
     exports compilerxyz.main.eval.value.short_;
     exports compilerxyz.main.eval.value.long_;

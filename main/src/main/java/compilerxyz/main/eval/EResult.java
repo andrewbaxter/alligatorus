@@ -20,7 +20,7 @@ public final class EResult<T> {
 
     public static <T> EResult<T> err(QExprId loc, String message) {
         var errs = new TList<ExprErr>();
-        errs.add(new ExprErr(loc, TList.of(new ExprSubErr.Opaque(message))));
+        errs.add(ExprErr.opaque(loc, message));
         return new EResult<>(Opt.none(), Opt.some(errs));
     }
 

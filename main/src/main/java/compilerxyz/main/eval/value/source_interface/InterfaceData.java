@@ -56,7 +56,7 @@ public final class InterfaceData {
             }
             var dataFieldNames = new TList<String>();
             if (mt.arg() instanceof Record rec) {
-                for (var key : rec.fields().keySet()) {
+                for (var key : rec.fields().keys()) {
                     switch (key) {
                         case ConstKey.Str str -> dataFieldNames.add(str.value());
                         case ConstKey.Uint u -> dataFieldNames.add(key.constKeyToCanonical());

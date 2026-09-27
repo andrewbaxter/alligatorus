@@ -14,8 +14,8 @@ public final class AspectLiftTypeSourceInterfaceDynamic implements AspectLift {
     private AspectLiftTypeSourceInterfaceDynamic() {}
 
     @Override
-    public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-        var host = (TypeSourceInterfaceDynamic) externalHostValue.optUnwrap();
+    public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Object externalHostValue) {
+        var host = (TypeSourceInterfaceDynamic) externalHostValue;
         return EResult.ok(new ValueObjectConst(new TypeTypeSourceInterfaceDynamic(Opt.some(host)), host));
     }
 }

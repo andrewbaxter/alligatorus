@@ -7,7 +7,7 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.gen.AspectConsumeDynamic;
-import java.util.Map;
+import compilerxyz.prelude.util.TOrderedMap;
 
 public final class AspectConsumeDynamicMapPutFnDynamic implements AspectConsumeDynamic {
     public static final AspectConsumeDynamicMapPutFnDynamic INSTANCE = new AspectConsumeDynamicMapPutFnDynamic();
@@ -16,7 +16,7 @@ public final class AspectConsumeDynamicMapPutFnDynamic implements AspectConsumeD
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-        return JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Map.class));
+        return JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(TOrderedMap.class));
     }
 
     @Override

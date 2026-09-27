@@ -20,9 +20,12 @@ public final class T0031InterfaceCrossSetTest {
                 e.let("da", e.define()),
                 e.let("iface", e.callM0(e.v("da"), "interface")),
                 e.callM(
-                        e.callM(e.v("iface"), "func", e.s("to_string")),
-                        "impl",
-                        e.rec(e.p("arg", e.mb.typesNull()), e.p("ret", e.retSome(e.mb.typesString())))),
+                        e.v("iface"),
+                        "func",
+                        e.rec(
+                                e.p("name", e.s("to_string")),
+                                e.p("arg", e.mb.tupleOf()),
+                                e.p("ret", e.retSome(e.mb.typesString())))),
                 e.finish(e.v("da")),
                 e.let("db", e.define()),
                 e.let("upper", e.defObject(e.v("db"), "upper")),
@@ -43,7 +46,7 @@ public final class T0031InterfaceCrossSetTest {
     }
 
     private static SourceExpr callViaInterface(EcoMb e, SourceExpr lib, SourceExpr value) {
-        return e.call(e.fld(lib, "iface_t", "to_string"), e.tup(value, e.tup()));
+        return e.call(e.fld(lib, "iface_t", "to_string"), value);
     }
 
     @Test
@@ -56,7 +59,7 @@ public final class T0031InterfaceCrossSetTest {
                         e.let("lib", twoSets(e)),
                         e.let("u", e.call(e.fld(e.v("lib"), "make_upper"), e.s("hello"))),
                         e.call(e.mb.log(), callViaInterface(e, e.v("lib"), e.v("u"))))));
-        var res = Compile.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
         Compile.CompileResult ok;
         switch (res) {
             case Result.Ok<Compile.CompileResult, ?> o -> ok = o.value();

@@ -13,7 +13,7 @@ public sealed interface TypeObjectCastFromRule {
 
     boolean typeObjectCastFromRuleMatches(ExprContext xx, Type sourceType);
 
-    EResult<CodeValue> typeObjectCastFromRuleApply(TypeObjectDynamic dest, CodeValue cv);
+    EResult<CodeValue> typeObjectCastFromRuleApply(Type dest, CodeValue cv);
 
     record RestampFromIdentity(Unique identity) implements TypeObjectCastFromRule {
         @Override
@@ -22,7 +22,7 @@ public sealed interface TypeObjectCastFromRule {
         }
 
         @Override
-        public EResult<CodeValue> typeObjectCastFromRuleApply(TypeObjectDynamic dest, CodeValue cv) {
+        public EResult<CodeValue> typeObjectCastFromRuleApply(Type dest, CodeValue cv) {
             return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, dest));
         }
     }

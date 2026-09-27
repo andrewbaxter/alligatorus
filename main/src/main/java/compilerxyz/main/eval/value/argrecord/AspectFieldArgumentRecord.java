@@ -29,10 +29,11 @@ public final class AspectFieldArgumentRecord implements AspectField {
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         var record = MustCast.mustCast(ArgumentRecord.class, self.value().optUnwrap());
-        var entry = record.fields().getOrNull(ck);
-        if (entry == null) {
+        var entryOpt = record.fields().getOpt(ck);
+        if (entryOpt.optIsNone()) {
             return EResult.err(loc, "Field '" + ck.constKeyToCanonical() + "' not found on argument record");
         }
+        var entry = entryOpt.optUnwrap();
         return EResult.ok(entry.binding()
                 .bindingUse(
                         xx, loc, new BindingSetterArgumentField(record.fields(), ck, record.setter()), Code.none(loc)));

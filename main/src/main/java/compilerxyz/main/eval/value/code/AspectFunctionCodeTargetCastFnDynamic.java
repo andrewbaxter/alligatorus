@@ -49,7 +49,7 @@ public record AspectFunctionCodeTargetCastFnDynamic(TypeCodeTargetCastFnDynamic 
         var b = new JavaBytecodeBuilder(loc);
         var selfReg = b.reg(selfRes.requireValue("selfDyn"));
         var argRes = b.addCode(loc, argument.code());
-        if (argRes.hasErrors()) return argRes.reerr();
+        if (argRes.optIsSome()) return EResult.errs(argRes.optUnwrap());
         var locReg = b.external(locEntry);
         var classReg = b.node(
                 new LdcInsnNode(org.objectweb.asm.Type.getType(destDesc.value())),

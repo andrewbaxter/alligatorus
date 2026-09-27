@@ -66,7 +66,7 @@ public final class Scope {
 
     public void popToLevelCount(int targetCount) {
         while (levels.size() > targetCount) {
-            levels.remove(levels.size() - 1);
+            levels.removeLast();
         }
     }
 
@@ -95,39 +95,31 @@ public final class Scope {
         return out;
     }
 
-    public EResult<Void> merge(ExprContext xx, QExprId loc, TList<Scope> others) {
+    private record MergedEntry(Binding binding, long state, long dropState) {}
+
+    public Opt<TList<ExprErr>> merge(ExprContext xx, QExprId loc, TList<Scope> others) {
         for (var other : others) {
             if (other.levels.size() != levels.size()) {
-                return EResult.err(
+                return Opt.some(TList.of(ExprErr.opaque(
                         loc,
                         "Scope.merge: branch produced a scope of different depth (" + other.levels.size() + " vs "
-                                + levels.size() + ")");
+                                + levels.size() + ")")));
             }
         }
-        var merged = new TList<Binding>(levels.size());
-        var mergedStates = new TList<Long>(levels.size());
-        var mergedDropStates = new TList<Long>(levels.size());
+        var merged = new TList<Opt<MergedEntry>>(levels.size());
         for (int i = 0; i < levels.size(); i++) {
             switch (levels.get(i)) {
                 case ScopeLevel.Temp t -> {
-                    merged.add(null);
-                    mergedStates.add(null);
-                    mergedDropStates.add(null);
+                    merged.add(Opt.none());
                 }
                 case ScopeLevel.Labeled l -> {
-                    merged.add(null);
-                    mergedStates.add(null);
-                    mergedDropStates.add(null);
+                    merged.add(Opt.none());
                 }
                 case ScopeLevel.Catch c -> {
-                    merged.add(null);
-                    mergedStates.add(null);
-                    mergedDropStates.add(null);
+                    merged.add(Opt.none());
                 }
                 case ScopeLevel.Finally f -> {
-                    merged.add(null);
-                    mergedStates.add(null);
-                    mergedDropStates.add(null);
+                    merged.add(Opt.none());
                 }
                 case ScopeLevel.Entry entry -> {
                     var branchBindings = new TList<Binding>(others.size());
@@ -141,29 +133,32 @@ public final class Scope {
                                 if (otherEntry.dropState != entry.dropState) anyDropStateDiffers = true;
                             }
                             case ScopeLevel.Temp t -> {
-                                return EResult.err(loc, "Scope.merge: branch level kind mismatch at " + i);
+                                return Opt.some(TList.of(
+                                        ExprErr.opaque(loc, "Scope.merge: branch level kind mismatch at " + i)));
                             }
                             case ScopeLevel.Labeled l -> {
-                                return EResult.err(loc, "Scope.merge: branch level kind mismatch at " + i);
+                                return Opt.some(TList.of(
+                                        ExprErr.opaque(loc, "Scope.merge: branch level kind mismatch at " + i)));
                             }
                             case ScopeLevel.Catch c -> {
-                                return EResult.err(loc, "Scope.merge: branch level kind mismatch at " + i);
+                                return Opt.some(TList.of(
+                                        ExprErr.opaque(loc, "Scope.merge: branch level kind mismatch at " + i)));
                             }
                             case ScopeLevel.Finally f -> {
-                                return EResult.err(loc, "Scope.merge: branch level kind mismatch at " + i);
+                                return Opt.some(TList.of(
+                                        ExprErr.opaque(loc, "Scope.merge: branch level kind mismatch at " + i)));
                             }
                         }
                     }
                     if (!anyStateDiffers) {
-                        merged.add(entry.binding);
-                        mergedStates.add(entry.state);
-                        mergedDropStates.add(entry.dropState);
+                        merged.add(Opt.some(new MergedEntry(entry.binding, entry.state, entry.dropState)));
                     } else {
                         var mergedRes = entry.binding.bindingMerge(xx, loc, branchBindings);
-                        if (mergedRes.hasErrors()) return mergedRes.reerr();
-                        merged.add(mergedRes.requireValue("Scope.merge binding"));
-                        mergedStates.add(vx.dropStateCounter.next());
-                        mergedDropStates.add(anyDropStateDiffers ? vx.dropStateCounter.next() : entry.dropState);
+                        if (mergedRes.hasErrors()) return mergedRes.errorsOpt();
+                        merged.add(Opt.some(new MergedEntry(
+                                mergedRes.requireValue("Scope.merge binding"),
+                                vx.dropStateCounter.next(),
+                                anyDropStateDiffers ? vx.dropStateCounter.next() : entry.dropState)));
                     }
                 }
             }
@@ -171,10 +166,11 @@ public final class Scope {
         for (int i = 0; i < levels.size(); i++) {
             switch (levels.get(i)) {
                 case ScopeLevel.Entry entry -> {
-                    if (merged.get(i) != null) {
-                        entry.binding = merged.get(i);
-                        entry.state = mergedStates.get(i);
-                        entry.dropState = mergedDropStates.get(i);
+                    var m = merged.get(i);
+                    if (m.optIsSome()) {
+                        entry.binding = m.optUnwrap().binding();
+                        entry.state = m.optUnwrap().state();
+                        entry.dropState = m.optUnwrap().dropState();
                     }
                 }
                 case ScopeLevel.Temp t -> {}
@@ -183,7 +179,7 @@ public final class Scope {
                 case ScopeLevel.Finally f -> {}
             }
         }
-        return EResult.ok(null);
+        return Opt.none();
     }
 
     public void adopt(Scope other) {

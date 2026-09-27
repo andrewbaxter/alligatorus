@@ -3,6 +3,7 @@ package compilerxyz.main.eval.value.source_function;
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.eval.ArtifactExternal;
 import compilerxyz.main.eval.DefSetId;
+import compilerxyz.main.eval.dynamic.ArtifactJavaClassCompiled;
 import compilerxyz.main.safejson.SafeJsonSerializable;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -12,9 +13,9 @@ public record ArtifactDataDefSetFunction(
         DefSetId defSetId,
         Opt<String> name,
         Artifact argType,
-        Artifact retType,
+        Opt<Artifact> retType,
         String jvmMethodName,
         Opt<String> compiledClassName,
-        Opt<byte[]> compiledBytecode,
+        Opt<ArtifactJavaClassCompiled> compiledClass,
         TList<ArtifactExternal> capturedExternals)
         implements SafeJsonSerializable {}

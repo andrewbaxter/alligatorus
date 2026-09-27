@@ -15,12 +15,13 @@ import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.EmitCtx;
 import compilerxyz.main.eval.dynamic.EvalRootEmitter;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeLocTable;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaClassCompiled;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
@@ -29,7 +30,6 @@ import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.dynamic.Prefixes;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.main.eval.dynamic.SourceUnionEmitter;
-import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.source_function.SourceFunctionData;
 import compilerxyz.main.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.main.eval.value.source_interface.InterfaceCell;
@@ -110,9 +110,11 @@ public final class DefinitionSet implements Artifactable {
                         "Object '" + obj.name.optUnwrapOr("(unnamed)")
                                 + "' underlying type not finalised before install");
             }
-            if (obj.compiledBytecode.optIsSome()) {
+            if (obj.compiledClass.optIsSome()) {
                 var binaryName = obj.binaryName;
-                loader.registerClass(binaryName, obj.compiledBytecode.optUnwrap());
+                var compiled = obj.compiledClass.optUnwrap();
+                loader.registerClass(binaryName, compiled.bytecode());
+                loader.registerLocs(binaryName, compiled.locs());
                 if (obj.compiledStaticFieldValues.optIsSome()) {
                     var fields = new TOrderedMap<String, Object>();
                     fields.putAll(obj.compiledStaticFieldValues.optUnwrap());
@@ -136,7 +138,10 @@ public final class DefinitionSet implements Artifactable {
         var emittedFuncsOpt = finishFunctions();
         if (emittedFuncsOpt.optIsSome()) {
             var emittedFuncs = emittedFuncsOpt.optUnwrap();
-            loader.registerClass(emittedFuncs.binaryName(), emittedFuncs.bytecode());
+            loader.registerClass(
+                    emittedFuncs.binaryName(), emittedFuncs.compiled().bytecode());
+            loader.registerLocs(
+                    emittedFuncs.binaryName(), emittedFuncs.compiled().locs());
             var funcStaticFields = new TOrderedMap<String, Object>();
             funcStaticFields.putAll(emittedFuncs.staticFieldValues());
             funcStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
@@ -147,41 +152,44 @@ public final class DefinitionSet implements Artifactable {
                 throw new AssertionError("Functions class " + emittedFuncs.binaryName() + " failed to load", e);
             }
         } else if (!functions.isEmpty()) {
-            String icaBinaryName = null;
-            byte[] icaBytecode = null;
+            Opt<String> icaBinaryName = Opt.none();
+            Opt<JavaClassCompiled> icaCompiled = Opt.none();
             var mergedStaticFields = new TOrderedMap<String, Object>();
             for (var func : functions) {
-                if (func.compiledClassName.optIsNone() || func.compiledBytecode.optIsNone()) {
+                if (func.compiledClassName.optIsNone() || func.compiledClass.optIsNone()) {
                     continue;
                 }
-                if (icaBinaryName == null) {
-                    icaBinaryName = func.compiledClassName.optUnwrap();
-                    icaBytecode = func.compiledBytecode.optUnwrap();
+                if (icaBinaryName.optIsNone()) {
+                    icaBinaryName = func.compiledClassName;
+                    icaCompiled = func.compiledClass;
                 }
                 if (func.compiledStaticFieldValues.optIsSome()) {
                     mergedStaticFields.putAll(func.compiledStaticFieldValues.optUnwrap());
                 }
             }
-            if (icaBinaryName != null) {
-                loader.registerClass(icaBinaryName, icaBytecode);
+            if (icaBinaryName.optIsSome()) {
+                var binaryName = icaBinaryName.optUnwrap();
+                var compiled = icaCompiled.optUnwrap();
+                loader.registerClass(binaryName, compiled.bytecode());
+                loader.registerLocs(binaryName, compiled.locs());
                 mergedStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
-                loader.registerExternals(icaBinaryName, mergedStaticFields);
+                loader.registerExternals(binaryName, mergedStaticFields);
                 try {
-                    Class.forName(icaBinaryName, true, loader);
+                    Class.forName(binaryName, true, loader);
                 } catch (ClassNotFoundException e) {
-                    throw new AssertionError("Imported Functions class " + icaBinaryName + " failed to load", e);
+                    throw new AssertionError("Imported Functions class " + binaryName + " failed to load", e);
                 }
             }
         }
         for (var func : functions) {
             var compiledClassName = func.compiledClassName;
-            var compiledBytecode = func.compiledBytecode;
-            if (compiledClassName.optIsNone() || compiledBytecode.optIsNone()) {
-                if (compiledClassName.optIsSome() || compiledBytecode.optIsSome()) {
+            var compiledClass = func.compiledClass;
+            if (compiledClassName.optIsNone() || compiledClass.optIsNone()) {
+                if (compiledClassName.optIsSome() || compiledClass.optIsSome()) {
                     throw new AssertionError("function has partially-populated compiled artifact (binaryName="
-                            + compiledClassName.optUnwrapOr(null)
+                            + compiledClassName
                             + ", bytecodeLen="
-                            + compiledBytecode.optUnwrapOr(null)
+                            + compiledClass.optMap(c -> c.bytecode().length)
                             + ")");
                 }
                 continue;
@@ -204,27 +212,41 @@ public final class DefinitionSet implements Artifactable {
         }
     }
 
-    public EResult<Void> finish(ExprContext xx, QExprId loc) {
+    public Opt<String> incomplete() {
         if (finished) {
-            return EResult.ok(null);
+            return Opt.none();
+        }
+        for (var func : functions) {
+            var r = func.incomplete();
+            if (r.optIsSome()) return r;
+        }
+        for (var obj : objects) {
+            var objName = obj.name.optUnwrapOr("(unnamed)");
+            if (obj.underlyingType.optIsNone()) {
+                return Opt.some("Object '" + objName + "' has no inner type (set_inner was not called)");
+            }
+            for (var method : obj.methods) {
+                var r = method.incomplete(objName);
+                if (r.optIsSome()) return r;
+            }
+        }
+        for (var dep : dependencies.values()) {
+            var r = dep.incomplete();
+            if (r.optIsSome()) return r;
+        }
+        return Opt.none();
+    }
+
+    public Opt<TList<ExprErr>> finish(ExprContext xx) {
+        if (finished) {
+            return Opt.none();
         }
         for (var iface : interfaces) {
             var building = iface.building();
             var sieMethods = new TList<InterfaceMethodData>();
             for (var sieMethod : building.methods) {
-                if (sieMethod.argType.optIsNone()) {
-                    return EResult.err(
-                            loc,
-                            "Interface '" + building.description.optUnwrapOr("(unnamed)") + "' method '"
-                                    + sieMethod.name + "' has no signature (impl was not called)");
-                }
                 sieMethods.add(new InterfaceMethodData(
-                        sieMethod.name,
-                        sieMethod.argType.optUnwrap(),
-                        sieMethod.retType,
-                        IList.of(),
-                        Opt.none(),
-                        Opt.none()));
+                        sieMethod.name, sieMethod.argType, sieMethod.retType, IList.of(), Opt.none(), Opt.none()));
             }
             var internalName = iface.binaryName.replace('.', '/');
             var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
@@ -251,36 +273,30 @@ public final class DefinitionSet implements Artifactable {
                     building.description, building.isAspect, building.aspectId, IList.from(sieMethods), Opt.none()));
         }
         for (var func : functions) {
-            var r = func.finish(xx, loc);
-            if (r.hasErrors()) return r.reerr();
+            var r = func.finish(xx);
+            if (r.optIsSome()) return r;
         }
         for (var obj : objects) {
             if (obj.underlyingType.optIsNone()) {
-                return EResult.err(
-                        loc,
-                        "Object '" + obj.name.optUnwrapOr("(unnamed)")
-                                + "' underlying type not finalised before finish");
+                throw new AssertionError(
+                        "Object '" + obj.name.optUnwrapOr("(unnamed)") + "' finished while incomplete");
             }
             var underlyingType = obj.underlyingType.optUnwrap();
             var objInternalName = obj.internalName();
             for (var method : obj.methods) {
                 var nameStr = obj.name.optUnwrapOr("(unnamed)");
-                var r = method.finish(xx, loc, nameStr, obj, underlyingType, objInternalName);
-                if (r.hasErrors()) return r.reerr();
+                var r = method.finish(xx, nameStr, obj, underlyingType, objInternalName);
+                if (r.optIsSome()) return r;
             }
             for (int idx = 0; idx < obj.interfaceImpls.size(); idx++) {
                 var impl = obj.interfaceImpls.get(idx);
-                var mr = impl.materialize(loc, "_iface" + idx);
-                if (mr.hasErrors()) return mr.reerr();
+                impl.materialize("_iface" + idx);
                 for (var m : impl.methodImpls) {
-                    var r = m.finish(xx, loc, obj, underlyingType);
-                    if (r.hasErrors()) return r.reerr();
+                    var r = m.finish(xx, obj, underlyingType);
+                    if (r.optIsSome()) return r;
                 }
             }
-            EResult<Void> r;
-            if (obj.compiledBytecode.optIsSome()) {
-                r = EResult.ok(null);
-            } else {
+            if (obj.compiledClass.optIsNone()) {
                 var internalNameStr = obj.internalName();
                 var soeInternalName = JavaInternalName.of(internalNameStr);
                 var implementsInternalNames = new TOrderedSet<String>();
@@ -291,7 +307,8 @@ public final class DefinitionSet implements Artifactable {
                             soeIface.jvmInternalNameForSet(this).value());
                 }
                 var interfacesArr =
-                        implementsInternalNames.isEmpty() ? null : implementsInternalNames.toArray(new String[0]);
+                        implementsInternalNames.isEmpty() ? null : implementsInternalNames.toArray(String[]::new);
+                var soeLocTable = new JavaBytecodeLocTable();
                 var soeCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
                     @Override
                     protected String getCommonSuperClass(String type1, String type2) {
@@ -324,7 +341,7 @@ public final class DefinitionSet implements Artifactable {
                     cb.retVoid();
                     ctorSeq.add(cb.code());
                 }
-                JavaBytecodeUtils.renderMethod(ctorSeq, ctor, TList.of());
+                JavaBytecodeUtils.renderMethod(ctorSeq, ctor, TList.of(), soeLocTable);
                 var realCtorDesc =
                         JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(dataFieldDesc));
                 var realCtor = soeCw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", realCtorDesc.value(), null, null);
@@ -341,7 +358,7 @@ public final class DefinitionSet implements Artifactable {
                     cb.retVoid();
                     realCtorSeq.add(cb.code());
                 }
-                JavaBytecodeUtils.renderMethod(realCtorSeq, realCtor, TList.of());
+                JavaBytecodeUtils.renderMethod(realCtorSeq, realCtor, TList.of(), soeLocTable);
                 var allFieldNames = new TOrderedSet<String>();
                 var staticFieldValues = new TOrderedMap<String, Object>();
                 var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
@@ -386,7 +403,7 @@ public final class DefinitionSet implements Artifactable {
                     }
                 }
                 for (var name : allFieldNames) {
-                    var desc = fieldDescriptors.getOrDefault(name, JvmConstants.DESC_OBJECT);
+                    var desc = fieldDescriptors.getOpt(name).optUnwrapOr(JvmConstants.DESC_OBJECT);
                     soeCw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, name, desc.value(), null, null)
                             .visitEnd();
                 }
@@ -437,11 +454,6 @@ public final class DefinitionSet implements Artifactable {
                         for (var s : argSlots) argDescs.add(s.jvmDesc());
                         var descriptor = JavaMethodDescriptor.fromParts(retDesc, argDescs);
                         var mv = soeCw.visitMethod(Opcodes.ACC_PUBLIC, methodName, descriptor.value(), null, null);
-                        var target = new TargetDynamic();
-                        int totalArgSlots = 0;
-                        for (var emmS : argSlots)
-                            totalArgSlots += emmS.jvmDesc().slotWidth();
-                        var ctx = new EmitCtx(soeInternalName.value(), 1 + totalArgSlots, emmPrefix);
                         if (method.innerBindingId.optIsNone()) {
                             throw new IllegalStateException("SourceObjectEmitter.emit: method '" + method.name
                                     + "' has no innerBindingId (finish ordering violation)");
@@ -472,7 +484,7 @@ public final class DefinitionSet implements Artifactable {
                                     argSlotIds.get(emmI),
                                     argSlots.get(emmI).jvmDesc().isWide()));
                         }
-                        target.emit(seq, ctx, emmBodyCode);
+                        seq.add(emmBodyCode);
                         {
                             var rb = new JavaBytecodeBuilder(emmLoc);
                             if (retDesc.value().equals(JavaDataDescriptor.DESC_VOID.value())
@@ -489,7 +501,8 @@ public final class DefinitionSet implements Artifactable {
                                 initialSlots,
                                 obj.typeDesc() + "." + methodName,
                                 descriptor,
-                                JavaBytecodeUtils.externalFields(soeInternalName, emmPrefix, method.capturedExternals));
+                                JavaBytecodeUtils.externalFields(soeInternalName, emmPrefix, method.capturedExternals),
+                                soeLocTable);
                     }
                 }
                 for (int soeImplIdx = 0; soeImplIdx < obj.interfaceImpls.size(); soeImplIdx++) {
@@ -537,10 +550,6 @@ public final class DefinitionSet implements Artifactable {
                             }
                             var eimMv = soeCw.visitMethod(
                                     Opcodes.ACC_PUBLIC, eimMethodName, eimDescriptor.value(), null, null);
-                            var eimTarget = new TargetDynamic();
-                            int totalParamSlots = 0;
-                            for (var wide : jvmParamWides) totalParamSlots += (wide ? 2 : 1);
-                            var eimCtx = new EmitCtx(soeInternalName.value(), 1 + totalParamSlots, eimPrefix);
                             var eimSeq = new JavaBytecodeSequence();
                             var eimLoc = CodeLoc.Infallible.INSTANCE;
                             var innerDesc = JvmSort.descriptor(xx, obj.underlyingType.optUnwrap());
@@ -564,7 +573,7 @@ public final class DefinitionSet implements Artifactable {
                                 eimInitialSlots.add(new JavaBytecodeSequence.InitialSlot(
                                         jvmParamKeys.get(i), jvmParamWides.get(i)));
                             }
-                            eimTarget.emit(eimSeq, eimCtx, m.compiledBodyCode.optUnwrap());
+                            eimSeq.add(m.compiledBodyCode.optUnwrap());
                             {
                                 var rb = new JavaBytecodeBuilder(eimLoc);
                                 var ercRetDesc = eimDescriptor.returnDescriptor();
@@ -586,7 +595,8 @@ public final class DefinitionSet implements Artifactable {
                                     eimInitialSlots,
                                     obj.typeDesc() + "." + eimMethodName,
                                     eimDescriptor,
-                                    JavaBytecodeUtils.externalFields(soeInternalName, eimPrefix, m.capturedExternals));
+                                    JavaBytecodeUtils.externalFields(soeInternalName, eimPrefix, m.capturedExternals),
+                                    soeLocTable);
                         }
                     }
                 }
@@ -643,7 +653,8 @@ public final class DefinitionSet implements Artifactable {
                                         }
                                         var hostArgCv = DynUtil.regToValue(
                                                 new CodeDynamic(ehaLoc, new JavaBytecodeSequence()), raw, hostArgType);
-                                        var argDyn = DynUtil.materialize(xx, loc, ehaArgType, hostArgCv)
+                                        var argDyn = DynUtil.materialize(
+                                                        xx, ehiM.compiledBodyLoc.optUnwrap(), ehaArgType, hostArgCv)
                                                 .requireValue("SourceObjectEmitter.emitHostAdapter: arg convert");
                                         calleeArgs.add(eb.reg(argDyn));
                                         hostSlot += hostParamDesc.slotWidth();
@@ -674,30 +685,26 @@ public final class DefinitionSet implements Artifactable {
                                             new CodeDynamic(ehaLoc, new JavaBytecodeSequence()),
                                             calleeRet.optUnwrap(),
                                             calleeRetType);
-                                    var hostDyn = DynUtil.materialize(xx, loc, hostRetType, calleeCv)
+                                    var hostDyn = DynUtil.materialize(
+                                                    xx, ehiM.compiledBodyLoc.optUnwrap(), hostRetType, calleeCv)
                                             .requireValue("SourceObjectEmitter.emitHostAdapter: ret convert");
                                     eb.ret(eb.reg(hostDyn));
                                 } else {
                                     eb.ret(calleeRet.optUnwrap());
                                 }
                                 ehaSeq.add(eb.code());
-                                JavaBytecodeUtils.renderMethod(ehaSeq, ehaMv, TList.of());
+                                JavaBytecodeUtils.renderMethod(ehaSeq, ehaMv, TList.of(), soeLocTable);
                             }
                         }
                     }
                 }
                 soeCw.visitEnd();
-                obj.compiledBytecode = Opt.some(soeCw.toByteArray());
+                obj.compiledClass = Opt.some(new JavaClassCompiled(soeCw.toByteArray(), soeLocTable.locs()));
                 obj.compiledStaticFieldValues = Opt.some(staticFieldValues);
-                r = EResult.ok(null);
             }
-            if (r.hasErrors()) return r.reerr();
         }
         for (var seu : unions) {
-            EResult<Void> r;
-            if (seu.compiled.baseBytecode.optIsSome()) {
-                r = EResult.ok(null);
-            } else {
+            if (seu.compiled.baseBytecode.optIsNone()) {
                 var seuBaseBinaryName = seu.baseBinaryName;
                 var baseInternalName = seuBaseBinaryName.replace('.', '/');
                 var variantBinaryNames = new TList<String>(seu.variants.size());
@@ -771,17 +778,15 @@ public final class DefinitionSet implements Artifactable {
                     }
                 }
                 seu.compiled.variantBytecode = Opt.some(seuVariantBytecode);
-                r = EResult.ok(null);
             }
-            if (r.hasErrors()) return r.reerr();
         }
         finishFunctions();
         finished = true;
         for (var dep : dependencies.values()) {
-            var r = dep.finish(xx, loc);
-            if (r.hasErrors()) return r.reerr();
+            var r = dep.finish(xx);
+            if (r.optIsSome()) return r;
         }
-        return EResult.ok(null);
+        return Opt.none();
     }
 
     public Opt<DefSetFunctionsEmitter.EmittedFunctions> finishFunctions() {
@@ -803,6 +808,7 @@ public final class DefinitionSet implements Artifactable {
         }
         var binaryName = DefSetFunctionsEmitter.functionsBinaryName(defSetId);
         var internalName = DefSetFunctionsEmitter.functionsInternalName(defSetId);
+        var locTable = new JavaBytecodeLocTable();
         var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
             @Override
             protected String getCommonSuperClass(String type1, String type2) {
@@ -825,10 +831,11 @@ public final class DefinitionSet implements Artifactable {
                 var name = prefix + Prefixes.EXTERNAL_PREFIX + i;
                 var external = entry.external();
                 var desc = JavaDataDescriptor.fromClass(external.externalHostClass());
-                var prev = fieldDescriptors.put(name, desc);
-                if (prev != null && !prev.value().equals(desc.value())) {
+                var prev = fieldDescriptors.getOpt(name);
+                if (prev.optIsSome() && !prev.optUnwrap().value().equals(desc.value())) {
                     throw new AssertionError("DefSetFunctionsEmitter::emit: descriptor conflict for " + name);
                 }
+                fieldDescriptors.put(name, desc);
                 staticFieldValues.put(name, external.externalHostValue());
             }
         }
@@ -859,14 +866,10 @@ public final class DefinitionSet implements Artifactable {
                     JavaMethodDescriptor.fromParts(spec.retDesc(), argDescs).value(),
                     null,
                     null);
-            var target = new TargetDynamic();
-            int reservedLocals = 0;
-            for (var slot : spec.argSlots()) reservedLocals += slot.jvmDesc().slotWidth();
-            var ctx = new EmitCtx(internalName, Math.max(1, reservedLocals), efmPrefix);
             var loc = CodeLoc.Infallible.INSTANCE;
             var seq = new JavaBytecodeSequence();
             var ownerInternal = JavaInternalName.of(internalName);
-            target.emit(seq, ctx, spec.bodyCode());
+            seq.add(spec.bodyCode());
             {
                 var rb = new JavaBytecodeBuilder(loc);
                 if (spec.retDesc().value().equals(JavaDataDescriptor.DESC_VOID.value())
@@ -888,14 +891,15 @@ public final class DefinitionSet implements Artifactable {
                     initialSlots,
                     internalName + "." + spec.methodName(),
                     JavaMethodDescriptor.fromParts(spec.retDesc(), argDescs),
-                    JavaBytecodeUtils.externalFields(ownerInternal, efmPrefix, spec.externals()));
+                    JavaBytecodeUtils.externalFields(ownerInternal, efmPrefix, spec.externals()),
+                    locTable);
         }
         cw.visitEnd();
         var emitted = new DefSetFunctionsEmitter.EmittedFunctions(
-                binaryName, internalName, cw.toByteArray(), staticFieldValues);
+                binaryName, internalName, new JavaClassCompiled(cw.toByteArray(), locTable.locs()), staticFieldValues);
         for (var func : contributors) {
             func.compiledClassName = Opt.some(emitted.binaryName());
-            func.compiledBytecode = Opt.some(emitted.bytecode());
+            func.compiledClass = Opt.some(emitted.compiled());
             func.compiledStaticFieldValues = Opt.some(emitted.staticFieldValues());
             func.functionSpec = Opt.none();
         }
@@ -912,64 +916,45 @@ public final class DefinitionSet implements Artifactable {
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             var set = mustCast(DefinitionSet.class, self);
-            var errors = new TList<ExprErr>();
-            var artifact =
-                    ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, set.artifactIdCell, () -> {
-                        var objects = new TList<Artifact>(set.objects.size());
-                        for (var dt : set.objects) {
-                            var artRes = Artifactable.exportArtifact(xx, loc, dt);
-                            artRes.drainInto(errors);
-                            if (artRes.valueOpt().optIsSome()) {
-                                objects.add(artRes.valueOpt().optUnwrap());
-                            }
-                        }
-                        var functions = new TList<Artifact>(set.functions.size());
-                        for (var f : set.functions) {
-                            var fConst = new TypeSourceFunctionConst(f);
-                            var artRes = Artifactable.exportArtifact(xx, loc, fConst);
-                            artRes.drainInto(errors);
-                            if (artRes.valueOpt().optIsSome()) {
-                                functions.add(artRes.valueOpt().optUnwrap());
-                            }
-                        }
-                        var interfaces = new TList<Artifact>(set.interfaces.size());
-                        for (var i : set.interfaces) {
-                            var iConst = new TypeSourceInterfaceDynamic(i);
-                            var artRes = Artifactable.exportArtifact(xx, loc, iConst);
-                            artRes.drainInto(errors);
-                            if (artRes.valueOpt().optIsSome()) {
-                                interfaces.add(artRes.valueOpt().optUnwrap());
-                            }
-                        }
-                        var unions = new TList<Artifact>(set.unions.size());
-                        for (var u : set.unions) {
-                            var artRes = Artifactable.exportArtifact(xx, loc, u);
-                            artRes.drainInto(errors);
-                            if (artRes.valueOpt().optIsSome()) {
-                                unions.add(artRes.valueOpt().optUnwrap());
-                            }
-                        }
-                        var dependencies = new TList<Artifact>(set.dependencies.size());
-                        for (var entry : set.dependencies.entrySet()) {
-                            var depRes = Artifactable.exportArtifact(xx, loc, entry.getValue());
-                            depRes.drainInto(errors);
-                            if (depRes.valueOpt().optIsSome()) {
-                                dependencies.add(depRes.valueOpt().optUnwrap());
-                            }
-                        }
-                        var body = new ArtifactDataDefSet(
-                                set.defSetId,
-                                TList.from(dependencies),
-                                TList.from(functions),
-                                TList.from(interfaces),
-                                TList.from(objects),
-                                TList.from(unions));
-                        return makeBody.apply(ArtifactDataDefSetCodec.toValue(body));
-                    });
-            if (!errors.isEmpty()) {
-                return EResult.mixed(artifact, errors);
-            }
-            return EResult.ok(artifact);
+            return ArtifactSupport.implExportIndependentArtifact(xx, set.artifactIdCell, () -> {
+                var erb = new Erb(loc);
+                var objects = new TList<Artifact>(set.objects.size());
+                for (var dt : set.objects) {
+                    var art = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, dt));
+                    if (art.optIsSome()) objects.add(art.optUnwrap());
+                }
+                var functions = new TList<Artifact>(set.functions.size());
+                for (var f : set.functions) {
+                    var art = erb.mustErMaybeUnreachable(
+                            Artifactable.exportArtifact(xx, loc, new TypeSourceFunctionConst(f)));
+                    if (art.optIsSome()) functions.add(art.optUnwrap());
+                }
+                var interfaces = new TList<Artifact>(set.interfaces.size());
+                for (var i : set.interfaces) {
+                    var art = erb.mustErMaybeUnreachable(
+                            Artifactable.exportArtifact(xx, loc, new TypeSourceInterfaceDynamic(i)));
+                    if (art.optIsSome()) interfaces.add(art.optUnwrap());
+                }
+                var unions = new TList<Artifact>(set.unions.size());
+                for (var u : set.unions) {
+                    var art = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, u));
+                    if (art.optIsSome()) unions.add(art.optUnwrap());
+                }
+                var dependencies = new TList<Artifact>(set.dependencies.size());
+                for (var entry : set.dependencies.entrySet()) {
+                    var art = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, entry.getValue()));
+                    if (art.optIsSome()) dependencies.add(art.optUnwrap());
+                }
+                if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+                var body = new ArtifactDataDefSet(
+                        set.defSetId,
+                        TList.from(dependencies),
+                        TList.from(functions),
+                        TList.from(interfaces),
+                        TList.from(objects),
+                        TList.from(unions));
+                return EResult.ok(makeBody.apply(ArtifactDataDefSetCodec.toValue(body)));
+            });
         }
 
         @Override

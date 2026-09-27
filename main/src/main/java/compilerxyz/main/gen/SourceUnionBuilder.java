@@ -1,9 +1,6 @@
 package compilerxyz.main.gen;
 
 import compilerxyz.main.eval.ConstKey;
-import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.SourceId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.Prefixes;
 import compilerxyz.main.eval.value.source_union.SourceUnionVariant;
@@ -19,16 +16,14 @@ public final class SourceUnionBuilder {
         this.type = type;
     }
 
-    public EResult<TypeSourceUnionNewDynamic> variant(String tag, Type typeRef) {
+    public TypeSourceUnionNewDynamic variant(String tag, Type typeRef) {
         if (this.type.set.finished) {
-            return EResult.err(
-                    new QExprId(new SourceId(-1L), -1L),
-                    "Cannot add a union variant after its definition set is finished");
+            throw new IllegalStateException("Cannot add a union variant after its definition set is finished");
         }
         var jsTag = Prefixes.TAG_PREFIX + this.type.nextTagId.next();
         var variantIndex = this.type.variants.size();
         this.type.variants.add(new SourceUnionVariant(new ConstKey.Str(tag), jsTag, typeRef));
         this.type.active.add(variantIndex);
-        return EResult.ok(new TypeSourceUnionNewDynamic(this.type, variantIndex));
+        return new TypeSourceUnionNewDynamic(this.type, variantIndex);
     }
 }

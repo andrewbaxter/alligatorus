@@ -21,6 +21,7 @@ import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.Value;
+import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
@@ -29,7 +30,7 @@ public record AspectConsumeDynamicRecord(Record type) implements AspectConsumeDy
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-        var slotInfo = Record.computeSlotInfoFromTypes(xx, Record.recordFieldTypesRaw(type.fields));
+        var slotInfo = Record.computeSlotInfoFromTypes(xx, Record.recordFieldTypesRaw(type.fields()));
         var klass = CompositeClassEmitter.getOrEmit(xx, slotInfo.sortedTypes());
         return JavaDataDescriptor.fromInternalName(
                 JavaInternalName.of(klass.getName().replace('.', '/')));
@@ -47,16 +48,16 @@ public record AspectConsumeDynamicRecord(Record type) implements AspectConsumeDy
             throw new IllegalStateException("Record::toDynamic: expected Record value, got "
                     + cv.value().optUnwrap().getClass());
         }
-        if (record.base.optIsSome()) {
+        if (record.base().optIsSome()) {
             return EResult.ok(cv);
         }
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
-        if (carryRes.hasErrors()) return carryRes.reerr();
+        if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
         TList<ExprErr> errors = null;
         record LoweredField(ConstKey key, String desc, Type type, JavaBytecodeReg reg) {}
-        var loweredFields = new TList<LoweredField>(record.fields.size());
-        for (var entry : record.fields.entrySet()) {
+        var loweredFields = new TList<LoweredField>(record.fields().size());
+        for (var entry : record.fields()) {
             var key = entry.getKey();
             var field = entry.getValue();
             var elemRes =
@@ -129,10 +130,11 @@ public record AspectConsumeDynamicRecord(Record type) implements AspectConsumeDy
         var ctorDesc = CompositeClassEmitter.constructorDesc(xx, sortedTypes);
         var obj = b.newInstance(klass, ctorDesc, sortedRegs);
         var dynamicFields = new TOrderedMap<ConstKey, RecordField>();
-        for (var entry : type.fields.entrySet()) {
+        for (var entry : type.fields()) {
             dynamicFields.put(entry.getKey(), new RecordField.Dynamic(Record.recordFieldType(entry.getValue())));
         }
-        Value result = new Record(Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Reg(obj))), dynamicFields);
+        Value result = new Record(
+                Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Reg(obj))), IOrderedMap.from(dynamicFields));
         return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.ofValue(result)));
     }
 }

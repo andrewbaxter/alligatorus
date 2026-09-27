@@ -149,8 +149,9 @@ public final class CodegenDescriptorScanner {
             _resolve:
             {
                 var head = name.contains(".") ? name.substring(0, name.indexOf('.')) : name;
-                var fromImport = imports.get(head);
-                if (fromImport != null) {
+                var fromImportOpt = imports.getOpt(head);
+                if (fromImportOpt.optIsSome()) {
+                    var fromImport = fromImportOpt.optUnwrap();
                     {
                         resolve = name.contains(".") ? fromImport + name.substring(name.indexOf('.')) : fromImport;
                         break _resolve;

@@ -93,7 +93,7 @@ public final class EcoSynth {
                 e.v("ll"),
                 "fn",
                 e.rec(
-                        e.p("params", e.listNew(e.mb.evalType(), types.toArray(new SourceExpr[0]))),
+                        e.p("params", e.listNew(e.mb.evalType(), types.toArray(SourceExpr[]::new))),
                         e.p("ret", e.v(ret))));
         defValue(
                 e,
@@ -104,7 +104,7 @@ public final class EcoSynth {
                         "func",
                         e.rec(
                                 e.p("name", e.s(name)),
-                                e.p("params", e.listNew(e.mb.evalValue(), fields.toArray(new SourceExpr[0]))),
+                                e.p("params", e.listNew(e.mb.evalValue(), fields.toArray(SourceExpr[]::new))),
                                 e.p("ret", e.v(ret)),
                                 e.p("body", e.stage(body)))),
                 EcoExtern.globalT(e, "ll", fnType, false));
@@ -138,12 +138,12 @@ public final class EcoSynth {
                         e.rec(
                                 e.p("name", e.s(name)),
                                 e.p("ty", e.v("t_events")),
-                                e.p("init", e.stage(e.rec(fields.toArray(new EcoMb.P[0])))))),
+                                e.p("init", e.stage(e.rec(fields.toArray(EcoMb.P[]::new)))))),
                 EcoExtern.globalT(e, "ll", e.callM(e.v("ll"), "ptr", e.v("t_events")), false));
     }
 
     private static SourceExpr pwT(EcoMb e, String name) {
-        return e.callM(e.v("pw"), name, e.nil());
+        return e.callM(e.v("pw"), name, e.tup());
     }
 
     public static SourceExpr module(EcoMb e) {
@@ -153,7 +153,7 @@ public final class EcoSynth {
         setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
         setup.add(e.let("libc", e.importLocal("libc", "libc-2.42.at")));
         setup.add(e.let("pipewire", e.importLocal("pipewire", "pipewire-1.6.at")));
-        setup.add(e.let("ll", e.call(e.v("llvm"), e.nil())));
+        setup.add(e.let("ll", e.call(e.v("llvm"), e.tup())));
         setup.add(e.let("c", e.call(e.v("libc"), e.v("ll"))));
         setup.add(e.let("pw", e.call(e.v("pipewire"), e.v("ll"))));
         for (var n : new String[] {"ll", "c", "pw"}) cx.exported().add(n);
@@ -166,13 +166,13 @@ public final class EcoSynth {
         defType(e, cx, "t_events", pwT(e, "pw_stream_events"));
         defType(e, cx, "t_pseq", e.callM(e.v("ll"), "ptr", pwT(e, "spa_pod_sequence")));
         defType(e, cx, "t_pctl", e.callM(e.v("ll"), "ptr", pwT(e, "spa_pod_control")));
-        defValue(e, cx, "nullp", e.callM(e.v("ll"), "null", e.nil()), EcoExtern.globalT(e, "ll", e.v("t_pv"), false));
+        defValue(e, cx, "nullp", e.callM(e.v("ll"), "null", e.tup()), EcoExtern.globalT(e, "ll", e.v("t_pv"), false));
         defValue(
                 e, cx, "range_u32", e.callM(e.v("ll"), "ref", e.s("range")), e.callM(e.v("ll"), "range", e.v("t_u32")));
-        defValue(e, cx, "loop", e.callM(e.v("ll"), "ref", e.s("loop")), e.callM(e.v("ll"), "loop", e.nil()));
+        defValue(e, cx, "loop", e.callM(e.v("ll"), "ref", e.s("loop")), e.callM(e.v("ll"), "loop", e.tup()));
 
         for (var fn : new String[] {"sin", "exp2"}) {
-            defValue(e, cx, fn, e.callM(e.v("c"), fn, e.nil()), e.callM(e.v("c"), fn + "_t", e.nil()));
+            defValue(e, cx, fn, e.callM(e.v("c"), fn, e.tup()), e.callM(e.v("c"), fn + "_t", e.tup()));
         }
         for (var fn : new String[] {
             "pw_init",
@@ -847,10 +847,10 @@ public final class EcoSynth {
                         callFn(e, "pw_deinit", e.tup()),
                         e.ret(e.n(0))));
 
-        top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.nil())));
+        top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
         var exportedFields = new TList<EcoMb.P>();
         for (var n : cx.exported()) exportedFields.add(e.p(n, e.v(n)));
-        setup.add(e.ret(e.rec(exportedFields.toArray(new EcoMb.P[0]))));
+        setup.add(e.ret(e.rec(exportedFields.toArray(EcoMb.P[]::new))));
         var module = new TList<SourceExpr>();
         module.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : cx.exported()) module.add(e.let(n, e.fld(e.v("k"), n)));

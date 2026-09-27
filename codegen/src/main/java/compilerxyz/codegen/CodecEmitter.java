@@ -15,7 +15,6 @@ final class CodecEmitter {
     private CodecEmitter() {}
 
     public static final ClassName JSON_READER = ClassName.get("com.google.gson.stream", "JsonReader");
-    private static final ClassName JSON_TOKEN = ClassName.get("com.google.gson.stream", "JsonToken");
     public static final ClassName JSON_WRITER = ClassName.get("com.google.gson.stream", "JsonWriter");
     public static final ClassName JSON = ClassName.get("compilerxyz.main.safejson", "Json");
     public static final ClassName JSON_VALUE = ClassName.get("compilerxyz.main.safejson", "JsonValue");
@@ -28,10 +27,9 @@ final class CodecEmitter {
             ClassName.get("compilerxyz.main.safejson", "Json", "DeserializationException");
     public static final ClassName IO_EXCEPTION = ClassName.get(IOException.class);
     private static final ClassName BASE64 = ClassName.get("java.util", "Base64");
-    public static final ClassName TSET = ClassName.get("compilerxyz.prelude.util", "TSet");
     private static final ClassName TLIST = ClassName.get("compilerxyz.prelude.util", "TList");
     private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.prelude.util", "TOrderedMap");
-    private static final ClassName OPT = ClassName.get("compilerxyz.prelude.util", "Opt");
+    public static final ClassName OPT = ClassName.get("compilerxyz.prelude.util", "Opt");
     private static final ClassName OPT_SOME = ClassName.get("compilerxyz.prelude.util", "Opt", "Some");
     private static final String ARTIFACT_CODECS_REF = "compilerxyz.main.artifact.ArtifactCodecs";
 
@@ -81,15 +79,6 @@ final class CodecEmitter {
 
     private static CodeBlock encodeStmts(ParsedType type, CodeBlock valueExpr) {
         var b = CodeBlock.builder();
-        if (type.nullable) {
-            b.beginControlFlow("if ($L == null)", valueExpr);
-            b.addStatement("writer.nullValue()");
-            b.nextControlFlow("else");
-            var nonNullType = new ParsedType(type.kind, type.name, type.typeArgs, false);
-            b.add(encodeStmts(nonNullType, valueExpr));
-            b.endControlFlow();
-            return b.build();
-        }
         if (type.kind == ParsedTypeKind.PRIMITIVE) {
             switch (type.name) {
                 case "int", "long", "short", "byte" -> b.addStatement("writer.value($L)", valueExpr);
@@ -193,16 +182,6 @@ final class CodecEmitter {
 
     public static CodeBlock decodeStmts(ParsedType type, String readerExpr, CodeBlock pathExpr, String targetVar) {
         var b = CodeBlock.builder();
-        if (type.nullable) {
-            b.beginControlFlow("if ($L.peek() == $T.NULL)", readerExpr, JSON_TOKEN);
-            b.addStatement("$L.nextNull()", readerExpr);
-            b.addStatement("$L = null", targetVar);
-            b.nextControlFlow("else");
-            var nonNull = new ParsedType(type.kind, type.name, type.typeArgs, false);
-            b.add(decodeStmts(nonNull, readerExpr, pathExpr, targetVar));
-            b.endControlFlow();
-            return b.build();
-        }
         if (type.kind == ParsedTypeKind.PRIMITIVE) {
             switch (type.name) {
                 case "int" -> b.addStatement("$L = $L.nextInt()", targetVar, readerExpr);
@@ -233,8 +212,8 @@ final class CodecEmitter {
         }
         var qn = type.name;
         if (qn.equals("Opt") || qn.equals("compilerxyz.prelude.util.Opt")) {
-            var elem = type.typeArgs.isEmpty() ? null : type.typeArgs.get(0);
-            var elemJava = elem == null ? "Object" : javaTypeOf(elem);
+            var elem = typeArg(type, 0);
+            var elemJava = javaTypeOf(elem);
             b.beginControlFlow("");
             b.addStatement("$L.beginObject()", readerExpr);
             b.addStatement(
@@ -246,14 +225,9 @@ final class CodecEmitter {
             b.addStatement("String __tag = $L.nextName()", readerExpr);
             b.beginControlFlow("switch (__tag)");
             b.beginControlFlow("case $S ->", "some");
-            if (elem != null) {
-                b.addStatement("$L __sv = $L", elemJava, defaultForNamed(elem));
-                b.add(decodeStmts(elem, readerExpr, CodeBlock.of("$L.field($S)", pathExpr, "some"), "__sv"));
-                b.addStatement("$L = $T.some(__sv)", targetVar, OPT);
-            } else {
-                b.addStatement("$L.skipValue()", readerExpr);
-                b.addStatement("$L = $T.none()", targetVar, OPT);
-            }
+            b.addStatement("$L __sv", elemJava);
+            b.add(decodeStmts(elem, readerExpr, CodeBlock.of("$L.field($S)", pathExpr, "some"), "__sv"));
+            b.addStatement("$L = $T.some(__sv)", targetVar, OPT);
             b.endControlFlow();
             b.add("case $S -> { $L.nextNull(); $L = $T.none(); }\n", "none", readerExpr, targetVar, OPT);
             b.add(
@@ -268,19 +242,15 @@ final class CodecEmitter {
             return b.build();
         }
         if (qn.equals("TList") || qn.equals("compilerxyz.prelude.util.TList")) {
-            var elem = type.typeArgs.isEmpty() ? null : type.typeArgs.get(0);
-            var elemType = elem == null ? "Object" : javaTypeOf(elem);
+            var elem = typeArg(type, 0);
+            var elemType = javaTypeOf(elem);
             b.beginControlFlow("");
             b.addStatement("$T<$L> __l = new $T<>()", TLIST, elemType, TLIST);
             b.addStatement("$L.beginArray()", readerExpr);
             b.addStatement("int __i = 0");
             b.beginControlFlow("while ($L.hasNext())", readerExpr);
-            b.addStatement("$L __ev = $L", elemType, defaultForNamed(elem));
-            if (elem != null) {
-                b.add(decodeStmts(elem, readerExpr, CodeBlock.of("$L.index(__i)", pathExpr), "__ev"));
-            } else {
-                b.addStatement("$L.skipValue()", readerExpr);
-            }
+            b.addStatement("$L __ev", elemType);
+            b.add(decodeStmts(elem, readerExpr, CodeBlock.of("$L.index(__i)", pathExpr), "__ev"));
             b.addStatement("__l.add(__ev)");
             b.addStatement("__i++");
             b.endControlFlow();
@@ -290,28 +260,20 @@ final class CodecEmitter {
             return b.build();
         }
         if (qn.equals("TOrderedMap") || qn.equals("compilerxyz.prelude.util.TOrderedMap")) {
-            var keyT = type.typeArgs.size() > 0 ? type.typeArgs.get(0) : null;
-            var valT = type.typeArgs.size() > 1 ? type.typeArgs.get(1) : null;
-            var keyType = keyT == null ? "Object" : javaTypeOf(keyT);
-            var valType = valT == null ? "Object" : javaTypeOf(valT);
+            var keyT = typeArg(type, 0);
+            var valT = typeArg(type, 1);
+            var keyType = javaTypeOf(keyT);
+            var valType = javaTypeOf(valT);
             b.beginControlFlow("");
             b.addStatement("$T<$L, $L> __m = new $T<>()", TORDERED_MAP, keyType, valType, TORDERED_MAP);
             b.addStatement("$L.beginArray()", readerExpr);
             b.addStatement("int __mi = 0");
             b.beginControlFlow("while ($L.hasNext())", readerExpr);
             b.addStatement("$L.beginArray()", readerExpr);
-            b.addStatement("$L __mk = $L", keyType, defaultForNamed(keyT));
-            if (keyT != null) {
-                b.add(decodeStmts(keyT, readerExpr, CodeBlock.of("$L.index(__mi)", pathExpr), "__mk"));
-            } else {
-                b.addStatement("$L.skipValue()", readerExpr);
-            }
-            b.addStatement("$L __mv = $L", valType, defaultForNamed(valT));
-            if (valT != null) {
-                b.add(decodeStmts(valT, readerExpr, CodeBlock.of("$L.index(__mi)", pathExpr), "__mv"));
-            } else {
-                b.addStatement("$L.skipValue()", readerExpr);
-            }
+            b.addStatement("$L __mk", keyType);
+            b.add(decodeStmts(keyT, readerExpr, CodeBlock.of("$L.index(__mi)", pathExpr), "__mk"));
+            b.addStatement("$L __mv", valType);
+            b.add(decodeStmts(valT, readerExpr, CodeBlock.of("$L.index(__mi)", pathExpr), "__mv"));
             b.addStatement("$L.endArray()", readerExpr);
             b.addStatement("__m.put(__mk, __mv)");
             b.addStatement("__mi++");
@@ -361,12 +323,11 @@ final class CodecEmitter {
         return b.build();
     }
 
-    private static String defaultForNamed(ParsedType elem) {
-        if (elem == null) return "null";
-        if (elem.kind == ParsedTypeKind.PRIMITIVE) {
-            return defaultValueExpr(elem);
+    private static ParsedType typeArg(ParsedType type, int index) {
+        if (index >= type.typeArgs.size()) {
+            throw new IllegalStateException("codec: raw type " + type.name + " has no type argument " + index);
         }
-        return "null";
+        return type.typeArgs.get(index);
     }
 
     static String javaTypeOf(ParsedType type) {
@@ -384,23 +345,9 @@ final class CodecEmitter {
         return sb.toString();
     }
 
-    static String defaultValueExpr(ParsedType type) {
-        if (type.kind == ParsedTypeKind.PRIMITIVE) {
-            return switch (type.name) {
-                case "boolean" -> "false";
-                case "char" -> "'\\u0000'";
-                case "float" -> "0f";
-                case "double" -> "0d";
-                case "long" -> "0L";
-                default -> "0";
-            };
-        }
-        return "null";
-    }
-
     public static CodecTarget codecTargetFor(String qname) {
-        var hand = HAND_CODED_REFS.getOrNull(qname);
-        if (hand != null) return hand;
+        var hand = HAND_CODED_REFS.getOpt(qname);
+        if (hand.optIsSome()) return hand.optUnwrap();
         return new CodecTarget(CodecsGen.GEN_PACKAGE + "." + simpleNameOf(qname) + "Codec", Opt.none());
     }
 

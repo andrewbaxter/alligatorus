@@ -19,6 +19,7 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
+import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
@@ -71,7 +72,8 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
         }
         var combined = Eval.codeConcat(xx, loc, code, baseCode);
         return new CodeValue(
-                combined.requireValue("BindingRecord use"), EvalOutcome.ofValue(new Record(base, resultFields)));
+                combined.requireValue("BindingRecord use"),
+                EvalOutcome.ofValue(new Record(base, IOrderedMap.from(resultFields))));
     }
 
     @Override
@@ -111,7 +113,7 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
                     var otherSubs = new TList<Binding>(others.size());
                     boolean shapeOk = true;
                     for (var other : others) {
-                        var ov = ((BindingRecord) other).fields.get(key);
+                        var ov = ((BindingRecord) other).fields.getOpt(key).optUnwrap();
                         var os =
                                 switch (ov) {
                                     case RecordScopeField.Scope scopeField -> Opt.some(scopeField);
@@ -143,7 +145,7 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
                 }
                 case RecordScopeField.Dynamic d -> {
                     for (var other : others) {
-                        var ov = ((BindingRecord) other).fields.get(key);
+                        var ov = ((BindingRecord) other).fields.getOpt(key).optUnwrap();
                         var isDynamic =
                                 switch (ov) {
                                     case RecordScopeField.Dynamic od -> true;

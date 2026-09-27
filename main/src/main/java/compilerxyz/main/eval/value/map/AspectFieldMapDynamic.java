@@ -28,8 +28,9 @@ public record AspectFieldMapDynamic<K extends Type, V extends Type>(TypeMapDynam
         var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
-        var spec = type.fieldSpecs().getOrNull(ck);
-        if (spec != null) {
+        var specOpt = type.fieldSpecs().getOpt(ck);
+        if (specOpt.optIsSome()) {
+            var spec = specOpt.optUnwrap();
             return switch (spec) {
                 case FieldSpec.Factory f ->
                     EResult.ok(new CodeValue(
@@ -71,8 +72,11 @@ public record AspectFieldMapDynamic<K extends Type, V extends Type>(TypeMapDynam
 
     @Override
     public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-        var spec = type.fieldSpecs().getOrNull(key);
-        if (spec != null) return Opt.some(spec.fieldSpecFieldType());
+        var specOpt = type.fieldSpecs().getOpt(key);
+        if (specOpt.optIsSome()) {
+            var spec = specOpt.optUnwrap();
+            return Opt.some(spec.fieldSpecFieldType());
+        }
         return switch (key) {
             case ConstKey.Str s -> Opt.some(type.valueType);
             case ConstKey.Uint u -> Opt.none();

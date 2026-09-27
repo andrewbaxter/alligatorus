@@ -16,6 +16,7 @@ import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.AspectDropDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TOrderedMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -46,7 +47,7 @@ public record AspectDropDynamicMapDynamic<K extends Type, V extends Type>(TypeMa
             if (keyDropRes.hasErrors()) return keyDropRes.reerr();
             body.add(access.code());
             var r = body.addCode(loc, keyDropRes.requireValue("map key drop"));
-            if (r.hasErrors()) return r.reerr();
+            if (r.optIsSome()) return EResult.errs(r.optUnwrap());
         }
         if (valDropOpt.optIsSome()) {
             var access = new JavaBytecodeBuilder(loc);
@@ -57,16 +58,16 @@ public record AspectDropDynamicMapDynamic<K extends Type, V extends Type>(TypeMa
             if (valDropRes.hasErrors()) return valDropRes.reerr();
             body.add(access.code());
             var r = body.addCode(loc, valDropRes.requireValue("map value drop"));
-            if (r.hasErrors()) return r.reerr();
+            if (r.optIsSome()) return EResult.errs(r.optUnwrap());
         }
 
-        var mapName = JavaInternalName.fromClass(Map.class);
+        var mapName = JavaInternalName.fromClass(TOrderedMap.class);
         var setName = JavaInternalName.fromClass(Set.class);
         var iteratorName = JavaInternalName.fromClass(Iterator.class);
         var entrySetMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(setName), TList.of());
         var iterMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
         var setup = new JavaBytecodeBuilder(loc);
-        var entries = setup.invokeInterface(mapName, "entrySet", entrySetMethod, DynUtil.sourceReg(setup, vd.source()));
+        var entries = setup.invokeVirtual(mapName, "entrySet", entrySetMethod, DynUtil.sourceReg(setup, vd.source()));
         var iteratorSetup = setup.code(setup.invokeInterface(setName, "iterator", iterMethod, entries));
 
         var bind = new JavaBytecodeBuilder(loc);

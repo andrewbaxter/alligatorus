@@ -57,7 +57,7 @@ public final class T0057FieldUseMatrixTest {
 
         var modules = new TMap<String, SourceModule>();
         modules.put("main", new SourceModule.V1(e.mb.seq(exprs)));
-        var res = Compile.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, ?> ok;
         switch (res) {
             case Result.Ok<Compile.CompileResult, ?> o -> ok = o;

@@ -27,18 +27,19 @@ public record AspectFieldRecord(Record type) implements AspectField {
 
     @Override
     public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        if (type.base.optIsNone()) {
+        if (type.base().optIsNone()) {
             return new TList<>();
         }
-        var out = new TList<ConstKey>(type.fields.size());
-        for (var k : type.fields.keySet()) out.add(k);
+        var out = new TList<ConstKey>(type.fields().size());
+        for (var k : type.fields().keys()) out.add(k);
         return out;
     }
 
     @Override
     public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-        var f = type.fields.getOrNull(key);
-        if (f == null) return Opt.none();
+        var fOpt = type.fields().getOpt(key);
+        if (fOpt.optIsNone()) return Opt.none();
+        var f = fOpt.optUnwrap();
         return Opt.some(Record.recordFieldType(f));
     }
 }

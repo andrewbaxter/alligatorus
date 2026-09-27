@@ -15,4 +15,5 @@ public final class InterfaceBuilding {
     public boolean isAspect;
     public Opt<Unique> aspectId = Opt.none();
     public final TList<InterfaceMethodBuilding> methods = new TList<>();
+    public boolean implemented;
 }

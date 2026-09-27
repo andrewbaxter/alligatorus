@@ -60,8 +60,8 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
     final JavaInternalName jvmClass;
     final JavaDataDescriptor jvmClassDesc;
     private final Class hostClass;
-    final IList<ObjectDataField> dataFields;
-    final IList<ObjectMethod> methods;
+    final Opt<IList<ObjectDataField>> dataFields;
+    final Opt<IList<ObjectMethod>> methods;
     private final ObjectDropKind dropKind;
     final Opt<JavaInternalName> interfaceRepresented;
 
@@ -76,30 +76,38 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         this.jvmClass = jvmClass;
         this.jvmClassDesc = jvmClassDesc;
         this.hostClass = hostClass;
-        this.dataFields = null;
-        this.methods = null;
+        this.dataFields = Opt.none();
+        this.methods = Opt.none();
         this.dropKind = dropKind;
         this.interfaceRepresented = interfaceRepresented;
     }
 
     public void linkInit(IList<ObjectDataField> dataFields, IList<ObjectMethod> methods) {
-        if (this.dataFields != null || this.methods != null) {
+        if (this.dataFields.optIsSome() || this.methods.optIsSome()) {
             throw new IllegalStateException("TypeObjectDynamic.linkInit: already initialized");
         }
         try {
             var df = TypeObjectDynamic.class.getDeclaredField("dataFields");
             df.setAccessible(true);
-            df.set(this, dataFields);
+            df.set(this, Opt.some(dataFields));
             var m = TypeObjectDynamic.class.getDeclaredField("methods");
             m.setAccessible(true);
-            m.set(this, methods);
+            m.set(this, Opt.some(methods));
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("TypeObjectDynamic.linkInit: failed to set final list fields", e);
         }
     }
 
+    public boolean isLinked() {
+        return methods.optIsSome();
+    }
+
+    public IList<ObjectDataField> dataFields() {
+        return dataFields.optUnwrap();
+    }
+
     public IList<ObjectMethod> methods() {
-        return methods;
+        return methods.optUnwrap();
     }
 
     public Opt<JavaInternalName> interfaceRepresented() {
@@ -227,7 +235,7 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
             return Opt.some(new AspectFieldUseDynamicObjectDynamic(this));
         }
-        if ((!dataFields.isEmpty() || (!methods.isEmpty() && interfaceRepresented.optIsNone()))
+        if ((!dataFields().isEmpty() || (!methods().isEmpty() && interfaceRepresented.optIsNone()))
                 && key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldObjectDynamic(this));
         }

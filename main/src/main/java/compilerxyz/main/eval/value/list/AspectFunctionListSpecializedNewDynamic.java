@@ -39,7 +39,7 @@ public record AspectFunctionListSpecializedNewDynamic(TypeListSpecializedNewDyna
         }
         var b = new JavaBytecodeBuilder(loc);
         var selfRes = b.addCode(loc, self.code());
-        if (selfRes.hasErrors()) return selfRes.reerr();
+        if (selfRes.optIsSome()) return EResult.errs(selfRes.optUnwrap());
         var list = b.reg(type.listType().emitNew(xx, loc, dynamicElements));
         return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), list, type.listType()));
     }

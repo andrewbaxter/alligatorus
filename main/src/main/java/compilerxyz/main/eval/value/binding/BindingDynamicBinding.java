@@ -16,6 +16,7 @@ import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.Value;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.TList;
 
 public record BindingDynamicBinding(BindingId dynamicKey, Type type) implements Binding, BindingDynamicSlot {
@@ -38,37 +39,18 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type) implements 
 
     @Override
     public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
-        Type mergedType = type;
-        boolean merged = false;
-        for (var other : others) {
-            if (this.equals(other)) continue;
-            if (!(other instanceof BindingDynamicBinding ob) || dynamicKey != ob.dynamicKey) {
-                return EResult.err(
-                        loc,
-                        "cannot merge " + getClass().getSimpleName()
-                                + " with a differently-typed binding across branches");
-            }
-            var aOpt = TypeSourceUnionDynamic.unionOf(xx, mergedType);
-            var bOpt = TypeSourceUnionDynamic.unionOf(xx, ob.type);
-            if (aOpt.optIsNone()
-                    || bOpt.optIsNone()
-                    || !aOpt.optUnwrap().identity.equals(bOpt.optUnwrap().identity)) {
-                return EResult.err(
-                        loc,
-                        "cannot merge " + getClass().getSimpleName()
-                                + " with a differently-typed binding across branches");
-            }
-            var mergedActive = new TList<Integer>(
-                    aOpt.optUnwrap().active.size() + bOpt.optUnwrap().active.size());
-            mergedActive.addAll(aOpt.optUnwrap().active);
-            mergedActive.addAll(bOpt.optUnwrap().active);
-            mergedType = aOpt.optUnwrap().withActiveVariants(mergedActive);
-            merged = true;
-        }
-        if (!merged) {
+        var unionOpt = TypeSourceUnionDynamic.unionOf(xx, type);
+        if (unionOpt.optIsNone()) {
             return EResult.ok(this);
         }
-        return EResult.ok(new BindingDynamicBinding(dynamicKey, mergedType));
+        var union = unionOpt.optUnwrap();
+        var mergedActive = new TList<Integer>();
+        mergedActive.addAll(union.active);
+        for (var other : others) {
+            var otherType = MustCast.mustCast(BindingDynamicBinding.class, other).type;
+            mergedActive.addAll(TypeSourceUnionDynamic.unionOf(xx, otherType).optUnwrap().active);
+        }
+        return EResult.ok(new BindingDynamicBinding(dynamicKey, union.withActiveVariants(mergedActive)));
     }
 
     @Override

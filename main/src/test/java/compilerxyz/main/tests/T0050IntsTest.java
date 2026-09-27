@@ -29,7 +29,7 @@ public final class T0050IntsTest {
                                 Opt.none()),
                         mb.call(mb.log(), mb.call(mb.field(mb.scopeUse("x"), mb.str("to_string")), mb.tupleOf())))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> ok0 -> resOk = ok0;
@@ -106,7 +106,7 @@ public final class T0050IntsTest {
                                         mb.field(mb.call(mb.scopeUse("maybe_add"), mb.num(4.0)), mb.str("to_string")),
                                         mb.tupleOf())))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> ok0 -> resOk = ok0;

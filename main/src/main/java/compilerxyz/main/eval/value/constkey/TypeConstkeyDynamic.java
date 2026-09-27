@@ -83,7 +83,7 @@ public record TypeConstkeyDynamic() implements Aspect, Type {
         JavaBytecodeReg str;
         if (stringConstOpt.optIsSome()) {
             var carryRes = b.addCode(loc, cv.code());
-            if (carryRes.hasErrors()) return carryRes.reerr();
+            if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
             str = b.constString(stringConstOpt.optUnwrap().aspectStringConstGet(sourceValue));
         } else {
             if (GenAspectStringDynamic.getMaybe(xx, sourceType).optIsNone()) {

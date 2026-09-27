@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.map;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
@@ -11,8 +10,8 @@ import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
@@ -21,7 +20,6 @@ import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactMapTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
@@ -54,10 +52,6 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
         return Opt.none();
     }
 
-    private static Artifact nullArtifact() {
-        return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new Root()));
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
@@ -66,19 +60,14 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
             if (selfDc.optIsSome()) self = selfDc.optUnwrap().aspectDynamicConstConstForm();
             var map = MustCast.mustCast(TypeMapConst.class, self);
             var cell = map.artifactIdCell;
-            var errors = new TList<ExprErr>();
-            var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
-                var keyArtRes = Artifactable.exportArtifact(xx, loc, map.keyType);
-                keyArtRes.drainInto(errors);
-                var keyArt = keyArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                var valueArtRes = Artifactable.exportArtifact(xx, loc, map.valueType);
-                valueArtRes.drainInto(errors);
-                var valueArt = valueArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                var body = new ArtifactMapType(keyArt, valueArt);
-                return makeBody.apply(ArtifactMapTypeCodec.toValue(body));
+            return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
+                var erb = new Erb(loc);
+                var keyArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, map.keyType));
+                var valueArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, map.valueType));
+                if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+                var body = new ArtifactMapType(keyArt.optUnwrap(), valueArt.optUnwrap());
+                return EResult.ok(makeBody.apply(ArtifactMapTypeCodec.toValue(body)));
             });
-            if (errors.isEmpty()) return EResult.ok(artifact);
-            return EResult.mixed(artifact, errors);
         }
 
         @Override

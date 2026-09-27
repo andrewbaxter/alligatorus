@@ -45,7 +45,7 @@ public record AspectDropDynamicMapEntryDynamic(TypeMapEntryDynamic type) impleme
             if (childDropRes.hasErrors()) return childDropRes.reerr();
             b.add(access.code());
             var dropRes = b.addCode(loc, childDropRes.requireValue("map entry child drop"));
-            if (dropRes.hasErrors()) return dropRes.reerr();
+            if (dropRes.optIsSome()) return EResult.errs(dropRes.optUnwrap());
             any = true;
         }
         if (!any) return EResult.ok(Code.none(loc));

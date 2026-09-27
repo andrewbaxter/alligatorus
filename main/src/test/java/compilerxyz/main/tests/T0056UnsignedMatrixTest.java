@@ -58,9 +58,9 @@ public final class T0056UnsignedMatrixTest {
 
     private void check(Cases c) {
         var modules = new TMap<String, SourceModule>();
-        modules.put("main", new SourceModule.V1(c.mb.seqOf(c.stmts.toArray(new SourceExpr[0]))));
+        modules.put("main", new SourceModule.V1(c.mb.seqOf(c.stmts.toArray(SourceExpr[]::new))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<?, ?> o -> {
@@ -168,7 +168,7 @@ public final class T0056UnsignedMatrixTest {
                                         mb.str("to_string")),
                                 mb.tupleOf()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Ok<?, ?> o -> false;

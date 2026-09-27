@@ -62,10 +62,11 @@ public record AspectFieldEResultDynamic<T extends Type>(TypeEResultDynamic<T> ty
             }
             return EResult.ok(DynUtil.regToValue(b.code(), value, type.elementType()));
         }
-        var spec = type.fieldSpecs().getOrNull(ck);
-        if (spec == null) {
+        var specOpt = type.fieldSpecs().getOpt(ck);
+        if (specOpt.optIsNone()) {
             return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on eresult");
         }
+        var spec = specOpt.optUnwrap();
         return switch (spec) {
             case FieldSpec.Factory f ->
                 EResult.ok(new CodeValue(
@@ -81,7 +82,6 @@ public record AspectFieldEResultDynamic<T extends Type>(TypeEResultDynamic<T> ty
 
     @Override
     public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-        var spec = type.fieldSpecs().getOrNull(key);
-        return spec == null ? Opt.none() : Opt.some(spec.fieldSpecFieldType());
+        return type.fieldSpecs().getOpt(key).optMap(spec -> spec.fieldSpecFieldType());
     }
 }

@@ -27,10 +27,11 @@ public record AspectFieldListBoxedDynamic<T extends Type>(TypeListBoxedDynamic<T
         var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
-        var spec = type.fieldSpecs(xx).getOrNull(ck);
-        if (spec == null) {
+        var specOpt = type.fieldSpecs(xx).getOpt(ck);
+        if (specOpt.optIsNone()) {
             return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on list");
         }
+        var spec = specOpt.optUnwrap();
         return switch (spec) {
             case FieldSpec.Factory f ->
                 EResult.ok(new CodeValue(
@@ -47,7 +48,6 @@ public record AspectFieldListBoxedDynamic<T extends Type>(TypeListBoxedDynamic<T
 
     @Override
     public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-        var spec = type.fieldSpecs(xx).getOrNull(key);
-        return spec == null ? Opt.none() : Opt.some(spec.fieldSpecFieldType());
+        return type.fieldSpecs(xx).getOpt(key).optMap(spec -> spec.fieldSpecFieldType());
     }
 }

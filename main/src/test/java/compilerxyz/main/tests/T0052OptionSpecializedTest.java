@@ -39,7 +39,7 @@ public final class T0052OptionSpecializedTest {
                                 mb.call(
                                         mb.field(mb.field(mb.scopeUse("o"), mb.str("value")), mb.str("to_string")),
                                         mb.tupleOf())),
-                        mb.bind("n", mb.call(mb.field(optionInt(mb), mb.str("none")), mb.literalNull())),
+                        mb.bind("n", mb.call(mb.field(optionInt(mb), mb.str("none")), mb.tupleOf())),
                         logIsSome(mb, "n"))));
         assertEquals(TList.of("o some", "3", "n none"), messages(compileOk(modules)));
     }

@@ -59,10 +59,11 @@ public record AspectFieldOptionSpecializedDynamic<T extends Type>(TypeOptionSpec
             }
             return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));
         }
-        var factory = OptionFieldSpecs.factories(type.elementType).getOrNull(ck);
-        if (factory == null) {
+        var factoryOpt = OptionFieldSpecs.factories(type.elementType).getOpt(ck);
+        if (factoryOpt.optIsNone()) {
             return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on option");
         }
+        var factory = factoryOpt.optUnwrap();
         return EResult.ok(new CodeValue(
                 Code.none(loc), EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), factory))));
     }
@@ -76,7 +77,6 @@ public record AspectFieldOptionSpecializedDynamic<T extends Type>(TypeOptionSpec
     public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
         if (key.equals(IS_SOME)) return Opt.some(new TypeBoolDynamic());
         if (key.equals(VALUE)) return Opt.some(type.elementType);
-        var factory = OptionFieldSpecs.factories(type.elementType).getOrNull(key);
-        return factory == null ? Opt.none() : Opt.some(factory);
+        return OptionFieldSpecs.factories(type.elementType).getOpt(key).optMap(factory -> factory);
     }
 }

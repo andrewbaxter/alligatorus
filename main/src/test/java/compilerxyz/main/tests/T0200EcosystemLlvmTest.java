@@ -42,7 +42,7 @@ public final class T0200EcosystemLlvmTest {
 
     static Compile.CompileResult compileOk(Path entry, Path cacheDir) {
         try (var cache = new CacheReal(cacheDir)) {
-            var res = Compile.compile(
+            var res = Helpers.compile(
                     GlobalContext.newContext(cache, cache, cache), new SourceSpecAbsolute.Local(entry.toString()));
             Result.Ok<Compile.CompileResult, ?> ok;
             switch (res) {
@@ -108,7 +108,7 @@ public final class T0200EcosystemLlvmTest {
         for (int i = 0; i < hello.length; i++) ints[i] = hello[i] & 0xFF;
         var setup = new TList<SourceExpr>();
         setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
-        setup.add(e.let("ll", e.call(e.v("llvm"), e.nil())));
+        setup.add(e.let("ll", e.call(e.v("llvm"), e.tup())));
         EcoExtern.bindTypes(e, setup, "ll");
         var puts = new EcoExtern("puts", IList.of("pu8"), "i32", false);
         setup.add(e.let("puts_t", puts.constType(e, "ll")));
@@ -122,7 +122,7 @@ public final class T0200EcosystemLlvmTest {
         }
         var exportedFields = new TList<EcoMb.P>();
         for (var n : exported) exportedFields.add(e.p(n, e.v(n)));
-        setup.add(e.ret(e.rec(exportedFields.toArray(new EcoMb.P[0]))));
+        setup.add(e.ret(e.rec(exportedFields.toArray(EcoMb.P[]::new))));
         var top = new TList<SourceExpr>();
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : exported) top.add(e.let(n, e.fld(e.v("k"), n)));
@@ -144,7 +144,7 @@ public final class T0200EcosystemLlvmTest {
                 fieldList(e),
                 "t_i32",
                 e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hello"))), e.ret(e.n(0)))));
-        top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.nil())));
+        top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
         writeModule(src.resolve("main.at"), e.mb.seq(top));
 
         var ok = compileOk(src.resolve("main.at"), tmp.resolve("cache"));
@@ -188,23 +188,23 @@ public final class T0200EcosystemLlvmTest {
         var setup = new TList<SourceExpr>();
         setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
         setup.add(e.let("libc", e.importLocal("libc", "libc-2.42.at")));
-        setup.add(e.let("ll", e.call(e.v("llvm"), e.nil())));
+        setup.add(e.let("ll", e.call(e.v("llvm"), e.tup())));
         setup.add(e.let("c", e.call(e.v("libc"), e.v("ll"))));
         EcoExtern.bindTypes(e, setup, "ll");
-        setup.add(e.let("sin_t", e.callM(e.v("c"), "sin_t", e.nil())));
+        setup.add(e.let("sin_t", e.callM(e.v("c"), "sin_t", e.tup())));
         setup.add(e.ret(e.rec(
                 e.p("ll", e.v("ll")), e.p("c", e.v("c")), e.p("t_f64", e.v("t_f64")), e.p("sin_t", e.v("sin_t")))));
         var top = new TList<SourceExpr>();
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : new String[] {"ll", "c", "t_f64", "sin_t"}) top.add(e.let(n, e.fld(e.v("k"), n)));
-        top.add(e.let("sin", e.mb.as(e.callM(e.v("c"), "sin", e.nil()), e.v("sin_t"))));
+        top.add(e.let("sin", e.mb.as(e.callM(e.v("c"), "sin", e.tup()), e.v("sin_t"))));
         top.add(func(
                 e,
                 name,
                 fieldList(e, e.callM(e.v("ll"), "field", e.rec(e.p("name", e.s("x")), e.p("ty", e.v("t_f64"))))),
                 "t_f64",
                 body));
-        top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.nil())));
+        top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
         writeModule(src.resolve("main.at"), e.mb.seq(top));
     }
 
@@ -353,6 +353,7 @@ public final class T0200EcosystemLlvmTest {
     @Test
     public void test00300WriteEcosystem() throws IOException {
         var repoRoot = Path.of("").toAbsolutePath().getParent();
+        if (repoRoot == null) throw new IllegalStateException("test working directory has no parent");
         var ecosystem = repoRoot.resolve("ecosystem");
         Assumptions.assumeTrue(Files.exists(repoRoot.resolve("pom.xml")) && Files.isDirectory(ecosystem));
         writeIfChanged(ecosystem.resolve("llvm-ir-22.at"), serializeModule(EcoLlvmIr.module(new EcoMb())));

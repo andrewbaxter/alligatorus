@@ -31,7 +31,7 @@ public final class JsonValues {
                 var entries = o.entries();
                 if (style == Json.Style.CANONICAL) {
                     var sorted = new TreeMap<String, JsonValue>(Comparator.naturalOrder());
-                    sorted.putAll(entries);
+                    for (var e : entries.entrySet()) sorted.put(e.getKey(), e.getValue());
                     for (var entry : sorted.entrySet()) {
                         writer.name(entry.getKey());
                         encode(writer, entry.getValue(), style);

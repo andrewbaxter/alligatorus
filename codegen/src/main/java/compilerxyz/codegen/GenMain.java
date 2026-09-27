@@ -148,7 +148,7 @@ public final class GenMain {
                 var mirrored = ClassName.get(
                         "compilerxyz.main.gen",
                         cn.simpleNames().get(0),
-                        cn.simpleNames().subList(1, cn.simpleNames().size()).toArray(new String[0]));
+                        cn.simpleNames().subList(1, cn.simpleNames().size()).toArray(String[]::new));
                 mirror.put(mirrored, e.getValue());
             }
             for (var e : mirror.entrySet()) out.put(e.getKey(), e.getValue());
@@ -177,7 +177,11 @@ public final class GenMain {
             names.sort(Comparator.comparing(ClassName::reflectionName));
             method.beginControlFlow("switch (name)");
             for (var cn : names) {
-                method.addStatement("case $S: return $T.some($L)", cn.reflectionName(), OPT, scannedLeaves.get(cn));
+                method.addStatement(
+                        "case $S: return $T.some($L)",
+                        cn.reflectionName(),
+                        OPT,
+                        scannedLeaves.getOpt(cn).optUnwrap());
             }
             method.addStatement("default: return $T.none()", OPT);
             method.endControlFlow();
@@ -607,7 +611,7 @@ public final class GenMain {
                 {
                     var b = MethodSpec.methodBuilder("link").addModifiers(Modifier.PUBLIC, Modifier.STATIC);
                     b.addStatement("var instance = Holder.INSTANCE");
-                    b.beginControlFlow("if (instance.methods() != null)");
+                    b.beginControlFlow("if (instance.isLinked())");
                     b.addStatement("return");
                     b.endControlFlow();
                     b.addStatement(
@@ -626,12 +630,6 @@ public final class GenMain {
                         _emitObjectMethod:
                         {
                             var where = spec.simpleName() + "." + method.hostMethodName();
-                            var retDescOpt = BuiltinMethodEmit.resolveDescriptor(method.ret(), leafDescriptors);
-                            if (retDescOpt.optIsNone()) {
-                                throw new IllegalStateException(
-                                        "codegen: no language type for return type " + method.ret() + " of " + where);
-                            }
-                            var retDesc = retDescOpt.optUnwrap();
                             var paramDescs = new TList<CodeBlock>();
                             var paramRawClasses = new TList<TypeName>();
                             for (var p : method.params()) {
@@ -679,6 +677,12 @@ public final class GenMain {
                                         BuiltinMethodEmit.OPT,
                                         BuiltinMethodEmit.TYPE);
                             } else {
+                                var retDescOpt = BuiltinMethodEmit.resolveDescriptor(method.ret(), leafDescriptors);
+                                if (retDescOpt.optIsNone()) {
+                                    throw new IllegalStateException("codegen: no language type for return type "
+                                            + method.ret() + " of " + where);
+                                }
+                                var retDesc = retDescOpt.optUnwrap();
                                 b.addStatement(
                                         "var $L = $T.<$T>some($L)",
                                         retTypeName,
@@ -1572,8 +1576,9 @@ public final class GenMain {
 
             for (var qname : closure) {
                 if (CodecsGen.HAND_CODED.contains(qname)) continue;
-                var t = index.byQname.get(qname);
-                if (t == null) continue;
+                var tOpt = index.byQname.getOpt(qname);
+                if (tOpt.optIsNone()) continue;
+                var t = tOpt.optUnwrap();
                 if (t.kind == TypeKind.RECORD || t.kind == TypeKind.SEALED || t.kind == TypeKind.ENUM) {
                     CodecsGen.TypeInfo info = t;
                     String emit;
@@ -1672,14 +1677,28 @@ public final class GenMain {
                             {
                                 var body = CodeBlock.builder();
                                 for (var c : info.components) {
+                                    var boxed = c.type.kind != CodecsGen.ParsedTypeKind.PRIMITIVE
+                                            ? CodecEmitter.javaTypeOf(c.type)
+                                            : switch (c.type.name) {
+                                                case "boolean" -> "Boolean";
+                                                case "char" -> "Character";
+                                                case "float" -> "Float";
+                                                case "double" -> "Double";
+                                                case "long" -> "Long";
+                                                case "int" -> "Integer";
+                                                case "short" -> "Short";
+                                                case "byte" -> "Byte";
+                                                default ->
+                                                    throw new IllegalStateException(
+                                                            "Unsupported primitive: " + c.type.name);
+                                            };
                                     body.addStatement(
-                                            "$L __$L = $L",
-                                            CodecEmitter.javaTypeOf(c.type),
+                                            "$T<$L> __$L = $T.none()",
+                                            CodecEmitter.OPT,
+                                            boxed,
                                             c.name,
-                                            CodecEmitter.defaultValueExpr(c.type));
+                                            CodecEmitter.OPT);
                                 }
-                                body.addStatement(
-                                        "$T<String> __seen = new $T<>()", CodecEmitter.TSET, CodecEmitter.TSET);
                                 body.addStatement("reader.beginObject()");
                                 body.beginControlFlow("while (reader.hasNext())");
                                 body.addStatement("String __fname = reader.nextName()");
@@ -1687,10 +1706,10 @@ public final class GenMain {
                                 for (var c : info.components) {
                                     var key = CodecEmitter.toSnakeCase(c.name);
                                     body.beginControlFlow("case $S ->", key);
-                                    body.addStatement("__seen.add($S)", key);
                                     body.addStatement("$T __p = path.field($S)", CodecEmitter.FIELD_PATH, key);
-                                    body.add(CodecEmitter.decodeStmts(
-                                            c.type, "reader", CodeBlock.of("__p"), "__" + c.name));
+                                    body.addStatement("$L __v", CodecEmitter.javaTypeOf(c.type));
+                                    body.add(CodecEmitter.decodeStmts(c.type, "reader", CodeBlock.of("__p"), "__v"));
+                                    body.addStatement("__$L = $T.some(__v)", c.name, CodecEmitter.OPT);
                                     body.endControlFlow();
                                 }
                                 body.add(
@@ -1702,20 +1721,18 @@ public final class GenMain {
                                 body.endControlFlow();
                                 body.addStatement("reader.endObject()");
                                 for (var c : info.components) {
-                                    if (!c.type.nullable) {
-                                        var key = CodecEmitter.toSnakeCase(c.name);
-                                        body.addStatement(
-                                                "if (!__seen.contains($S)) throw new $T($S, path.field($S))",
-                                                key,
-                                                CodecEmitter.DESERIALIZATION_EXCEPTION,
-                                                "Missing required field '" + c.name + "'",
-                                                key);
-                                    }
+                                    var key = CodecEmitter.toSnakeCase(c.name);
+                                    body.addStatement(
+                                            "if (__$L.optIsNone()) throw new $T($S, path.field($S))",
+                                            c.name,
+                                            CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                            "Missing required field '" + c.name + "'",
+                                            key);
                                 }
                                 var ctorArgs = CodeBlock.builder();
                                 for (var i = 0; i < info.components.size(); i++) {
                                     if (i > 0) ctorArgs.add(", ");
-                                    ctorArgs.add("__$L", info.components.get(i).name);
+                                    ctorArgs.add("__$L.optUnwrap()", info.components.get(i).name);
                                 }
                                 body.addStatement("return new $L($L)", qname, ctorArgs.build());
                                 {

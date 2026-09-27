@@ -1,8 +1,10 @@
 package compilerxyz.main.gen;
 
+import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.source_function.TypeSourceFunctionConst;
+import compilerxyz.prelude.annotations.BuiltinEvalContext;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -21,8 +23,11 @@ public final class SourceFuncResult {
         this.func.data().description = Opt.some(description);
     }
 
-    public void impl(Type arg, Opt<Type> ret, StagedExprCell implBody) {
+    @BuiltinEvalContext
+    public void impl(EvalContext vx, Type arg, Opt<Type> ret, StagedExprCell implBody) {
         var data = this.func.data();
+        DefinitionSetBuilder.requireArgBindable(
+                DefinitionSetBuilder.builderContext(vx), arg, "Function '" + data.name.optUnwrapOr("(unnamed)") + "'");
         if (data.argType.optIsSome()) {
             throw new IllegalStateException("Function already has an arg type");
         }

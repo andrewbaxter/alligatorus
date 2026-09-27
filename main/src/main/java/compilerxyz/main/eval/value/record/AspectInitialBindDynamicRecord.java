@@ -12,7 +12,7 @@ public record AspectInitialBindDynamicRecord(Record type) implements AspectIniti
     @Override
     public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
         var scopeFields = new TOrderedMap<ConstKey, RecordScopeField>();
-        for (var entry : type.fields.entrySet()) {
+        for (var entry : type.fields()) {
             scopeFields.put(entry.getKey(), new RecordScopeField.Dynamic(Record.recordFieldType(entry.getValue())));
         }
         return new BindingRecord(scopeFields, Opt.some(dynamicKey));

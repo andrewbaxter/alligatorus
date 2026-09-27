@@ -66,9 +66,9 @@ public final class T0055NumericMatrixTest {
 
     private void check(Cases c) {
         var modules = new TMap<String, SourceModule>();
-        modules.put("main", new SourceModule.V1(c.mb.seqOf(c.stmts.toArray(new SourceExpr[0]))));
+        modules.put("main", new SourceModule.V1(c.mb.seqOf(c.stmts.toArray(SourceExpr[]::new))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> okRes = o;

@@ -44,7 +44,7 @@ public final class T0071TryInForeachTest {
                 e.mb.typesBool(),
                 e.retSome(intT),
                 e.stage(e.seq(
-                        e.let("loc", e.call(e.evalBuiltin("expr_loc"), e.stage(e.nil()))),
+                        e.let("loc", e.call(e.evalBuiltin("expr_loc"), e.stage(e.tup()))),
                         e.ifOnly(
                                 e.v("arg"),
                                 e.matchOf(
@@ -86,13 +86,13 @@ public final class T0071TryInForeachTest {
                     e.p(
                             "errs",
                             e.foreach(
-                                    e.v("__u"), "__e", e.call(e.mb.log(), e.callM(e.v("__e"), "message", e.nil()))))));
+                                    e.v("__u"), "__e", e.call(e.mb.log(), e.callM(e.v("__e"), "message", e.tup()))))));
         }
         var src = tmp.resolve("src_" + label);
         Files.createDirectories(src);
         T0200EcosystemLlvmTest.writeModule(src.resolve("main.at"), e.mb.seq(top));
         try (var cache = new CacheReal(tmp.resolve("cache_" + label))) {
-            var res = Compile.compile(
+            var res = Helpers.compile(
                     GlobalContext.newContext(cache, cache, cache),
                     new SourceSpecAbsolute.Local(src.resolve("main.at").toString()));
             Result.Ok<Compile.CompileResult, ?> ok;

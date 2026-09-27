@@ -17,6 +17,6 @@ public record AspectStackValueDynamicTuple(Tuple type) implements AspectStackVal
             ExprContext xx, QExprId loc, CodeDynamic code, ValueDynamicSource source) {
         return new CodeValue(
                 Code.target(code),
-                EvalOutcome.ofValue(new Tuple(Opt.some(new TupleBaseDynamic(source)), type.elements)));
+                EvalOutcome.ofValue(new Tuple(Opt.some(new TupleBaseDynamic(source)), type.elements())));
     }
 }

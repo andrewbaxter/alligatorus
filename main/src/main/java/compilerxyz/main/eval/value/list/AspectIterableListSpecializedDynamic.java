@@ -68,7 +68,7 @@ public record AspectIterableListSpecializedDynamic<T extends Type>(TypeListSpeci
         b.branch(Opcodes.IF_ICMPGE, doneKey, index, size);
         b.add(elementBindDyn);
         var bodyRes = b.addCode(loc, bodyCode);
-        if (bodyRes.hasErrors()) return bodyRes.reerr();
+        if (bodyRes.optIsSome()) return EResult.errs(bodyRes.optUnwrap());
         var next = b.op(
                 Opcodes.IADD,
                 JavaDataDescriptor.DESC_INT,

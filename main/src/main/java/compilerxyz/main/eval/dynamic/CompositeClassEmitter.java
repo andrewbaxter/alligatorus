@@ -79,6 +79,7 @@ public final class CompositeClassEmitter {
     public static byte[] emitBytecode(String binaryName, TList<JavaDataDescriptor> slotDescs) {
         var internalName = binaryName.replace('.', '/');
         var ownName = JavaInternalName.of(internalName);
+        var locTable = new JavaBytecodeLocTable();
         var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
         cw.visit(
                 Opcodes.V11,
@@ -115,7 +116,7 @@ public final class CompositeClassEmitter {
         b.retVoid();
         var seq = new JavaBytecodeSequence();
         seq.add(b.code());
-        JavaBytecodeUtils.renderMethod(seq, ctor, TList.of());
+        JavaBytecodeUtils.renderMethod(seq, ctor, TList.of(), locTable);
 
         cw.visitEnd();
         return cw.toByteArray();

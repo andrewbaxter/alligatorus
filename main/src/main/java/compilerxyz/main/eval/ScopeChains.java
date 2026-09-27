@@ -52,8 +52,9 @@ public final class ScopeChains {
 
     static EResult<Opt<JumpKey>> node(ExprContext xx, QExprId loc, ScopeLevel level, ScopeLevel.DestKey key) {
         var emission = level.scopeLevelEmission();
-        var existing = emission.dests.getOrNull(key);
-        if (existing != null) {
+        var existingOpt = emission.dests.getOpt(key);
+        if (existingOpt.optIsSome()) {
+            var existing = existingOpt.optUnwrap();
             return EResult.ok(existing);
         }
         EResult<Code> dropRes;

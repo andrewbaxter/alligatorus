@@ -196,10 +196,10 @@ public final class BuiltinTreeGen {
     public static NodeSpec toNodeSpec(TreeNode n, String branchPath) {
         if (n.leaf().optIsSome()) return n.leaf().optUnwrap();
         var children = new TList<Child>();
-        var order = BRANCH_ORDER.getOrNull(branchPath);
+        var order = BRANCH_ORDER.getOpt(branchPath);
         var remaining = new LinkedHashMap<>(n.children());
-        if (order != null) {
-            for (var name : order) {
+        if (order.optIsSome()) {
+            for (var name : order.optUnwrap()) {
                 var child = remaining.remove(name);
                 if (child == null) continue;
                 children.add(new Child(name, toNodeSpec(child, branchPath.isEmpty() ? name : branchPath + "." + name)));

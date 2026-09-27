@@ -11,9 +11,9 @@ public record TypeRef(TypeName path, CodeBlock dynamicType) {
         TypeName leafValueClass;
         _leafValueClass:
         {
-            var value = DynamicTypes.NULLARY.getOrNull(descriptor);
+            var value = DynamicTypes.NULLARY.getOpt(descriptor);
             {
-                leafValueClass = value != null ? value : descriptor;
+                leafValueClass = value.optIsSome() ? value.optUnwrap() : descriptor;
                 break _leafValueClass;
             }
         }

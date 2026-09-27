@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.source_interface;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
@@ -11,8 +10,8 @@ import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.TypeAspect;
@@ -33,7 +32,6 @@ import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetInterfaceCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
 import compilerxyz.prelude.util.IList;
@@ -96,10 +94,6 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
         return Opt.none();
     }
 
-    private static Artifact nullArtifact() {
-        return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root()));
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
@@ -118,32 +112,28 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
                                 + cell.description().optUnwrapOr("(unnamed)") + "' definition set is not finished");
             }
             var frozen = frozenOpt.optUnwrap();
-            var errors = new TList<ExprErr>();
-            var artifact =
-                    ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell.artifactIdCell, () -> {
-                        var defSetArtRes = Artifactable.exportArtifact(xx, loc, set);
-                        defSetArtRes.drainInto(errors);
-                        var defSetArt = defSetArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                        var methodsOut = new TList<Artifact>();
-                        for (var m : frozen.methods) {
-                            var res = Artifactable.exportArtifact(xx, loc, new TypeInterfaceMethodDynamic(cell, m));
-                            res.drainInto(errors);
-                            methodsOut.add(res.valueOpt().optUnwrapOr(nullArtifact()));
-                        }
-                        var body = new ArtifactDataDefSetInterface.User(
-                                defSetArt,
-                                set.defSetId,
-                                cell.identity,
-                                frozen.description,
-                                frozen.isAspect,
-                                frozen.aspectId,
-                                cell.binaryName,
-                                cell.compiledBytecode,
-                                methodsOut);
-                        return makeBody.apply(ArtifactDataDefSetInterfaceCodec.toValue(body));
-                    });
-            if (errors.isEmpty()) return EResult.ok(artifact);
-            return EResult.mixed(artifact, errors);
+            return ArtifactSupport.implExportIndependentArtifact(xx, cell.artifactIdCell, () -> {
+                var erb = new Erb(loc);
+                var defSetArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, set));
+                var methodsOut = new TList<Artifact>();
+                for (var m : frozen.methods) {
+                    var mArt = erb.mustErMaybeUnreachable(
+                            Artifactable.exportArtifact(xx, loc, new TypeInterfaceMethodDynamic(cell, m)));
+                    if (mArt.optIsSome()) methodsOut.add(mArt.optUnwrap());
+                }
+                if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+                var body = new ArtifactDataDefSetInterface.User(
+                        defSetArt.optUnwrap(),
+                        set.defSetId,
+                        cell.identity,
+                        frozen.description,
+                        frozen.isAspect,
+                        frozen.aspectId,
+                        cell.binaryName,
+                        cell.compiledBytecode,
+                        methodsOut);
+                return EResult.ok(makeBody.apply(ArtifactDataDefSetInterfaceCodec.toValue(body)));
+            });
         }
 
         @Override

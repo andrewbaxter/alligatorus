@@ -1,9 +1,7 @@
 package compilerxyz.main.eval.value.source_object;
 
 import compilerxyz.main.eval.ConstKey;
-import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Expr;
-import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.value.source_interface.InterfaceCell;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -25,28 +23,23 @@ public final class SourceObjectInterfaceImplData {
         this(interface_, new TOrderedMap<>());
     }
 
-    public EResult<Void> materialize(QExprId loc, String jvmNamePrefix) {
+    public void materialize(String jvmNamePrefix) {
         if (pendingImpls.isEmpty()) {
-            return EResult.ok(null);
+            return;
         }
         for (var m : interface_.frozen().methods) {
             var key = new ConstKey.Str(m.name);
-            var expr = pendingImpls.getOrNull(key);
-            if (expr == null) {
-                return EResult.err(loc, "Missing implementation for interface method '" + m.name + "'");
+            var exprOpt = pendingImpls.getOpt(key);
+            if (exprOpt.optIsNone()) {
+                throw new AssertionError("Interface method '" + m.name + "' has no implementation (checked at impl)");
             }
             pendingImpls.remove(key);
             var impl = new SourceObjectInterfaceMethodImplData(m, jvmNamePrefix + "_method" + methodImpls.size());
-            impl.implExpr = Opt.some(expr);
+            impl.implExpr = Opt.some(exprOpt.optUnwrap());
             methodImpls.add(impl);
         }
         if (!pendingImpls.isEmpty()) {
-            var names = new TList<String>();
-            for (var k : pendingImpls.keySet()) {
-                names.add(k.constKeyToCanonical());
-            }
-            return EResult.err(loc, "Implementation of methods not on the interface: " + names);
+            throw new AssertionError("Implementations of methods not on the interface (checked at impl)");
         }
-        return EResult.ok(null);
     }
 }

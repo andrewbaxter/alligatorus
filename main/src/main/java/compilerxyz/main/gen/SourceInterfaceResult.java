@@ -1,6 +1,7 @@
 package compilerxyz.main.gen;
 
 import compilerxyz.main.eval.EvalContext;
+import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.eval.value.source_interface.InterfaceMethodBuilding;
@@ -25,10 +26,16 @@ public final class SourceInterfaceResult {
         building.description = Opt.some(description);
     }
 
-    public SourceInterfaceMethodResult func(String name) {
-        var method = new InterfaceMethodBuilding(name);
-        this.type.cell().building().methods.add(method);
-        return new SourceInterfaceMethodResult(method);
+    @BuiltinEvalContext
+    public void func(EvalContext vx, String name, Type arg, Opt<Type> ret) {
+        var building = this.type.cell().building();
+        if (building.implemented) {
+            throw new IllegalStateException(
+                    "Cannot add method '" + name + "' to an interface that has already been implemented");
+        }
+        DefinitionSetBuilder.requireArgBindable(
+                DefinitionSetBuilder.builderContext(vx), arg, "Interface method '" + name + "'");
+        building.methods.add(new InterfaceMethodBuilding(name, arg, ret));
     }
 
     public Unique aspectId() {

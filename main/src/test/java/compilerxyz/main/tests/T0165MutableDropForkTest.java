@@ -51,7 +51,7 @@ public final class T0165MutableDropForkTest {
                                                         mb.mustReinterpret(),
                                                         mb.tupleOf(cvValue(mb, cv), mb.lower(mb.scopeUse("vb_type")))),
                                                 mb.str("get_wrapped")),
-                                        mb.literalNull())))));
+                                        mb.tupleOf())))));
     }
 
     private static SourceExpr delegateNull(TestMb mb, SourceExpr underlying, SourceExpr aspectRef, String methodName) {
@@ -112,7 +112,7 @@ public final class T0165MutableDropForkTest {
                                                                         "source",
                                                                         mb.call(
                                                                                 mb.lower(mb.scopeUse("vs_expr")),
-                                                                                mb.literalNull())),
+                                                                                mb.tupleOf())),
                                                                 new TestMb.RecordPair(
                                                                         "wrapped",
                                                                         cvValue(mb, mb.scopeUse("sum_cv_")))))))))));
@@ -131,58 +131,49 @@ public final class T0165MutableDropForkTest {
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
                                         mb.bind(
                                                 "vs_expr",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("vs"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("expr")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref", mb.typesNull())))),
-                                                        mb.str("value"))),
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("vs"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("expr")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref", mb.tupleOf()))))),
                                         mb.bind(
                                                 "vs_binding",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("vs"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("binding")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref",
-                                                                                        mb.recordOf(
-                                                                                                TList.of(
-                                                                                                        new TestMb
-                                                                                                                .RecordPair(
-                                                                                                                "int",
-                                                                                                                mb
-                                                                                                                        .evalBinding()),
-                                                                                                        new TestMb
-                                                                                                                .RecordPair(
-                                                                                                                "state",
-                                                                                                                mb
-                                                                                                                        .recordOf(
-                                                                                                                                TList
-                                                                                                                                        .of(
-                                                                                                                                                new TestMb
-                                                                                                                                                        .RecordPair(
-                                                                                                                                                        "parity",
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("vs"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("binding")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref",
+                                                                                mb.recordOf(
+                                                                                        TList.of(
+                                                                                                new TestMb.RecordPair(
+                                                                                                        "int",
+                                                                                                        mb
+                                                                                                                .evalBinding()),
+                                                                                                new TestMb.RecordPair(
+                                                                                                        "state",
+                                                                                                        mb.recordOf(
+                                                                                                                TList
+                                                                                                                        .of(
+                                                                                                                                new TestMb
+                                                                                                                                        .RecordPair(
+                                                                                                                                        "parity",
+                                                                                                                                        mb
+                                                                                                                                                .typesLong()),
+                                                                                                                                new TestMb
+                                                                                                                                        .RecordPair(
+                                                                                                                                        "setter",
+                                                                                                                                        mb
+                                                                                                                                                .call(
                                                                                                                                                         mb
-                                                                                                                                                                .typesLong()),
-                                                                                                                                                new TestMb
-                                                                                                                                                        .RecordPair(
-                                                                                                                                                        "setter",
+                                                                                                                                                                .typesOption(),
                                                                                                                                                         mb
-                                                                                                                                                                .call(
-                                                                                                                                                                        mb
-                                                                                                                                                                                .typesOption(),
-                                                                                                                                                                        mb
-                                                                                                                                                                                .builtin(
-                                                                                                                                                                                        "eval",
-                                                                                                                                                                                        "binding_setter")))))))))))),
-                                                        mb.str("value"))),
+                                                                                                                                                                .builtin(
+                                                                                                                                                                        "eval",
+                                                                                                                                                                        "binding_setter"))))))))))))),
                                         mb.bind(
                                                 "u",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str(name))),
@@ -977,16 +968,12 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                                                 .str(
                                                                                                                                                                                                                                         "get_parity")),
                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                .literalNull()),
+                                                                                                                                                                                                                .tupleOf()),
                                                                                                                                                                                         mb
                                                                                                                                                                                                 .scopeUse(
                                                                                                                                                                                                         "initial_")),
                                                                                                                                                                         mb
-                                                                                                                                                                                .as(
-                                                                                                                                                                                        mb
-                                                                                                                                                                                                .literalNull(),
-                                                                                                                                                                                        mb
-                                                                                                                                                                                                .typesNull()))),
+                                                                                                                                                                                .seqOf())),
                                                                                                                                                 Opt
                                                                                                                                                         .some(
                                                                                                                                                                 mb
@@ -1384,7 +1371,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                                                                                                                                                                                                                                                 .scopeUse(
                                                                                                                                                                                                                                                                                                                                                                                                                                         "vs_expr")),
                                                                                                                                                                                                                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                                                                                                                                                                                                                .literalNull())),
+                                                                                                                                                                                                                                                                                                                                                                                                                .tupleOf())),
                                                                                                                                                                                                                                                                                                                                                                                 new TestMb
                                                                                                                                                                                                                                                                                                                                                                                         .RecordPair(
                                                                                                                                                                                                                                                                                                                                                                                         "wrapped",
@@ -1642,7 +1629,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                 .str(
                                                                                                                                                         "none")),
                                                                                                                         mb
-                                                                                                                                .literalNull())))),
+                                                                                                                                .tupleOf())))),
                                                                                         new TestMb.RecordPair(
                                                                                                 "can_cast_to",
                                                                                                 mb.seqOf(
@@ -1855,7 +1842,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                                                                                                                                         .str(
                                                                                                                                                                                                                                                                                                                                 "none")),
                                                                                                                                                                                                                                                                                                 mb
-                                                                                                                                                                                                                                                                                                        .literalNull())))))))))))))))))))))),
+                                                                                                                                                                                                                                                                                                        .tupleOf())))))))))))))))))))))),
                                         mb.call(
                                                 mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                                                 mb.recordOf(
@@ -2111,7 +2098,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                                                                         .str(
                                                                                                                                                                                                                                                                 "get_wrapped")),
                                                                                                                                                                                                                                 mb
-                                                                                                                                                                                                                                        .literalNull()))))))))))),
+                                                                                                                                                                                                                                        .tupleOf()))))))))))),
                                                                                         new TestMb.RecordPair(
                                                                                                 "jvm_class",
                                                                                                 delegateNullXxOnly(
@@ -2265,7 +2252,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                                 .str(
                                                                                                                                                                                                                         "get_parity")),
                                                                                                                                                                                         mb
-                                                                                                                                                                                                .literalNull())),
+                                                                                                                                                                                                .tupleOf())),
                                                                                                                                                         mb
                                                                                                                                                                 .return_(
                                                                                                                                                                         mb
@@ -2320,7 +2307,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                                                                 .str(
                                                                                                                                                                                                                                                         "get_source")),
                                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                                .literalNull())),
+                                                                                                                                                                                                                                .tupleOf())),
                                                                                                                                                                                         mb
                                                                                                                                                                                                 .return_(
                                                                                                                                                                                                         mb
@@ -3104,7 +3091,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                                                                                                                                                 .str(
                                                                                                                                                                                                                                                                                                                                         "get_parity")),
                                                                                                                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                                                                                                                .literalNull())),
+                                                                                                                                                                                                                                                                                                                .tupleOf())),
                                                                                                                                                                                                                                                                         mb
                                                                                                                                                                                                                                                                                 .as(
                                                                                                                                                                                                                                                                                         mb
@@ -3282,7 +3269,7 @@ public final class T0165MutableDropForkTest {
         var modules = new TMap<String, SourceModule>();
         modules.put("main", new SourceModule.V1(main));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<?, ?> o -> {

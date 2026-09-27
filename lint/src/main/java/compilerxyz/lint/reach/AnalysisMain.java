@@ -88,7 +88,7 @@ public final class AnalysisMain {
         Launcher launcher = new Launcher();
         launcher.getEnvironment().setComplianceLevel(21);
         launcher.getEnvironment().setNoClasspath(false);
-        launcher.getEnvironment().setSourceClasspath(classpath.toArray(new String[0]));
+        launcher.getEnvironment().setSourceClasspath(classpath.toArray(String[]::new));
         launcher.getEnvironment().setCommentEnabled(false);
         launcher.getEnvironment().setIgnoreDuplicateDeclarations(true);
         launcher.addInputResource(staged.toString());

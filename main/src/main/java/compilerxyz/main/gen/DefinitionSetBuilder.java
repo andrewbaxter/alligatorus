@@ -3,9 +3,8 @@ package compilerxyz.main.gen;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Scope;
-import compilerxyz.main.eval.SourceId;
+import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynCompileErrors;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
@@ -20,7 +19,6 @@ import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.prelude.annotations.BuiltinEvalContext;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.TList;
 
 @BuiltinFull(uniqueId = 6341L)
 public final class DefinitionSetBuilder {
@@ -80,19 +78,47 @@ public final class DefinitionSetBuilder {
 
     @BuiltinEvalContext
     public void finish(EvalContext vx) {
-        var loc = new QExprId(new SourceId(-1L), -1L);
-        var finishVx = new EvalContext(vx.ix);
-        var r = this.inner.finish(
-                new ExprContext(
-                        new Scope(finishVx),
-                        new TargetDynamic(),
-                        finishVx,
-                        vx.ix.importState,
-                        Opt.some(new TypeStringConst())),
-                loc);
-        if (r.hasErrors()) {
-            var errs = r.errorsOpt();
-            throw new DynCompileErrors(errs.optUnwrapOr(new TList<>()));
+        var incomplete = this.inner.incomplete();
+        if (incomplete.optIsSome()) {
+            throw new IllegalStateException(incomplete.optUnwrap());
+        }
+        var r = this.inner.finish(builderContext(vx));
+        if (r.optIsSome()) {
+            throw new DynCompileErrors(r.optUnwrap());
+        }
+    }
+
+    static ExprContext builderContext(EvalContext vx) {
+        var builderVx = new EvalContext(vx.ix);
+        return new ExprContext(
+                new Scope(builderVx),
+                new TargetDynamic(),
+                builderVx,
+                vx.ix.importState,
+                Opt.some(new TypeStringConst()));
+    }
+
+    static void requireArgBindable(ExprContext xx, Type arg, String what) {
+        var tupleOpt = GenAspectTuple.getMaybe(xx, arg);
+        var recordOpt = GenAspectRecord.getMaybe(xx, arg);
+        if (tupleOpt.optIsSome()) {
+            for (var et : tupleOpt.optUnwrap().aspectTupleElementTypes()) {
+                if (GenAspectInitialBindDynamic.getMaybe(xx, et).optIsNone()) {
+                    throw new IllegalStateException(
+                            what + ": arg tuple element type " + et.typeDesc() + " cannot be bound dynamically");
+                }
+            }
+        } else if (recordOpt.optIsSome()) {
+            for (var entry : recordOpt.optUnwrap().aspectRecordFieldTypes().entrySet()) {
+                if (GenAspectInitialBindDynamic.getMaybe(xx, entry.getValue()).optIsNone()) {
+                    throw new IllegalStateException(what + ": arg record field '"
+                            + entry.getKey().constKeyToCanonical() + "' type "
+                            + entry.getValue().typeDesc()
+                            + " cannot be bound dynamically");
+                }
+            }
+        } else if (GenAspectInitialBindDynamic.getMaybe(xx, arg).optIsNone()) {
+            throw new IllegalStateException(what + ": arg type " + arg.typeDesc() + " cannot be bound dynamically");
         }
     }
 }

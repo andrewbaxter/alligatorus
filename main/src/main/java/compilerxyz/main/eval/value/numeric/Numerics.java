@@ -504,7 +504,7 @@ public final class Numerics {
             }
             var trueKey = new JumpKey();
             var endKey = new JumpKey();
-            jb.branch(branch, trueKey, branchArgs.toArray(new JavaBytecodeReg[0]));
+            jb.branch(branch, trueKey, branchArgs.toArray(JavaBytecodeReg[]::new));
             jb.jump(endKey, jb.constInt(0));
             jb.land(trueKey);
             jb.jump(endKey, jb.constInt(1));
@@ -754,7 +754,7 @@ public final class Numerics {
         if (src.isConst()) {
             var n = constNumber(xx, src.value());
             var carriedRes = jb.addCode(loc, cv.code());
-            if (carriedRes.hasErrors()) return carriedRes.reerr();
+            if (carriedRes.optIsSome()) return EResult.errs(carriedRes.optUnwrap());
             out = switch (to) {
                 case BYTE, UBYTE -> jb.constInt((byte) n.longValue());
                 case SHORT, USHORT -> jb.constInt((short) n.longValue());
@@ -776,7 +776,7 @@ public final class Numerics {
         if (op.isConst()) {
             var n = constNumber(xx, op.value());
             var carriedRes = jb.addCode(loc, cv.code());
-            if (carriedRes.hasErrors()) return carriedRes.reerr();
+            if (carriedRes.optIsSome()) return EResult.errs(carriedRes.optUnwrap());
             return EResult.ok(convert(jb, op.kind(), target, pushNatural(jb, op.kind(), n)));
         }
         var consumed = DynUtil.materialize(xx, loc, cv);
@@ -793,7 +793,7 @@ public final class Numerics {
         var n = constNumber(xx, ((Opt.Some<Value>) vOpt).value());
         var jb = new JavaBytecodeBuilder(loc);
         var carriedRes = jb.addCode(loc, cv.code());
-        if (carriedRes.hasErrors()) return carriedRes.reerr();
+        if (carriedRes.optIsSome()) return EResult.errs(carriedRes.optUnwrap());
         var boxed = box(jb, kind, pushNatural(jb, kind, n));
         return EResult.ok(DynUtil.regToValue(jb.code(), boxed, DynUtil.substituteBoxed(xx, dynamicType(kind))));
     }

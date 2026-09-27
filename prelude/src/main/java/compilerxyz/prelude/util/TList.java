@@ -1,8 +1,12 @@
 package compilerxyz.prelude.util;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.function.IntFunction;
+import java.util.stream.Stream;
 
-public final class TList<T> implements List<T> {
+public final class TList<T> implements Iterable<T> {
     private final ArrayList<T> backing;
 
     public TList() {
@@ -20,24 +24,21 @@ public final class TList<T> implements List<T> {
         return out;
     }
 
-    public static <T> TList<T> from(Collection<? extends T> source) {
-        var out = new TList<T>(source.size());
-        out.backing.addAll(source);
+    public static <T> TList<T> from(Iterable<? extends T> source) {
+        var out = new TList<T>();
+        for (var e : source) out.backing.add(e);
         return out;
     }
 
-    @Override
     public int size() {
         return backing.size();
     }
 
-    @Override
     public boolean isEmpty() {
         return backing.isEmpty();
     }
 
-    @Override
-    public boolean contains(Object element) {
+    public boolean contains(T element) {
         return backing.contains(element);
     }
 
@@ -46,114 +47,53 @@ public final class TList<T> implements List<T> {
         return backing.iterator();
     }
 
-    @Override
-    public Object[] toArray() {
-        return backing.toArray();
+    public Stream<T> stream() {
+        return backing.stream();
     }
 
-    @Override
-    public <U> U[] toArray(U[] target) {
-        return backing.toArray(target);
+    public void add(T element) {
+        backing.add(element);
     }
 
-    @Override
-    public boolean add(T element) {
-        return backing.add(element);
+    public void addAll(Iterable<? extends T> elements) {
+        for (var e : elements) backing.add(e);
     }
 
-    @Override
-    public boolean remove(Object element) {
-        return backing.remove(element);
-    }
-
-    @Override
-    public boolean containsAll(Collection<?> elements) {
-        return backing.containsAll(elements);
-    }
-
-    @Override
-    public boolean addAll(Collection<? extends T> elements) {
-        return backing.addAll(elements);
-    }
-
-    @Override
-    public boolean addAll(int index, Collection<? extends T> elements) {
-        return backing.addAll(index, elements);
-    }
-
-    @Override
-    public boolean removeAll(Collection<?> elements) {
-        return backing.removeAll(elements);
-    }
-
-    @Override
-    public boolean retainAll(Collection<?> elements) {
-        return backing.retainAll(elements);
-    }
-
-    @Override
     public void clear() {
         backing.clear();
     }
 
-    @Override
     public T get(int index) {
         return backing.get(index);
     }
 
-    @Override
-    public T set(int index, T value) {
-        return backing.set(index, value);
+    public void set(int index, T value) {
+        backing.set(index, value);
     }
 
-    @Override
-    public void add(int index, T value) {
-        backing.add(index, value);
-    }
-
-    @Override
-    public T remove(int index) {
-        return backing.remove(index);
-    }
-
-    @Override
-    public int indexOf(Object element) {
+    public int indexOf(T element) {
         return backing.indexOf(element);
     }
 
-    @Override
-    public int lastIndexOf(Object element) {
-        return backing.lastIndexOf(element);
+    public T removeAt(int index) {
+        return backing.remove(index);
     }
 
-    @Override
-    public ListIterator<T> listIterator() {
-        return backing.listIterator();
+    public T[] toArray(IntFunction<T[]> generator) {
+        return backing.toArray(generator);
     }
 
-    @Override
-    public ListIterator<T> listIterator(int index) {
-        return backing.listIterator(index);
-    }
-
-    @Override
-    public List<T> subList(int fromIndex, int toIndex) {
-        return backing.subList(fromIndex, toIndex);
-    }
-
-    @Override
     public T removeLast() {
         return backing.removeLast();
     }
 
-    public TList<T> addAll(Iterable<? extends T> elements) {
-        for (var e : elements) backing.add(e);
-        return this;
+    public void sort(Comparator<? super T> comparator) {
+        backing.sort(comparator);
     }
 
     @Override
     public boolean equals(Object other) {
-        return backing.equals(other);
+        return other instanceof TList<?> o && backing.equals(o.backing);
     }
 
     @Override

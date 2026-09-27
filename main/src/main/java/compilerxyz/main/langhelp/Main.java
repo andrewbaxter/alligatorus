@@ -19,7 +19,26 @@ public final class Main {
         try (var cache = new CacheReal()) {
             var gx = GlobalContext.newContext(cache, cache, cache);
 
-            var result = Compile.compile(gx, new SourceSpecAbsolute.Local(path));
+            var entry = new SourceSpecAbsolute.Local(path);
+            Sources.SourceResolved.Module module;
+            switch (gx.sources.sourcesGet(entry)) {
+                case Result.Err<Sources.SourceResolved, String> err -> {
+                    System.err.println("error: " + err.error());
+                    System.exit(1);
+                    return;
+                }
+                case Result.Ok<Sources.SourceResolved, String> ok -> {
+                    switch (ok.value()) {
+                        case Sources.SourceResolved.Module m -> module = m;
+                        case Sources.SourceResolved.Bundle b -> {
+                            System.err.println("error: entry point must be a source file, not a bundle: " + path);
+                            System.exit(1);
+                            return;
+                        }
+                    }
+                }
+            }
+            var result = Compile.compile(gx, entry, module);
             switch (result) {
                 case Result.Ok<Compile.CompileResult, ?> ok -> {
                     var out = ok.value();

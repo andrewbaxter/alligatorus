@@ -102,7 +102,7 @@ public record TypeBoolDynamicBox() implements Aspect, Type {
         JavaBytecodeReg raw;
         if (boolConstOpt.optIsSome()) {
             var carryRes = b.addCode(loc, cv.code());
-            if (carryRes.hasErrors()) return carryRes.reerr();
+            if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
             raw = b.constBool(
                     boolConstOpt.optUnwrap().aspectBoolConstGet(cv.value().optUnwrap()));
         } else if (sourceType instanceof TypeBoolDynamic) {

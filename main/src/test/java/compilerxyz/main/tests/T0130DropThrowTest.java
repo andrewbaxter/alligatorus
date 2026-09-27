@@ -30,7 +30,7 @@ public final class T0130DropThrowTest {
                 mb.lower(mb.seqOf(
                         mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                         mb.bind("u", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str(name))),
-                        mb.call(mb.field(mb.scopeUse("u"), mb.str("set_inner")), mb.typesNull()),
+                        mb.call(mb.field(mb.scopeUse("u"), mb.str("set_inner")), mb.tupleOf()),
                         mb.bind("mk", mb.call(mb.field(mb.scopeUse("d"), mb.str("interface")), mb.tupleOf())),
                         mb.call(mb.field(mb.scopeUse("mk"), mb.str("set_is_aspect")), mb.bool(true)),
                         mb.bind("mk_id", mb.call(mb.field(mb.scopeUse("mk"), mb.str("aspect_id")), mb.tupleOf())),
@@ -375,7 +375,7 @@ public final class T0130DropThrowTest {
                                                                                                                 mb
                                                                                                                         .typesAspect()),
                                                                                                         mb.str("none")),
-                                                                                                mb.literalNull())))),
+                                                                                                mb.tupleOf())))),
                                                                 new TestMb.RecordPair(
                                                                         "is_equal",
                                                                         mb.seqOf(
@@ -807,7 +807,7 @@ public final class T0130DropThrowTest {
                                                                                                                 .evalAspectLookup(),
                                                                                                         mb.tupleOf(
                                                                                                                 mb
-                                                                                                                        .typesNull(),
+                                                                                                                        .typesObject(),
                                                                                                                 mb
                                                                                                                         .evalAspectConsumeDynamic(),
                                                                                                                 mb
@@ -867,7 +867,7 @@ public final class T0130DropThrowTest {
                                                                                                                 .evalAspectLookup(),
                                                                                                         mb.tupleOf(
                                                                                                                 mb
-                                                                                                                        .typesNull(),
+                                                                                                                        .typesObject(),
                                                                                                                 mb
                                                                                                                         .evalAspectConsumeDynamic(),
                                                                                                                 mb
@@ -877,18 +877,17 @@ public final class T0130DropThrowTest {
                                                                                         mb.scopeUse("arg")))))))))),
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                         mb.return_(mb.field(mb.scopeUse("u"), mb.str("new"))))),
-                mb.literalNull());
+                mb.tupleOf());
     }
 
     static Compile.CompileResult compileOk(TMap<String, SourceModule> modules) {
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes = r;
             case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> {
-                assertTrue(false, () -> "compile failed: " + res);
-                return null;
+                throw new AssertionError("compile failed: " + res);
             }
         }
         return okRes.value();
@@ -956,7 +955,7 @@ public final class T0130DropThrowTest {
                 "main",
                 new SourceModule.V1(mb.tryCatchFinally(mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.none())));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -974,7 +973,7 @@ public final class T0130DropThrowTest {
                 new SourceModule.V1(mb.tryCatchFinally(
                         mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(mb.throw_(mb.str("boom"))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -994,7 +993,7 @@ public final class T0130DropThrowTest {
                         mb.tryCatchFinally(
                                 mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(mb.returnLabel("outer"))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -1038,8 +1037,7 @@ public final class T0130DropThrowTest {
                                                 mb.recordOf(
                                                         TList.of(
                                                                 new TestMb.RecordPair("arg", mb.tupleOf()),
-                                                                new TestMb.RecordPair(
-                                                                        "ret", mb.optSomeType(mb.typesNull())),
+                                                                new TestMb.RecordPair("ret", mb.optNoneType()),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
                                                                         mb.stage(mb.throw_(mb.str("x"))))))),
@@ -1047,7 +1045,7 @@ public final class T0130DropThrowTest {
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.call(mb.scopeUse("my_func"), mb.tupleOf()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -1079,8 +1077,7 @@ public final class T0130DropThrowTest {
                                                 mb.recordOf(
                                                         TList.of(
                                                                 new TestMb.RecordPair("arg", mb.tupleOf()),
-                                                                new TestMb.RecordPair(
-                                                                        "ret", mb.optSomeType(mb.typesNull())),
+                                                                new TestMb.RecordPair("ret", mb.optNoneType()),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
                                                                         mb.stage(mb.throw_(mb.str("x"))))))),
@@ -1324,7 +1321,7 @@ public final class T0130DropThrowTest {
                         Opt.some(new TestMb.Catch("e", mb.builtin("types", "string"), mb.scopeUse("e"))),
                         Opt.none())));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -1378,8 +1375,7 @@ public final class T0130DropThrowTest {
                                                 mb.recordOf(
                                                         TList.of(
                                                                 new TestMb.RecordPair("arg", mb.tupleOf()),
-                                                                new TestMb.RecordPair(
-                                                                        "ret", mb.optSomeType(mb.typesNull())),
+                                                                new TestMb.RecordPair("ret", mb.optNoneType()),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
                                                                         mb.stage(
@@ -1389,8 +1385,7 @@ public final class T0130DropThrowTest {
                                                                                                 mb.throw_(
                                                                                                         mb.str(
                                                                                                                 "boom"))),
-                                                                                        mb.return_(
-                                                                                                mb.literalNull()))))))),
+                                                                                        mb.returnEmpty())))))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.tryCatchFinally(
@@ -1399,7 +1394,7 @@ public final class T0130DropThrowTest {
                                         "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e")))),
                                 Opt.none()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -1435,8 +1430,7 @@ public final class T0130DropThrowTest {
                                                 mb.recordOf(
                                                         TList.of(
                                                                 new TestMb.RecordPair("arg", mb.tupleOf()),
-                                                                new TestMb.RecordPair(
-                                                                        "ret", mb.optSomeType(mb.typesNull())),
+                                                                new TestMb.RecordPair("ret", mb.optNoneType()),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
                                                                         mb.stage(
@@ -1454,7 +1448,7 @@ public final class T0130DropThrowTest {
                                         "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e")))),
                                 Opt.none()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;

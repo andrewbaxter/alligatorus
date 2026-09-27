@@ -117,7 +117,13 @@ public final class ImportRun {
         var erb = new Erb(loc);
         Artifact artifact;
         switch (compileRes.result()) {
-            case CompileResResult.Ok okRes -> artifact = okRes.artifact();
+            case CompileResResult.Ok okRes -> {
+                if (okRes.artifact().optIsNone()) {
+                    erb.errPush("Imported module yields no value to import");
+                    return EResult.errs(erb.errors());
+                }
+                artifact = okRes.artifact().optUnwrap();
+            }
             case CompileResResult.Err errRes -> {
                 erb.errPush("Import failed");
                 return EResult.errs(erb.errors());

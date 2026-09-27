@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.list;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
@@ -12,7 +11,6 @@ import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
@@ -31,7 +29,6 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactListTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
@@ -95,10 +92,6 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
         throw new IllegalArgumentException("TypeListConst: expected list ValueObjectConst, got " + value.getClass());
     }
 
-    private static Artifact nullArtifact() {
-        return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new Root()));
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
@@ -107,16 +100,12 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
             if (selfDc.optIsSome()) self = selfDc.optUnwrap().aspectDynamicConstConstForm();
             var list = MustCast.mustCast(TypeListConst.class, self);
             var cell = list.artifactIdCell;
-            var errors = new TList<ExprErr>();
-            var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
+            return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
                 var elementArtRes = Artifactable.exportArtifact(xx, loc, list.elementType());
-                elementArtRes.drainInto(errors);
-                var elementArt = elementArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                var body = new ArtifactListType(elementArt);
-                return makeBody.apply(ArtifactListTypeCodec.toValue(body));
+                if (elementArtRes.hasErrors()) return elementArtRes.reerr();
+                var body = new ArtifactListType(elementArtRes.requireValue("TypeListConst::export element"));
+                return EResult.ok(makeBody.apply(ArtifactListTypeCodec.toValue(body)));
             });
-            if (errors.isEmpty()) return EResult.ok(artifact);
-            return EResult.mixed(artifact, errors);
         }
 
         @Override

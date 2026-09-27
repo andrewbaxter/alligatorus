@@ -10,9 +10,10 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
-import compilerxyz.main.eval.value.null_.TypeNullDynamic;
+import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenOptions;
+import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
 
 public record AspectFunctionOptionVariantConstructorDynamic(TypeOptionVariantConstructorDynamic type)
@@ -20,7 +21,7 @@ public record AspectFunctionOptionVariantConstructorDynamic(TypeOptionVariantCon
 
     @Override
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-        Type underlyingType = type.isSome() ? type.elementType() : new TypeNullDynamic();
+        Type underlyingType = type.isSome() ? type.elementType() : new Tuple(Opt.none(), IList.of());
         var erb = new Erb(loc);
         var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
         if (convertedOpt.optIsNone()) {

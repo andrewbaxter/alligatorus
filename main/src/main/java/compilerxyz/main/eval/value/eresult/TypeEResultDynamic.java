@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.eresult;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
@@ -36,7 +35,6 @@ import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactEResultTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
@@ -100,8 +98,8 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type, M
     }
 
     @Override
-    public EResult<Void> matchDynamicPrepare(ExprContext xx) {
-        return EResult.ok(null);
+    public Opt<TList<ExprErr>> matchDynamicPrepare(ExprContext xx) {
+        return Opt.none();
     }
 
     @Override
@@ -197,10 +195,6 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type, M
         return EResult.ok(ExporterRoot.ERESULT_DYNAMIC);
     }
 
-    private static Artifact nullArtifact() {
-        return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new Root()));
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
@@ -212,16 +206,12 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type, M
                                 + self.getClass());
             }
             var cell = eresult.artifactIdCell();
-            var errors = new TList<ExprErr>();
-            var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
+            return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
                 var elementArtRes = Artifactable.exportArtifact(xx, loc, eresult.elementType());
-                elementArtRes.drainInto(errors);
-                var elementArt = elementArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                var body = new ArtifactEResultType(elementArt);
-                return makeBody.apply(ArtifactEResultTypeCodec.toValue(body));
+                if (elementArtRes.hasErrors()) return elementArtRes.reerr();
+                var body = new ArtifactEResultType(elementArtRes.requireValue("TypeEResultDynamic::export element"));
+                return EResult.ok(makeBody.apply(ArtifactEResultTypeCodec.toValue(body)));
             });
-            if (errors.isEmpty()) return EResult.ok(artifact);
-            return EResult.mixed(artifact, errors);
         }
 
         @Override

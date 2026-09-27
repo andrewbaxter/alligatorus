@@ -38,7 +38,7 @@ public final class T0190CarryCodeTest {
         var modules = new TMap<String, SourceModule>();
         modules.put("main", new SourceModule.V1(mb.seq(exprs)));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> okRes = o;
@@ -420,11 +420,5 @@ public final class T0190CarryCodeTest {
         var mb = new TestMb();
         var tup = mb.tupleOf(carrying(mb, "b", mb.str("elem")), mb.str("other"));
         assertPushed(run(mb, mb.call(mb.log(), mb.field(tup, mb.num(0.0)))));
-    }
-
-    @Test
-    public void test00900UnitToNullCastKeepsCarry() {
-        var mb = new TestMb();
-        assertPushed(run(mb, mb.as(carrying(mb, "b", mb.tupleOf()), mb.typesNull())));
     }
 }

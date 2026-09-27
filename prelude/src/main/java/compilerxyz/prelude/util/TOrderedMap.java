@@ -5,7 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
-public final class TOrderedMap<K, V> implements Map<K, V> {
+public final class TOrderedMap<K, V> {
     private final LinkedHashMap<K, V> backing;
 
     public TOrderedMap() {
@@ -16,73 +16,54 @@ public final class TOrderedMap<K, V> implements Map<K, V> {
         this.backing = new LinkedHashMap<>(initialCapacity);
     }
 
-    public V getOrNull(K key) {
-        return backing.get(key);
+    public Opt<V> getOpt(K key) {
+        var v = backing.get(key);
+        return v == null ? Opt.none() : Opt.some(v);
     }
 
-    @Override
     public int size() {
         return backing.size();
     }
 
-    @Override
     public boolean isEmpty() {
         return backing.isEmpty();
     }
 
-    @Override
-    public boolean containsKey(Object key) {
+    public boolean containsKey(K key) {
         return backing.containsKey(key);
     }
 
-    @Override
-    public boolean containsValue(Object value) {
-        return backing.containsValue(value);
+    public void put(K key, V value) {
+        backing.put(key, value);
     }
 
-    @Override
-    public V get(Object key) {
-        return backing.get(key);
+    public void putIfAbsent(K key, V value) {
+        backing.putIfAbsent(key, value);
     }
 
-    @Override
-    public V put(K key, V value) {
-        return backing.put(key, value);
+    public void remove(K key) {
+        backing.remove(key);
     }
 
-    @Override
-    public V remove(Object key) {
-        return backing.remove(key);
+    public void putAll(TOrderedMap<K, V> source) {
+        backing.putAll(source.backing);
     }
 
-    @Override
-    public void putAll(Map<? extends K, ? extends V> source) {
-        backing.putAll(source);
-    }
-
-    @Override
-    public void clear() {
-        backing.clear();
-    }
-
-    @Override
     public Set<K> keySet() {
         return backing.keySet();
     }
 
-    @Override
     public Collection<V> values() {
         return backing.values();
     }
 
-    @Override
     public Set<Map.Entry<K, V>> entrySet() {
         return backing.entrySet();
     }
 
     @Override
-    public boolean equals(Object other) {
-        return backing.equals(other);
+    public boolean equals(Object o) {
+        return o instanceof TOrderedMap<?, ?> other && backing.equals(other.backing);
     }
 
     @Override

@@ -10,10 +10,12 @@ public final class InterfaceMethodBuilding {
     }
 
     public final String name;
-    public Opt<Type> argType = Opt.none();
-    public Opt<Type> retType = Opt.none();
+    public final Type argType;
+    public final Opt<Type> retType;
 
-    public InterfaceMethodBuilding(String name) {
+    public InterfaceMethodBuilding(String name, Type argType, Opt<Type> retType) {
         this.name = name;
+        this.argType = argType;
+        this.retType = retType;
     }
 }

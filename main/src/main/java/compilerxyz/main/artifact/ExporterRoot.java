@@ -20,12 +20,12 @@ import compilerxyz.main.eval.value.float_.TypeFloatConst;
 import compilerxyz.main.eval.value.float_.TypeFloatDynamic;
 import compilerxyz.main.eval.value.int_.TypeIntConst;
 import compilerxyz.main.eval.value.int_.TypeIntDynamic;
+import compilerxyz.main.eval.value.jvm_object.TypeJvmObjectConst;
+import compilerxyz.main.eval.value.jvm_object.TypeJvmObjectDynamic;
 import compilerxyz.main.eval.value.list.TypeListConst;
 import compilerxyz.main.eval.value.long_.TypeLongConst;
 import compilerxyz.main.eval.value.long_.TypeLongDynamic;
 import compilerxyz.main.eval.value.map.TypeMapConst;
-import compilerxyz.main.eval.value.null_.TypeNullConst;
-import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.eval.value.object.TypeObjectConst;
 import compilerxyz.main.eval.value.object.TypeObjectDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
@@ -85,12 +85,6 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return TypeMapConst.DELEGATE;
-        }
-    },
-    NULL_CONST("null_const") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeNullConst.DELEGATE;
         }
     },
     BYTE_CONST("byte_const") {
@@ -363,16 +357,16 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return nullaryType(TypeLongDynamic::new);
         }
     },
-    NULL_CONST_TYPE("null_const_type") {
+    JVM_OBJECT_CONST_TYPE("jvm_object_const_type") {
         @Override
         ExporterRootDelegate delegate() {
-            return nullaryType(TypeNullConst::new);
+            return nullaryType(TypeJvmObjectConst::new);
         }
     },
-    NULL_DYNAMIC("null_dynamic") {
+    JVM_OBJECT_DYNAMIC("jvm_object_dynamic") {
         @Override
         ExporterRootDelegate delegate() {
-            return nullaryType(TypeNullDynamic::new);
+            return nullaryType(TypeJvmObjectDynamic::new);
         }
     },
     SHORT_CONST_TYPE("short_const_type") {

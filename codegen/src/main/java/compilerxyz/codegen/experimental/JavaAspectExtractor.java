@@ -294,11 +294,10 @@ public final class JavaAspectExtractor {
                         for (var member : decl.getMembers()) {
                             if (member instanceof TypeDeclaration<?> nested
                                     && nested.getNameAsString().equals(simple)) {
-                                var chain = new TList<String>();
-                                chain.add(simple);
+                                var outers = new TList<String>();
                                 var up = decl;
                                 while (true) {
-                                    chain.add(0, up.getNameAsString());
+                                    outers.add(up.getNameAsString());
                                     var parent = up.getParentNode();
                                     if (parent.isPresent() && parent.get() instanceof TypeDeclaration<?> pd) {
                                         up = pd;
@@ -306,10 +305,13 @@ public final class JavaAspectExtractor {
                                         break;
                                     }
                                 }
-                                return ClassName.get(
-                                        sourcePkg,
-                                        chain.get(0),
-                                        chain.subList(1, chain.size()).toArray(new String[0]));
+                                var outermost = outers.size() - 1;
+                                var rest = new String[outers.size()];
+                                for (int i = 0; i < outermost; i++) {
+                                    rest[i] = outers.get(outermost - 1 - i);
+                                }
+                                rest[outermost] = simple;
+                                return ClassName.get(sourcePkg, outers.get(outermost), rest);
                             }
                         }
                     }
@@ -324,8 +326,11 @@ public final class JavaAspectExtractor {
             ClassName classNameOf;
             _classNameOf:
             {
-                var fqn = imports.getOrNull(simple);
-                if (fqn == null) {
+                var imported = imports.getOpt(simple);
+                String fqn;
+                if (imported.optIsSome()) {
+                    fqn = imported.optUnwrap();
+                } else {
                     try {
                         fqn = Class.forName("java.lang." + simple).getName();
                     } catch (ClassNotFoundException e) {

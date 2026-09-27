@@ -7,7 +7,7 @@ import compilerxyz.prelude.util.TList;
 public record EcoExtern(String name, IList<String> params, String ret, boolean varargs) {
     public static void bindTypes(EcoMb e, TList<SourceExpr> out, String ll) {
         for (var t : new String[] {"i1", "i8", "i32", "i64", "u8", "u32", "u64", "f32", "f64", "void"}) {
-            out.add(e.let("t_" + t, e.callM(e.v(ll), t, e.nil())));
+            out.add(e.let("t_" + t, e.callM(e.v(ll), t, e.tup())));
         }
         out.add(e.let("t_pv", e.callM(e.v(ll), "ptr", e.v("t_void"))));
         out.add(e.let("t_pu8", e.callM(e.v(ll), "ptr", e.v("t_u8"))));
@@ -18,7 +18,7 @@ public record EcoExtern(String name, IList<String> params, String ret, boolean v
         for (var p : params) {
             list.add(e.v("t_" + p));
         }
-        var ps = list.toArray(new SourceExpr[0]);
+        var ps = list.toArray(SourceExpr[]::new);
         return e.callM(
                 e.v(ll),
                 varargs ? "fn_varargs" : "fn",

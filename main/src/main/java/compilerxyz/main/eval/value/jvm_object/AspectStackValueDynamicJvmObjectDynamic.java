@@ -1,4 +1,4 @@
-package compilerxyz.main.eval.value.null_;
+package compilerxyz.main.eval.value.jvm_object;
 
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ExprContext;
@@ -8,7 +8,7 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 
-public record AspectStackValueDynamicNullDynamic(TypeNullDynamic type) implements AspectStackValueDynamic {
+public record AspectStackValueDynamicJvmObjectDynamic(TypeJvmObjectDynamic type) implements AspectStackValueDynamic {
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(

@@ -22,7 +22,10 @@ public final class DefSetFunctionsEmitter {
             TList<EvalContext.ExternalEntry> externals) {}
 
     public record EmittedFunctions(
-            String binaryName, String internalName, byte[] bytecode, TOrderedMap<String, Object> staticFieldValues) {}
+            String binaryName,
+            String internalName,
+            JavaClassCompiled compiled,
+            TOrderedMap<String, Object> staticFieldValues) {}
 
     public static String functionsBinaryName(DefSetId defSet) {
         var compileId = defSet.compileId();

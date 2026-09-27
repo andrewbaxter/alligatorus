@@ -62,7 +62,7 @@ public final class T0072ReturnCrossingOperandTest {
         Files.createDirectories(src);
         T0200EcosystemLlvmTest.writeModule(src.resolve("main.at"), e.mb.seq(top));
         try (var cache = new CacheReal(tmp.resolve("cache"))) {
-            var res = Compile.compile(
+            var res = Helpers.compile(
                     GlobalContext.newContext(cache, cache, cache),
                     new SourceSpecAbsolute.Local(src.resolve("main.at").toString()));
             Result.Ok<Compile.CompileResult, ?> ok;

@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.source_union;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
@@ -14,6 +13,7 @@ import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.Counter;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
@@ -45,7 +45,6 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.codec.ArtifactDataSourceUnionCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
@@ -189,9 +188,9 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
     }
 
     @Override
-    public EResult<Void> matchDynamicPrepare(ExprContext xx) {
+    public Opt<TList<ExprErr>> matchDynamicPrepare(ExprContext xx) {
         xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
-        return EResult.ok(null);
+        return Opt.none();
     }
 
     @Override
@@ -252,31 +251,27 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
                         "TypeTypeSourceUnionConst::exporterRootDelegateSelfExport: union not attached to a"
                                 + " definition set");
             }
-            var errors = new TList<ExprErr>();
-            var artifact =
-                    ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, tu.artifactIdCell, () -> {
-                        var defSetArtRes = Artifactable.exportArtifact(xx, loc, set);
-                        defSetArtRes.drainInto(errors);
-                        var defSetArt = defSetArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                        var variantsOut = new TList<ArtifactDataSourceUnionVariant>();
-                        for (var v : tu.variants) {
-                            var tArtRes = Artifactable.exportArtifact(xx, loc, v.type);
-                            tArtRes.drainInto(errors);
-                            var tArt = tArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                            variantsOut.add(new ArtifactDataSourceUnionVariant(v.jsTag, v.tag, tArt));
-                        }
-                        var body = new ArtifactDataSourceUnion(
-                                defSetArt,
-                                set.defSetId,
-                                tu.identity,
-                                variantsOut,
-                                tu.baseBinaryName,
-                                tu.compiled.baseBytecode,
-                                tu.compiled.variantBytecode);
-                        return makeBody.apply(ArtifactDataSourceUnionCodec.toValue(body));
-                    });
-            if (errors.isEmpty()) return EResult.ok(artifact);
-            return EResult.mixed(artifact, errors);
+            return ArtifactSupport.implExportIndependentArtifact(xx, tu.artifactIdCell, () -> {
+                var erb = new Erb(loc);
+                var defSetArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, set));
+                var variantsOut = new TList<ArtifactDataSourceUnionVariant>();
+                for (var v : tu.variants) {
+                    var tArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, v.type));
+                    if (tArt.optIsSome()) {
+                        variantsOut.add(new ArtifactDataSourceUnionVariant(v.jsTag, v.tag, tArt.optUnwrap()));
+                    }
+                }
+                if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+                var body = new ArtifactDataSourceUnion(
+                        defSetArt.optUnwrap(),
+                        set.defSetId,
+                        tu.identity,
+                        variantsOut,
+                        tu.baseBinaryName,
+                        tu.compiled.baseBytecode,
+                        tu.compiled.variantBytecode);
+                return EResult.ok(makeBody.apply(ArtifactDataSourceUnionCodec.toValue(body)));
+            });
         }
 
         @Override
@@ -338,8 +333,4 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
                     });
         }
     };
-
-    private static Artifact nullArtifact() {
-        return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root()));
-    }
 }

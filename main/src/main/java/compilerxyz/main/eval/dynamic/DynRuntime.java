@@ -16,6 +16,7 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TOrderedMap;
 import java.util.Iterator;
 
 public final class DynRuntime {
@@ -54,7 +55,7 @@ public final class DynRuntime {
                             + liftRes.errorsOpt().optUnwrapOr(new TList<>()));
                 }
                 var liftAspect = liftRes.requireValue("DynRuntime::__stage AspectLift.get");
-                var liftedRes = liftAspect.aspectLiftLift(liftXx, liftCell.loc(), Opt.ofNullable(valArg));
+                var liftedRes = liftAspect.aspectLiftLift(liftXx, liftCell.loc(), valArg);
                 if (liftedRes.hasErrors()) {
                     throw new IllegalStateException("__stage: AspectLift.lift failed for source type "
                             + liftCell.sourceType().typeDesc()
@@ -84,6 +85,15 @@ public final class DynRuntime {
         var graftIter = grafts.iterator();
         var newTree = cloneWithLowerSubstitutions(tree, 0, 0, valueIter, graftIter);
         return new StagedExprCell(newTree);
+    }
+
+    @CodegenDescriptor
+    public static <K, V> V mapGet(TOrderedMap<K, V> map, K key) {
+        var found = map.getOpt(key);
+        if (found.optIsNone()) {
+            throw new DynPanic("map.get: missing key " + key);
+        }
+        return found.optUnwrap();
     }
 
     public static Unique freshUnique(EvalContext vx) {

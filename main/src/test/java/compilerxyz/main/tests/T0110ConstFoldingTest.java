@@ -28,7 +28,7 @@ public final class T0110ConstFoldingTest {
                                         mb.call(mb.log(), mb.str("less")))),
                                 Opt.some(mb.call(mb.log(), mb.str("not less")))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
@@ -56,7 +56,7 @@ public final class T0110ConstFoldingTest {
                                         mb.seqOf(mb.call(mb.log(), mb.str("less")), mb.tupleOf()))),
                                 Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("not less")), mb.tupleOf()))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;

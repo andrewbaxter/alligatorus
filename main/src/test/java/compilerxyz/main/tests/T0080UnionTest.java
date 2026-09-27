@@ -30,29 +30,22 @@ public final class T0080UnionTest {
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
                                         mb.bind(
                                                 "new_str",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("strtag")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref",
-                                                                                        mb.typesString())))),
-                                                        mb.str("value"))),
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("strtag")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref", mb.typesString()))))),
                                         mb.bind(
                                                 "new_num",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("numtag")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref", mb.typesInt())))),
-                                                        mb.str("value"))),
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("numtag")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref", mb.typesInt()))))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.recordOf(
                                                 TList.of(
@@ -84,7 +77,7 @@ public final class T0080UnionTest {
                                                         mb.tupleOf()))),
                                 Opt.none()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(res.resultIsOk(), () -> "compile failed: " + res);
         @SuppressWarnings("unchecked")
         var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
@@ -108,29 +101,22 @@ public final class T0080UnionTest {
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
                                         mb.bind(
                                                 "new_str",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("strtag")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref",
-                                                                                        mb.typesString())))),
-                                                        mb.str("value"))),
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("strtag")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref", mb.typesString()))))),
                                         mb.bind(
                                                 "new_num",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("numtag")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref", mb.typesInt())))),
-                                                        mb.str("value"))),
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("numtag")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref", mb.typesInt()))))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.recordOf(
                                                 TList.of(
@@ -150,7 +136,7 @@ public final class T0080UnionTest {
                                 TList.of(new TestMb.Branch(mb.str("strtag"), mb.call(mb.log(), mb.scopeUse("y")))),
                                 Opt.some(mb.call(mb.log(), mb.str("fallback")))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(res.resultIsOk(), () -> "compile failed: " + res);
         @SuppressWarnings("unchecked")
         var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
@@ -174,29 +160,22 @@ public final class T0080UnionTest {
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
                                         mb.bind(
                                                 "new_str",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("strtag")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref",
-                                                                                        mb.typesString())))),
-                                                        mb.str("value"))),
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("strtag")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref", mb.typesString()))))),
                                         mb.bind(
                                                 "new_num",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("numtag")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref", mb.typesInt())))),
-                                                        mb.str("value"))),
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("numtag")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref", mb.typesInt()))))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.recordOf(
                                                 TList.of(
@@ -222,7 +201,7 @@ public final class T0080UnionTest {
                                                         mb.tupleOf())))),
                                 Opt.none()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(res.resultIsErr(), () -> "expected compile error but got: " + res);
     }
 
@@ -242,29 +221,22 @@ public final class T0080UnionTest {
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
                                         mb.bind(
                                                 "new_str",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("strtag")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref",
-                                                                                        mb.typesString())))),
-                                                        mb.str("value"))),
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("strtag")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref", mb.typesString()))))),
                                         mb.bind(
                                                 "new_num",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("numtag")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref", mb.typesInt())))),
-                                                        mb.str("value"))),
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("numtag")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref", mb.typesInt()))))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.recordOf(
                                                 TList.of(
@@ -292,7 +264,7 @@ public final class T0080UnionTest {
                                                                 mb.tupleOf())))),
                                 Opt.some(mb.call(mb.log(), mb.str("fallback")))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(res.resultIsErr(), () -> "expected compile error but got: " + res);
     }
 }

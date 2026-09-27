@@ -10,6 +10,7 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
@@ -17,7 +18,7 @@ import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import java.util.Map;
+import compilerxyz.prelude.util.TOrderedMap;
 
 public record AspectFunctionMapPutFnDynamic(TypeMapPutFnDynamic type) implements AspectFunction {
 
@@ -53,14 +54,14 @@ public record AspectFunctionMapPutFnDynamic(TypeMapPutFnDynamic type) implements
         if (valDynRes.hasErrors()) return valDynRes.reerr();
         var selfRes = DynUtil.valueReg(loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
-        var mapName = JavaInternalName.fromClass(Map.class);
+        var mapName = JavaInternalName.fromClass(TOrderedMap.class);
         var putDesc = JavaMethodDescriptor.fromParts(
-                JvmConstants.DESC_OBJECT, TList.of(JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT));
+                JavaDataDescriptor.DESC_VOID, TList.of(JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT));
         var b = new JavaBytecodeBuilder(loc);
         var selfReg = b.reg(selfRes.requireValue("selfDyn"));
         var k = b.reg(keyDynRes.requireValue("toDynamic key"));
         var v = b.reg(valDynRes.requireValue("toDynamic value"));
-        b.invokeInterface(mapName, "put", putDesc, selfReg, k, v);
+        b.invokeVirtualVoid(mapName, "put", putDesc, selfReg, k, v);
         return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
     }
 

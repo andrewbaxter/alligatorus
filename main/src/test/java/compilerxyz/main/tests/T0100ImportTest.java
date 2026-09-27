@@ -29,7 +29,7 @@ public final class T0100ImportTest {
         modules.put("other", new SourceModule.V1(mb.str("Hello world (mortar)")));
         modules.put("main", new SourceModule.V1(mb.call(mb.log(), mb.importExpr(mb.str("other")))));
         var gxa = Helpers.newGxWithArtifacts(modules);
-        var res = Compile.compile(gxa.gx(), new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gxa.gx(), new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Ok<?, ?> o -> true;
@@ -217,7 +217,7 @@ public final class T0100ImportTest {
                                                                                                                                                 .str(
                                                                                                                                                         "none")),
                                                                                                                         mb
-                                                                                                                                .literalNull()))),
+                                                                                                                                .tupleOf()))),
                                                                                                 new TestMb.RecordPair(
                                                                                                         "keys",
                                                                                                         mb.stage(
@@ -269,7 +269,7 @@ public final class T0100ImportTest {
                         mb.bind("val", mb.importExpr(mb.str("other"))),
                         mb.call(mb.log(), mb.call(mb.field(mb.scopeUse("val"), mb.str("to_string")), mb.tupleOf())))));
         var gxa = Helpers.newGxWithArtifacts(modules);
-        var res = Compile.compile(gxa.gx(), new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gxa.gx(), new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Ok<?, ?> o -> true;
@@ -317,7 +317,8 @@ public final class T0100ImportTest {
                                 jsonArr(jsonObj(
                                         jsonField("name", jsonStr("to_string")),
                                         jsonField("arg_type", artifactRef(2)),
-                                        jsonField("ret_type", typeArtifact("string_dynamic")),
+                                        jsonField(
+                                                "ret_type", jsonObj(jsonField("some", typeArtifact("string_dynamic")))),
                                         jsonField("jvm_method_name", jsonStr("_0")),
                                         jsonField("captured_externals", jsonArr())))),
                         jsonField(
@@ -364,7 +365,13 @@ public final class T0100ImportTest {
                                                 methodImpl(4015, "type_opt", "_iface3_method1"),
                                                 methodImpl(4015, "keys", "_iface3_method2")))),
                         jsonField("binary_name", jsonStr("SourceObject$0_0_0_0")),
-                        jsonField("compiled_bytecode", jsonObj(jsonField("some", jsonStr("BYTECODE"))))),
+                        jsonField(
+                                "compiled_class",
+                                jsonObj(jsonField(
+                                        "some",
+                                        jsonObj(
+                                                jsonField("bytecode", jsonStr("BYTECODE")),
+                                                jsonField("locs", jsonStr("LOCS"))))))),
                 Helpers.jsonRedacted(objArt.data()));
         var defSetArt = Helpers.artifactByTag(gxa.artifacts(), "definition_set");
         assertEquals(
@@ -513,7 +520,7 @@ public final class T0100ImportTest {
                         mb.bind("func_a", mb.importExpr(mb.str("module_a"))),
                         mb.call(mb.log(), mb.call(mb.scopeUse("func_a"), mb.tupleOf())))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Ok<?, ?> o -> true;
@@ -534,7 +541,7 @@ public final class T0100ImportTest {
         modules.put("module_b", new SourceModule.V1(mb.importExpr(mb.str("module_a"))));
         modules.put("main", new SourceModule.V1(mb.importExpr(mb.str("module_a"))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Ok<?, ?> o -> false;

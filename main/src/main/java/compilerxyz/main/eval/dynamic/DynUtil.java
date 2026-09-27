@@ -16,7 +16,6 @@ import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.tuple.Tuple;
-import compilerxyz.main.eval.value.tuple.TupleElement;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectDynamicBoxed;
 import compilerxyz.main.gen.Binding;
@@ -27,6 +26,7 @@ import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.Value;
+import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.Iterator;
@@ -105,7 +105,7 @@ public final class DynUtil {
         b.branch(Opcodes.IFEQ, doneKey, hasNext);
         b.add(elementBind);
         var bodyRes = b.addCode(loc, body);
-        if (bodyRes.hasErrors()) return bodyRes.reerr();
+        if (bodyRes.optIsSome()) return EResult.errs(bodyRes.optUnwrap());
         b.jump(loopKey);
         b.land(doneKey);
         return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
@@ -203,9 +203,9 @@ public final class DynUtil {
         return switch (value) {
             case ValueDynamic vd -> Opt.some(vd.source());
             case Tuple tuple ->
-                tuple.base.optIsSome() ? Opt.some(tuple.base.optUnwrap().source()) : Opt.none();
+                tuple.base().optIsSome() ? Opt.some(tuple.base().optUnwrap().source()) : Opt.none();
             case Record record ->
-                record.base.optIsSome() ? Opt.some(record.base.optUnwrap().source()) : Opt.none();
+                record.base().optIsSome() ? Opt.some(record.base().optUnwrap().source()) : Opt.none();
             default -> Opt.none();
         };
     }
@@ -231,7 +231,7 @@ public final class DynUtil {
         }
         var b = new JavaBytecodeBuilder(loc);
         var codeRes = b.addCode(loc, cv.code());
-        if (codeRes.hasErrors()) return codeRes.reerr();
+        if (codeRes.optIsSome()) return EResult.errs(codeRes.optUnwrap());
         return EResult.ok(b.code(sourceReg(b, source.optUnwrap())));
     }
 
@@ -327,7 +327,7 @@ public final class DynUtil {
         var valueDyn = valueRes.requireValue("DynUtil::dynamicSet value");
         var b = new JavaBytecodeBuilder(loc);
         var selfCodeRes = b.addCode(loc, self.code());
-        if (selfCodeRes.hasErrors()) return selfCodeRes.reerr();
+        if (selfCodeRes.optIsSome()) return EResult.errs(selfCodeRes.optUnwrap());
         switch (selfDyn.source()) {
             case ValueDynamicSource.Reg r -> {
                 return EResult.err(loc, "Cannot modify a temporary value");
@@ -389,13 +389,14 @@ public final class DynUtil {
             var elemCvs = new TList<EResult<CodeValue>>(fieldTypes.size());
             for (var entry : fieldTypes.entrySet()) {
                 elemTypes.add(entry.getValue());
-                var cvRes = fieldCvs.get(entry.getKey());
-                if (cvRes == null) {
+                var cvResOpt = fieldCvs.getOpt(entry.getKey());
+                if (cvResOpt.optIsNone()) {
                     return EResult.err(
                             loc,
                             "DynUtil::destructurePositional: record missing field '"
                                     + entry.getKey().constKeyToCanonical() + "'");
                 }
+                var cvRes = cvResOpt.optUnwrap();
                 elemCvs.add(cvRes);
             }
             return destructureFromElements(xx, loc, elemTypes, elemCvs);
@@ -411,9 +412,7 @@ public final class DynUtil {
             ExprContext xx, QExprId loc, Type argType, CodeValue argument, String desc) {
         if (zeroArgSignature(xx, argType)) {
             return EResult.ok(new MethodRefArg(
-                    argument,
-                    new CodeValue(
-                            Code.none(loc), EvalOutcome.ofValue(new Tuple(Opt.none(), new TList<TupleElement>())))));
+                    argument, new CodeValue(Code.none(loc), EvalOutcome.ofValue(new Tuple(Opt.none(), IList.of())))));
         }
         if (argument.value().optIsNone()) {
             return EResult.err(loc, desc + ": argument has no compile-time value");

@@ -31,7 +31,7 @@ public final class AspectConsumeDynamicBoolConst implements AspectConsumeDynamic
                 && v.data() instanceof Boolean bv) {
             var b = new JavaBytecodeBuilder(loc);
             var carryRes = b.addCode(loc, cv.code());
-            if (carryRes.hasErrors()) return carryRes.reerr();
+            if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
             var boxed = b.invokeStatic(
                     JavaInternalName.fromClass(Boolean.class),
                     "valueOf",

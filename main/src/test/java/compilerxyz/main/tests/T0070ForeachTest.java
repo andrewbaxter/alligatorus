@@ -32,7 +32,7 @@ public final class T0070ForeachTest {
                                         mb.log(),
                                         mb.call(mb.field(mb.scopeUse("e"), mb.str("to_string")), mb.tupleOf())))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;

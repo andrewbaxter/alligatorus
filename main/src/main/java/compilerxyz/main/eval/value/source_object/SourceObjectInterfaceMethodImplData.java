@@ -3,11 +3,11 @@ package compilerxyz.main.eval.value.source_object;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.ConstEval;
 import compilerxyz.main.eval.ConstKey;
-import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.Type;
@@ -41,6 +41,7 @@ public final class SourceObjectInterfaceMethodImplData {
     public Opt<BindingId> outerBindingId = Opt.none();
     public final TList<EvalContext.ExternalEntry> capturedExternals;
     public Opt<CodeDynamic> compiledBodyCode = Opt.none();
+    public Opt<QExprId> compiledBodyLoc = Opt.none();
     public Opt<JavaBytecodeReg> compiledBodyResult = Opt.none();
 
     public Opt<TList<BindingId>> compiledArgParamIds = Opt.none();
@@ -53,25 +54,26 @@ public final class SourceObjectInterfaceMethodImplData {
         this.capturedExternals = new TList<>();
     }
 
-    public EResult<Void> finish(ExprContext xx, QExprId rootLoc, TypeSourceObjectDynamic dtData, Type underlyingType) {
+    public Opt<TList<ExprErr>> finish(ExprContext xx, TypeSourceObjectDynamic dtData, Type underlyingType) {
         if (compiledBodyCode.optIsSome()) {
-            return EResult.ok(null);
+            return Opt.none();
         }
         if (implExpr.optIsNone()) {
-            return EResult.ok(null);
+            return Opt.none();
         }
         var implExprValue = implExpr.optUnwrap();
         implExpr = Opt.none();
         if (!(implExprValue instanceof Expr implExprAst)) {
             throw new AssertionError("Interface method impl is not an Expr: " + implExprValue);
         }
+        var bodyLoc = implExprAst.loc();
         var ifaceMethod = interfaceMethod;
         if (ifaceMethod.retType.optIsNone()) {
             throw new AssertionError("Interface method impl for a no-value return is unsupported");
         }
         var retT = ifaceMethod.retType.optUnwrap();
         var innerVx = new EvalContext(xx.vx.ix);
-        innerVx.evalRootInternalName = dtData.internalName();
+        innerVx.evalRootInternalName = Opt.some(dtData.internalName());
         var innerTarget = new TargetDynamic();
         var selfId = new BindingId();
         innerBindingId = Opt.some(selfId);
@@ -113,10 +115,11 @@ public final class SourceObjectInterfaceMethodImplData {
             paramTypes = new TList<>(dataFieldNames.size());
             var fields = new TOrderedMap<ConstKey, ArgumentEntry>();
             for (var fieldName : dataFieldNames) {
-                var f = rec.fields().getOrNull(new ConstKey.Str(fieldName));
-                if (f == null) {
+                var fOpt = rec.fields().getOpt(new ConstKey.Str(fieldName));
+                if (fOpt.optIsNone()) {
                     throw new AssertionError("Record method arg_type missing field '" + fieldName + "'");
                 }
+                var f = fOpt.optUnwrap();
                 Dynamic fd;
                 switch (f) {
                     case Dynamic d -> fd = d;
@@ -126,9 +129,9 @@ public final class SourceObjectInterfaceMethodImplData {
                 paramTypes.add(fd.type());
                 var pid = new BindingId();
                 argParamIds.add(pid);
-                var ibResult = GenAspectInitialBindDynamic.get(xx, rootLoc, fd.type());
+                var ibResult = GenAspectInitialBindDynamic.get(xx, bodyLoc, fd.type());
                 if (ibResult.hasErrors()) {
-                    return ibResult.reerr();
+                    return ibResult.errorsOpt();
                 }
                 var ibAspect = ibResult.requireValue("SourceObjectInterfaceMethodImplData::compile param InitialBind");
                 fields.put(
@@ -150,9 +153,9 @@ public final class SourceObjectInterfaceMethodImplData {
                 paramTypes.add(elemType);
                 var pid = new BindingId();
                 argParamIds.add(pid);
-                var ibResult = GenAspectInitialBindDynamic.get(xx, rootLoc, elemType);
+                var ibResult = GenAspectInitialBindDynamic.get(xx, bodyLoc, elemType);
                 if (ibResult.hasErrors()) {
-                    return ibResult.reerr();
+                    return ibResult.errorsOpt();
                 }
                 var ibAspect =
                         ibResult.requireValue("SourceObjectInterfaceMethodImplData::compile tuple elem InitialBind");
@@ -182,29 +185,29 @@ public final class SourceObjectInterfaceMethodImplData {
 
         var implResult = ConstEval.constEval(methodXx, implExprAst);
         if (implResult.hasErrors()) {
-            return implResult.reerr();
+            return implResult.errorsOpt();
         }
         var implEv = implResult.requireValue("SourceObjectInterfaceMethodImplData::compile constEval");
         var implCv = implEv.cv();
-        var convertedResult = Eval.typecheckConvert(methodXx, rootLoc, retT, implCv);
+        var convertedResult = Eval.typecheckConvert(methodXx, bodyLoc, retT, implCv);
         if (convertedResult.hasErrors()) {
-            return convertedResult.reerr();
+            return convertedResult.errorsOpt();
         }
         var convertedCv = convertedResult.requireValue("SourceObjectInterfaceMethodImplData::compile typecheckConvert");
         CodeDynamic bodyCode;
         Opt<JavaBytecodeReg> bodyResult;
         if (convertedCv.value().optIsSome()) {
-            var dynResult = DynUtil.materialize(methodXx, rootLoc, convertedCv);
+            var dynResult = DynUtil.materialize(methodXx, bodyLoc, convertedCv);
             if (dynResult.hasErrors()) {
-                return dynResult.reerr();
+                return dynResult.errorsOpt();
             }
             var dyn = dynResult.requireValue("SourceObjectInterfaceMethodImplData::compile materialize");
             bodyCode = dyn.code();
             bodyResult = Opt.some(dyn.reg());
         } else {
             var bodyCodeRes = CodeDynamic.castRequired(
-                    rootLoc, convertedCv.code(), "Interface method impl body produced no compile-time value");
-            if (bodyCodeRes.hasErrors()) return bodyCodeRes.reerr();
+                    bodyLoc, convertedCv.code(), "Interface method impl body produced no compile-time value");
+            if (bodyCodeRes.hasErrors()) return bodyCodeRes.errorsOpt();
             bodyCode = bodyCodeRes.requireValue("bodyCode");
             bodyResult = Opt.none();
         }
@@ -215,8 +218,9 @@ public final class SourceObjectInterfaceMethodImplData {
         capturedExternals.addAll(captured);
 
         compiledBodyCode = Opt.some(bodyCode);
+        compiledBodyLoc = Opt.some(bodyLoc);
         compiledBodyResult = bodyResult;
         compiledArgParamIds = Opt.some(argParamIds);
-        return EResult.ok(null);
+        return Opt.none();
     }
 }

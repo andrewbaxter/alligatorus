@@ -29,10 +29,11 @@ public record AspectFieldMapEntryDynamic(TypeMapEntryDynamic type) implements As
         var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
-        var spec = type.fieldSpecs().getOrNull(ck);
-        if (spec == null) {
+        var specOpt = type.fieldSpecs().getOpt(ck);
+        if (specOpt.optIsNone()) {
             return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on map entry");
         }
+        var spec = specOpt.optUnwrap();
         var selfRes = DynUtil.valueReg(loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
@@ -55,7 +56,6 @@ public record AspectFieldMapEntryDynamic(TypeMapEntryDynamic type) implements As
 
     @Override
     public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-        var spec = type.fieldSpecs().getOrNull(key);
-        return spec == null ? Opt.none() : Opt.some(spec.type());
+        return type.fieldSpecs().getOpt(key).optMap(spec -> spec.type());
     }
 }

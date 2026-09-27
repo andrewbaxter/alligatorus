@@ -49,17 +49,17 @@ public record AspectConsumeDynamicListConst<T extends Type>(TypeListConst<T> typ
                 }
                 var carry = new JavaBytecodeBuilder(loc);
                 var carryRes = carry.addCode(loc, cv.code());
-                if (carryRes.hasErrors()) yield carryRes.reerr();
+                if (carryRes.optIsSome()) yield EResult.errs(carryRes.optUnwrap());
                 var list = carry.reg(spec.emitNew(xx, loc, dynamicElements));
                 yield EResult.ok(DynUtil.regToTypedValue(xx, loc, carry.code(), list, spec));
             }
             case TypeListBoxedDynamic<?> boxed -> {
                 var listName = JavaInternalName.fromClass(TList.class);
                 var addDesc = JavaMethodDescriptor.fromParts(
-                        JavaDataDescriptor.DESC_BOOL, TList.of(JvmConstants.DESC_OBJECT));
+                        JavaDataDescriptor.DESC_VOID, TList.of(JvmConstants.DESC_OBJECT));
                 var b = new JavaBytecodeBuilder(loc);
                 var carryRes = b.addCode(loc, cv.code());
-                if (carryRes.hasErrors()) yield carryRes.reerr();
+                if (carryRes.optIsSome()) yield EResult.errs(carryRes.optUnwrap());
                 var regs = new TList<JavaBytecodeReg>(elements.size());
                 for (var element : elements) {
                     var elemDynRes =
@@ -69,7 +69,7 @@ public record AspectConsumeDynamicListConst<T extends Type>(TypeListConst<T> typ
                 }
                 var list = b.newInstance(
                         listName, JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of()));
-                for (var reg : regs) b.invokeVirtual(listName, "add", addDesc, list, reg);
+                for (var reg : regs) b.invokeVirtualVoid(listName, "add", addDesc, list, reg);
                 yield EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), list, boxed));
             }
         };

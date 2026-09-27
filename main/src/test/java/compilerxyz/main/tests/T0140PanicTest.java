@@ -3,7 +3,6 @@ package compilerxyz.main.tests;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.syntax.SourceExpr;
 import compilerxyz.main.syntax.SourceModule;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
@@ -23,7 +22,7 @@ public final class T0140PanicTest {
                         mb.field(mb.scopeUse("nfr"), mb.str("impl")),
                         mb.recordOf(TList.of(
                                 new TestMb.RecordPair("arg", mb.tupleOf()),
-                                new TestMb.RecordPair("ret", mb.optSomeType(mb.typesNull())),
+                                new TestMb.RecordPair("ret", mb.optNoneType()),
                                 new TestMb.RecordPair("impl_body", mb.stage(mb.panic(mb.str(message))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.return_(mb.scopeUse("f"))));
@@ -38,7 +37,7 @@ public final class T0140PanicTest {
                 new SourceModule.V1(
                         mb.seqOf(mb.bind("f", panickyFn(mb, "boom")), mb.call(mb.scopeUse("f"), mb.tupleOf()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Ok<?, ?> ok -> false;
@@ -63,7 +62,7 @@ public final class T0140PanicTest {
                                         "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught")))),
                                 Opt.none()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Ok<?, ?> ok -> false;
@@ -98,8 +97,7 @@ public final class T0140PanicTest {
                                                 mb.recordOf(
                                                         TList.of(
                                                                 new TestMb.RecordPair("arg", mb.tupleOf()),
-                                                                new TestMb.RecordPair(
-                                                                        "ret", mb.optSomeType(mb.typesNull())),
+                                                                new TestMb.RecordPair("ret", mb.optNoneType()),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
                                                                         mb.stage(mb.panic(mb.str("inner panic"))))))),
@@ -113,7 +111,7 @@ public final class T0140PanicTest {
                                         mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf()))),
                                 Opt.none()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Ok<?, ?> ok -> false;

@@ -33,10 +33,10 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
         }
         var carry = cv.code();
 
-        if (type.base.optIsSome()) {
+        if (type.base().optIsSome()) {
             Type tupleType = type;
-            var scopeFields = new TList<TupleScopeField>(type.elements.size());
-            for (var e : type.elements) {
+            var scopeFields = new TList<TupleScopeField>(type.elements().size());
+            for (var e : type.elements()) {
                 TupleElement.Dynamic d;
                 switch (e) {
                     case TupleElement.Dynamic dyn -> d = dyn;
@@ -47,8 +47,8 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
             }
             var subBuilder = new JavaBytecodeBuilder(loc);
             var carryAdd = subBuilder.addCode(loc, carry);
-            if (carryAdd.hasErrors()) return carryAdd.reerr();
-            var baseReg = DynUtil.sourceReg(subBuilder, type.base.optUnwrap().source());
+            if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
+            var baseReg = DynUtil.sourceReg(subBuilder, type.base().optUnwrap().source());
             var sub = new BindSubDynamic(subBuilder.code(baseReg), tupleType);
             var bound = jvmTarget.bindSlot(loc, sub);
             return EResult.ok(
@@ -57,10 +57,10 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
 
         TList<ExprErr> errors = null;
         record ElemBindResult(Opt<BindSubDynamic> targetSub, Opt<CodeValue> constCv) {}
-        var bindResults = new TList<ElemBindResult>(tuple.elements.size());
+        var bindResults = new TList<ElemBindResult>(tuple.elements().size());
         boolean hasTarget = false;
-        for (int i = 0; i < tuple.elements.size(); i++) {
-            var elem = tuple.elements.get(i);
+        for (int i = 0; i < tuple.elements().size(); i++) {
+            var elem = tuple.elements().get(i);
             switch (elem) {
                 case TupleElement.Dynamic d -> {
                     if (errors == null) errors = new TList<>();

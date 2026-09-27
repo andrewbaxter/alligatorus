@@ -20,6 +20,7 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TOrderedMap;
@@ -67,8 +68,9 @@ public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) impleme
         var o = oOpt.optUnwrap();
         if (fieldTypes.size() != o.fieldTypes.size()) return false;
         for (var entry : fieldTypes.entrySet()) {
-            var otherType = o.fieldTypes.getOrNull(entry.getKey());
-            if (otherType == null) return false;
+            var otherTypeOpt = o.fieldTypes.getOpt(entry.getKey());
+            if (otherTypeOpt.optIsNone()) return false;
+            var otherType = otherTypeOpt.optUnwrap();
             if (!entry.getValue().typeIsEqual(xx, otherType)) return false;
         }
         return true;
@@ -87,8 +89,8 @@ public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) impleme
         }
         var dest = destOptCheck.optUnwrap();
         if (dest.fields().size() != fieldTypes.size()) return false;
-        for (var k : dest.fields().keySet()) {
-            if (fieldTypes.getOrNull(k) == null) return false;
+        for (var k : dest.fields().keys()) {
+            if (fieldTypes.getOpt(k).optIsNone()) return false;
         }
         return true;
     }
@@ -107,11 +109,12 @@ public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) impleme
         var convertedFields = new TOrderedMap<ConstKey, RecordField>();
         for (var destEntry : destFieldTypes.entrySet()) {
             var key = destEntry.getKey();
-            var srcEntry = record.fields().getOrNull(key);
-            if (srcEntry == null) {
+            var srcEntryOpt = record.fields().getOpt(key);
+            if (srcEntryOpt.optIsNone()) {
                 return EResult.err(
                         loc, "ArgumentRecord::typeCastTo: missing field '" + key.constKeyToCanonical() + "'");
             }
+            var srcEntry = srcEntryOpt.optUnwrap();
             var srcCv = srcEntry.binding()
                     .bindingUse(
                             xx,
@@ -122,7 +125,8 @@ public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) impleme
             if (convOpt.optIsNone()) return EResult.errs(erb.errors());
             convertedFields.put(key, new RecordField.EvalRes(EResult.ok(convOpt.optUnwrap())));
         }
-        return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(new Record(Opt.none(), convertedFields))));
+        return EResult.ok(new CodeValue(
+                cv.code(), EvalOutcome.ofValue(new Record(Opt.none(), IOrderedMap.from(convertedFields)))));
     }
 
     @Override

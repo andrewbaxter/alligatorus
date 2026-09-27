@@ -34,7 +34,7 @@ public record AspectFunctionMapNewDynamic(TypeMapNewDynamic type) implements Asp
                 && argTupleOpt.optUnwrap().aspectTupleElementTypes().isEmpty()) {
             var b = new JavaBytecodeBuilder(loc);
             var selfRes = b.addCode(loc, self.code());
-            if (selfRes.hasErrors()) return selfRes.reerr();
+            if (selfRes.optIsSome()) return EResult.errs(selfRes.optUnwrap());
             var map = b.newInstance(
                     JavaInternalName.fromClass(TOrderedMap.class),
                     JavaMethodDescriptor.fromConstructorParts(TList.of()));

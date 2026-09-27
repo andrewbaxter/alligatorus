@@ -10,6 +10,7 @@ import compilerxyz.main.safejson.Json.FieldPath;
 import compilerxyz.main.safejson.Json.Style;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValues;
+import compilerxyz.prelude.util.Opt;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.TreeMap;
@@ -93,20 +94,16 @@ public final class ArtifactCodecs {
         }
 
         public static ArtifactBody decode(JsonReader reader, FieldPath path) throws IOException {
-            JsonValue data = null;
-            ArtifactBodyExporter exporter = null;
-            boolean seenData = false;
-            boolean seenExporter = false;
+            Opt<JsonValue> data = Opt.none();
+            Opt<ArtifactBodyExporter> exporter = Opt.none();
             reader.beginObject();
             while (reader.hasNext()) {
                 var fname = reader.nextName();
                 switch (fname) {
                     case "data" -> {
-                        seenData = true;
-                        data = JsonValues.decode(reader, path.field("data"));
+                        data = Opt.some(JsonValues.decode(reader, path.field("data")));
                     }
                     case "exporter" -> {
-                        seenExporter = true;
                         var exporterPath = path.field("exporter");
                         reader.beginObject();
                         if (!reader.hasNext()) {
@@ -117,7 +114,7 @@ public final class ArtifactCodecs {
                         var exporterVariantPath = exporterPath.field(exporterTag);
                         switch (exporterTag) {
                             case "body" ->
-                                exporter = new ArtifactBodyExporter.Body(decode(reader, exporterVariantPath));
+                                exporter = Opt.some(new ArtifactBodyExporter.Body(decode(reader, exporterVariantPath)));
                             case "root" -> {
                                 reader.beginObject();
                                 if (reader.hasNext()) {
@@ -126,11 +123,11 @@ public final class ArtifactCodecs {
                                             exporterVariantPath);
                                 }
                                 reader.endObject();
-                                exporter = new ArtifactBodyExporter.Root();
+                                exporter = Opt.some(new ArtifactBodyExporter.Root());
                             }
                             case "source_ref" ->
-                                exporter = new ArtifactBodyExporter.SourceRef(
-                                        ArtifactIdSourceCodec.decode(reader, exporterVariantPath));
+                                exporter = Opt.some(new ArtifactBodyExporter.SourceRef(
+                                        ArtifactIdSourceCodec.decode(reader, exporterVariantPath)));
                             default ->
                                 throw new DeserializationException(
                                         "Unknown ArtifactBodyExporter variant: '" + exporterTag + "'", exporterPath);
@@ -147,14 +144,14 @@ public final class ArtifactCodecs {
                 }
             }
             reader.endObject();
-            if (!seenData) {
+            if (data.optIsNone()) {
                 throw new DeserializationException("Missing required field 'data' in ArtifactBody", path.field("data"));
             }
-            if (!seenExporter) {
+            if (exporter.optIsNone()) {
                 throw new DeserializationException(
                         "Missing required field 'exporter' in ArtifactBody", path.field("exporter"));
             }
-            return new ArtifactBody(data, exporter);
+            return new ArtifactBody(data.optUnwrap(), exporter.optUnwrap());
         }
     }
 

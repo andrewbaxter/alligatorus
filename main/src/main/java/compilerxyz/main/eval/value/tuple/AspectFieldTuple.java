@@ -33,11 +33,11 @@ public record AspectFieldTuple(Tuple type) implements AspectField {
 
     @Override
     public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        if (type.base.optIsNone()) {
+        if (type.base().optIsNone()) {
             return new TList<>();
         }
-        var out = new TList<ConstKey>(type.elements.size());
-        for (int i = 0; i < type.elements.size(); i++) {
+        var out = new TList<ConstKey>(type.elements().size());
+        for (int i = 0; i < type.elements().size(); i++) {
             out.add(new ConstKey.Uint(i));
         }
         return out;
@@ -53,8 +53,8 @@ public record AspectFieldTuple(Tuple type) implements AspectField {
             }
         }
         long idx = u.value();
-        if (idx < 0 || idx >= type.elements.size()) return Opt.none();
-        var e = type.elements.get((int) idx);
+        if (idx < 0 || idx >= type.elements().size()) return Opt.none();
+        var e = type.elements().get((int) idx);
         Type t =
                 switch (e) {
                     case TupleElement.Dynamic d -> d.type();

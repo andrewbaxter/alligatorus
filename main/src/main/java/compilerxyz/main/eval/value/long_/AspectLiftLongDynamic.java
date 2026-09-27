@@ -7,7 +7,6 @@ import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.MustCast;
-import compilerxyz.prelude.util.Opt;
 
 public final class AspectLiftLongDynamic implements AspectLift {
     public static final AspectLiftLongDynamic INSTANCE = new AspectLiftLongDynamic();
@@ -15,8 +14,8 @@ public final class AspectLiftLongDynamic implements AspectLift {
     private AspectLiftLongDynamic() {}
 
     @Override
-    public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-        var d = MustCast.mustCast(Long.class, externalHostValue.optUnwrap());
+    public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Object externalHostValue) {
+        var d = MustCast.mustCast(Long.class, externalHostValue);
         return EResult.ok(new ValueObjectConst(new TypeLongConst(), d));
     }
 }

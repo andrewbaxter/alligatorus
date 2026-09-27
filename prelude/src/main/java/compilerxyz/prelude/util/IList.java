@@ -2,7 +2,7 @@ package compilerxyz.prelude.util;
 
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.Immutable;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -20,8 +20,18 @@ public final class IList<T> implements Iterable<T> {
         return new IList<>(List.of(elements));
     }
 
-    public static <T> IList<T> from(Collection<? extends T> source) {
-        return new IList<>(List.copyOf(source));
+    public static <T> IList<T> from(Iterable<? extends T> source) {
+        var copy = new ArrayList<T>();
+        for (var e : source) copy.add(e);
+        return new IList<>(List.copyOf(copy));
+    }
+
+    public int size() {
+        return backing.size();
+    }
+
+    public T get(int index) {
+        return backing.get(index);
     }
 
     public boolean isEmpty() {

@@ -4,11 +4,8 @@ import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.CompileModule;
 import compilerxyz.main.eval.CompileResResult;
 import compilerxyz.main.eval.ExprErr;
-import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.ImportStateId;
 import compilerxyz.main.eval.LogEntry;
-import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.SourceId;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
@@ -17,25 +14,8 @@ import compilerxyz.prelude.util.TOrderedMap;
 public final class Compile {
     private Compile() {}
 
-    public static Result<CompileResult, TList<ExprErr>> compile(GlobalContext gx, SourceSpecAbsolute entry) {
-        var lookupResult = gx.sources.sourcesGet(entry);
-        Sources.SourceResolved resolvedRaw;
-        switch (lookupResult) {
-            case Result.Err<Sources.SourceResolved, String> err -> {
-                return Result.err(TList.of(
-                        new ExprErr(new QExprId(new SourceId(0), 0), TList.of(new ExprSubErr.Opaque(err.error())))));
-            }
-            case Result.Ok<Sources.SourceResolved, String> ok -> resolvedRaw = ok.value();
-        }
-        Sources.SourceResolved.Module lookup;
-        switch (resolvedRaw) {
-            case Sources.SourceResolved.Module m -> lookup = m;
-            case Sources.SourceResolved.Bundle ignored -> {
-                return Result.err(TList.of(new ExprErr(
-                        new QExprId(new SourceId(0), 0),
-                        TList.of(new ExprSubErr.Opaque("Entry point must be a source file, not a bundle")))));
-            }
-        }
+    public static Result<CompileResult, TList<ExprErr>> compile(
+            GlobalContext gx, SourceSpecAbsolute entry, Sources.SourceResolved.Module lookup) {
         var rootImportState = new ImportStateId(0);
         var rootCompileId = new CompileId(rootImportState, lookup.id());
         gx.compiles.compilesPrepare(rootCompileId);

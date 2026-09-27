@@ -92,7 +92,7 @@ public final class T0180ImportRealTest {
                 src.resolve("main.at"), mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("other.at")))));
 
         try (var cache = new CacheReal(tmp.resolve("cache"))) {
-            var res = Compile.compile(
+            var res = Helpers.compile(
                     gxFor(cache),
                     new SourceSpecAbsolute.Local(src.resolve("main.at").toString()));
             var ok = expectOk(res);
@@ -116,7 +116,7 @@ public final class T0180ImportRealTest {
                 mb.seqOf(mb.call(mb.log(), mb.field(rec, mb.str("a"))), mb.call(mb.log(), mb.field(rec, mb.str("b")))));
 
         try (var cache = new CacheReal(tmp.resolve("cache"))) {
-            var ok = expectOk(Compile.compile(
+            var ok = expectOk(Helpers.compile(
                     gxFor(cache),
                     new SourceSpecAbsolute.Local(src.resolve("main.at").toString())));
             assertEquals(2, ok.logs().size());
@@ -138,7 +138,7 @@ public final class T0180ImportRealTest {
         var entry = new SourceSpecAbsolute.Local(mainFile.toString());
 
         try (var cache = new CacheReal(cacheDir)) {
-            var ok = expectOk(Compile.compile(gxFor(cache), entry));
+            var ok = expectOk(Helpers.compile(gxFor(cache), entry));
             assertEquals("v1", ok.logs().get(0).message());
         }
 
@@ -148,7 +148,7 @@ public final class T0180ImportRealTest {
                 FileTime.fromMillis(Files.getLastModifiedTime(otherFile).toMillis() + 100000));
 
         try (var cache = new CacheReal(cacheDir)) {
-            var ok = expectOk(Compile.compile(gxFor(cache), entry));
+            var ok = expectOk(Helpers.compile(gxFor(cache), entry));
             assertEquals("v2", ok.logs().get(0).message());
         }
     }
@@ -163,13 +163,13 @@ public final class T0180ImportRealTest {
         writeModule(src.resolve("one.at"), mb.str("cached-one"));
         var oneEntry = new SourceSpecAbsolute.Local(src.resolve("one.at").toString());
         try (var cache1 = new CacheReal(cacheDir)) {
-            expectOk(Compile.compile(gxFor(cache1), oneEntry));
+            expectOk(Helpers.compile(gxFor(cache1), oneEntry));
         }
 
         writeModule(src.resolve("two.at"), mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("one.at")))));
         var twoEntry = new SourceSpecAbsolute.Local(src.resolve("two.at").toString());
         try (var cache2 = new CacheReal(cacheDir)) {
-            var ok = expectOk(Compile.compile(gxFor(cache2), twoEntry));
+            var ok = expectOk(Helpers.compile(gxFor(cache2), twoEntry));
             assertEquals(1, ok.logs().size());
             assertEquals("cached-one", ok.logs().get(0).message());
         }
@@ -185,7 +185,7 @@ public final class T0180ImportRealTest {
 
         writeModule(oneFile, mb.str("v1"));
         try (var cache = new CacheReal(cacheDir)) {
-            expectOk(Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(oneFile.toString())));
+            expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(oneFile.toString())));
         }
         writeModule(oneFile, mb.str("v2"));
         Files.setLastModifiedTime(
@@ -195,7 +195,7 @@ public final class T0180ImportRealTest {
         writeModule(twoFile, mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("one.at")))));
 
         try (var cache = new CacheReal(cacheDir)) {
-            var ok = expectOk(Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(twoFile.toString())));
+            var ok = expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(twoFile.toString())));
             assertEquals("v2", ok.logs().get(0).message());
         }
     }
@@ -208,7 +208,9 @@ public final class T0180ImportRealTest {
             try (var second = new CacheReal(cacheDir)) {
             } catch (RuntimeException e) {
                 failed = true;
-                assertTrue(e.getMessage().contains("already in use"), () -> "unexpected message: " + e.getMessage());
+                var message = e.getMessage();
+                assertTrue(
+                        message != null && message.contains("already in use"), () -> "unexpected message: " + message);
             }
             assertTrue(failed, "second CacheReal on the same directory must be rejected");
         }
@@ -223,7 +225,7 @@ public final class T0180ImportRealTest {
         var mainFile = src.resolve("main.at");
         writeModule(mainFile, mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("missing.at")))));
         try (var cache = new CacheReal(cacheDir)) {
-            var res = Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
+            var res = Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
             assertTrue(
                     switch (res) {
                         case Result.Ok<?, ?> o -> false;
@@ -232,7 +234,7 @@ public final class T0180ImportRealTest {
                     () -> "expected failure, got " + res);
         }
         try (var cache = new CacheReal(cacheDir)) {
-            var res = Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
+            var res = Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
             assertTrue(
                     switch (res) {
                         case Result.Ok<?, ?> o -> false;
@@ -245,7 +247,7 @@ public final class T0180ImportRealTest {
                 mainFile,
                 FileTime.fromMillis(Files.getLastModifiedTime(mainFile).toMillis() + 100000));
         try (var cache = new CacheReal(cacheDir)) {
-            var ok = expectOk(Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString())));
+            var ok = expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString())));
             assertEquals("fixed", ok.logs().get(0).message());
         }
     }
@@ -261,7 +263,7 @@ public final class T0180ImportRealTest {
         var entry = new SourceSpecAbsolute.Local(mainFile.toString());
 
         try (var cache = new CacheReal(cacheDir)) {
-            expectOk(Compile.compile(gxFor(cache), entry));
+            expectOk(Helpers.compile(gxFor(cache), entry));
         }
 
         try (var conn = DriverManager.getConnection("jdbc:sqlite:" + cacheDir.resolve("cache.sqlite"));
@@ -270,7 +272,7 @@ public final class T0180ImportRealTest {
         }
 
         try (var cache = new CacheReal(cacheDir)) {
-            var ok = expectOk(Compile.compile(gxFor(cache), entry));
+            var ok = expectOk(Helpers.compile(gxFor(cache), entry));
             assertEquals("hello", ok.logs().get(0).message());
         }
     }
@@ -331,7 +333,7 @@ public final class T0180ImportRealTest {
             writeModule(mainFile, mainExpr);
 
             try (var cache = new CacheReal(tmp.resolve("cache"))) {
-                var ok = expectOk(Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString())));
+                var ok = expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString())));
                 assertEquals(2, ok.logs().size());
                 assertEquals("from-remote", ok.logs().get(0).message());
                 assertEquals("from-bundle-mod", ok.logs().get(1).message());
@@ -345,7 +347,7 @@ public final class T0180ImportRealTest {
                             mb.log(),
                             importField(mb, "v", mb.sourceRemote(mb.str(singleUrl), hashSpec(mb, wrongDigest)))));
             try (var cache = new CacheReal(tmp.resolve("cache"))) {
-                var res = Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(badFile.toString()));
+                var res = Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(badFile.toString()));
                 assertTrue(
                         switch (res) {
                             case Result.Ok<?, ?> o -> false;

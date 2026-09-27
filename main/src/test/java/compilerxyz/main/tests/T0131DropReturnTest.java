@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 public final class T0131DropReturnTest {
     private static TList<String> run(TestMb mb, TList<SourceExpr> body) {
         var modules = new TMap<String, SourceModule>();
-        modules.put("main", new SourceModule.V1(mb.seqOf(body.toArray(new SourceExpr[0]))));
+        modules.put("main", new SourceModule.V1(mb.seqOf(body.toArray(SourceExpr[]::new))));
         return messages(compileOk(modules));
     }
 

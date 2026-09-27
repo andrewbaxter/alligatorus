@@ -28,7 +28,7 @@ public final class AspectConsumeDynamicStringConst implements AspectConsumeDynam
                 && v.data() instanceof String s) {
             var b = new JavaBytecodeBuilder(loc);
             var carryRes = b.addCode(loc, cv.code());
-            if (carryRes.hasErrors()) return carryRes.reerr();
+            if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
             var raw = b.constString(s);
             return EResult.ok(DynUtil.regToValue(b.code(), raw, new TypeStringDynamic()));
         }

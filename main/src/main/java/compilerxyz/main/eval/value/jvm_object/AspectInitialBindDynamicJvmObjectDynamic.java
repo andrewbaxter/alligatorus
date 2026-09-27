@@ -1,11 +1,11 @@
-package compilerxyz.main.eval.value.null_;
+package compilerxyz.main.eval.value.jvm_object;
 
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.Binding;
 
-public record AspectInitialBindDynamicNullDynamic(TypeNullDynamic type) implements AspectInitialBindDynamic {
+public record AspectInitialBindDynamicJvmObjectDynamic(TypeJvmObjectDynamic type) implements AspectInitialBindDynamic {
 
     @Override
     public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {

@@ -7,6 +7,10 @@ import compilerxyz.prelude.util.TList;
 @BuiltinFull(uniqueId = 6027L)
 @BuiltinPath("types.expr_err")
 public record ExprErr(QExprId loc, TList<ExprSubErr> errors) {
+    public static ExprErr opaque(QExprId loc, String message) {
+        return new ExprErr(loc, TList.of(new ExprSubErr.Opaque(message)));
+    }
+
     public String message() {
         var sb = new StringBuilder();
         sb.append("[")

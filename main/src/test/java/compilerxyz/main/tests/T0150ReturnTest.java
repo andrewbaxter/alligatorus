@@ -23,7 +23,7 @@ public final class T0150ReturnTest {
                 new SourceModule.V1(mb.seqOf(
                         mb.call(mb.log(), mb.str("before")), mb.returnEmpty(), mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -43,7 +43,7 @@ public final class T0150ReturnTest {
                         mb.labeled("outer", mb.seqOf(mb.call(mb.log(), mb.str("inside")), mb.returnLabel("outer"))),
                         mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes49;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes49 = r;
@@ -65,7 +65,7 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put("main", new SourceModule.V1(mb.seqOf(mb.operatorAdd(mb.num(1.0), mb.return_(mb.num(5.0))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -80,7 +80,7 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put("main", new SourceModule.V1(mb.returnLabel("nowhere")));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -100,7 +100,7 @@ public final class T0150ReturnTest {
                         mb.labeled("outer", mb.seqOf(mb.returnLabel("other"))),
                         mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -129,7 +129,7 @@ public final class T0150ReturnTest {
                                         mb.returnEmpty(),
                                         mb.call(mb.log(), mb.str("SHOULD NOT LOG")))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -147,7 +147,7 @@ public final class T0150ReturnTest {
                 new SourceModule.V1(
                         mb.call(mb.log(), mb.labeled("out", mb.seqOf(mb.return_("out", mb.str("returned-value")))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes144;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes144 = r;
@@ -181,7 +181,7 @@ public final class T0150ReturnTest {
                                         Opt.some(mb.call(mb.log(), mb.str("else")))),
                                 mb.call(mb.log(), mb.str("SHOULD NOT LOG AFTER"))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -210,7 +210,7 @@ public final class T0150ReturnTest {
                                         mb.seqOf(mb.call(mb.log(), mb.str("iter")), mb.returnLabel("outer")))),
                         mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes203;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes203 = r;
@@ -241,7 +241,7 @@ public final class T0150ReturnTest {
                                         Opt.some(mb.call(mb.log(), mb.str("SHOULD NOT LOG else"))))),
                         mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes230;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes230 = r;
@@ -272,17 +272,13 @@ public final class T0150ReturnTest {
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
                                         mb.bind(
                                                 "new_str",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("strtag")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref",
-                                                                                        mb.typesString())))),
-                                                        mb.str("value"))),
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("strtag")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref", mb.typesString()))))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.recordOf(
                                                 TList.of(
@@ -304,7 +300,7 @@ public final class T0150ReturnTest {
                                         Opt.none())),
                         mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes290;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes290 = r;
@@ -334,7 +330,7 @@ public final class T0150ReturnTest {
                                         Opt.some(mb.call(mb.log(), mb.str("else")))),
                                 mb.call(mb.log(), mb.str("after"))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes319;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes319 = r;
@@ -367,7 +363,7 @@ public final class T0150ReturnTest {
                                         Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("finally")), mb.tupleOf())))),
                         mb.seqOf(mb.call(mb.log(), mb.str("after")), mb.tupleOf()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes348;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes348 = r;
@@ -413,7 +409,7 @@ public final class T0150ReturnTest {
                                                                 mb.tupleOf())))))),
                         mb.seqOf(mb.call(mb.log(), mb.str("after")), mb.tupleOf()))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes388;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes388 = r;
@@ -440,7 +436,7 @@ public final class T0150ReturnTest {
                 new SourceModule.V1(
                         mb.seqOf(mb.labeled("out", mb.seqOf(mb.returnEmpty())), mb.call(mb.log(), mb.str("done")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes414;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes414 = r;
@@ -464,7 +460,7 @@ public final class T0150ReturnTest {
                         mb.bind("t", mb.labeled("out", mb.seqOf(mb.returnEmpty()))),
                         mb.call(mb.log(), mb.str("done")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;

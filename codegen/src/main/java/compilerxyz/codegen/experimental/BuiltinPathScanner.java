@@ -215,39 +215,42 @@ public final class BuiltinPathScanner {
     private static final ClassName TYPE_DOUBLE_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.double_", "TypeDoubleDynamic");
 
-    private static final ClassName TYPE_NULL_DYNAMIC =
-            ClassName.get("compilerxyz.main.eval.value.null_", "TypeNullDynamic");
+    private static final ClassName TYPE_JVM_OBJECT_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.jvm_object", "TypeJvmObjectDynamic");
 
     private static TypeRef typeRefOf(
             Type t, TMap<String, String> imports, String sourcePkg, TMap<ClassName, CodeBlock> scannedLeaves) {
-        if (t.isVoidType()) return TypeRef.leaf(TYPE_NULL_DYNAMIC, scannedLeaves);
         var tn = typeNameOf(t, imports, sourcePkg);
         if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC, scannedLeaves);
         if (tn.equals(TypeName.LONG)) return TypeRef.leaf(TYPE_LONG_DYNAMIC, scannedLeaves);
         if (tn.equals(TypeName.DOUBLE)) return TypeRef.leaf(TYPE_DOUBLE_DYNAMIC, scannedLeaves);
         if (tn instanceof ClassName cn && cn.canonicalName().equals("java.lang.Object")) {
-            return TypeRef.leaf(TYPE_NULL_DYNAMIC, scannedLeaves);
+            return TypeRef.leaf(TYPE_JVM_OBJECT_DYNAMIC, scannedLeaves);
         }
         if (tn instanceof ClassName cn) {
-            var descriptor = VALUE_CLASS_DESCRIPTORS.getOrNull(cn.canonicalName());
-            if (descriptor != null) return TypeRef.leaf(descriptor, scannedLeaves);
+            var descriptor = VALUE_CLASS_DESCRIPTORS.getOpt(cn.canonicalName());
+            if (descriptor.optIsSome()) return TypeRef.leaf(descriptor.optUnwrap(), scannedLeaves);
             try {
                 return TypeRef.leaf(cn, scannedLeaves);
             } catch (IllegalArgumentException e) {
             }
         }
         if (tn instanceof ParameterizedTypeName pt) {
-            var wrapper = COMPOSITE_WRAPPERS.getOrNull(pt.rawType.canonicalName());
-            if (wrapper != null && pt.typeArguments.size() == 1 && pt.typeArguments.get(0) instanceof ClassName inner) {
+            var wrapperOpt = COMPOSITE_WRAPPERS.getOpt(pt.rawType.canonicalName());
+            if (wrapperOpt.optIsSome()
+                    && pt.typeArguments.size() == 1
+                    && pt.typeArguments.get(0) instanceof ClassName inner) {
+                var wrapper = wrapperOpt.optUnwrap();
                 var innerRef = TypeRef.leaf(inner, scannedLeaves);
                 return new TypeRef(
                         DynamicTypes.compositeValueClass(wrapper, innerRef.path()),
                         DynamicTypes.composite(wrapper, innerRef.dynamicType()));
             }
-            if (wrapper != null
+            if (wrapperOpt.optIsSome()
                     && pt.typeArguments.size() == 2
                     && pt.typeArguments.get(0) instanceof ClassName k
                     && pt.typeArguments.get(1) instanceof ClassName v) {
+                var wrapper = wrapperOpt.optUnwrap();
                 var kRef = TypeRef.leaf(k, scannedLeaves);
                 var vRef = TypeRef.leaf(v, scannedLeaves);
                 return new TypeRef(
@@ -295,8 +298,11 @@ public final class BuiltinPathScanner {
     }
 
     private static ClassName classNameOf(String simple, TMap<String, String> imports, String sourcePkg) {
-        var fqn = imports.getOrNull(simple);
-        if (fqn == null) {
+        var imported = imports.getOpt(simple);
+        String fqn;
+        if (imported.optIsSome()) {
+            fqn = imported.optUnwrap();
+        } else {
             try {
                 fqn = Class.forName("java.lang." + simple).getName();
             } catch (ClassNotFoundException e) {

@@ -25,14 +25,6 @@ public record ArgumentRecordBinding(TOrderedMap<ConstKey, ArgumentEntry> fields)
 
     @Override
     public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
-        for (var other : others) {
-            if (!this.equals(other)) {
-                return EResult.err(
-                        loc,
-                        "cannot merge " + getClass().getSimpleName()
-                                + " with a differently-typed binding across branches");
-            }
-        }
         return EResult.ok(this);
     }
 

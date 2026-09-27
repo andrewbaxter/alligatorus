@@ -15,7 +15,6 @@ import static org.objectweb.asm.Opcodes.RETURN;
 
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.JumpKey;
-import compilerxyz.main.eval.QExprId;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
@@ -87,61 +86,74 @@ public final class JavaBytecodeSequence implements JavaBytecode {
 
     private record Prefix(int consumer, int arg) {}
 
-    TMap<Integer, QExprId> renderInternal(
-            MethodVisitor out, TList<InitialSlot> initialSlots, TMap<BindingId, JavaStaticFieldRef> externalFields) {
-        var locMap = new TMap<Integer, QExprId>();
+    void renderInternal(
+            MethodVisitor out,
+            TList<InitialSlot> initialSlots,
+            TMap<BindingId, JavaStaticFieldRef> externalFields,
+            JavaBytecodeLocTable locTable) {
 
         var flat = new TList<Item>();
-        final int[] locCounter = {0};
         final int[] realCount = {0};
         var destStack = new TList<JumpKey>();
-        final JumpKey[] runDest = {null};
-        final Label[] runStart = {null};
-        final int[] runStartCount = {0};
         class Runs {
-            void boundary(JumpKey newDest) {
-                if (newDest == runDest[0]) return;
+            Opt<JumpKey> dest = Opt.none();
+            Opt<Label> start = Opt.none();
+            int startCount = 0;
+
+            void boundary(Opt<JumpKey> newDest) {
+                if (newDest.optIsNone()
+                        ? dest.optIsNone()
+                        : dest.optIsSome() && newDest.optUnwrap() == dest.optUnwrap()) {
+                    return;
+                }
                 var here = new Label();
                 flat.add(new Item.RangeLabel(here));
-                if (runDest[0] != null && runStartCount[0] != realCount[0]) {
-                    flat.add(new Item.TryRange(runStart[0], here, runDest[0]));
+                if (dest.optIsSome() && startCount != realCount[0]) {
+                    flat.add(new Item.TryRange(start.optUnwrap(), here, dest.optUnwrap()));
                 }
-                runDest[0] = newDest;
-                runStart[0] = here;
-                runStartCount[0] = realCount[0];
+                dest = newDest;
+                start = Opt.some(here);
+                startCount = realCount[0];
             }
         }
         var runs = new Runs();
-        record Frame(Iterator<JavaBytecode> iterator, Opt<JumpKey> guard) {}
+        record Frame(Iterator<JavaBytecode> iterator, Opt<JumpKey> guard, Opt<Integer> line) {}
         var frames = new ArrayDeque<Frame>();
-        frames.addLast(new Frame(TList.<JavaBytecode>from(children).iterator(), Opt.none()));
+        frames.addLast(new Frame(TList.<JavaBytecode>from(children).iterator(), Opt.none(), Opt.none()));
         while (!frames.isEmpty()) {
             var frame = frames.peekLast();
             if (!frame.iterator().hasNext()) {
                 frames.removeLast();
                 if (frame.guard().optIsSome()) {
-                    destStack.remove(destStack.size() - 1);
-                    runs.boundary(destStack.isEmpty() ? null : destStack.get(destStack.size() - 1));
+                    destStack.removeLast();
+                    runs.boundary(destStack.isEmpty() ? Opt.none() : Opt.some(destStack.get(destStack.size() - 1)));
+                }
+                if (frame.line().optIsSome()) {
+                    var outer = frames.descendingIterator();
+                    while (outer.hasNext()) {
+                        var enclosing = outer.next().line();
+                        if (enclosing.optIsSome()) {
+                            flat.add(new Item.Line(new Label(), enclosing.optUnwrap()));
+                            break;
+                        }
+                    }
                 }
                 continue;
             }
             var bc = frame.iterator().next();
             switch (bc) {
                 case CodeDynamic cd -> {
-                    switch (cd.loc()) {
-                        case CodeLoc.Some some -> {
-                            locCounter[0] += 1;
-                            int line = locCounter[0];
-                            locMap.put(line, some.qExprId());
-                            flat.add(new Item.Line(new Label(), line));
-                        }
-                        case CodeLoc.Infallible inf -> {}
-                    }
-                    frames.addLast(new Frame(TList.<JavaBytecode>of(cd.code()).iterator(), Opt.none()));
+                    Opt<Integer> line =
+                            switch (cd.loc()) {
+                                case CodeLoc.Some some -> Opt.some(locTable.line(some.qExprId()));
+                                case CodeLoc.Infallible inf -> Opt.none();
+                            };
+                    if (line.optIsSome()) flat.add(new Item.Line(new Label(), line.optUnwrap()));
+                    frames.addLast(new Frame(TList.<JavaBytecode>of(cd.code()).iterator(), Opt.none(), line));
                 }
                 case JavaBytecodeSequence s ->
                     frames.addLast(
-                            new Frame(TList.<JavaBytecode>from(s.children).iterator(), Opt.none()));
+                            new Frame(TList.<JavaBytecode>from(s.children).iterator(), Opt.none(), Opt.none()));
                 case JavaBytecodeInsn n -> {
                     flat.add(new Item.Insn(n));
                     realCount[0] += 1;
@@ -164,13 +176,13 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                     realCount[0] += 1;
                 }
                 case JavaBytecodeGuarded g -> {
-                    runs.boundary(g.dest);
+                    runs.boundary(Opt.some(g.dest));
                     destStack.add(g.dest);
-                    frames.addLast(new Frame(TList.<JavaBytecode>of(g.inner).iterator(), Opt.some(g.dest)));
+                    frames.addLast(new Frame(TList.<JavaBytecode>of(g.inner).iterator(), Opt.some(g.dest), Opt.none()));
                 }
             }
         }
-        if (!destStack.isEmpty() || runDest[0] != null) {
+        if (!destStack.isEmpty() || runs.dest.optIsSome()) {
             throw new AssertionError("unbalanced exception-dest guard at end of method body");
         }
 
@@ -215,7 +227,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                 var item = flat.get(i);
                 var args = argsOf(item);
                 for (var a : args) {
-                    var info = infos.get(a);
+                    var info = regInfo(infos, a);
                     if (info == null || info.def < 0) {
                         throw new IllegalStateException("register used before its definition\n" + listing(flat, i));
                     }
@@ -226,7 +238,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                 {
                     int next = i;
                     for (int k = n - 1; k >= 0; k--) {
-                        var info = infos.get(args.get(k));
+                        var info = regInfo(infos, args.get(k));
                         if (info.kind == RegKind.STACK) {
                             s++;
                             next = chainStart[info.def];
@@ -236,7 +248,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                 }
                 boolean inPlace = stack.size() >= s;
                 for (int k = n - 1, d = 0; inPlace && k >= 0; k--) {
-                    var info = infos.get(args.get(k));
+                    var info = regInfo(infos, args.get(k));
                     switch (info.kind) {
                         case STACK -> {
                             d++;
@@ -251,15 +263,15 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                     }
                 }
                 if (inPlace) {
-                    for (int k = 0; k < s; k++) stack.remove(stack.size() - 1);
+                    for (int k = 0; k < s; k++) stack.removeLast();
                 } else {
                     for (var a : args) {
-                        var info = infos.get(a);
+                        var info = regInfo(infos, a);
                         if (info.kind != RegKind.STACK) continue;
                         info.kind = RegKind.LOCAL;
                         for (int k = stack.size() - 1; k >= 0; k--) {
                             if (stack.get(k).key == a.key) {
-                                stack.remove(k);
+                                stack.removeAt(k);
                                 break;
                             }
                         }
@@ -420,8 +432,9 @@ public final class JavaBytecodeSequence implements JavaBytecode {
         var tryRanges = new TList<Item.TryRange>();
         boolean reachable = true;
         for (int i = 0; i < flat.size(); i++) {
-            var scheduled = prefixes.getOrNull(i);
-            if (scheduled != null) {
+            var scheduledOpt = prefixes.getOpt(i);
+            if (scheduledOpt.optIsSome()) {
+                var scheduled = scheduledOpt.optUnwrap();
                 scheduled.sort((x, y) -> x.consumer() != y.consumer()
                         ? Integer.compare(y.consumer(), x.consumer())
                         : Integer.compare(x.arg(), y.arg()));
@@ -444,7 +457,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                         case Item.TryRange tr -> throw new AssertionError("try range has no operands");
                     }
                     var a = argsOf(consumer).get(p.arg());
-                    var info = infos.get(a);
+                    var info = regInfo(infos, a);
                     switch (info.kind) {
                         case STACK -> {}
                         case PARAM -> node.instructions.add(new VarInsnNode(a.desc.loadOpcode(), paramSlots.get(a)));
@@ -467,7 +480,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
             switch (item) {
                 case Item.Insn ins -> {
                     var n = ins.n();
-                    var outInfo = n.out.optIsSome() ? infos.get(n.out.optUnwrap()) : null;
+                    var outInfo = n.out.optIsSome() ? regInfo(infos, n.out.optUnwrap()) : null;
                     if (outInfo != null && outInfo.kind == RegKind.DEFER) {
                         break;
                     }
@@ -527,6 +540,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                 case Item.Jump j -> {
                     var key = j.n().jumpKey;
                     var params = landParams.get(key);
+                    if (params == null) throw new IllegalStateException("jump to a land that was never emitted");
                     if (params.size() != j.n().args.size()) {
                         throw new IllegalStateException(
                                 "jump argument count does not match the landing parameters\n" + listing(flat, i));
@@ -562,7 +576,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                 case Item.TryRange tr -> tryRanges.add(tr);
             }
             for (var a : args) {
-                var info = infos.get(a);
+                var info = regInfo(infos, a);
                 if (info.kind == RegKind.LOCAL && info.lastUse == i) {
                     var slot = regSlots.remove(a);
                     if (slot != null) slots.free(slot, a.desc.isWide());
@@ -580,7 +594,6 @@ public final class JavaBytecodeSequence implements JavaBytecode {
         for (var tcb : node.tryCatchBlocks) {
             out.visitTryCatchBlock(tcb.start.getLabel(), tcb.end.getLabel(), tcb.handler.getLabel(), tcb.type);
         }
-        return locMap;
     }
 
     private static TList<JavaBytecodeReg> argsOf(Item item) {
@@ -603,8 +616,11 @@ public final class JavaBytecodeSequence implements JavaBytecode {
             JavaBytecodeInsn n,
             SlotAllocator slots,
             TMap<BindingId, JavaStaticFieldRef> externalFields) {
-        var existing = cache.getOrNull(index);
-        if (existing != null) return existing;
+        var existingOpt = cache.getOpt(index);
+        if (existingOpt.optIsSome()) {
+            var existing = existingOpt.optUnwrap();
+            return existing;
+        }
         int argc = n.args.size();
         var segs = new TList<TList<AbstractInsnNode>>(argc + 1);
         for (int i = 0; i <= argc; i++) segs.add(new TList<>());
@@ -620,11 +636,12 @@ public final class JavaBytecodeSequence implements JavaBytecode {
             }
             case JavaBytecodeInsnBody.VarIndexed v -> segs.get(argc).add(new VarInsnNode(v.opcode(), v.index()));
             case JavaBytecodeInsnBody.External e -> {
-                var field = externalFields.getOrNull(e.entry().key());
-                if (field == null) {
+                var fieldOpt = externalFields.getOpt(e.entry().key());
+                if (fieldOpt.optIsNone()) {
                     throw new IllegalStateException("external is not a static field of the class being rendered: "
                             + e.entry().external().externalHostClass().getSimpleName());
                 }
+                var field = fieldOpt.optUnwrap();
                 segs.get(argc).add(new FieldInsnNode(GETSTATIC, field.owner.value, field.name, field.descriptor.value));
             }
             case JavaBytecodeInsnBody.New nw -> {
@@ -667,8 +684,11 @@ public final class JavaBytecodeSequence implements JavaBytecode {
         }
 
         int named(BindingId key, boolean wide) {
-            var existing = named.getOrNull(key);
-            if (existing != null) return existing;
+            var existingOpt = named.getOpt(key);
+            if (existingOpt.optIsSome()) {
+                var existing = existingOpt.optUnwrap();
+                return existing;
+            }
             int index = next;
             named.put(key, index);
             next += wide ? 2 : 1;
@@ -687,7 +707,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
 
         int alloc(boolean wide) {
             var pool = wide ? freeWide : freeNarrow;
-            if (!pool.isEmpty()) return pool.remove(pool.size() - 1);
+            if (!pool.isEmpty()) return pool.removeLast();
             return permanent(wide);
         }
 
@@ -774,5 +794,11 @@ public final class JavaBytecodeSequence implements JavaBytecode {
 
     private static String regName(JavaBytecodeReg r) {
         return "r" + Integer.toHexString(System.identityHashCode(r)) + ":" + r.desc.value;
+    }
+
+    private static RegInfo regInfo(IdentityHashMap<JavaBytecodeReg, RegInfo> infos, JavaBytecodeReg reg) {
+        var info = infos.get(reg);
+        if (info == null) throw new IllegalStateException("register has no allocation info");
+        return info;
     }
 }

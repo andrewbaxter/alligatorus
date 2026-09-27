@@ -59,10 +59,14 @@ public final class JavaBytecodeUtils {
         return out;
     }
 
-    public static void renderMethod(JavaBytecodeSequence seq, MethodVisitor mv, TList<BindingId> initialIndexes) {
+    public static void renderMethod(
+            JavaBytecodeSequence seq,
+            MethodVisitor mv,
+            TList<BindingId> initialIndexes,
+            JavaBytecodeLocTable locTable) {
         var slots = new TList<JavaBytecodeSequence.InitialSlot>(initialIndexes.size());
         for (var k : initialIndexes) slots.add(new JavaBytecodeSequence.InitialSlot(k));
-        seq.renderInternal(mv, slots, new TMap<>());
+        seq.renderInternal(mv, slots, new TMap<>(), locTable);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
     }
@@ -73,9 +77,10 @@ public final class JavaBytecodeUtils {
             TList<JavaBytecodeSequence.InitialSlot> initialSlots,
             String context,
             JavaMethodDescriptor descriptor,
-            TMap<BindingId, JavaStaticFieldRef> externalFields) {
+            TMap<BindingId, JavaStaticFieldRef> externalFields,
+            JavaBytecodeLocTable locTable) {
         try {
-            seq.renderInternal(mv, initialSlots, externalFields);
+            seq.renderInternal(mv, initialSlots, externalFields, locTable);
             mv.visitMaxs(0, 0);
             mv.visitEnd();
         } catch (RuntimeException e) {
@@ -104,7 +109,7 @@ public final class JavaBytecodeUtils {
         var node = new MethodNode(Opcodes.ASM9, Opcodes.ACC_PUBLIC, "dump", descriptor.value(), null, null);
         var sb = new StringBuilder();
         try {
-            seq.renderInternal(node, initialSlots, externalFields);
+            seq.renderInternal(node, initialSlots, externalFields, new JavaBytecodeLocTable());
         } catch (RuntimeException e) {
             sb.append("render: ").append(e.getMessage()).append('\n');
         }

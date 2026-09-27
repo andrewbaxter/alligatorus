@@ -6,14 +6,25 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.eval.Code;
+import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.EvalContext;
+import compilerxyz.main.eval.EvalOutcome;
+import compilerxyz.main.eval.EvalRoot;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
+import compilerxyz.main.eval.Scope;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
+import compilerxyz.main.eval.dynamic.TargetDynamic;
+import compilerxyz.main.eval.value.empty.ValueEmpty;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
+import compilerxyz.main.eval.value.source_object_new.TypeSourceObjectNewDynamic;
+import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ValueSourceObjectConstArtifactValueSourceObjectCodec;
@@ -22,7 +33,6 @@ import compilerxyz.main.safejson.SafeJsonSerializable;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import java.lang.reflect.Constructor;
 import java.util.function.Function;
 
 public final class ValueSourceObjectConst {
@@ -69,7 +79,7 @@ public final class ValueSourceObjectConst {
             if (underlyingLiftRes.hasErrors()) return underlyingLiftRes.reerr();
             var underlyingLiftRes2 = underlyingLiftRes
                     .requireValue("ValueSourceObjectConst::exporterRootDelegateSelfExport underlying lift aspect")
-                    .aspectLiftLift(xx, loc, Opt.ofNullable(underlyingHost));
+                    .aspectLiftLift(xx, loc, underlyingHost);
             if (underlyingLiftRes2.hasErrors()) return underlyingLiftRes2.reerr();
             Value underlying = underlyingLiftRes2.requireValue(
                     "ValueSourceObjectConst::exporterRootDelegateSelfExport underlying lift");
@@ -122,49 +132,34 @@ public final class ValueSourceObjectConst {
             var underAny = underRes.requireValue("ValueSourceObjectConst::exporterFromArtifactData underlying any");
             var underVal = ArtifactSupport.importedAsValue(underAny);
             var underlying = underVal;
-            var installRes = dt.set.install(xx, loc);
-            if (installRes.hasErrors()) {
-                installRes.drainInto(errors);
-                return EResult.errs(errors);
-            }
-            if (xx.vx.ix.classLoader.optIsNone()) {
-                return EResult.err(
-                        loc, "ValueSourceObjectConst::exporterFromArtifactData: classLoader missing after install");
-            }
-            var loader = xx.vx.ix.classLoader.optUnwrap();
-            var binaryName = dt.binaryName;
-            Class<?> cls;
-            try {
-                cls = Class.forName(binaryName, true, loader);
-            } catch (ClassNotFoundException e) {
-                return EResult.err(
-                        loc, "ValueSourceObjectConst::exporterFromArtifactData: class " + binaryName + " not loadable");
-            }
-            Constructor<?> ctor = null;
-            for (var c : cls.getDeclaredConstructors()) {
-                if (c.getParameterCount() == 1) {
-                    ctor = c;
-                    break;
-                }
-            }
-            if (ctor == null) {
-                return EResult.err(
-                        loc, "ValueSourceObjectConst::finalizer: " + binaryName + " has no single-arg constructor");
-            }
-            Object underlyingHost;
-            if (underlying instanceof ValueObjectConst uvoc) {
-                underlyingHost = uvoc.data();
-            } else {
-                underlyingHost = underlying;
-            }
-            Object instance;
-            try {
-                instance = ctor.newInstance(underlyingHost);
-            } catch (ReflectiveOperationException | IllegalArgumentException e) {
-                return EResult.err(
-                        loc,
-                        "ValueSourceObjectConst::finalizer: cannot instantiate " + binaryName + ": " + e.getMessage());
-            }
+            var evalVx = new EvalContext(xx.vx.ix);
+            var evalTarget = new TargetDynamic();
+            var evalXx = new ExprContext(new Scope(evalVx), evalTarget, evalVx, xx.importState, Opt.none());
+            var binaryName = EvalRoot.newBinaryName(evalXx);
+            var newType = new TypeSourceObjectNewDynamic(dt);
+            var newFunctionRes = GenAspectFunction.get(evalXx, loc, newType);
+            if (newFunctionRes.hasErrors()) return newFunctionRes.reerr();
+            var instanceCvRes = newFunctionRes
+                    .requireValue("ValueSourceObjectConst::finalizer new function aspect")
+                    .aspectFunctionCall(
+                            evalXx,
+                            loc,
+                            new CodeValue(Code.none(loc), EvalOutcome.ofValue(new ValueEmpty(newType))),
+                            new CodeValue(Code.none(loc), EvalOutcome.ofValue(underlying)));
+            if (instanceCvRes.hasErrors()) return instanceCvRes.reerr();
+            var instanceCodeRes = DynUtil.materialize(
+                    evalXx, loc, instanceCvRes.requireValue("ValueSourceObjectConst::finalizer new call"));
+            if (instanceCodeRes.hasErrors()) return instanceCodeRes.reerr();
+            var installRes = EvalRoot.installDefinitionSets(evalXx, loc);
+            if (installRes.hasErrors()) return installRes.reerr();
+            var instanceRes = EvalRoot.run(
+                    evalXx,
+                    loc,
+                    binaryName,
+                    instanceCodeRes.requireValue("ValueSourceObjectConst::finalizer materialize"),
+                    installRes.requireValue("ValueSourceObjectConst::finalizer installDefinitionSets"));
+            if (instanceRes.hasErrors()) return instanceRes.reerr();
+            var instance = instanceRes.requireValue("ValueSourceObjectConst::finalizer run");
             Artifactable out = new ValueObjectConst(new TypeSourceObjectConst(dt), instance);
             if (errors.isEmpty()) return EResult.ok(out);
             return EResult.mixed(out, errors);

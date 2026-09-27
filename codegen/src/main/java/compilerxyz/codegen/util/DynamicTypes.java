@@ -55,7 +55,7 @@ public final class DynamicTypes {
         nullary(nullary, "compilerxyz.main.eval.value.uint", "TypeUintDynamicBox", TypeName.INT.box());
         nullary(nullary, "compilerxyz.main.eval.value.ulong", "TypeUlongDynamicBox", TypeName.LONG.box());
         nullary(nullary, "compilerxyz.main.eval.value.byte_", "TypeByteDynamicBox", TypeName.BYTE.box());
-        nullary(nullary, "compilerxyz.main.eval.value.null_", "TypeNullDynamic", ClassName.OBJECT);
+        nullary(nullary, "compilerxyz.main.eval.value.jvm_object", "TypeJvmObjectDynamic", ClassName.OBJECT);
         nullary(
                 nullary,
                 "compilerxyz.main.eval.value.code",
@@ -127,8 +127,8 @@ public final class DynamicTypes {
         if (NULLARY.containsKey(descriptor)) {
             return CodeBlock.of("new $T()", descriptor);
         }
-        var scanned = scannedLeaves.getOrNull(descriptor);
-        if (scanned != null) return scanned;
+        var scanned = scannedLeaves.getOpt(descriptor);
+        if (scanned.optIsSome()) return scanned.optUnwrap();
         if (descriptor.packageName().equals("compilerxyz.main.gen")) {
             return CodeBlock.of("$T.dynamicType()", descriptor);
         }
@@ -167,10 +167,10 @@ public final class DynamicTypes {
     }
 
     private static CompositeEntry compositeEntry(ClassName wrapper) {
-        var spec = COMPOSITES.getOrNull(wrapper);
-        if (spec == null) {
+        var spec = COMPOSITES.getOpt(wrapper);
+        if (spec.optIsNone()) {
             throw new IllegalArgumentException("DynamicTypes has no composite entry for " + wrapper.canonicalName());
         }
-        return spec;
+        return spec.optUnwrap();
     }
 }

@@ -24,7 +24,7 @@ public final class T0060ScopeTest {
                         mb.seqOf(mb.bind("x", mb.str("apple")), mb.call(mb.log(), mb.scopeUse("x"))),
                         mb.call(mb.log(), mb.scopeUse("x")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Ok<?, ?> ok2 -> true;
@@ -46,7 +46,7 @@ public final class T0060ScopeTest {
                 new SourceModule.V1(
                         mb.seqOf(mb.seqOf(mb.bind("x", mb.str("apple"))), mb.call(mb.log(), mb.scopeUse("x")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Ok<?, ?> ok -> false;

@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.source_interface;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
@@ -11,8 +10,8 @@ import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
@@ -26,7 +25,6 @@ import compilerxyz.main.gen.GenBuiltinInterfaces;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetInterfaceMethodCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.MustCast;
@@ -102,10 +100,6 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
         return EResult.ok(ExporterRoot.SOURCE_INTERFACE_METHOD);
     }
 
-    private static Artifact nullArtifact() {
-        return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root()));
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
@@ -118,33 +112,25 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
                 return EResult.ok(
                         new Artifact.Body(makeBody.apply(ArtifactDataDefSetInterfaceMethodCodec.toValue(body))));
             }
-            var errors = new TList<ExprErr>();
-            var artifact =
-                    ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, method.artifactIdCell, () -> {
-                        var ifaceArtRes = Artifactable.exportArtifact(xx, loc, new TypeSourceInterfaceDynamic(iface));
-                        ifaceArtRes.drainInto(errors);
-                        var ifaceArt = ifaceArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                        var argArtRes = Artifactable.exportArtifact(xx, loc, method.argType);
-                        argArtRes.drainInto(errors);
-                        var argArt = argArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                        Artifact retArt;
-                        if (method.retType.optIsSome()) {
-                            var retArtRes = Artifactable.exportArtifact(xx, loc, method.retType.optUnwrap());
-                            retArtRes.drainInto(errors);
-                            retArt = retArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                        } else {
-                            retArt = nullArtifact();
-                        }
-                        var dataFieldNames = new TList<String>();
-                        for (var n : method.dataFieldNames) {
-                            dataFieldNames.add(n);
-                        }
-                        var body = new ArtifactDataDefSetInterfaceMethod.User(
-                                ifaceArt, method.name, argArt, retArt, dataFieldNames);
-                        return makeBody.apply(ArtifactDataDefSetInterfaceMethodCodec.toValue(body));
-                    });
-            if (errors.isEmpty()) return EResult.ok(artifact);
-            return EResult.mixed(artifact, errors);
+            return ArtifactSupport.implExportIndependentArtifact(xx, method.artifactIdCell, () -> {
+                var erb = new Erb(loc);
+                var ifaceArt = erb.mustErMaybeUnreachable(
+                        Artifactable.exportArtifact(xx, loc, new TypeSourceInterfaceDynamic(iface)));
+                var argArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, method.argType));
+                Opt<Artifact> retArt = Opt.none();
+                if (method.retType.optIsSome()) {
+                    retArt = erb.mustErMaybeUnreachable(
+                            Artifactable.exportArtifact(xx, loc, method.retType.optUnwrap()));
+                }
+                if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+                var dataFieldNames = new TList<String>();
+                for (var n : method.dataFieldNames) {
+                    dataFieldNames.add(n);
+                }
+                var body = new ArtifactDataDefSetInterfaceMethod.User(
+                        ifaceArt.optUnwrap(), method.name, argArt.optUnwrap(), retArt, dataFieldNames);
+                return EResult.ok(makeBody.apply(ArtifactDataDefSetInterfaceMethodCodec.toValue(body)));
+            });
         }
 
         @Override
@@ -189,7 +175,8 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
                                 var deps = new TList<Artifact>();
                                 deps.add(user.iface());
                                 deps.add(user.argType());
-                                deps.add(user.retType());
+                                if (user.retType().optIsSome())
+                                    deps.add(user.retType().optUnwrap());
                                 ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                                     var ifaceAny =
                                             ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, user.iface());
@@ -199,13 +186,17 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
                                     var argRes = ArtifactSupport.independentFinalizeImportTypeArtifact(
                                             xx2, loc2, user.argType());
                                     var argVal = argRes.requireValue("TypeInterfaceMethodDynamic::finalizer arg");
-                                    var retRes = ArtifactSupport.independentFinalizeImportTypeArtifact(
-                                            xx2, loc2, user.retType());
-                                    var retVal = retRes.requireValue("TypeInterfaceMethodDynamic::finalizer ret");
+                                    Opt<Type> retVal = Opt.none();
+                                    if (user.retType().optIsSome()) {
+                                        var retRes = ArtifactSupport.independentFinalizeImportTypeArtifact(
+                                                xx2, loc2, user.retType().optUnwrap());
+                                        retVal = Opt.some(
+                                                retRes.requireValue("TypeInterfaceMethodDynamic::finalizer ret"));
+                                    }
                                     var method = new InterfaceMethodData(
                                             user.name(),
                                             argVal,
-                                            Opt.some(retVal),
+                                            retVal,
                                             IList.from(user.dataFieldNames()),
                                             Opt.none(),
                                             Opt.none());

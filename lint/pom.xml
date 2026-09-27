@@ -68,11 +68,15 @@
                         <id>docguard-gate</id>
                         <phase>compile</phase>
                         <goals>
-                            <goal>java</goal>
+                            <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <mainClass>compilerxyz.lint.docguard.DocGuardMain</mainClass>
+                            <executable>java</executable>
+                            <classpathScope>compile</classpathScope>
                             <arguments>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>compilerxyz.lint.docguard.DocGuardMain</argument>
                                 <argument>scan</argument>
                             </arguments>
                         </configuration>

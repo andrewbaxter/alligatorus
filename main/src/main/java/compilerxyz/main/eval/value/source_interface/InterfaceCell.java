@@ -78,6 +78,13 @@ public final class InterfaceCell {
         };
     }
 
+    public void markImplemented() {
+        switch (state) {
+            case State.Building b -> b.building().implemented = true;
+            case State.Frozen f -> {}
+        }
+    }
+
     public void freeze(InterfaceData data) {
         switch (state) {
             case State.Building b -> state = new State.Frozen(data);

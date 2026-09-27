@@ -26,15 +26,11 @@ public final class T0030DefineInterfaceTest {
                                         mb.bind(
                                                 "iface",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("interface")), mb.tupleOf())),
-                                        mb.bind(
-                                                "iface_meth",
-                                                mb.call(
-                                                        mb.field(mb.scopeUse("iface"), mb.str("func")),
-                                                        mb.str("to_string"))),
                                         mb.call(
-                                                mb.field(mb.scopeUse("iface_meth"), mb.str("impl")),
+                                                mb.field(mb.scopeUse("iface"), mb.str("func")),
                                                 mb.recordOf(
                                                         TList.of(
+                                                                new TestMb.RecordPair("name", mb.str("to_string")),
                                                                 new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair(
                                                                         "ret", mb.optSomeType(mb.typesString()))))),
@@ -201,7 +197,7 @@ public final class T0030DefineInterfaceTest {
                                                                                                                                                 .str(
                                                                                                                                                         "none")),
                                                                                                                         mb
-                                                                                                                                .literalNull()))),
+                                                                                                                                .tupleOf()))),
                                                                                                 new TestMb.RecordPair(
                                                                                                         "keys",
                                                                                                         mb.stage(
@@ -276,7 +272,7 @@ public final class T0030DefineInterfaceTest {
                                         mb.field(mb.field(mb.scopeUse("defs"), mb.str("iface")), mb.str("to_string")),
                                         mb.scopeUse("val"))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> ok;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> ok = o;
@@ -301,15 +297,11 @@ public final class T0030DefineInterfaceTest {
                                         mb.bind(
                                                 "iface",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("interface")), mb.tupleOf())),
-                                        mb.bind(
-                                                "iface_meth",
-                                                mb.call(
-                                                        mb.field(mb.scopeUse("iface"), mb.str("func")),
-                                                        mb.str("to_string"))),
                                         mb.call(
-                                                mb.field(mb.scopeUse("iface_meth"), mb.str("impl")),
+                                                mb.field(mb.scopeUse("iface"), mb.str("func")),
                                                 mb.recordOf(
                                                         TList.of(
+                                                                new TestMb.RecordPair("name", mb.str("to_string")),
                                                                 new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair(
                                                                         "ret", mb.optSomeType(mb.typesString()))))),
@@ -476,7 +468,7 @@ public final class T0030DefineInterfaceTest {
                                                                                                                                                 .str(
                                                                                                                                                         "none")),
                                                                                                                         mb
-                                                                                                                                .literalNull()))),
+                                                                                                                                .tupleOf()))),
                                                                                                 new TestMb.RecordPair(
                                                                                                         "keys",
                                                                                                         mb.stage(
@@ -552,7 +544,7 @@ public final class T0030DefineInterfaceTest {
                                                                                                 mb.typesOption(),
                                                                                                 mb.evalType()),
                                                                                         mb.str("none")),
-                                                                                mb.literalNull())),
+                                                                                mb.tupleOf())),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
                                                                         mb.stage(
@@ -586,7 +578,7 @@ public final class T0030DefineInterfaceTest {
                         mb.bind("make_upper", mb.field(mb.scopeUse("defs"), mb.str("upper"))),
                         mb.call(mb.scopeUse("do_log"), mb.call(mb.scopeUse("make_upper"), mb.str("hello"))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> ok;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> ok = o;
@@ -610,13 +602,11 @@ public final class T0030DefineInterfaceTest {
                                 mb.bind(
                                         "iface",
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("interface")), mb.tupleOf())),
-                                mb.bind(
-                                        "iface_meth",
-                                        mb.call(mb.field(mb.scopeUse("iface"), mb.str("func")), mb.str("to_string"))),
                                 mb.call(
-                                        mb.field(mb.scopeUse("iface_meth"), mb.str("impl")),
+                                        mb.field(mb.scopeUse("iface"), mb.str("func")),
                                         mb.recordOf(
                                                 TList.of(
+                                                        new TestMb.RecordPair("name", mb.str("to_string")),
                                                         new TestMb.RecordPair("arg", mb.tupleOf()),
                                                         new TestMb.RecordPair(
                                                                 "ret", mb.optSomeType(mb.typesString()))))),
@@ -630,7 +620,7 @@ public final class T0030DefineInterfaceTest {
                                                         mb.field(
                                                                 mb.call(
                                                                         mb.typesMap(),
-                                                                        mb.tupleOf(mb.typesString(), mb.typesNull())),
+                                                                        mb.tupleOf(mb.typesString(), mb.typesBool())),
                                                                 mb.str("new")),
                                                         mb.recordOf(
                                                                 TList.of(
@@ -646,7 +636,7 @@ public final class T0030DefineInterfaceTest {
                                                                                                 mb.tupleOf())))))))),
                                 mb.field(mb.scopeUse("ndr"), mb.str("new"))))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o ->
                 throw new AssertionError("expected compile error but got: " + res);

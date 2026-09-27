@@ -21,6 +21,7 @@ import compilerxyz.main.eval.value.tuple.TupleElement;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenExprErr;
 import compilerxyz.main.gen.GenQExprId;
+import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -65,7 +66,7 @@ public record AspectFunctionEResultVariantConstructorDynamic(TypeEResultVariantC
         }
         var argTupleType = new Tuple(
                 Opt.none(),
-                TList.of(
+                IList.of(
                         new TupleElement.Dynamic(GenQExprId.dynamicType()),
                         new TupleElement.Dynamic(new TypeStringDynamic())));
         var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, argTupleType, argument));

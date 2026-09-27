@@ -66,9 +66,11 @@ public final class T0016ReturnScopeTest {
                 AssertionError.class,
                 () -> run(libTail(e, e.cat(e.s("lo")), e.cat(e.s("hi"))), tmp),
                 "a dynamic string return plus a valueless fallthrough must fail");
+        var message = err.getMessage();
         assertTrue(
-                err.getMessage()
-                        .contains("return sites yield a value but the end of the block is reachable without one"),
-                err.getMessage());
+                message != null
+                        && message.contains(
+                                "return sites yield a value but the end of the block is reachable without one"),
+                message);
     }
 }

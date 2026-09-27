@@ -43,8 +43,9 @@ public final class CodecsGen {
     public static void walk(String qname, TypeIndex index, TOrderedSet<String> seen) {
         if (!seen.add(qname)) return;
         if (HAND_CODED.contains(qname)) return;
-        var t = index.byQname.get(qname);
-        if (t == null) return;
+        var tOpt = index.byQname.getOpt(qname);
+        if (tOpt.optIsNone()) return;
+        var t = tOpt.optUnwrap();
         if (t.kind == TypeKind.SEALED) {
             for (var perm : t.permittedSubclasses) {
                 walk(perm, index, seen);
@@ -87,13 +88,11 @@ public final class CodecsGen {
         final ParsedTypeKind kind;
         String name;
         final TList<ParsedType> typeArgs;
-        final boolean nullable;
 
-        ParsedType(ParsedTypeKind kind, String name, TList<ParsedType> typeArgs, boolean nullable) {
+        ParsedType(ParsedTypeKind kind, String name, TList<ParsedType> typeArgs) {
             this.kind = kind;
             this.name = name;
             this.typeArgs = typeArgs;
-            this.nullable = nullable;
         }
     }
 
@@ -163,14 +162,17 @@ public final class CodecsGen {
                     }
 
                     for (var sealedQname : cuRegistered) {
-                        var sealedInfo = byQname.get(sealedQname);
-                        if (sealedInfo == null || sealedInfo.kind != TypeKind.SEALED) continue;
+                        var sealedInfoOpt = byQname.getOpt(sealedQname);
+                        if (sealedInfoOpt.optIsNone()) continue;
+                        var sealedInfo = sealedInfoOpt.optUnwrap();
+                        if (sealedInfo.kind != TypeKind.SEALED) continue;
                         if (!sealedInfo.permittedSubclasses.isEmpty()) continue;
                         var sealedSimple = sealedQname.substring(sealedQname.lastIndexOf('.') + 1);
                         for (var otherQname : cuRegistered) {
                             if (otherQname.equals(sealedQname)) continue;
-                            var other = byQname.get(otherQname);
-                            if (other == null) continue;
+                            var otherOpt = byQname.getOpt(otherQname);
+                            if (otherOpt.optIsNone()) continue;
+                            var other = otherOpt.optUnwrap();
                             if (other.implementedSimpleNames.contains(sealedSimple)) {
                                 sealedInfo.permittedSubclasses.add(otherQname);
                             }
@@ -196,11 +198,7 @@ public final class CodecsGen {
             if (td instanceof RecordDeclaration rd) {
                 info.kind = TypeKind.RECORD;
                 for (var param : rd.getParameters()) {
-                    var nullable = param.getAnnotations().stream()
-                                    .anyMatch(a -> a.getNameAsString().equals("Nullable"))
-                            || param.getType().getAnnotations().stream()
-                                    .anyMatch(a -> a.getNameAsString().equals("Nullable"));
-                    var pt = parseType(param.getType(), nullable);
+                    var pt = parseType(param.getType());
                     info.components.add(new Component(param.getNameAsString(), pt));
                 }
                 for (var iface : rd.getImplementedTypes()) {
@@ -302,13 +300,15 @@ public final class CodecsGen {
             var head = firstDot < 0 ? name : name.substring(0, firstDot);
             var tail = firstDot < 0 ? "" : name.substring(firstDot);
 
-            var fromImport = importMap.get(head);
-            if (fromImport != null) {
+            var fromImportOpt = importMap.getOpt(head);
+            if (fromImportOpt.optIsSome()) {
+                var fromImport = fromImportOpt.optUnwrap();
                 return fromImport + tail;
             }
 
-            var samePackage = byPackage.get(pkg);
-            if (samePackage != null) {
+            var samePackageOpt = byPackage.getOpt(pkg);
+            if (samePackageOpt.optIsSome()) {
+                var samePackage = samePackageOpt.optUnwrap();
                 for (var qn : samePackage) {
                     var lastDot = qn.lastIndexOf('.');
                     var simple = lastDot < 0 ? qn : qn.substring(lastDot + 1);
@@ -331,16 +331,16 @@ public final class CodecsGen {
             return name + tail;
         }
 
-        ParsedType parseType(Type t, boolean nullable) {
+        ParsedType parseType(Type t) {
             if (t.isPrimitiveType()) {
                 return new ParsedType(
-                        ParsedTypeKind.PRIMITIVE, t.asPrimitiveType().asString(), TList.of(), false);
+                        ParsedTypeKind.PRIMITIVE, t.asPrimitiveType().asString(), TList.of());
             }
             if (t.isArrayType()) {
                 var component = t.asArrayType().getComponentType();
                 if (component.isPrimitiveType()
                         && component.asPrimitiveType().asString().equals("byte")) {
-                    return new ParsedType(ParsedTypeKind.BYTE_ARRAY, "byte[]", TList.of(), nullable);
+                    return new ParsedType(ParsedTypeKind.BYTE_ARRAY, "byte[]", TList.of());
                 }
                 throw new IllegalStateException("Unsupported array type: " + t);
             }
@@ -355,10 +355,10 @@ public final class CodecsGen {
                 var taOpt = cit.getTypeArguments();
                 if (taOpt.isPresent()) {
                     for (var ta : taOpt.get()) {
-                        typeArgs.add(parseType(ta, false));
+                        typeArgs.add(parseType(ta));
                     }
                 }
-                return new ParsedType(ParsedTypeKind.NAMED, name, typeArgs, nullable);
+                return new ParsedType(ParsedTypeKind.NAMED, name, typeArgs);
             }
             throw new IllegalStateException("Unsupported type: " + t);
         }
@@ -369,8 +369,9 @@ public final class CodecsGen {
 
                 return Opt.some(name);
             }
-            var ctx = byQname.get(contextQname);
-            if (ctx == null) return Opt.none();
+            var ctxOpt = byQname.getOpt(contextQname);
+            if (ctxOpt.optIsNone()) return Opt.none();
+            var ctx = ctxOpt.optUnwrap();
             String pkg = ctx.packageName;
             Opt<String> sameCuOrPackageResolve;
             _sameCuOrPackageResolve:
@@ -388,8 +389,9 @@ public final class CodecsGen {
                     current = current.substring(0, current.lastIndexOf('.'));
                 }
 
-                var samePackage = byPackage.get(pkg);
-                if (samePackage != null) {
+                var samePackageOpt = byPackage.getOpt(pkg);
+                if (samePackageOpt.optIsSome()) {
+                    var samePackage = samePackageOpt.optUnwrap();
                     for (var qn : samePackage) {
                         var last = qn.lastIndexOf('.');
                         var simple = last < 0 ? qn : qn.substring(last + 1);
@@ -422,9 +424,8 @@ public final class CodecsGen {
                     break _sameCuOrPackageResolve;
                 }
             }
-            return ctx.imports.containsKey(headOf(name))
-                    ? Opt.some(ctx.imports.get(headOf(name)) + tailOf(name))
-                    : sameCuOrPackageResolve;
+            var imported = ctx.imports.getOpt(headOf(name));
+            return imported.optIsSome() ? Opt.some(imported.optUnwrap() + tailOf(name)) : sameCuOrPackageResolve;
         }
 
         private static String headOf(String n) {

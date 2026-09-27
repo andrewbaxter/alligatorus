@@ -1,5 +1,6 @@
 package compilerxyz.main.langhelp.cache;
 
+import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactJson;
@@ -61,8 +62,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 15;
-    private static final QExprId DUMMY_LOC = new QExprId(new SourceId(0), 0);
+    private static final int SCHEMA_VERSION = 19;
 
     private final Connection conn;
     private final Object dbLock = new Object();
@@ -78,7 +78,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
 
     private static final class CompileSlot {
         final ReentrantLock lock = new ReentrantLock();
-        CompileRes value;
+        Opt<CompileRes> value = Opt.none();
     }
 
     public CacheReal() {
@@ -402,8 +402,11 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
 
     @Override
     public synchronized Result<ArtifactBody, String> artifactsGet(ArtifactIdSource id) {
-        var mem = artifactMem.getOrNull(id);
-        if (mem != null) return Result.ok(mem);
+        var memOpt = artifactMem.getOpt(id);
+        if (memOpt.optIsSome()) {
+            var mem = memOpt.optUnwrap();
+            return Result.ok(mem);
+        }
         synchronized (dbLock) {
             try (var ps = conn.prepareStatement(
                     "SELECT body FROM artifacts WHERE import_state = ? AND source = ? AND idx = ?")) {
@@ -412,8 +415,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 ps.setLong(3, id.index());
                 try (var rs = ps.executeQuery()) {
                     if (!rs.next()) return Result.err("Unknown artifact: " + id);
-                    var body = ArtifactJson.decodeArtifactBody(DUMMY_LOC, parseJson(rs.getString(1)))
-                            .requireValue("CacheReal.decodeArtifactBody");
+                    var body = ArtifactJson.decodeArtifactBody(parseJson(rs.getString(1)));
                     artifactMem.put(id, body);
                     return Result.ok(body);
                 }
@@ -424,9 +426,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
     }
 
     @Override
-    public ArtifactIdSource artifactsReserveId() {
-        var index = nextSeq("artifact_seq");
-        return new ArtifactIdSource(new CompileId(new ImportStateId(0), new SourceId(0)), index);
+    public ArtifactIdSource artifactsReserveId(CompileId compileId) {
+        return new ArtifactIdSource(compileId, nextSeq("artifact_seq"));
     }
 
     @Override
@@ -469,8 +470,12 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                             var arr = (JsonValueArray) parseJson(s);
                             for (var e : arr.elements()) {
                                 var o = (JsonValueObject) e;
-                                var s0 = (long) ((JsonValueNumber) o.entries().get("s")).value();
-                                var i0 = (long) ((JsonValueNumber) o.entries().get("i")).value();
+                                var s0 = (long) ((JsonValueNumber)
+                                                o.entries().getOpt("s").optUnwrap())
+                                        .value();
+                                var i0 = (long) ((JsonValueNumber)
+                                                o.entries().getOpt("i").optUnwrap())
+                                        .value();
                                 deps.add(new CompileId(new ImportStateId(s0), new SourceId(i0)));
                             }
                         }
@@ -533,19 +538,15 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         CompileSlot slot;
         compileMapLock.lock();
         try {
-            slot = compileMem.getOrNull(id);
-            if (slot == null) {
-                slot = new CompileSlot();
-                compileMem.put(id, slot);
-            }
+            slot = compileMem.computeIfAbsentT(id, k -> new CompileSlot());
         } finally {
             compileMapLock.unlock();
         }
         slot.lock.lock();
         try {
-            if (slot.value != null) return slot.value;
+            if (slot.value.optIsSome()) return slot.value.optUnwrap();
             evictIfStale(id);
-            CompileRes fromDb;
+            Opt<CompileRes> fromDb;
             {
                 synchronized (dbLock) {
                     try (var ps = conn.prepareStatement(
@@ -554,41 +555,51 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                         ps.setLong(2, id.source().value());
                         try (var rs = ps.executeQuery()) {
                             if (!rs.next()) {
-                                fromDb = null;
+                                fromDb = Opt.none();
                             } else {
                                 var obj = (JsonValueObject) parseJson(rs.getString(1));
-                                var logsArr = (JsonValueArray) obj.entries().get("logs");
+                                var logsArr = (JsonValueArray)
+                                        obj.entries().getOpt("logs").optUnwrap();
                                 var logs = new TList<LogEntry>();
                                 for (var e : logsArr.elements()) {
                                     var lo = (JsonValueObject) e;
-                                    var t = (long)
-                                            ((JsonValueNumber) lo.entries().get("t")).value();
-                                    var m = ((JsonValueString) lo.entries().get("m")).value();
+                                    var t = (long) ((JsonValueNumber)
+                                                    lo.entries().getOpt("t").optUnwrap())
+                                            .value();
+                                    var m = ((JsonValueString)
+                                                    lo.entries().getOpt("m").optUnwrap())
+                                            .value();
                                     logs.add(new LogEntry(t, m));
                                 }
-                                var errorsJson = obj.entries().getOrNull("errors");
-                                if (errorsJson != null) {
+                                var errorsJsonOpt = obj.entries().getOpt("errors");
+                                if (errorsJsonOpt.optIsSome()) {
+                                    var errorsJson = errorsJsonOpt.optUnwrap();
                                     var out = new TList<ExprErr>();
                                     var arr = (JsonValueArray) errorsJson;
                                     for (var e : arr.elements()) {
                                         var eo = (JsonValueObject) e;
-                                        var source = (long)
-                                                ((JsonValueNumber) eo.entries().get("s")).value();
-                                        var expr = (long)
-                                                ((JsonValueNumber) eo.entries().get("e")).value();
+                                        var source = (long) ((JsonValueNumber)
+                                                        eo.entries().getOpt("s").optUnwrap())
+                                                .value();
+                                        var expr = (long) ((JsonValueNumber)
+                                                        eo.entries().getOpt("e").optUnwrap())
+                                                .value();
                                         var msgs = new TList<ExprSubErr>();
-                                        for (var mv :
-                                                ((JsonValueArray) eo.entries().get("m")).elements()) {
+                                        for (var mv : ((JsonValueArray)
+                                                        eo.entries().getOpt("m").optUnwrap())
+                                                .elements()) {
                                             msgs.add(new ExprSubErr.Opaque(((JsonValueString) mv).value()));
                                         }
                                         out.add(new ExprErr(new QExprId(new SourceId(source), expr), msgs));
                                     }
-                                    fromDb = new CompileRes(logs, new CompileResResult.Err(out));
+                                    fromDb = Opt.some(new CompileRes(logs, new CompileResResult.Err(out)));
                                 } else {
-                                    var artRes = ArtifactJson.decodeArtifact(
-                                            DUMMY_LOC, obj.entries().get("artifact"));
-                                    var art = artRes.requireValue("CacheReal.decodeCompileRes artifact");
-                                    fromDb = new CompileRes(logs, new CompileResResult.Ok(art));
+                                    var artifactJson = obj.entries().getOpt("artifact");
+                                    Opt<Artifact> art = Opt.none();
+                                    if (artifactJson.optIsSome()) {
+                                        art = Opt.some(ArtifactJson.decodeArtifact(artifactJson.optUnwrap()));
+                                    }
+                                    fromDb = Opt.some(new CompileRes(logs, new CompileResResult.Ok(art)));
                                 }
                             }
                         }
@@ -597,12 +608,12 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                     }
                 }
             }
-            if (fromDb != null) {
+            if (fromDb.optIsSome()) {
                 slot.value = fromDb;
-                return fromDb;
+                return fromDb.optUnwrap();
             }
             var product = compute.get();
-            slot.value = product.res();
+            slot.value = Opt.some(product.res());
             {
                 TMap<ArtifactIdSource, ArtifactBody> artifacts;
                 synchronized (this) {
@@ -644,8 +655,14 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                     }
                                     obj.put("logs", new JsonValueArray(logsArr));
                                     switch (res.result()) {
-                                        case CompileResResult.Ok ok ->
-                                            obj.put("artifact", ArtifactJson.encodeArtifact(ok.artifact()));
+                                        case CompileResResult.Ok ok -> {
+                                            if (ok.artifact().optIsSome()) {
+                                                obj.put(
+                                                        "artifact",
+                                                        ArtifactJson.encodeArtifact(
+                                                                ok.artifact().optUnwrap()));
+                                            }
+                                        }
                                         case CompileResResult.Err err -> {
                                             var errArr = new TList<JsonValue>();
                                             for (var err2 : err.errors()) {
@@ -712,7 +729,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                     }
                 }
             }
-            return slot.value;
+            return slot.value.optUnwrap();
         } finally {
             slot.lock.unlock();
         }
@@ -724,7 +741,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         try {
             var out = new TList<CompileRes>();
             for (var slot : compileMem.values()) {
-                if (slot.value != null) out.add(slot.value);
+                if (slot.value.optIsSome()) out.add(slot.value.optUnwrap());
             }
             return out;
         } finally {

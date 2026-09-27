@@ -23,11 +23,14 @@ import spoon.reflect.declaration.CtInterface;
 import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtParameter;
 import spoon.reflect.declaration.CtRecord;
+import spoon.reflect.declaration.CtSealable;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.CtTypeParameter;
 import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.path.CtRole;
+import spoon.reflect.reference.CtTypeParameterReference;
 import spoon.reflect.reference.CtTypeReference;
+import spoon.reflect.reference.CtWildcardReference;
 import spoon.reflect.visitor.filter.TypeFilter;
 
 public final class ImmutabilityChecks {
@@ -36,6 +39,7 @@ public final class ImmutabilityChecks {
             "compilerxyz.prelude.util.TMap",
             "compilerxyz.prelude.util.TOrderedMap",
             "compilerxyz.prelude.util.IMap",
+            "compilerxyz.prelude.util.IOrderedMap",
             "java.util.Map",
             "java.util.HashMap",
             "java.util.LinkedHashMap",
@@ -132,6 +136,7 @@ public final class ImmutabilityChecks {
             List<CtTypeReference<?>> args = tr.getActualTypeArguments();
             if (args.size() < 2) continue;
             if (args.get(0).isImplicit()) continue;
+            if (args.get(0) instanceof CtWildcardReference) continue;
             if (tr.getRoleInParent() == CtRole.INTERFACE || tr.getRoleInParent() == CtRole.SUPER_TYPE) {
                 continue;
             }
@@ -202,26 +207,18 @@ public final class ImmutabilityChecks {
             if (tt == null) continue;
             CtType<?> tdecl = tt.getTypeDeclaration();
             if (tdecl == null) continue;
-            if (tdecl instanceof CtRecord || tdecl.isEnum() || tdecl instanceof CtInterface) continue;
-            boolean overridden = false;
-            CtType<?> equalsHolder = tdecl;
-            while (!overridden) {
-                for (CtMethod<?> m : equalsHolder.getMethods()) {
-                    if (m.getSimpleName().equals("equals") && m.getParameters().size() == 1) {
-                        overridden = true;
-                    }
+            if (tdecl.isEnum()) continue;
+            if (tdecl instanceof CtRecord || tdecl instanceof CtInterface) {
+                var eq = equalityDefined(tt, new HashMap<>(), new HashSet<>());
+                if (!eq.defined()) {
+                    report(
+                            "NoReflectiveEquals",
+                            inv,
+                            "'" + tdecl.getQualifiedName() + "' equality falls back to identity: " + eq.reason());
                 }
-                if (overridden) break;
-                CtTypeReference<?> sc = equalsHolder.getSuperclass();
-                if (sc == null || "java.lang.Object".equals(sc.getQualifiedName())) break;
-                CtType<?> next = sc.getTypeDeclaration();
-                if (next == null) {
-                    overridden = true;
-                    break;
-                }
-                equalsHolder = next;
+                continue;
             }
-            if (!overridden) {
+            if (!declaresEquals(tdecl)) {
                 report(
                         "NoReflectiveEquals",
                         inv,
@@ -286,6 +283,129 @@ public final class ImmutabilityChecks {
             }
         }
         return new ImmutabilityCheck.Res(true, "");
+    }
+
+    private record EqualityRes(boolean defined, String reason) {}
+
+    private static final EqualityRes EQUALITY_DEFINED = new EqualityRes(true, "");
+
+    private final Set<String> equalityLeaves = Set.of(
+            "java.lang.String",
+            "java.lang.Boolean",
+            "java.lang.Byte",
+            "java.lang.Short",
+            "java.lang.Integer",
+            "java.lang.Long",
+            "java.lang.Character",
+            "java.lang.Float",
+            "java.lang.Double",
+            "java.math.BigInteger",
+            "java.math.BigDecimal",
+            "java.net.URI",
+            "java.nio.file.Path");
+
+    private final Set<String> equalityContainers =
+            Set.of("java.util.List", "java.util.Set", "java.util.Map", "java.util.Collection");
+
+    private EqualityRes equalityDefined(
+            CtTypeReference<?> ref, Map<String, CtTypeReference<?>> subst, Set<String> inProgress) {
+        if (ref instanceof CtTypeParameterReference tp) {
+            var bound = subst.get(tp.getSimpleName());
+            if (bound == null) return EQUALITY_DEFINED;
+            return equalityDefined(bound, new HashMap<>(), inProgress);
+        }
+        if (ref.isPrimitive()) return EQUALITY_DEFINED;
+        String qn = ref.getQualifiedName();
+        if (equalityLeaves.contains(qn)) return EQUALITY_DEFINED;
+        List<CtTypeReference<?>> args = new ArrayList<>();
+        for (var arg : ref.getActualTypeArguments()) {
+            if (arg instanceof CtTypeParameterReference atp && subst.containsKey(atp.getSimpleName())) {
+                args.add(subst.get(atp.getSimpleName()));
+            } else {
+                args.add(arg);
+            }
+        }
+        if (equalityContainers.contains(qn)) {
+            for (var arg : args) {
+                var r = equalityDefined(arg, new HashMap<>(), inProgress);
+                if (!r.defined()) return new EqualityRes(false, "element of '" + qn + "': " + r.reason());
+            }
+            return EQUALITY_DEFINED;
+        }
+        CtType<?> decl = ref.getTypeDeclaration();
+        if (decl == null) return new EqualityRes(false, "external type '" + qn + "' has unknown equality");
+        Map<String, CtTypeReference<?>> declSubst = new HashMap<>();
+        List<CtTypeParameter> params = decl.getFormalCtTypeParameters();
+        for (int i = 0; i < params.size() && i < args.size(); i++) {
+            declSubst.put(params.get(i).getSimpleName(), args.get(i));
+        }
+        return equalityOfDecl(decl, declSubst, inProgress);
+    }
+
+    private EqualityRes equalityOfDecl(
+            CtType<?> decl, Map<String, CtTypeReference<?>> declSubst, Set<String> inProgress) {
+        String qn = decl.getQualifiedName();
+        if (decl.isEnum() || isIdentityToken(decl.getReference())) return EQUALITY_DEFINED;
+        if (!inProgress.add(qn + declSubst)) return EQUALITY_DEFINED;
+        if (decl instanceof CtRecord rec) {
+            for (var c : rec.getRecordComponents()) {
+                var r = equalityDefined(c.getType(), declSubst, inProgress);
+                if (!r.defined()) {
+                    return new EqualityRes(false, "component '" + qn + "." + c.getSimpleName() + "': " + r.reason());
+                }
+            }
+            return EQUALITY_DEFINED;
+        }
+        if (decl instanceof CtSealable sealable && !sealable.getPermittedTypes().isEmpty()) {
+            List<CtTypeParameter> parentParams = decl.getFormalCtTypeParameters();
+            for (var permittedRef : sealable.getPermittedTypes()) {
+                CtType<?> permDecl = permittedRef.getTypeDeclaration();
+                if (permDecl == null) {
+                    return new EqualityRes(
+                            false, "unresolvable permitted type '" + permittedRef.getQualifiedName() + "'");
+                }
+                if (permDecl.getQualifiedName().equals(qn)) continue;
+                List<CtTypeReference<?>> supers = new ArrayList<>(permDecl.getSuperInterfaces());
+                if (permDecl.getSuperclass() != null) supers.add(permDecl.getSuperclass());
+                Map<String, CtTypeReference<?>> permSubst = new HashMap<>();
+                for (CtTypeReference<?> sup : supers) {
+                    if (!qn.equals(sup.getQualifiedName())) continue;
+                    List<CtTypeReference<?>> superArgs = sup.getActualTypeArguments();
+                    for (int i = 0; i < superArgs.size() && i < parentParams.size(); i++) {
+                        if (superArgs.get(i) instanceof CtTypeParameterReference tpr
+                                && declSubst.containsKey(parentParams.get(i).getSimpleName())) {
+                            permSubst.put(
+                                    tpr.getSimpleName(),
+                                    declSubst.get(parentParams.get(i).getSimpleName()));
+                        }
+                    }
+                }
+                var r = equalityOfDecl(permDecl, permSubst, inProgress);
+                if (!r.defined()) return new EqualityRes(false, "permitted type of '" + qn + "': " + r.reason());
+            }
+            return EQUALITY_DEFINED;
+        }
+        if (decl instanceof CtInterface) return new EqualityRes(false, "'" + qn + "' is an open interface");
+        if (!declaresEquals(decl)) return new EqualityRes(false, "'" + qn + "' defines no equals");
+        for (var arg : declSubst.values()) {
+            var r = equalityDefined(arg, new HashMap<>(), inProgress);
+            if (!r.defined()) return new EqualityRes(false, "type argument of '" + qn + "': " + r.reason());
+        }
+        return EQUALITY_DEFINED;
+    }
+
+    private static boolean declaresEquals(CtType<?> decl) {
+        CtType<?> holder = decl;
+        while (true) {
+            for (CtMethod<?> m : holder.getMethods()) {
+                if (m.getSimpleName().equals("equals") && m.getParameters().size() == 1) return true;
+            }
+            CtTypeReference<?> sc = holder.getSuperclass();
+            if (sc == null || "java.lang.Object".equals(sc.getQualifiedName())) return false;
+            CtType<?> next = sc.getTypeDeclaration();
+            if (next == null) return true;
+            holder = next;
+        }
     }
 
     private static boolean isNullLiteral(CtExpression<?> e) {

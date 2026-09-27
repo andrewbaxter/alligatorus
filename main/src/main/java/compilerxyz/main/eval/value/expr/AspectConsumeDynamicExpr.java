@@ -52,7 +52,7 @@ public record AspectConsumeDynamicExpr(TypeExpr type) implements AspectConsumeDy
         xx.vx.externals.add(entry);
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
-        if (carryRes.hasErrors()) return carryRes.reerr();
+        if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
         var loaded = b.external(entry);
         return EResult.ok(DynUtil.regToValue(b.code(), loaded, type));
     }

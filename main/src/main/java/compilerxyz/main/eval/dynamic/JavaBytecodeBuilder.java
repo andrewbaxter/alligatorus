@@ -15,8 +15,8 @@ import static org.objectweb.asm.Opcodes.PUTFIELD;
 
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
-import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalContext;
+import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.JumpKey;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.prelude.util.Opt;
@@ -49,11 +49,11 @@ public final class JavaBytecodeBuilder {
         return this;
     }
 
-    public EResult<Void> addCode(QExprId at, Code code) {
+    public Opt<TList<ExprErr>> addCode(QExprId at, Code code) {
         var cast = CodeDynamic.castOpt(at, code);
-        if (cast.hasErrors()) return cast.reerr();
+        if (cast.hasErrors()) return cast.errorsOpt();
         add(cast.requireValue("JavaBytecodeBuilder.addCode"));
-        return EResult.ok(null);
+        return Opt.none();
     }
 
     public JavaBytecodeReg reg(CodeDynamicReg value) {

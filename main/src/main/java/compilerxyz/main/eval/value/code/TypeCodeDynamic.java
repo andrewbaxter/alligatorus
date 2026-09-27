@@ -6,6 +6,7 @@ import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
@@ -81,8 +82,8 @@ public record TypeCodeDynamic() implements Aspect, Type, MatchDynamic {
     }
 
     @Override
-    public EResult<Void> matchDynamicPrepare(ExprContext xx) {
-        return EResult.ok(null);
+    public Opt<TList<ExprErr>> matchDynamicPrepare(ExprContext xx) {
+        return Opt.none();
     }
 
     @Override

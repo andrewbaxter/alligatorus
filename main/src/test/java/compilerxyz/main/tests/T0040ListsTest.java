@@ -28,7 +28,7 @@ public final class T0040ListsTest {
                         mb.call(mb.field(mb.scopeUse("my_list"), mb.str("push")), mb.str("b")),
                         mb.call(mb.log(), mb.call(mb.field(mb.scopeUse("my_list"), mb.str("join")), mb.str("_"))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> ok -> resOk = ok;

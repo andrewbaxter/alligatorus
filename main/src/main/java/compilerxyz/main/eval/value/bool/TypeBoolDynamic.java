@@ -118,7 +118,7 @@ public record TypeBoolDynamic() implements Aspect, Type {
                     boolConstOpt.optUnwrap().aspectBoolConstGet(cv.value().optUnwrap());
             var b = new JavaBytecodeBuilder(loc);
             var carryRes = b.addCode(loc, cv.code());
-            if (carryRes.hasErrors()) return carryRes.reerr();
+            if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
             var raw = b.constBool(boolVal);
             return EResult.ok(DynUtil.regToValue(b.code(), raw, this));
         }

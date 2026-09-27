@@ -53,8 +53,8 @@ public final class BuiltinMethodEmit {
             ClassName.get("compilerxyz.main.eval.value.long_", "TypeLongDynamic");
     private static final ClassName TYPE_DOUBLE_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.double_", "TypeDoubleDynamic");
-    private static final ClassName TYPE_NULL_DYNAMIC =
-            ClassName.get("compilerxyz.main.eval.value.null_", "TypeNullDynamic");
+    private static final ClassName TYPE_JVM_OBJECT_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.jvm_object", "TypeJvmObjectDynamic");
 
     private static final IMap<ClassName, ClassName> COMPOSITE_DESCRIPTORS = IMap.ofEntries(
             new Pair<>(ERESULT, TYPE_ERESULT_DYNAMIC),
@@ -71,7 +71,6 @@ public final class BuiltinMethodEmit {
         if (tn.equals(TypeName.BOOLEAN)) return Opt.some(CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC));
         if (tn.equals(TypeName.LONG)) return Opt.some(CodeBlock.of("new $T()", TYPE_LONG_DYNAMIC));
         if (tn.equals(TypeName.DOUBLE)) return Opt.some(CodeBlock.of("new $T()", TYPE_DOUBLE_DYNAMIC));
-        if (tn.equals(TypeName.VOID)) return Opt.some(CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC));
         if (tn.equals(TypeName.INT)) return Opt.some(CodeBlock.of("new $T()", valueType("int_", "TypeIntDynamic")));
         if (tn.equals(TypeName.BYTE)) return Opt.some(CodeBlock.of("new $T()", valueType("byte_", "TypeByteDynamic")));
         if (tn.equals(TypeName.SHORT)) {
@@ -90,10 +89,10 @@ public final class BuiltinMethodEmit {
             if (cn.equals(ClassName.get(Double.class))) {
                 return Opt.some(CodeBlock.of("new $T()", valueType("double_", "TypeDoubleDynamicBox")));
             }
-            if (cn.equals(ClassName.get(Void.class))
+            if (cn.equals(ClassName.OBJECT)
                     || cn.equals(ClassName.get(Number.class))
                     || cn.equals(ClassName.get(java.util.Iterator.class))) {
-                return Opt.some(CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC));
+                return Opt.some(CodeBlock.of("new $T()", TYPE_JVM_OBJECT_DYNAMIC));
             }
             if (cn.equals(ClassName.get(String.class))) {
                 return Opt.some(CodeBlock.of(
@@ -102,21 +101,19 @@ public final class BuiltinMethodEmit {
             if (cn.equals(ClassName.get(Boolean.class))) {
                 return Opt.some(CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC));
             }
-            if (cn.equals(ClassName.get(Object.class))) {
-                return Opt.some(CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC));
-            }
             if (cn.equals(ClassName.get("compilerxyz.main.eval.expr", "StagedExprCell"))) {
                 return Opt.some(
                         CodeBlock.of("new $T()", ClassName.get("compilerxyz.main.eval.value.expr", "TypeExpr")));
             }
-            return Opt.ofNullable(leafDescriptors.get(cn));
+            return leafDescriptors.getOpt(cn);
         }
         if (tn instanceof ParameterizedTypeName pt) {
             if (pt.rawType.equals(ClassName.get(java.util.Iterator.class))) {
-                return Opt.some(CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC));
+                return Opt.some(CodeBlock.of("new $T()", TYPE_JVM_OBJECT_DYNAMIC));
             }
-            var wrapper = COMPOSITE_DESCRIPTORS.getOrNull(pt.rawType);
-            if (wrapper == null) return Opt.ofNullable(leafDescriptors.get(pt.rawType));
+            var wrapperOpt = COMPOSITE_DESCRIPTORS.getOpt(pt.rawType);
+            if (wrapperOpt.optIsNone()) return leafDescriptors.getOpt(pt.rawType);
+            var wrapper = wrapperOpt.optUnwrap();
             var parts = new TList<CodeBlock>();
             for (var arg : pt.typeArguments) {
                 var sub = resolveDescriptor(arg, leafDescriptors);

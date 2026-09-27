@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.source_object_new;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
@@ -11,7 +10,6 @@ import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
@@ -27,7 +25,6 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataSourceObjectNewCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
@@ -73,10 +70,6 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
         return Opt.none();
     }
 
-    private static Artifact nullArtifact() {
-        return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root()));
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
@@ -88,17 +81,13 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
                                 + " TypeTypeSourceObjectNewConst, got " + self.getClass());
             }
             var dt = oc.type;
-            var errors = new TList<ExprErr>();
-            var artifact =
-                    ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, dt.newArtifactIdCell, () -> {
-                        var objectArtRes = Artifactable.exportArtifact(xx, loc, dt);
-                        objectArtRes.drainInto(errors);
-                        var objectArt = objectArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                        var body = new ArtifactDataSourceObjectNew(objectArt);
-                        return makeBody.apply(ArtifactDataSourceObjectNewCodec.toValue(body));
-                    });
-            if (errors.isEmpty()) return EResult.ok(artifact);
-            return EResult.mixed(artifact, errors);
+            return ArtifactSupport.implExportIndependentArtifact(xx, dt.newArtifactIdCell, () -> {
+                var objectArtRes = Artifactable.exportArtifact(xx, loc, dt);
+                if (objectArtRes.hasErrors()) return objectArtRes.reerr();
+                var body = new ArtifactDataSourceObjectNew(
+                        objectArtRes.requireValue("TypeTypeSourceObjectNewConst::export object"));
+                return EResult.ok(makeBody.apply(ArtifactDataSourceObjectNewCodec.toValue(body)));
+            });
         }
 
         @Override

@@ -22,10 +22,6 @@ public final class EcoMb {
         return mb.num(value);
     }
 
-    public SourceExpr nil() {
-        return mb.literalNull();
-    }
-
     public SourceExpr b(boolean value) {
         return mb.bool(value);
     }
@@ -137,7 +133,7 @@ public final class EcoMb {
     }
 
     public SourceExpr optNone(SourceExpr elementType) {
-        return callM(mb.call(mb.typesOption(), elementType), "none", mb.literalNull());
+        return callM(mb.call(mb.typesOption(), elementType), "none", mb.tupleOf());
     }
 
     public SourceExpr retSome(SourceExpr typeExpr) {

@@ -10,15 +10,15 @@ import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.QExprId;
+import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
+import compilerxyz.main.eval.dynamic.JavaClassCompiled;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
@@ -29,7 +29,6 @@ import compilerxyz.main.eval.value.argrecord.ArgumentTupleBinding;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
-import compilerxyz.main.gen.GenAspectNull;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.Value;
@@ -53,7 +52,7 @@ public final class SourceFunctionData {
     public final String jvmMethodName;
 
     public Opt<String> compiledClassName = Opt.none();
-    public Opt<byte[]> compiledBytecode = Opt.none();
+    public Opt<JavaClassCompiled> compiledClass = Opt.none();
 
     public Opt<DefSetFunctionsEmitter.FunctionSpec> functionSpec = Opt.none();
 
@@ -87,22 +86,28 @@ public final class SourceFunctionData {
         }
     }
 
-    public EResult<Void> finish(ExprContext xx, QExprId rootLoc) {
+    public Opt<String> incomplete() {
+        if (functionSpec.optIsSome() || compiledClassName.optIsSome() || implExpr.optIsSome()) {
+            return Opt.none();
+        }
+        return Opt.some("Definition set function '" + name.optUnwrapOr("(unnamed)")
+                + "' has no implementation (impl was not called)");
+    }
+
+    public Opt<TList<ExprErr>> finish(ExprContext xx) {
         if (functionSpec.optIsSome() || compiledClassName.optIsSome()) {
-            return EResult.ok(null);
+            return Opt.none();
         }
         var nameStr = name.optUnwrapOr("(unnamed)");
-        if (implExpr.optIsNone()) {
-            return EResult.err(rootLoc, "Definition set function '" + nameStr + "' is missing an implementation");
+        if (implExpr.optIsNone() || argType.optIsNone()) {
+            throw new AssertionError("Definition set function '" + nameStr + "' finished while incomplete");
         }
         var implExprValue = implExpr.optUnwrap();
         implExpr = Opt.none();
         if (!(implExprValue instanceof Expr implExprAst)) {
             throw new AssertionError("Definition set function '" + nameStr + "' impl is not an Expr: " + implExprValue);
         }
-        if (argType.optIsNone()) {
-            return EResult.err(rootLoc, "Definition set function '" + nameStr + "' is missing an arg type");
-        }
+        var bodyLoc = implExprAst.loc();
         var argT = argType.optUnwrap();
         var retT = retType;
         var funcSet = set;
@@ -111,7 +116,7 @@ public final class SourceFunctionData {
         }
 
         var innerVx = new EvalContext(xx.vx.ix);
-        innerVx.evalRootInternalName = DefSetFunctionsEmitter.functionsInternalName(funcSet.defSetId);
+        innerVx.evalRootInternalName = Opt.some(DefSetFunctionsEmitter.functionsInternalName(funcSet.defSetId));
         var innerTarget = new TargetDynamic();
 
         var bodyScope = new Scope(innerVx);
@@ -128,8 +133,8 @@ public final class SourceFunctionData {
                 argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, et)));
                 var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, et);
                 if (ibMaybe.optIsNone()) {
-                    return EResult.err(
-                            rootLoc, "arg tuple element type " + et.typeDesc() + " missing AspectInitialBindDynamic");
+                    throw new AssertionError("arg tuple element type " + et.typeDesc()
+                            + " missing AspectInitialBindDynamic" + " (checked at impl)");
                 }
                 elemBindings.add(ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
             }
@@ -144,8 +149,8 @@ public final class SourceFunctionData {
                 argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, et)));
                 var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, et);
                 if (ibMaybe.optIsNone()) {
-                    return EResult.err(
-                            rootLoc, "arg record field type " + et.typeDesc() + " missing AspectInitialBindDynamic");
+                    throw new AssertionError("arg record field type " + et.typeDesc()
+                            + " missing AspectInitialBindDynamic" + " (checked at impl)");
                 }
                 fields.put(
                         entry.getKey(),
@@ -157,7 +162,8 @@ public final class SourceFunctionData {
             argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, argT)));
             var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, argT);
             if (ibMaybe.optIsNone()) {
-                return EResult.err(rootLoc, "arg type " + argT.typeDesc() + " missing AspectInitialBindDynamic");
+                throw new AssertionError(
+                        "arg type " + argT.typeDesc() + " missing AspectInitialBindDynamic" + " (checked at impl)");
             }
             bodyScope.pushNamed(
                     new ConstKey.Str("arg"), ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
@@ -166,48 +172,41 @@ public final class SourceFunctionData {
 
         var implResult = ConstEval.constEval(funcXx, implExprAst);
         if (implResult.hasErrors()) {
-            return implResult.reerr();
+            return implResult.errorsOpt();
         }
         var implEv = implResult.requireValue("SourceFunctionData::compile constEval");
         var implCv = implEv.cv();
         var convertedResult = retT.optIsSome()
-                ? Eval.typecheckConvert(funcXx, rootLoc, retT.optUnwrap(), implCv)
+                ? Eval.typecheckConvert(funcXx, bodyLoc, retT.optUnwrap(), implCv)
                 : EResult.ok(implCv);
         if (convertedResult.hasErrors()) {
-            return convertedResult.reerr();
+            return convertedResult.errorsOpt();
         }
         var convertedCv = convertedResult.requireValue("SourceFunctionData::compile typecheckConvert");
         CodeDynamic bodyCode;
         Opt<JavaBytecodeReg> bodyResult;
         if (convertedCv.value().optIsSome()) {
-            var dynResult = DynUtil.materialize(funcXx, rootLoc, convertedCv);
+            var dynResult = DynUtil.materialize(funcXx, bodyLoc, convertedCv);
             if (dynResult.hasErrors()) {
-                return dynResult.reerr();
+                return dynResult.errorsOpt();
             }
             var dyn = dynResult.requireValue("SourceFunctionData::compile materialize");
             bodyCode = dyn.code();
             bodyResult = Opt.some(dyn.reg());
         } else {
             var bodyCodeRes = CodeDynamic.castRequired(
-                    rootLoc,
+                    bodyLoc,
                     convertedCv.code(),
                     "Definition set function '" + nameStr + "' body produced no compile-time value");
-            if (bodyCodeRes.hasErrors()) return bodyCodeRes.reerr();
+            if (bodyCodeRes.hasErrors()) return bodyCodeRes.errorsOpt();
             bodyCode = bodyCodeRes.requireValue("bodyCode");
             if (retT.optIsSome()) {
-                if (GenAspectNull.getMaybe(xx, retT.optUnwrap()).optIsNone()) {
-                    return EResult.err(
-                            rootLoc,
-                            "Definition set function '" + nameStr
-                                    + "' body produces no value but declares a non-null return type");
-                }
-                var padded = new JavaBytecodeBuilder(rootLoc);
-                padded.add(bodyCode);
-                bodyResult = Opt.some(padded.constNull());
-                bodyCode = padded.code();
-            } else {
-                bodyResult = Opt.none();
+                return Opt.some(TList.of(ExprErr.opaque(
+                        bodyLoc,
+                        "Definition set function '" + nameStr
+                                + "' body produces no value but declares a return type")));
             }
+            bodyResult = Opt.none();
         }
 
         set.absorbBodyContext(xx, innerVx);
@@ -228,7 +227,7 @@ public final class SourceFunctionData {
         }
         functionSpec = Opt.some(new DefSetFunctionsEmitter.FunctionSpec(
                 jvmMethodName, argSlots, retDesc, bodyCode, bodyResult, TList.from(captured)));
-        return EResult.ok(null);
+        return Opt.none();
     }
 
     private static JavaDataDescriptor jvmDescFor(ExprContext xx, Type t) {

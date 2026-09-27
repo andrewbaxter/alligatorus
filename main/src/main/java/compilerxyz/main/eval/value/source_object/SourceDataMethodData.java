@@ -8,13 +8,12 @@ import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.QExprId;
+import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.DynUtil.ArgSignatureSlot;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.argrecord.ArgumentEntry;
@@ -23,7 +22,6 @@ import compilerxyz.main.eval.value.argrecord.ArgumentTuple;
 import compilerxyz.main.eval.value.argrecord.ArgumentTupleBinding;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
-import compilerxyz.main.gen.GenAspectNull;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenType;
@@ -59,18 +57,24 @@ public final class SourceDataMethodData {
         this.capturedExternals = new TList<>();
     }
 
-    public EResult<Void> finish(
+    public Opt<String> incomplete(String dtName) {
+        if (compiledBodyCode.optIsSome() || implExpr.optIsSome()) {
+            return Opt.none();
+        }
+        return Opt.some("Object '" + dtName + "' method '" + name + "' has no implementation (impl was not called)");
+    }
+
+    public Opt<TList<ExprErr>> finish(
             ExprContext xx,
-            QExprId rootLoc,
             String dtName,
             TypeSourceObjectDynamic outerType,
             Type underlyingType,
             String objectInternalName) {
         if (compiledBodyCode.optIsSome()) {
-            return EResult.ok(null);
+            return Opt.none();
         }
         if (implExpr.optIsNone()) {
-            return EResult.ok(null);
+            throw new AssertionError("Object '" + dtName + "' method '" + name + "' finished while incomplete");
         }
         var implExprValue = implExpr.optUnwrap();
         implExpr = Opt.none();
@@ -78,9 +82,10 @@ public final class SourceDataMethodData {
             throw new AssertionError(
                     "Data type '" + dtName + "' method '" + name + "' impl is not an Expr: " + implExprValue);
         }
+        var bodyLoc = implExprAst.loc();
         var retT = retType;
         var innerVx = new EvalContext(xx.vx.ix);
-        innerVx.evalRootInternalName = objectInternalName;
+        innerVx.evalRootInternalName = Opt.some(objectInternalName);
         var innerTarget = new TargetDynamic();
         var selfId = new BindingId();
         innerBindingId = Opt.some(selfId);
@@ -99,14 +104,16 @@ public final class SourceDataMethodData {
             bodyScope.pushNamed(
                     new ConstKey.Str("inner"), selfIb.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(selfId));
         }
-        TList<ArgSignatureSlot> argSlots = null;
-        TList<BindingId> argSlotIds = null;
+        Opt<TList<ArgSignatureSlot>> argSlotsOut = Opt.none();
+        Opt<TList<BindingId>> argSlotIdsOut = Opt.none();
         if (argType.optIsSome()) {
             var argT = argType.optUnwrap();
-            var slotsRes = DynUtil.argSignatureSlots(xx, rootLoc, argT);
-            if (slotsRes.hasErrors()) return slotsRes.reerr();
-            argSlots = slotsRes.requireValue("SourceDataMethodData::finish argSignatureSlots");
-            argSlotIds = new TList<>(argSlots.size());
+            var slotsRes = DynUtil.argSignatureSlots(xx, bodyLoc, argT);
+            if (slotsRes.hasErrors()) return slotsRes.errorsOpt();
+            var argSlots = slotsRes.requireValue("SourceDataMethodData::finish argSignatureSlots");
+            var argSlotIds = new TList<BindingId>(argSlots.size());
+            argSlotsOut = Opt.some(argSlots);
+            argSlotIdsOut = Opt.some(argSlotIds);
             var tupleOpt = GenAspectTuple.getMaybe(xx, argT);
             var recordOpt = GenAspectRecord.getMaybe(xx, argT);
             if (tupleOpt.optIsSome()) {
@@ -116,10 +123,9 @@ public final class SourceDataMethodData {
                     argSlotIds.add(slotId);
                     var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, slot.elementType());
                     if (ibMaybe.optIsNone()) {
-                        return EResult.err(
-                                rootLoc,
-                                "SourceDataMethodData::finish tuple element type "
-                                        + slot.elementType().typeDesc() + " missing AspectInitialBindDynamic");
+                        throw new AssertionError("SourceDataMethodData::finish tuple element type "
+                                + slot.elementType().typeDesc() + " missing AspectInitialBindDynamic"
+                                + " (checked at impl)");
                     }
                     elemBindings.add(ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
                 }
@@ -133,10 +139,9 @@ public final class SourceDataMethodData {
                     argSlotIds.add(slotId);
                     var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, entry.getValue());
                     if (ibMaybe.optIsNone()) {
-                        return EResult.err(
-                                rootLoc,
-                                "SourceDataMethodData::finish record field type "
-                                        + entry.getValue().typeDesc() + " missing AspectInitialBindDynamic");
+                        throw new AssertionError("SourceDataMethodData::finish record field type "
+                                + entry.getValue().typeDesc() + " missing AspectInitialBindDynamic"
+                                + " (checked at impl)");
                     }
                     fields.put(
                             entry.getKey(),
@@ -149,59 +154,54 @@ public final class SourceDataMethodData {
                 var slotId = new BindingId();
                 argSlotIds.add(slotId);
                 var argIbMaybe = GenAspectInitialBindDynamic.getMaybe(xx, argT);
-                if (argIbMaybe.optIsSome()) {
-                    bodyScope.pushNamed(
-                            new ConstKey.Str("arg"),
-                            argIbMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
+                if (argIbMaybe.optIsNone()) {
+                    throw new AssertionError("SourceDataMethodData::finish arg type " + argT.typeDesc()
+                            + " missing AspectInitialBindDynamic (checked at impl)");
                 }
+                bodyScope.pushNamed(
+                        new ConstKey.Str("arg"),
+                        argIbMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
             }
         }
         var methodXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, Opt.none());
 
         var implResult = ConstEval.constEval(methodXx, implExprAst);
         if (implResult.hasErrors()) {
-            return implResult.reerr();
+            return implResult.errorsOpt();
         }
         var implEv = implResult.requireValue("SourceDataMethodData::compile constEval");
         var implCv = implEv.cv();
         var convertedResult = retT.optIsSome()
-                ? Eval.typecheckConvert(methodXx, rootLoc, retT.optUnwrap(), implCv)
+                ? Eval.typecheckConvert(methodXx, bodyLoc, retT.optUnwrap(), implCv)
                 : EResult.ok(implCv);
         if (convertedResult.hasErrors()) {
-            return convertedResult.reerr();
+            return convertedResult.errorsOpt();
         }
         var convertedCv = convertedResult.requireValue("SourceDataMethodData::compile typecheckConvert");
         CodeDynamic bodyCode;
         Opt<JavaBytecodeReg> bodyResult;
         if (convertedCv.value().optIsSome()) {
-            var dynResult = DynUtil.materialize(methodXx, rootLoc, convertedCv);
+            var dynResult = DynUtil.materialize(methodXx, bodyLoc, convertedCv);
             if (dynResult.hasErrors()) {
-                return dynResult.reerr();
+                return dynResult.errorsOpt();
             }
             var dyn = dynResult.requireValue("SourceDataMethodData::compile materialize");
             bodyCode = dyn.code();
             bodyResult = Opt.some(dyn.reg());
         } else {
             var bodyCodeRes = CodeDynamic.castRequired(
-                    rootLoc,
+                    bodyLoc,
                     convertedCv.code(),
                     "Data type '" + dtName + "' method '" + name + "' body produced no compile-time value");
-            if (bodyCodeRes.hasErrors()) return bodyCodeRes.reerr();
+            if (bodyCodeRes.hasErrors()) return bodyCodeRes.errorsOpt();
             bodyCode = bodyCodeRes.requireValue("bodyCode");
             if (retT.optIsSome()) {
-                if (GenAspectNull.getMaybe(methodXx, retT.optUnwrap()).optIsNone()) {
-                    return EResult.err(
-                            rootLoc,
-                            "Data type '" + dtName + "' method '" + name
-                                    + "' body produces no value but declares a non-null return type");
-                }
-                var padded = new JavaBytecodeBuilder(rootLoc);
-                padded.add(bodyCode);
-                bodyResult = Opt.some(padded.constNull());
-                bodyCode = padded.code();
-            } else {
-                bodyResult = Opt.none();
+                return Opt.some(TList.of(ExprErr.opaque(
+                        bodyLoc,
+                        "Data type '" + dtName + "' method '" + name
+                                + "' body produces no value but declares a return type")));
             }
+            bodyResult = Opt.none();
         }
 
         outerType.set.absorbBodyContext(xx, innerVx);
@@ -211,8 +211,8 @@ public final class SourceDataMethodData {
 
         compiledBodyCode = Opt.some(bodyCode);
         compiledBodyResult = bodyResult;
-        compiledArgSlots = Opt.ofNullable(argSlots);
-        compiledArgSlotIds = Opt.ofNullable(argSlotIds);
-        return EResult.ok(null);
+        compiledArgSlots = argSlotsOut;
+        compiledArgSlotIds = argSlotIdsOut;
+        return Opt.none();
     }
 }

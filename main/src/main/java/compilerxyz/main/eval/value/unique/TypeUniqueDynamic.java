@@ -171,22 +171,25 @@ public record TypeUniqueDynamic() implements Aspect, Type {
         }
         return switch (tag) {
             case "builtin" -> {
-                var idRaw = inner.entries().get("id");
-                if (idRaw == null) yield EResult.err(loc, "builtin: missing id");
-                else
-                    yield switch (idRaw) {
-                        case JsonValueNumber n -> EResult.ok(new Unique.Builtin((long) n.value()));
-                        case JsonValueNull jn -> EResult.err(loc, "builtin: missing id");
-                        case JsonValueBoolean b -> EResult.err(loc, "builtin: missing id");
-                        case JsonValueString s -> EResult.err(loc, "builtin: missing id");
-                        case JsonValueArray a -> EResult.err(loc, "builtin: missing id");
-                        case JsonValueObject o -> EResult.err(loc, "builtin: missing id");
-                    };
+                var idRawOpt = inner.entries().getOpt("id");
+                if (idRawOpt.optIsNone()) yield EResult.err(loc, "builtin: missing id");
+                var idRaw = idRawOpt.optUnwrap();
+                yield switch (idRaw) {
+                    case JsonValueNumber n -> EResult.ok(new Unique.Builtin((long) n.value()));
+                    case JsonValueNull jn -> EResult.err(loc, "builtin: missing id");
+                    case JsonValueBoolean b -> EResult.err(loc, "builtin: missing id");
+                    case JsonValueString s -> EResult.err(loc, "builtin: missing id");
+                    case JsonValueArray a -> EResult.err(loc, "builtin: missing id");
+                    case JsonValueObject o -> EResult.err(loc, "builtin: missing id");
+                };
             }
             case "source" -> {
-                var ciRaw = inner.entries().get("compile_id");
-                var idRaw = inner.entries().get("id");
-                if (ciRaw == null || idRaw == null) yield EResult.err(loc, "source: malformed compile_id/id");
+                var ciRawOpt = inner.entries().getOpt("compile_id");
+                var idRawOpt = inner.entries().getOpt("id");
+                if (ciRawOpt.optIsNone() || idRawOpt.optIsNone())
+                    yield EResult.err(loc, "source: malformed compile_id/id");
+                var ciRaw = ciRawOpt.optUnwrap();
+                var idRaw = idRawOpt.optUnwrap();
                 JsonValueObject ci;
                 switch (ciRaw) {
                     case JsonValueObject o -> ci = o;
@@ -225,9 +228,12 @@ public record TypeUniqueDynamic() implements Aspect, Type {
                         yield EResult.err(loc, "source: malformed compile_id/id");
                     }
                 }
-                var isRaw = ci.entries().get("import_state");
-                var srcRaw = ci.entries().get("source");
-                if (isRaw == null || srcRaw == null) yield EResult.err(loc, "source: malformed compile_id/id");
+                var isRawOpt = ci.entries().getOpt("import_state");
+                var srcRawOpt = ci.entries().getOpt("source");
+                if (isRawOpt.optIsNone() || srcRawOpt.optIsNone())
+                    yield EResult.err(loc, "source: malformed compile_id/id");
+                var isRaw = isRawOpt.optUnwrap();
+                var srcRaw = srcRawOpt.optUnwrap();
                 long isVal;
                 switch (isRaw) {
                     case JsonValueNumber n -> isVal = (long) n.value();

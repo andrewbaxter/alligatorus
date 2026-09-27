@@ -18,7 +18,7 @@ public final class Erb {
     }
 
     public void errPush(String message) {
-        errors.add(new ExprErr(loc, TList.of(new ExprSubErr.Opaque(message))));
+        errors.add(ExprErr.opaque(loc, message));
     }
 
     public <T> Opt<T> mustEr(EResult<T> r) {

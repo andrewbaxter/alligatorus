@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.tuple;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactJson;
@@ -17,7 +16,6 @@ import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
-import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
@@ -58,6 +56,7 @@ import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
+import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -65,22 +64,14 @@ import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.lang.reflect.Field;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @BuiltinFull(uniqueId = 6147L)
-public final class Tuple implements Aspect, Type, Value {
+public record Tuple(
+        Opt<TupleBaseDynamic> base, IList<TupleElement> elements, ArtifactSupport.ArtifactIdHolder artifactIdCell)
+        implements Aspect, Type, Value {
 
-    public final Opt<TupleBaseDynamic> base;
-    public final TList<TupleElement> elements;
-    public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
-
-    public Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements) {
-        this.base = base;
-        this.elements = elements;
-    }
-
-    public TList<TupleElement> elements() {
-        return elements;
+    public Tuple(Opt<TupleBaseDynamic> base, IList<TupleElement> elements) {
+        this(base, elements, new ArtifactSupport.ArtifactIdHolder());
     }
 
     public EResult<CodeValue> accessOrIndex(ExprContext xx, QExprId loc, CodeValue selfCv, Opt<Integer> accessIndex) {
@@ -92,14 +83,14 @@ public final class Tuple implements Aspect, Type, Value {
             throw new IllegalStateException("Tuple::accessOrIndex: value is not a Tuple, got "
                     + selfValue.optUnwrap().getClass());
         }
-        return switch (tuple.base) {
+        return switch (tuple.base()) {
             case Opt.None<TupleBaseDynamic> n -> {
                 var b = new JavaBytecodeBuilder(loc);
                 EvalOutcome accessedOutcome = null;
                 var held = new TList<CodeValue>();
-                for (int i = 0; i < tuple.elements.size(); i++) {
+                for (int i = 0; i < tuple.elements().size(); i++) {
                     boolean isAccessed = accessIndex.optIsSome() && accessIndex.optUnwrap() == i;
-                    var e = tuple.elements.get(i);
+                    var e = tuple.elements().get(i);
                     TupleElement.EvalRes er;
                     switch (e) {
                         case TupleElement.EvalRes r -> er = r;
@@ -135,12 +126,12 @@ public final class Tuple implements Aspect, Type, Value {
                             useCv = useRes.requireValue("Tuple::accessOrIndexSourceless useConst");
                         }
                         var useAdd = b.addCode(loc, useCv.code());
-                        if (useAdd.hasErrors()) yield useAdd.reerr();
+                        if (useAdd.optIsSome()) yield EResult.errs(useAdd.optUnwrap());
                         accessedOutcome = useCv.outcome();
                         continue;
                     }
                     var elemAdd = b.addCode(loc, elemCv.code());
-                    if (elemAdd.hasErrors()) yield elemAdd.reerr();
+                    if (elemAdd.optIsSome()) yield EResult.errs(elemAdd.optUnwrap());
                     held.add(elemCv);
                 }
                 for (int hi = held.size() - 1; hi >= 0; hi--) {
@@ -151,7 +142,7 @@ public final class Tuple implements Aspect, Type, Value {
                         var dropRes = fullDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, heldCv);
                         if (dropRes.hasErrors()) yield dropRes.reerr();
                         var dropAdd = b.addCode(loc, dropRes.requireValue("Tuple::accessOrIndexSourceless drop"));
-                        if (dropAdd.hasErrors()) yield dropAdd.reerr();
+                        if (dropAdd.optIsSome()) yield EResult.errs(dropAdd.optUnwrap());
                     }
                 }
                 if (accessIndex.optIsSome()) {
@@ -167,9 +158,9 @@ public final class Tuple implements Aspect, Type, Value {
             case Opt.Some<TupleBaseDynamic> s -> {
                 var baseSource = s.value().source();
                 var dynamicTypes = new TList<Type>();
-                var dynamicIndexOfElement = new TList<Integer>(tuple.elements.size());
-                for (int i = 0; i < tuple.elements.size(); i++) {
-                    var e = tuple.elements.get(i);
+                var dynamicIndexOfElement = new TList<Integer>(tuple.elements().size());
+                for (int i = 0; i < tuple.elements().size(); i++) {
+                    var e = tuple.elements().get(i);
                     switch (e) {
                         case TupleElement.Dynamic d -> {
                             dynamicIndexOfElement.add(dynamicTypes.size());
@@ -183,22 +174,23 @@ public final class Tuple implements Aspect, Type, Value {
                 var klass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortedTypes));
                 if (accessIndex.optIsNone()) {
                     var out = new JavaBytecodeBuilder(loc);
-                    for (int i = tuple.elements.size() - 1; i >= 0; i--) {
+                    for (int i = tuple.elements().size() - 1; i >= 0; i--) {
                         int dynIdx = dynamicIndexOfElement.get(i);
                         if (dynIdx < 0) {
-                            var heldRes = ((TupleElement.EvalRes) tuple.elements.get(i)).result();
+                            var heldRes =
+                                    ((TupleElement.EvalRes) tuple.elements().get(i)).result();
                             if (heldRes.hasErrors()) yield heldRes.reerr();
                             var heldCv = heldRes.requireValue("Tuple::drop held element");
                             var heldDrop = Eval.dropValue(xx, loc, heldCv);
                             if (heldDrop.hasErrors()) yield heldDrop.reerr();
                             var heldCodeAdd = out.addCode(loc, heldCv.code());
-                            if (heldCodeAdd.hasErrors()) yield heldCodeAdd.reerr();
+                            if (heldCodeAdd.optIsSome()) yield EResult.errs(heldCodeAdd.optUnwrap());
                             var heldAdd = out.addCode(loc, heldDrop.requireValue("Tuple::drop held code"));
-                            if (heldAdd.hasErrors()) yield heldAdd.reerr();
+                            if (heldAdd.optIsSome()) yield EResult.errs(heldAdd.optUnwrap());
                             continue;
                         }
                         var t = dynamicTypes.get(dynIdx);
-                        int slotIdx = slotInfo.slotOfKey().get(dynIdx);
+                        int slotIdx = slotInfo.slotOfKey().getOpt(dynIdx).optUnwrap();
                         var tcFullDropOpt = GenAspectDropDynamic.getMaybe(xx, t);
                         if (tcFullDropOpt.optIsSome()) {
                             var access = new JavaBytecodeBuilder(loc);
@@ -212,14 +204,14 @@ public final class Tuple implements Aspect, Type, Value {
                             if (tcDropRes.hasErrors()) yield tcDropRes.reerr();
                             out.add(access.code());
                             var dropAdd = out.addCode(loc, tcDropRes.requireValue("Tuple::tupleChildDropCode drop"));
-                            if (dropAdd.hasErrors()) yield dropAdd.reerr();
+                            if (dropAdd.optIsSome()) yield EResult.errs(dropAdd.optUnwrap());
                         }
                     }
                     if (out.isEmpty()) yield EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.NO_VALUE));
                     yield EResult.ok(new CodeValue(Code.target(out.code()), EvalOutcome.NO_VALUE));
                 } else {
                     int accessedIdx = accessIndex.optUnwrap();
-                    if (accessedIdx < 0 || accessedIdx >= tuple.elements.size()) {
+                    if (accessedIdx < 0 || accessedIdx >= tuple.elements().size()) {
                         yield EResult.err(loc, "Tuple element index " + accessedIdx + " out of range");
                     }
                     int isDynIdx = dynamicIndexOfElement.get(accessedIdx);
@@ -228,7 +220,7 @@ public final class Tuple implements Aspect, Type, Value {
                                 + " is a scope-bound (non-dynamic) element; access should be routed elsewhere");
                     }
                     var accessedType = dynamicTypes.get(isDynIdx);
-                    int accessedSlot = slotInfo.slotOfKey().get(isDynIdx);
+                    int accessedSlot = slotInfo.slotOfKey().getOpt(isDynIdx).optUnwrap();
                     var useDynOpt = GenAspectElementUseDynamic.getMaybe(xx, accessedType);
                     if (useDynOpt.optIsNone()) {
                         yield EResult.err(
@@ -238,7 +230,7 @@ public final class Tuple implements Aspect, Type, Value {
                     }
                     var access = new JavaBytecodeBuilder(loc);
                     var selfAdd = access.addCode(loc, selfCv.code());
-                    if (selfAdd.hasErrors()) yield selfAdd.reerr();
+                    if (selfAdd.optIsSome()) yield EResult.errs(selfAdd.optUnwrap());
                     var fieldName = CompositeClassEmitter.slotFieldName(accessedSlot);
                     var fieldDesc = CompositeClassEmitter.slotDescriptor(xx, accessedType);
                     var childSource = new ValueDynamicSource.Field(baseSource, klass, fieldName, fieldDesc);
@@ -263,19 +255,21 @@ public final class Tuple implements Aspect, Type, Value {
     static TList<Integer> slotOfIndex(ExprContext xx, TList<Type> types) {
         var slotOf = sortTupleSlots(xx, types).slotOfKey();
         var out = new TList<Integer>(types.size());
-        for (int i = 0; i < types.size(); i++) out.add(slotOf.get(i));
+        for (int i = 0; i < types.size(); i++) out.add(slotOf.getOpt(i).optUnwrap());
         return out;
     }
 
     @Override
     public String typeDesc() {
-        var inner = elements.stream()
-                .map(e -> switch (e) {
-                    case TupleElement.Dynamic d -> d.type().typeDesc();
-                    case TupleElement.EvalRes r -> "?";
-                })
-                .collect(Collectors.joining(", "));
-        return "tuple(" + inner + ")";
+        var parts = new TList<String>(elements.size());
+        for (var e : elements) {
+            parts.add(
+                    switch (e) {
+                        case TupleElement.Dynamic d -> d.type().typeDesc();
+                        case TupleElement.EvalRes r -> "?";
+                    });
+        }
+        return "tuple(" + String.join(", ", parts) + ")";
     }
 
     public Type valueType() {
@@ -296,7 +290,7 @@ public final class Tuple implements Aspect, Type, Value {
                     };
             slotTypes.add(new TupleElement.Dynamic(slot));
         }
-        return new Tuple(base, slotTypes);
+        return new Tuple(base, IList.from(slotTypes));
     }
 
     private boolean tupleElementsAllTypes() {
@@ -331,7 +325,7 @@ public final class Tuple implements Aspect, Type, Value {
             }
             out.add(new TupleElement.Dynamic(t));
         }
-        return new Tuple(Opt.none(), out);
+        return new Tuple(Opt.none(), IList.from(out));
     }
 
     @Override
@@ -409,9 +403,9 @@ public final class Tuple implements Aspect, Type, Value {
             var tuple = MustCast.mustCast(Tuple.class, cv.value().optUnwrap());
             var b = new JavaBytecodeBuilder(loc);
             var carryRes = b.addCode(loc, cv.code());
-            if (carryRes.hasErrors()) return carryRes.reerr();
-            var elems = new TList<JavaBytecodeReg>(tuple.elements.size());
-            for (var element : tuple.elements) {
+            if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
+            var elems = new TList<JavaBytecodeReg>(tuple.elements().size());
+            for (var element : tuple.elements()) {
                 TupleElement.EvalRes er;
                 switch (element) {
                     case TupleElement.EvalRes erVal -> er = erVal;
@@ -444,7 +438,7 @@ public final class Tuple implements Aspect, Type, Value {
         }
         var nb = new JavaBytecodeBuilder(loc);
         var nullCarry = nb.addCode(loc, cv.code());
-        if (nullCarry.hasErrors()) return nullCarry.reerr();
+        if (nullCarry.optIsSome()) return EResult.errs(nullCarry.optUnwrap());
         var nullReg = nb.constNull();
         return EResult.ok(DynUtil.regToValue(nb.code(), nullReg, destType));
     }
@@ -454,10 +448,10 @@ public final class Tuple implements Aspect, Type, Value {
         var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TUPLE_IDENTITY, Tuple.class);
         if (oOpt.optIsNone()) return false;
         var o = oOpt.optUnwrap();
-        if (elements.size() != o.elements.size()) return false;
+        if (elements.size() != o.elements().size()) return false;
         for (int i = 0; i < elements.size(); i++) {
             var aType = tupleElementType(elements.get(i));
-            var bType = tupleElementType(o.elements.get(i));
+            var bType = tupleElementType(o.elements().get(i));
             if (aType.optIsNone() || bType.optIsNone()) return false;
             if (!aType.optUnwrap().typeIsEqual(xx, bType.optUnwrap())) return false;
         }
@@ -502,9 +496,9 @@ public final class Tuple implements Aspect, Type, Value {
             throw new IllegalStateException("Tuple::typeCastFrom: expected Tuple value, got " + cvValue.getClass());
         }
         var erb = new Erb(loc);
-        var convertedElements = new TList<TupleElement>(tuple.elements.size());
-        for (int i = 0; i < tuple.elements.size(); i++) {
-            var elem = tuple.elements.get(i);
+        var convertedElements = new TList<TupleElement>(tuple.elements().size());
+        for (int i = 0; i < tuple.elements().size(); i++) {
+            var elem = tuple.elements().get(i);
             var destSlot = elements.get(i);
             Type destElemType;
             switch (destSlot) {
@@ -546,7 +540,8 @@ public final class Tuple implements Aspect, Type, Value {
         if (!erb.errors().isEmpty()) {
             return EResult.errs(erb.errors());
         }
-        return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(new Tuple(Opt.none(), convertedElements))));
+        return EResult.ok(
+                new CodeValue(cv.code(), EvalOutcome.ofValue(new Tuple(Opt.none(), IList.from(convertedElements)))));
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
@@ -557,55 +552,33 @@ public final class Tuple implements Aspect, Type, Value {
                 return EResult.err(
                         loc, "Tuple::exporterRootDelegateSelfExport: expected Tuple self, got " + self.getClass());
             }
-            var cell = tuple.artifactIdCell;
-            TList<ExprErr> errors = new TList<>();
-            var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
-                var elementArtifacts = new TList<Artifact>(tuple.elements.size());
-                for (var e : tuple.elements) {
+            var cell = tuple.artifactIdCell();
+            return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
+                var erb = new Erb(loc);
+                var elementArtifacts = new TList<Artifact>(tuple.elements().size());
+                for (var e : tuple.elements()) {
                     Type elemType;
                     switch (e) {
                         case TupleElement.Dynamic d -> elemType = d.type();
                         case TupleElement.EvalRes r -> {
-                            var innerRes = r.result();
-                            if (innerRes.hasErrors()) {
-                                innerRes.drainInto(errors);
-                                errors.add(new ExprErr(
-                                        loc,
-                                        TList.of(new ExprSubErr.Opaque("Tuple element has no value to serialize"))));
-                                elementArtifacts.add(new Artifact.Body(
-                                        new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root())));
-                                continue;
-                            }
-                            var cv = innerRes.requireValue("Tuple::exporterExport element");
+                            var cvOpt = erb.mustErMaybeUnreachable(r.result());
+                            if (cvOpt.optIsNone()) continue;
+                            var cv = cvOpt.optUnwrap();
                             if (cv.value().optIsNone()) {
-                                errors.add(new ExprErr(
-                                        loc,
-                                        TList.of(new ExprSubErr.Opaque("Tuple element has no value to serialize"))));
-                                elementArtifacts.add(new Artifact.Body(
-                                        new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root())));
+                                erb.errPush("Tuple element has no value to serialize");
                                 continue;
                             }
                             elemType = cv.value().optUnwrap().valueType();
                         }
-                        default -> throw new IllegalStateException();
                     }
-                    var artRes = Artifactable.exportArtifact(xx, loc, elemType);
-                    artRes.drainInto(errors);
-                    if (artRes.valueOpt().optIsSome()) {
-                        elementArtifacts.add(artRes.valueOpt().optUnwrap());
-                    } else {
-                        elementArtifacts.add(new Artifact.Body(
-                                new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root())));
-                    }
+                    var artOpt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, elemType));
+                    if (artOpt.optIsSome()) elementArtifacts.add(artOpt.optUnwrap());
                 }
+                if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
                 var data = new TOrderedMap<String, JsonValue>();
                 data.put("elements", ArtifactJson.encodeArtifactList(elementArtifacts));
-                return makeBody.apply(new JsonValueObject(data));
+                return EResult.ok(makeBody.apply(new JsonValueObject(data)));
             });
-            if (!errors.isEmpty()) {
-                return EResult.mixed(artifact, errors);
-            }
-            return EResult.ok(artifact);
         }
 
         @Override
@@ -641,15 +614,18 @@ public final class Tuple implements Aspect, Type, Value {
                                 return new Result.Err<>("Tuple data: expected object");
                             }
                         }
-                        var elementsJson = obj.entries().get("elements");
-                        if (elementsJson == null) {
+                        var elementsJsonOpt = obj.entries().getOpt("elements");
+                        if (elementsJsonOpt.optIsNone()) {
                             return new Result.Err<>("Tuple data: missing 'elements'");
                         }
-                        var decoded = ArtifactJson.decodeArtifactList(loc, elementsJson);
-                        if (decoded.hasErrors()) {
-                            return new Result.Err<>("Tuple data: malformed elements");
+                        var elementsJson = elementsJsonOpt.optUnwrap();
+                        TList<Artifact> decoded;
+                        try {
+                            decoded = ArtifactJson.decodeArtifactList(elementsJson);
+                        } catch (RuntimeException e) {
+                            return new Result.Err<>("Tuple data: malformed elements: " + e.getMessage());
                         }
-                        return new Result.Ok<>(decoded.requireValue("Tuple::exporterFromArtifactData elements"));
+                        return new Result.Ok<>(decoded);
                     },
                     (elementArts) -> {
                         elementArtifactsHolder.add(elementArts);
@@ -662,8 +638,8 @@ public final class Tuple implements Aspect, Type, Value {
                                 }
                                 slots.add(new TupleElement.Dynamic(t.requireValue("Tuple::finalizer element type")));
                             }
-                            var out = new Tuple(Opt.none(), slots);
-                            out.artifactIdCell.set(idValue);
+                            var out = new Tuple(Opt.none(), IList.from(slots));
+                            out.artifactIdCell().set(idValue);
                             return out;
                         };
                         return new Result.Ok<>(
@@ -683,28 +659,21 @@ public final class Tuple implements Aspect, Type, Value {
         }
 
         @Override
-        public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-
-            if (externalHostValue.optIsNone() && elementLifts.isEmpty()) {
-                return EResult.ok(new Tuple(Opt.none(), new TList<>()));
-            }
+        public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Object externalHostValue) {
             var expectedClass = CompositeClassEmitter.getOrEmit(xx, sortTupleTypes(xx, elementTypes));
-            if (externalHostValue.optIsNone() || !expectedClass.isInstance(externalHostValue.optUnwrap())) {
+            if (!expectedClass.isInstance(externalHostValue)) {
                 return EResult.err(
                         loc,
                         "Tuple TupleLift::lift: expected "
                                 + expectedClass.getName()
                                 + ", got "
-                                + (externalHostValue.optIsNone()
-                                        ? "null"
-                                        : externalHostValue
-                                                .optUnwrap()
-                                                .getClass()
-                                                .getName()));
+                                + externalHostValue.getClass().getName());
             }
-            var rawHostValue = externalHostValue.optUnwrap();
-            var fields = cachedFields.optUnwrapOr(null);
-            if (fields == null) {
+
+            Field[] fields;
+            if (cachedFields.optIsSome()) {
+                fields = cachedFields.optUnwrap();
+            } else {
                 fields = new Field[elementLifts.size()];
                 var slotOf = slotOfIndex(xx, elementTypes);
                 for (int i = 0; i < fields.length; i++) {
@@ -719,18 +688,17 @@ public final class Tuple implements Aspect, Type, Value {
                 cachedFields = Opt.some(fields);
             }
             var out = new TList<TupleElement>(elementLifts.size());
-            TList<ExprErr> errors = null;
+            var errors = new TList<ExprErr>();
             for (int i = 0; i < elementLifts.size(); i++) {
                 var elemLift = elementLifts.get(i);
                 Object slotValue;
                 try {
-                    slotValue = fields[i].get(rawHostValue);
+                    slotValue = fields[i].get(externalHostValue);
                 } catch (IllegalAccessException e) {
                     throw new AssertionError("Tuple TupleLift::lift: cannot read slot field _" + i, e);
                 }
-                var lifted = elemLift.aspectLiftLift(xx, loc, Opt.ofNullable(slotValue));
+                var lifted = elemLift.aspectLiftLift(xx, loc, slotValue);
                 if (lifted.hasErrors()) {
-                    if (errors == null) errors = new TList<>();
                     lifted.drainInto(errors);
                     continue;
                 }
@@ -738,10 +706,10 @@ public final class Tuple implements Aspect, Type, Value {
                 out.add(new TupleElement.EvalRes(
                         EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(liftedValue)))));
             }
-            if (errors != null && !errors.isEmpty()) {
+            if (!errors.isEmpty()) {
                 return EResult.errs(errors);
             }
-            return EResult.ok(new Tuple(Opt.none(), out));
+            return EResult.ok(new Tuple(Opt.none(), IList.from(out)));
         }
     }
 

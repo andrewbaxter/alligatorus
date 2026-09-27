@@ -28,7 +28,7 @@ public final class T0120ImplTypeTest {
                 mb.lower(mb.seqOf(
                         mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                         mb.bind("u", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("upper"))),
-                        mb.call(mb.field(mb.scopeUse("u"), mb.str("set_inner")), mb.typesNull()),
+                        mb.call(mb.field(mb.scopeUse("u"), mb.str("set_inner")), mb.tupleOf()),
                         mb.call(
                                 mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                                 mb.recordOf(TList.of(
@@ -41,7 +41,7 @@ public final class T0120ImplTypeTest {
                                                                 new TestMb.RecordPair(
                                                                         "to_dynamic",
                                                                         mb.delegateAspect(
-                                                                                mb.typesNull(),
+                                                                                mb.typesObject(),
                                                                                 mb.evalAspectConsumeDynamic(),
                                                                                 "to_dynamic",
                                                                                 "xx",
@@ -50,7 +50,7 @@ public final class T0120ImplTypeTest {
                                                                 new TestMb.RecordPair(
                                                                         "jvm_class",
                                                                         mb.delegateAspect(
-                                                                                mb.typesNull(),
+                                                                                mb.typesObject(),
                                                                                 mb.evalAspectConsumeDynamic(),
                                                                                 "jvm_class",
                                                                                 "xx")))))))),
@@ -66,7 +66,7 @@ public final class T0120ImplTypeTest {
                                                                 new TestMb.RecordPair(
                                                                         "bind",
                                                                         mb.delegateAspect(
-                                                                                mb.typesNull(),
+                                                                                mb.typesObject(),
                                                                                 mb.evalAspectBind(),
                                                                                 "bind",
                                                                                 "xx",
@@ -84,7 +84,7 @@ public final class T0120ImplTypeTest {
                                                                 new TestMb.RecordPair(
                                                                         "bind_dynamic",
                                                                         mb.delegateAspect(
-                                                                                mb.typesNull(),
+                                                                                mb.typesObject(),
                                                                                 mb.evalAspectBindDynamic(),
                                                                                 "bind_dynamic",
                                                                                 "xx",
@@ -196,7 +196,7 @@ public final class T0120ImplTypeTest {
                                                                                                 mb.typesOption(),
                                                                                                 mb.typesAspect()),
                                                                                         mb.str("none")),
-                                                                                mb.literalNull())),
+                                                                                mb.tupleOf())),
                                                                 new TestMb.RecordPair(
                                                                         "is_equal",
                                                                         mb.seqOf(
@@ -224,7 +224,7 @@ public final class T0120ImplTypeTest {
                                                                                         mb.str("cv")))))))))),
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                         mb.return_(mb.field(mb.scopeUse("u"), mb.str("new"))))),
-                mb.literalNull());
+                mb.tupleOf());
     }
 
     @Test
@@ -237,7 +237,7 @@ public final class T0120ImplTypeTest {
                         mb.bind("upper", mb.lower(buildUpperType(mb))),
                         mb.call(mb.log(), mb.as(mb.as(mb.str("hello"), mb.typesString()), mb.scopeUse("upper"))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
@@ -260,7 +260,7 @@ public final class T0120ImplTypeTest {
                         mb.bind("upper", mb.importExpr(mb.str("other"))),
                         mb.call(mb.log(), mb.as(mb.as(mb.str("hello"), mb.typesString()), mb.scopeUse("upper"))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;

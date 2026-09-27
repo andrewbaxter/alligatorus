@@ -20,8 +20,8 @@ import compilerxyz.main.eval.value.list.AspectIterableListBoxedDynamic;
 import compilerxyz.main.gen.AspectIterable;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TOrderedMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 
 public record AspectIterableMapDynamic<K extends Type, V extends Type>(TypeMapDynamic<K, V> type)
@@ -44,14 +44,13 @@ public record AspectIterableMapDynamic<K extends Type, V extends Type>(TypeMapDy
             ExprContext xx, QExprId loc, CodeValue base, Binding loop, Code elementBind, CodeValue body) {
         var baseRes = DynUtil.materialize(xx, loc, base);
         if (baseRes.hasErrors()) return baseRes.reerr();
-        var mapName = JavaInternalName.fromClass(Map.class);
+        var mapName = JavaInternalName.fromClass(TOrderedMap.class);
         var setName = JavaInternalName.fromClass(Set.class);
         var iteratorName = JavaInternalName.fromClass(Iterator.class);
         var entrySetMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(setName), TList.of());
         var iterMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
         var setup = new JavaBytecodeBuilder(loc);
-        var entries =
-                setup.invokeInterface(mapName, "entrySet", entrySetMethod, setup.reg(baseRes.requireValue("base")));
+        var entries = setup.invokeVirtual(mapName, "entrySet", entrySetMethod, setup.reg(baseRes.requireValue("base")));
         var iteratorSetup = setup.code(setup.invokeInterface(setName, "iterator", iterMethod, entries));
 
         var elementBindCast = CodeDynamic.castOpt(loc, elementBind);

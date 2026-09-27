@@ -1,9 +1,7 @@
 package compilerxyz.main.artifact;
 
 import compilerxyz.main.eval.CompileId;
-import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ImportStateId;
-import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.SourceId;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
@@ -14,6 +12,7 @@ import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
+import java.util.Map;
 
 public final class ArtifactJson {
     private ArtifactJson() {}
@@ -27,42 +26,12 @@ public final class ArtifactJson {
         return new JsonValueObject(m);
     }
 
-    public static EResult<Artifact> decodeArtifact(QExprId loc, JsonValue v) {
-        JsonValueObject obj;
-        switch (v) {
-            case JsonValueObject o when o.entries().size() == 1 -> obj = o;
-            case JsonValueNull n -> {
-                return EResult.err(loc, "decodeArtifact: expected tagged object");
-            }
-            case JsonValueBoolean b -> {
-                return EResult.err(loc, "decodeArtifact: expected tagged object");
-            }
-            case JsonValueNumber n -> {
-                return EResult.err(loc, "decodeArtifact: expected tagged object");
-            }
-            case JsonValueString s -> {
-                return EResult.err(loc, "decodeArtifact: expected tagged object");
-            }
-            case JsonValueArray a -> {
-                return EResult.err(loc, "decodeArtifact: expected tagged object");
-            }
-            case JsonValueObject o -> {
-                return EResult.err(loc, "decodeArtifact: expected tagged object");
-            }
-        }
-        var entry = obj.entries().entrySet().iterator().next();
+    public static Artifact decodeArtifact(JsonValue v) {
+        var entry = tagged(v, "decodeArtifact");
         return switch (entry.getKey()) {
-            case "body" -> {
-                var inner = decodeArtifactBody(loc, entry.getValue());
-                if (inner.hasErrors()) yield inner.reerr();
-                yield EResult.ok(new Artifact.Body(inner.requireValue("ArtifactJson::decodeArtifact body")));
-            }
-            case "ref" -> {
-                var inner = decodeArtifactIdSource(loc, entry.getValue());
-                if (inner.hasErrors()) yield inner.reerr();
-                yield EResult.ok(new Artifact.Ref(inner.requireValue("ArtifactJson::decodeArtifact ref")));
-            }
-            default -> EResult.err(loc, "decodeArtifact: unknown tag " + entry.getKey());
+            case "body" -> new Artifact.Body(decodeArtifactBody(entry.getValue()));
+            case "ref" -> new Artifact.Ref(decodeArtifactIdSource(entry.getValue()));
+            default -> throw new IllegalStateException("decodeArtifact: unknown tag " + entry.getKey());
         };
     }
 
@@ -79,75 +48,21 @@ public final class ArtifactJson {
         return new JsonValueObject(m);
     }
 
-    public static EResult<ArtifactBody> decodeArtifactBody(QExprId loc, JsonValue v) {
-        JsonValueObject obj;
-        switch (v) {
-            case JsonValueObject o -> obj = o;
-            case JsonValueNull n -> {
-                return EResult.err(loc, "decodeArtifactBody: expected object");
-            }
-            case JsonValueBoolean b -> {
-                return EResult.err(loc, "decodeArtifactBody: expected object");
-            }
-            case JsonValueNumber n -> {
-                return EResult.err(loc, "decodeArtifactBody: expected object");
-            }
-            case JsonValueString s -> {
-                return EResult.err(loc, "decodeArtifactBody: expected object");
-            }
-            case JsonValueArray a -> {
-                return EResult.err(loc, "decodeArtifactBody: expected object");
-            }
-        }
-        var data = obj.entries().get("data");
-        var exporterJson = obj.entries().get("exporter");
-        if (data == null || exporterJson == null) {
-            return EResult.err(loc, "decodeArtifactBody: missing data/exporter");
-        }
-        JsonValueObject exporterObj;
-        switch (exporterJson) {
-            case JsonValueObject o when o.entries().size() == 1 -> exporterObj = o;
-            case JsonValueNull n -> {
-                return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object");
-            }
-            case JsonValueBoolean b -> {
-                return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object");
-            }
-            case JsonValueNumber n -> {
-                return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object");
-            }
-            case JsonValueString s -> {
-                return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object");
-            }
-            case JsonValueArray a -> {
-                return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object");
-            }
-            case JsonValueObject o -> {
-                return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object");
-            }
-        }
-        var exporterEntry = exporterObj.entries().entrySet().iterator().next();
-        var exp =
+    public static ArtifactBody decodeArtifactBody(JsonValue v) {
+        var obj = object(v, "decodeArtifactBody");
+        var data = field(obj, "data", "decodeArtifactBody");
+        var exporterEntry = tagged(field(obj, "exporter", "decodeArtifactBody"), "decodeArtifactBodyExporter");
+        ArtifactBodyExporter exporter =
                 switch (exporterEntry.getKey()) {
-                    case "body" -> {
-                        var inner = decodeArtifactBody(loc, exporterEntry.getValue());
-                        if (inner.hasErrors()) yield inner.<ArtifactBodyExporter>reerr();
-                        yield EResult.ok(new ArtifactBodyExporter.Body(
-                                inner.requireValue("ArtifactJson::decodeArtifactBodyExporter body")));
-                    }
-                    case "root" -> EResult.<ArtifactBodyExporter>ok(new ArtifactBodyExporter.Root());
-                    case "source_ref" -> {
-                        var inner = decodeArtifactIdSource(loc, exporterEntry.getValue());
-                        if (inner.hasErrors()) yield inner.<ArtifactBodyExporter>reerr();
-                        yield EResult.ok(new ArtifactBodyExporter.SourceRef(
-                                inner.requireValue("ArtifactJson::decodeArtifactBodyExporter source_ref")));
-                    }
+                    case "body" -> new ArtifactBodyExporter.Body(decodeArtifactBody(exporterEntry.getValue()));
+                    case "root" -> new ArtifactBodyExporter.Root();
+                    case "source_ref" ->
+                        new ArtifactBodyExporter.SourceRef(decodeArtifactIdSource(exporterEntry.getValue()));
                     default ->
-                        EResult.<ArtifactBodyExporter>err(
-                                loc, "decodeArtifactBodyExporter: unknown tag " + exporterEntry.getKey());
+                        throw new IllegalStateException(
+                                "decodeArtifactBodyExporter: unknown tag " + exporterEntry.getKey());
                 };
-        if (exp.hasErrors()) return exp.reerr();
-        return EResult.ok(new ArtifactBody(data, exp.requireValue("ArtifactJson::decodeArtifactBody exporter")));
+        return new ArtifactBody(data, exporter);
     }
 
     public static JsonValue encodeArtifactIdSource(ArtifactIdSource id) {
@@ -160,115 +75,14 @@ public final class ArtifactJson {
         return new JsonValueObject(m);
     }
 
-    public static EResult<ArtifactIdSource> decodeArtifactIdSource(QExprId loc, JsonValue v) {
-        JsonValueObject obj;
-        switch (v) {
-            case JsonValueObject o -> obj = o;
-            case JsonValueNull n -> {
-                return EResult.err(loc, "decodeArtifactIdSource: expected object");
-            }
-            case JsonValueBoolean b -> {
-                return EResult.err(loc, "decodeArtifactIdSource: expected object");
-            }
-            case JsonValueNumber n -> {
-                return EResult.err(loc, "decodeArtifactIdSource: expected object");
-            }
-            case JsonValueString s -> {
-                return EResult.err(loc, "decodeArtifactIdSource: expected object");
-            }
-            case JsonValueArray a -> {
-                return EResult.err(loc, "decodeArtifactIdSource: expected object");
-            }
-        }
-        var ciJson = obj.entries().get("compile_id");
-        var indexJson = obj.entries().get("index");
-        if (ciJson == null || indexJson == null) {
-            return EResult.err(loc, "decodeArtifactIdSource: malformed");
-        }
-        JsonValueObject ci;
-        switch (ciJson) {
-            case JsonValueObject o -> ci = o;
-            case JsonValueNull n -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueBoolean b -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueNumber n -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueString s -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueArray a -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-        }
-        JsonValueNumber index;
-        switch (indexJson) {
-            case JsonValueNumber n -> index = n;
-            case JsonValueNull n -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueBoolean b -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueString s -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueArray a -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueObject o -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-        }
-        var isJson = ci.entries().get("import_state");
-        var srcJson = ci.entries().get("source");
-        if (isJson == null || srcJson == null) {
-            return EResult.err(loc, "decodeArtifactIdSource: malformed");
-        }
-        JsonValueNumber is;
-        switch (isJson) {
-            case JsonValueNumber n -> is = n;
-            case JsonValueNull n -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueBoolean b -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueString s -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueArray a -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueObject o -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-        }
-        JsonValueNumber src;
-        switch (srcJson) {
-            case JsonValueNumber n -> src = n;
-            case JsonValueNull n -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueBoolean b -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueString s -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueArray a -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-            case JsonValueObject o -> {
-                return EResult.err(loc, "decodeArtifactIdSource: malformed");
-            }
-        }
-        return EResult.ok(new ArtifactIdSource(
-                new CompileId(new ImportStateId((long) is.value()), new SourceId((long) src.value())),
-                (long) index.value()));
+    private static ArtifactIdSource decodeArtifactIdSource(JsonValue v) {
+        var obj = object(v, "decodeArtifactIdSource");
+        var ci = object(field(obj, "compile_id", "decodeArtifactIdSource"), "decodeArtifactIdSource compile_id");
+        return new ArtifactIdSource(
+                new CompileId(
+                        new ImportStateId(number(ci, "import_state", "decodeArtifactIdSource")),
+                        new SourceId(number(ci, "source", "decodeArtifactIdSource"))),
+                number(obj, "index", "decodeArtifactIdSource"));
     }
 
     public static JsonValue encodeArtifactList(TList<Artifact> list) {
@@ -277,32 +91,56 @@ public final class ArtifactJson {
         return new JsonValueArray(arr);
     }
 
-    public static EResult<TList<Artifact>> decodeArtifactList(QExprId loc, JsonValue v) {
-        JsonValueArray arr;
-        switch (v) {
-            case JsonValueArray a -> arr = a;
-            case JsonValueNull n -> {
-                return EResult.err(loc, "decodeArtifactList: expected array");
-            }
-            case JsonValueBoolean b -> {
-                return EResult.err(loc, "decodeArtifactList: expected array");
-            }
-            case JsonValueNumber n -> {
-                return EResult.err(loc, "decodeArtifactList: expected array");
-            }
-            case JsonValueString s -> {
-                return EResult.err(loc, "decodeArtifactList: expected array");
-            }
-            case JsonValueObject o -> {
-                return EResult.err(loc, "decodeArtifactList: expected array");
-            }
-        }
+    public static TList<Artifact> decodeArtifactList(JsonValue v) {
+        JsonValueArray arr =
+                switch (v) {
+                    case JsonValueArray a -> a;
+                    case JsonValueNull n -> throw new IllegalStateException("decodeArtifactList: expected array");
+                    case JsonValueBoolean b -> throw new IllegalStateException("decodeArtifactList: expected array");
+                    case JsonValueNumber n -> throw new IllegalStateException("decodeArtifactList: expected array");
+                    case JsonValueString s -> throw new IllegalStateException("decodeArtifactList: expected array");
+                    case JsonValueObject o -> throw new IllegalStateException("decodeArtifactList: expected array");
+                };
         var out = new TList<Artifact>(arr.elements().size());
-        for (var e : arr.elements()) {
-            var a = decodeArtifact(loc, e);
-            if (a.hasErrors()) return a.reerr();
-            out.add(a.requireValue("ArtifactJson::decodeArtifactList element"));
+        for (var e : arr.elements()) out.add(decodeArtifact(e));
+        return out;
+    }
+
+    private static JsonValueObject object(JsonValue v, String what) {
+        return switch (v) {
+            case JsonValueObject o -> o;
+            case JsonValueNull n -> throw new IllegalStateException(what + ": expected object");
+            case JsonValueBoolean b -> throw new IllegalStateException(what + ": expected object");
+            case JsonValueNumber n -> throw new IllegalStateException(what + ": expected object");
+            case JsonValueString s -> throw new IllegalStateException(what + ": expected object");
+            case JsonValueArray a -> throw new IllegalStateException(what + ": expected object");
+        };
+    }
+
+    private static Map.Entry<String, JsonValue> tagged(JsonValue v, String what) {
+        var obj = object(v, what);
+        if (obj.entries().size() != 1) {
+            throw new IllegalStateException(what + ": expected tagged object");
         }
-        return EResult.ok(out);
+        return obj.entries().entrySet().iterator().next();
+    }
+
+    private static JsonValue field(JsonValueObject obj, String key, String what) {
+        var found = obj.entries().getOpt(key);
+        if (found.optIsNone()) {
+            throw new IllegalStateException(what + ": missing '" + key + "'");
+        }
+        return found.optUnwrap();
+    }
+
+    private static long number(JsonValueObject obj, String key, String what) {
+        return switch (field(obj, key, what)) {
+            case JsonValueNumber n -> (long) n.value();
+            case JsonValueNull n -> throw new IllegalStateException(what + ": expected number at '" + key + "'");
+            case JsonValueBoolean b -> throw new IllegalStateException(what + ": expected number at '" + key + "'");
+            case JsonValueString s -> throw new IllegalStateException(what + ": expected number at '" + key + "'");
+            case JsonValueArray a -> throw new IllegalStateException(what + ": expected number at '" + key + "'");
+            case JsonValueObject o -> throw new IllegalStateException(what + ": expected number at '" + key + "'");
+        };
     }
 }

@@ -44,14 +44,14 @@ public record AspectFunctionListNewDynamic(TypeListNewDynamic type) implements A
         Type instanceType = new TypeListBoxedDynamic(type.elementType());
         var tlistIntname = JavaInternalName.fromClass(TList.class);
         var descObject = JavaDataDescriptor.fromClass(Object.class);
-        var addDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of(descObject));
+        var addDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(descObject));
         var b = new JavaBytecodeBuilder(loc);
         var regs = new TList<JavaBytecodeReg>(dynamicElements.size());
         for (var element : dynamicElements) regs.add(b.reg(element));
         var selfRes = b.addCode(loc, self.code());
-        if (selfRes.hasErrors()) return selfRes.reerr();
+        if (selfRes.optIsSome()) return EResult.errs(selfRes.optUnwrap());
         var list = b.newInstance(tlistIntname, JavaMethodDescriptor.fromConstructorParts(TList.of()));
-        for (var reg : regs) b.invokeVirtual(tlistIntname, "add", addDesc, list, reg);
+        for (var reg : regs) b.invokeVirtualVoid(tlistIntname, "add", addDesc, list, reg);
         return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), list, instanceType));
     }
 

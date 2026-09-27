@@ -40,7 +40,7 @@ public record TypeMethodDynamic(
     }
 
     public Type arg() {
-        return FunctionParam.argType(new TList<FunctionParam>().addAll(params));
+        return FunctionParam.argType(TList.from(params));
     }
 
     @Override
@@ -81,9 +81,7 @@ public record TypeMethodDynamic(
         return oOpt.optIsSome()
                 && receiver.typeIsEqual(xx, oOpt.optUnwrap().receiver)
                 && TypeFunctionConst.paramsEqual(
-                        xx,
-                        new TList<FunctionParam>().addAll(params),
-                        new TList<FunctionParam>().addAll(oOpt.optUnwrap().params))
+                        xx, TList.from(params), TList.<FunctionParam>from(oOpt.optUnwrap().params))
                 && TypeFunctionConst.retEqual(xx, ret, oOpt.optUnwrap().ret)
                 && klass.equals(oOpt.optUnwrap().klass)
                 && methodName.equals(oOpt.optUnwrap().methodName)

@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-public final class TMap<K, V> implements Map<K, V> {
+public final class TMap<K, V> {
     private final HashMap<K, V> backing;
 
     public TMap() {
@@ -26,86 +26,51 @@ public final class TMap<K, V> implements Map<K, V> {
 
     public Opt<V> getOpt(K key) {
         var v = backing.get(key);
-        if (v == null && !backing.containsKey(key)) return Opt.none();
-        return Opt.some(v);
+        return v == null ? Opt.none() : Opt.some(v);
     }
 
     public V computeIfAbsentT(K key, Function<K, V> f) {
         return backing.computeIfAbsent(key, f);
     }
 
-    public V getOrNull(K key) {
-        return backing.get(key);
-    }
-
-    @Override
     public int size() {
         return backing.size();
     }
 
-    @Override
     public boolean isEmpty() {
         return backing.isEmpty();
     }
 
-    @Override
-    public boolean containsKey(Object key) {
-        return backing.containsKey(key);
+    public void put(K key, V value) {
+        backing.put(key, value);
     }
 
-    @Override
-    public boolean containsValue(Object value) {
-        return backing.containsValue(value);
+    public void putIfAbsent(K key, V value) {
+        backing.putIfAbsent(key, value);
     }
 
-    @Override
-    public V get(Object key) {
-        return backing.get(key);
+    public void remove(K key) {
+        backing.remove(key);
     }
 
-    @Override
-    public V put(K key, V value) {
-        return backing.put(key, value);
+    public void putAll(TMap<K, V> source) {
+        backing.putAll(source.backing);
     }
 
-    @Override
-    public V remove(Object key) {
-        return backing.remove(key);
-    }
-
-    @Override
-    public void putAll(Map<? extends K, ? extends V> source) {
-        backing.putAll(source);
-    }
-
-    @Override
     public void clear() {
         backing.clear();
     }
 
-    @Override
     public Set<K> keySet() {
         return backing.keySet();
     }
 
-    @Override
     public Collection<V> values() {
         return backing.values();
     }
 
-    @Override
     public Set<Map.Entry<K, V>> entrySet() {
         return backing.entrySet();
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        return backing.equals(other);
-    }
-
-    @Override
-    public int hashCode() {
-        return backing.hashCode();
     }
 
     @Override

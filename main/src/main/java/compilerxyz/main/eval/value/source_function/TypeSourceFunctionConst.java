@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.source_function;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
@@ -13,15 +12,16 @@ import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.eval.dynamic.ArtifactJavaClassCompiled;
 import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.gen.Binding;
@@ -35,7 +35,6 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetFunctionCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
@@ -96,75 +95,43 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
                                 + data.name.optUnwrapOr("(unnamed)")
                                 + "' is not attached to a definition set");
             }
-            var argTypeOpt = data.argType;
-            if (argTypeOpt.optIsNone()) {
+            if (!set.finished) {
                 return EResult.err(
                         loc,
-                        "TypeSourceFunctionConst::exporterRootDelegateSelfExport: function '"
-                                + data.name.optUnwrapOr("(unnamed)")
-                                + "' missing arg type");
+                        "Function '" + data.name.optUnwrapOr("(unnamed)")
+                                + "' cannot be exported: its definition set has not been finished (d.finish())");
             }
-            var argType = argTypeOpt.optUnwrap();
+            if (data.argType.optIsNone() || data.compiledClassName.optIsNone() || data.compiledClass.optIsNone()) {
+                throw new AssertionError(
+                        "function '" + data.name.optUnwrapOr("(unnamed)") + "' in a finished set is not compiled");
+            }
+            var argType = data.argType.optUnwrap();
             var retType = data.retType;
-            if (data.compiledClassName.optIsNone()) {
-                var finishRes = data.finish(xx, loc);
-                if (finishRes.hasErrors()) {
-                    return finishRes.reerr();
-                }
-            }
-
-            if (data.compiledClassName.optIsNone() && data.functionSpec.optIsSome()) {
-                set.finishFunctions();
-            }
             var compiledClassName = data.compiledClassName;
-            var compiledBytecode = data.compiledBytecode;
-            if (compiledClassName.optIsNone() || compiledBytecode.optIsNone()) {
-                return EResult.err(
-                        loc,
-                        "TypeSourceFunctionConst::exporterRootDelegateSelfExport: function '"
-                                + data.name.optUnwrapOr("(unnamed)")
-                                + "' has not been compiled (finish() returned no source)");
-            }
-            var errors = new TList<ExprErr>();
-            var artifact =
-                    ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, data.artifactIdCell, () -> {
-                        var defSetArtRes = Artifactable.exportArtifact(xx, loc, set);
-                        defSetArtRes.drainInto(errors);
-                        var defSetArt = defSetArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                        var argArtRes = Artifactable.exportArtifact(xx, loc, argType);
-                        argArtRes.drainInto(errors);
-                        var argArt = argArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                        Artifact retArt;
-                        if (retType.optIsSome()) {
-                            var retArtRes = Artifactable.exportArtifact(xx, loc, retType.optUnwrap());
-                            retArtRes.drainInto(errors);
-                            retArt = retArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                        } else {
-                            retArt = nullArtifact();
-                        }
-                        var externalsRes = ExternalCodec.exportExternals(xx, loc, data.capturedExternals);
-                        externalsRes.drainInto(errors);
-                        var externals = externalsRes.valueOpt().optUnwrapOr(TList.<ArtifactExternal>of());
-                        var body = new ArtifactDataDefSetFunction(
-                                defSetArt,
-                                set.defSetId,
-                                data.name,
-                                argArt,
-                                retArt,
-                                data.jvmMethodName,
-                                compiledClassName,
-                                compiledBytecode,
-                                externals);
-                        return makeBody.apply(ArtifactDataDefSetFunctionCodec.toValue(body));
-                    });
-            if (errors.isEmpty()) {
-                return EResult.ok(artifact);
-            }
-            return EResult.mixed(artifact, errors);
-        }
-
-        private static Artifact nullArtifact() {
-            return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new Root()));
+            var compiledClass = data.compiledClass;
+            return ArtifactSupport.implExportIndependentArtifact(xx, data.artifactIdCell, () -> {
+                var erb = new Erb(loc);
+                var defSetArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, set));
+                var argArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, argType));
+                Opt<Artifact> retArt = Opt.none();
+                if (retType.optIsSome()) {
+                    retArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, retType.optUnwrap()));
+                }
+                var externals =
+                        erb.mustErMaybeUnreachable(ExternalCodec.exportExternals(xx, loc, data.capturedExternals));
+                if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+                var body = new ArtifactDataDefSetFunction(
+                        defSetArt.optUnwrap(),
+                        set.defSetId,
+                        data.name,
+                        argArt.optUnwrap(),
+                        retArt,
+                        data.jvmMethodName,
+                        compiledClassName,
+                        compiledClass.optMap(ArtifactJavaClassCompiled::fromCompiled),
+                        externals.optUnwrap());
+                return EResult.ok(makeBody.apply(ArtifactDataDefSetFunctionCodec.toValue(body)));
+            });
         }
 
         @Override
@@ -195,12 +162,12 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
                                 body.name(), DynRuntime.freshUnique(xx.vx), body.jvmMethodName());
                         funcData.artifactIdCell.set(idValue);
                         funcData.compiledClassName = body.compiledClassName();
-                        funcData.compiledBytecode = body.compiledBytecode();
+                        funcData.compiledClass = body.compiledClass().optMap(ArtifactJavaClassCompiled::toCompiled);
                         var fc = new TypeSourceFunctionConst(funcData);
                         var deps = new TList<Artifact>();
                         deps.add(body.defSet());
                         deps.add(body.argType());
-                        deps.add(body.retType());
+                        if (body.retType().optIsSome()) deps.add(body.retType().optUnwrap());
                         for (var ext : body.capturedExternals()) {
                             switch (ext) {
                                 case ArtifactExternal.StageLift sl -> deps.add(sl.sourceTypeArtifact());
@@ -220,10 +187,12 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
                                     ArtifactSupport.independentFinalizeImportTypeArtifact(xx2, loc2, body.argType());
                             var argVal = argRes.requireValue("TypeSourceFunctionConst::finalizer arg type");
                             funcData.argType = Opt.some(argVal);
-                            var retRes =
-                                    ArtifactSupport.independentFinalizeImportTypeArtifact(xx2, loc2, body.retType());
-                            var retVal = retRes.requireValue("TypeSourceFunctionConst::finalizer ret type");
-                            funcData.retType = Opt.some(retVal);
+                            if (body.retType().optIsSome()) {
+                                var retRes = ArtifactSupport.independentFinalizeImportTypeArtifact(
+                                        xx2, loc2, body.retType().optUnwrap());
+                                var retVal = retRes.requireValue("TypeSourceFunctionConst::finalizer ret type");
+                                funcData.retType = Opt.some(retVal);
+                            }
                             var extRes = ExternalCodec.importExternals(xx2, loc2, body.capturedExternals());
                             var extVal = extRes.requireValue("TypeSourceFunctionConst::finalizer externals");
                             funcData.capturedExternals.addAll(extVal);
@@ -249,14 +218,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
 
         @Override
         public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
-            for (var other : others) {
-                if (!this.equals(other)) {
-                    return EResult.err(
-                            loc,
-                            "cannot merge " + getClass().getSimpleName()
-                                    + " with a differently-typed binding across branches");
-                }
-            }
             return EResult.ok(this);
         }
 

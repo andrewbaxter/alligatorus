@@ -12,7 +12,8 @@ public final class EvalRootEmitter {
 
     public static CodeDynamicReg loadEvalContext(QExprId loc, ExprContext xx) {
         var b = new JavaBytecodeBuilder(loc);
-        var xxReg = b.getStatic(JavaInternalName.of(xx.vx.evalRootInternalName), EXPR_CONTEXT_FIELD, DESC_EXPR_CONTEXT);
+        var xxReg = b.getStatic(
+                JavaInternalName.of(xx.vx.evalRootInternalName.optUnwrap()), EXPR_CONTEXT_FIELD, DESC_EXPR_CONTEXT);
         var vxReg = b.getField(
                 JavaInternalName.fromClass(ExprContext.class),
                 "vx",

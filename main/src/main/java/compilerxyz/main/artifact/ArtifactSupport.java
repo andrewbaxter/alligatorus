@@ -1,5 +1,6 @@
 package compilerxyz.main.artifact;
 
+import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
@@ -97,16 +98,18 @@ public final class ArtifactSupport {
         return exporter.artifactExporterImportFromData(xx, loc, id, body.data());
     }
 
-    public static Artifact implExportIndependentArtifact(
-            Artifacts artifacts, ArtifactIdHolder cell, Supplier<ArtifactBody> produce) {
+    public static EResult<Artifact> implExportIndependentArtifact(
+            ExprContext xx, ArtifactIdHolder cell, Supplier<EResult<ArtifactBody>> produce) {
         if (cell.id().optIsSome()) {
-            return new Artifact.Ref(cell.id().optUnwrap());
+            return EResult.ok(new Artifact.Ref(cell.id().optUnwrap()));
         }
-        var id = artifacts.artifactsReserveId();
+        var artifacts = xx.vx.ix.gx.artifacts;
+        var id = artifacts.artifactsReserveId(new CompileId(xx.vx.ix.importState, xx.vx.ix.sourceId));
         cell.set(id);
-        var body = produce.get();
-        artifacts.artifactsSet(id, body);
-        return new Artifact.Ref(id);
+        var bodyRes = produce.get();
+        if (bodyRes.hasErrors()) return bodyRes.reerr();
+        artifacts.artifactsSet(id, bodyRes.requireValue("ArtifactSupport::implExportIndependentArtifact body"));
+        return EResult.ok(new Artifact.Ref(id));
     }
 
     public static <T> EResult<Artifactable> implImportIndependentArtifact(

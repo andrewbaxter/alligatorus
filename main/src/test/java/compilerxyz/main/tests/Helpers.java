@@ -7,7 +7,6 @@ import compilerxyz.main.artifact.Artifacts;
 import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.CompileRes;
 import compilerxyz.main.eval.ExprErr;
-import compilerxyz.main.eval.ImportStateId;
 import compilerxyz.main.eval.SourceId;
 import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.langhelp.Compile.CompileResult;
@@ -81,15 +80,16 @@ public final class Helpers {
                     var v = entry.getValue();
                     var redacted =
                             switch (v) {
-                                case JsonValueString ignored -> k.equals("compiled_bytecode") ? jsonStr("BYTECODE") : v;
+                                case JsonValueString ignored ->
+                                    k.equals("compiled_bytecode") || k.equals("bytecode") ? jsonStr("BYTECODE") : v;
                                 case JsonValueNumber ignored -> v;
                                 case JsonValueNull ignored -> v;
                                 case JsonValueBoolean ignored -> v;
-                                case JsonValueArray ignored -> jsonRedacted(v);
+                                case JsonValueArray ignored -> k.equals("locs") ? jsonStr("LOCS") : jsonRedacted(v);
                                 case JsonValueObject inner -> {
-                                    var some = inner.entries().getOrNull("some");
-                                    boolean someIsString = some != null
-                                            && switch (some) {
+                                    var someOpt = inner.entries().getOpt("some");
+                                    boolean someIsString = someOpt.optIsSome()
+                                            && switch (someOpt.optUnwrap()) {
                                                 case JsonValueString ignored2 -> true;
                                                 case JsonValueNumber ignored2 -> false;
                                                 case JsonValueNull ignored2 -> false;
@@ -142,10 +142,23 @@ public final class Helpers {
         return new JsonValueNumber(value);
     }
 
+    public static Result<CompileResult, TList<ExprErr>> compile(GlobalContext gx, SourceSpecAbsolute entry) {
+        var resolved =
+                switch (gx.sources.sourcesGet(entry)) {
+                    case Result.Err<Sources.SourceResolved, String> err ->
+                        throw new AssertionError("test entry does not resolve: " + err.error());
+                    case Result.Ok<Sources.SourceResolved, String> ok -> ok.value();
+                };
+        return switch (resolved) {
+            case Sources.SourceResolved.Module m -> Compile.compile(gx, entry, m);
+            case Sources.SourceResolved.Bundle b -> throw new AssertionError("test entry is a bundle: " + entry);
+        };
+    }
+
     public static CompileResult compileCaptured(TMap<String, SourceModule> modules) {
         var gx = newGx(modules);
         gx.captureBytecode = true;
-        var res = Compile.compile(gx, new Virtual("main"));
+        var res = compile(gx, new Virtual("main"));
         Result.Ok<CompileResult, TList<ExprErr>> ok;
         switch (res) {
             case Result.Ok<CompileResult, TList<ExprErr>> o -> ok = o;
@@ -155,11 +168,12 @@ public final class Helpers {
     }
 
     public static String disassembled(CompileResult result, String binaryName) {
-        var bytes = result.bytecode().getOrNull(binaryName);
-        if (bytes == null) {
+        var bytesOpt = result.bytecode().getOpt(binaryName);
+        if (bytesOpt.optIsNone()) {
             throw new AssertionError("no captured bytecode for " + binaryName + "; captured: "
                     + result.bytecode().keySet());
         }
+        var bytes = bytesOpt.optUnwrap();
         var reader = new ClassReader(bytes);
         var writer = new StringWriter();
         reader.accept(
@@ -194,16 +208,17 @@ public final class Helpers {
 
         @Override
         public synchronized Result<ArtifactBody, String> artifactsGet(ArtifactIdSource id) {
-            var v = data.getOrNull(id);
-            if (v == null) return Result.err("Artifact not found: " + id);
+            var vOpt = data.getOpt(id);
+            if (vOpt.optIsNone()) return Result.err("Artifact not found: " + id);
+            var v = vOpt.optUnwrap();
             return Result.ok(v);
         }
 
         @Override
-        public synchronized ArtifactIdSource artifactsReserveId() {
+        public synchronized ArtifactIdSource artifactsReserveId(CompileId compileId) {
             var id = nextId;
             nextId++;
-            return new ArtifactIdSource(new CompileId(new ImportStateId(0), new SourceId(0)), id);
+            return new ArtifactIdSource(compileId, id);
         }
 
         @Override
@@ -218,7 +233,7 @@ public final class Helpers {
 
         private static final class Entry {
             final ReentrantLock lock = new ReentrantLock();
-            CompileRes value;
+            Opt<CompileRes> value = Opt.none();
         }
 
         @Override
@@ -229,20 +244,16 @@ public final class Helpers {
             Entry e;
             mapLock.lock();
             try {
-                e = entries.getOrNull(id);
-                if (e == null) {
-                    e = new Entry();
-                    entries.put(id, e);
-                }
+                e = entries.computeIfAbsentT(id, k -> new Entry());
             } finally {
                 mapLock.unlock();
             }
             e.lock.lock();
             try {
-                if (e.value != null) return e.value;
+                if (e.value.optIsSome()) return e.value.optUnwrap();
                 var product = compute.get();
-                e.value = product.res();
-                return e.value;
+                e.value = Opt.some(product.res());
+                return product.res();
             } finally {
                 e.lock.unlock();
             }
@@ -254,7 +265,7 @@ public final class Helpers {
             try {
                 var out = new TList<CompileRes>();
                 for (var e : entries.values()) {
-                    if (e.value != null) out.add(e.value);
+                    if (e.value.optIsSome()) out.add(e.value.optUnwrap());
                 }
                 return out;
             } finally {
@@ -274,8 +285,9 @@ public final class Helpers {
         public Result<SourceResolved, String> sourcesGet(SourceSpecAbsolute spec) {
             return switch (spec) {
                 case SourceSpecAbsolute.Virtual v -> {
-                    var found = modules.getOrNull(v.name());
-                    if (found == null) yield Result.err("Module not found: " + v.name());
+                    var foundOpt = modules.getOpt(v.name());
+                    if (foundOpt.optIsNone()) yield Result.err("Module not found: " + v.name());
+                    var found = foundOpt.optUnwrap();
                     yield Result.ok(found);
                 }
                 case SourceSpecAbsolute.Local l -> Result.err("test sources do not support local imports: " + l.path());

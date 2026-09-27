@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.option;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
@@ -12,7 +11,6 @@ import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
@@ -37,7 +35,6 @@ import compilerxyz.main.gen.GenOptions;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactOptionTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -139,10 +136,6 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
         return EResult.ok(ExporterRoot.OPTION_DYNAMIC);
     }
 
-    private static Artifact nullArtifact() {
-        return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new Root()));
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
@@ -154,16 +147,12 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
                                 + self.getClass());
             }
             var cell = option.optionDynamicArtifactIdCell();
-            var errors = new TList<ExprErr>();
-            var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
+            return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
                 var elementArtRes = Artifactable.exportArtifact(xx, loc, option.optionDynamicElementType());
-                elementArtRes.drainInto(errors);
-                var elementArt = elementArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                var body = new ArtifactOptionType(elementArt);
-                return makeBody.apply(ArtifactOptionTypeCodec.toValue(body));
+                if (elementArtRes.hasErrors()) return elementArtRes.reerr();
+                var body = new ArtifactOptionType(elementArtRes.requireValue("TypeOptionDynamic::export element"));
+                return EResult.ok(makeBody.apply(ArtifactOptionTypeCodec.toValue(body)));
             });
-            if (errors.isEmpty()) return EResult.ok(artifact);
-            return EResult.mixed(artifact, errors);
         }
 
         @Override

@@ -37,7 +37,7 @@ public final class T0160EvenOddTest {
                                                         mb.mustReinterpret(),
                                                         mb.tupleOf(cvValue(mb, cv), mb.lower(mb.scopeUse("vb_type")))),
                                                 mb.str("get_wrapped")),
-                                        mb.literalNull())))));
+                                        mb.tupleOf())))));
     }
 
     private static SourceExpr cvValue(TestMb mb, SourceExpr cv) {
@@ -102,7 +102,7 @@ public final class T0160EvenOddTest {
                                                                         "source",
                                                                         mb.call(
                                                                                 mb.lower(mb.scopeUse("vs_expr")),
-                                                                                mb.literalNull())),
+                                                                                mb.tupleOf())),
                                                                 new TestMb.RecordPair(
                                                                         "wrapped",
                                                                         cvValue(mb, mb.scopeUse("sum_cv_")))))))))));
@@ -132,58 +132,49 @@ public final class T0160EvenOddTest {
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
                                         mb.bind(
                                                 "vs_expr",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("vs"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("expr")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref", mb.typesNull())))),
-                                                        mb.str("value"))),
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("vs"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("expr")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref", mb.tupleOf()))))),
                                         mb.bind(
                                                 "vs_binding",
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.field(mb.scopeUse("vs"), mb.str("variant")),
-                                                                mb.recordOf(
-                                                                        TList.of(
-                                                                                new TestMb.RecordPair(
-                                                                                        "tag", mb.str("binding")),
-                                                                                new TestMb.RecordPair(
-                                                                                        "type_ref",
-                                                                                        mb.recordOf(
-                                                                                                TList.of(
-                                                                                                        new TestMb
-                                                                                                                .RecordPair(
-                                                                                                                "int",
-                                                                                                                mb
-                                                                                                                        .evalBinding()),
-                                                                                                        new TestMb
-                                                                                                                .RecordPair(
-                                                                                                                "state",
-                                                                                                                mb
-                                                                                                                        .recordOf(
-                                                                                                                                TList
-                                                                                                                                        .of(
-                                                                                                                                                new TestMb
-                                                                                                                                                        .RecordPair(
-                                                                                                                                                        "parity",
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("vs"), mb.str("variant")),
+                                                        mb.recordOf(
+                                                                TList.of(
+                                                                        new TestMb.RecordPair("tag", mb.str("binding")),
+                                                                        new TestMb.RecordPair(
+                                                                                "type_ref",
+                                                                                mb.recordOf(
+                                                                                        TList.of(
+                                                                                                new TestMb.RecordPair(
+                                                                                                        "int",
+                                                                                                        mb
+                                                                                                                .evalBinding()),
+                                                                                                new TestMb.RecordPair(
+                                                                                                        "state",
+                                                                                                        mb.recordOf(
+                                                                                                                TList
+                                                                                                                        .of(
+                                                                                                                                new TestMb
+                                                                                                                                        .RecordPair(
+                                                                                                                                        "parity",
+                                                                                                                                        mb
+                                                                                                                                                .typesLong()),
+                                                                                                                                new TestMb
+                                                                                                                                        .RecordPair(
+                                                                                                                                        "setter",
+                                                                                                                                        mb
+                                                                                                                                                .call(
                                                                                                                                                         mb
-                                                                                                                                                                .typesLong()),
-                                                                                                                                                new TestMb
-                                                                                                                                                        .RecordPair(
-                                                                                                                                                        "setter",
+                                                                                                                                                                .typesOption(),
                                                                                                                                                         mb
-                                                                                                                                                                .call(
-                                                                                                                                                                        mb
-                                                                                                                                                                                .typesOption(),
-                                                                                                                                                                        mb
-                                                                                                                                                                                .builtin(
-                                                                                                                                                                                        "eval",
-                                                                                                                                                                                        "binding_setter")))))))))))),
-                                                        mb.str("value"))),
+                                                                                                                                                                .builtin(
+                                                                                                                                                                        "eval",
+                                                                                                                                                                        "binding_setter"))))))))))))),
                                         mb.bind(
                                                 "u",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str(name))),
@@ -978,16 +969,12 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                 .str(
                                                                                                                                                                                                                                         "get_parity")),
                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                .literalNull()),
+                                                                                                                                                                                                                .tupleOf()),
                                                                                                                                                                                         mb
                                                                                                                                                                                                 .scopeUse(
                                                                                                                                                                                                         "initial_")),
                                                                                                                                                                         mb
-                                                                                                                                                                                .as(
-                                                                                                                                                                                        mb
-                                                                                                                                                                                                .literalNull(),
-                                                                                                                                                                                        mb
-                                                                                                                                                                                                .typesNull()))),
+                                                                                                                                                                                .seqOf())),
                                                                                                                                                 Opt
                                                                                                                                                         .some(
                                                                                                                                                                 mb
@@ -1385,7 +1372,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                                                                                                                                                                                                                 .scopeUse(
                                                                                                                                                                                                                                                                                                                                                                                                                                         "vs_expr")),
                                                                                                                                                                                                                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                                                                                                                                                                                                                .literalNull())),
+                                                                                                                                                                                                                                                                                                                                                                                                                .tupleOf())),
                                                                                                                                                                                                                                                                                                                                                                                 new TestMb
                                                                                                                                                                                                                                                                                                                                                                                         .RecordPair(
                                                                                                                                                                                                                                                                                                                                                                                         "wrapped",
@@ -1643,7 +1630,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                 .str(
                                                                                                                                                         "none")),
                                                                                                                         mb
-                                                                                                                                .literalNull())))),
+                                                                                                                                .tupleOf())))),
                                                                                         new TestMb.RecordPair(
                                                                                                 "can_cast_to",
                                                                                                 mb.seqOf(
@@ -1856,7 +1843,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                                                                                                         .str(
                                                                                                                                                                                                                                                                                                                                 "none")),
                                                                                                                                                                                                                                                                                                 mb
-                                                                                                                                                                                                                                                                                                        .literalNull())))))))))))))))))))))),
+                                                                                                                                                                                                                                                                                                        .tupleOf())))))))))))))))))))))),
                                         mb.call(
                                                 mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                                                 mb.recordOf(
@@ -2080,7 +2067,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                                         .str(
                                                                                                                                                                                                                                                                 "get_wrapped")),
                                                                                                                                                                                                                                 mb
-                                                                                                                                                                                                                                        .literalNull()))))))))))),
+                                                                                                                                                                                                                                        .tupleOf()))))))))))),
                                                                                         new TestMb.RecordPair(
                                                                                                 "jvm_class",
                                                                                                 delegateNullXxOnly(
@@ -2234,7 +2221,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                 .str(
                                                                                                                                                                                                                         "get_parity")),
                                                                                                                                                                                         mb
-                                                                                                                                                                                                .literalNull())),
+                                                                                                                                                                                                .tupleOf())),
                                                                                                                                                         mb
                                                                                                                                                                 .return_(
                                                                                                                                                                         mb
@@ -2289,7 +2276,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                                 .str(
                                                                                                                                                                                                                                                         "get_source")),
                                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                                .literalNull())),
+                                                                                                                                                                                                                                .tupleOf())),
                                                                                                                                                                                         mb
                                                                                                                                                                                                 .return_(
                                                                                                                                                                                                         mb
@@ -3073,7 +3060,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                                                                                                                 .str(
                                                                                                                                                                                                                                                                                                                                         "get_parity")),
                                                                                                                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                                                                                                                .literalNull())),
+                                                                                                                                                                                                                                                                                                                .tupleOf())),
                                                                                                                                                                                                                                                                         mb
                                                                                                                                                                                                                                                                                 .as(
                                                                                                                                                                                                                                                                                         mb
@@ -3224,13 +3211,12 @@ public final class T0160EvenOddTest {
 
     private static Compile.CompileResult compileOk(TMap<String, SourceModule> modules) {
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes = r;
             case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> {
-                assertTrue(false, () -> "compile failed: " + res);
-                return null;
+                throw new AssertionError("compile failed: " + res);
             }
         }
         return okRes.value();
@@ -3247,7 +3233,7 @@ public final class T0160EvenOddTest {
                         bindEvenOddType(mb, "EvenOdd", mb.throw_(mb.str("drop boom"))),
                         mb.call(mb.log(), mb.str("defined")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -3282,7 +3268,7 @@ public final class T0160EvenOddTest {
                         mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.call(mb.log(), mb.str("bound")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -3429,7 +3415,7 @@ public final class T0160EvenOddTest {
                         mb.set(mb.scopeUse("a"), mb.as(mb.num(4.0), mb.typesLong())),
                         mb.call(mb.log(), mb.str("unreachable")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -3451,7 +3437,7 @@ public final class T0160EvenOddTest {
 
     private static void assertParityMergeError(TMap<String, SourceModule> modules) {
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -3471,24 +3457,18 @@ public final class T0160EvenOddTest {
                         mb.bind("builder", mb.call(mb.field(mb.scopeUse("d2"), mb.str("union")), mb.tupleOf())),
                         mb.bind(
                                 "new_str",
-                                mb.field(
-                                        mb.call(
-                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                mb.recordOf(
-                                                        TList.of(
-                                                                new TestMb.RecordPair("tag", mb.str("strtag")),
-                                                                new TestMb.RecordPair("type_ref", mb.typesString())))),
-                                        mb.str("value"))),
+                                mb.call(
+                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                        mb.recordOf(TList.of(
+                                                new TestMb.RecordPair("tag", mb.str("strtag")),
+                                                new TestMb.RecordPair("type_ref", mb.typesString()))))),
                         mb.bind(
                                 "new_num",
-                                mb.field(
-                                        mb.call(
-                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                mb.recordOf(
-                                                        TList.of(
-                                                                new TestMb.RecordPair("tag", mb.str("numtag")),
-                                                                new TestMb.RecordPair("type_ref", mb.typesLong())))),
-                                        mb.str("value"))),
+                                mb.call(
+                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                        mb.recordOf(TList.of(
+                                                new TestMb.RecordPair("tag", mb.str("numtag")),
+                                                new TestMb.RecordPair("type_ref", mb.typesLong()))))),
                         mb.call(mb.field(mb.scopeUse("d2"), mb.str("finish")), mb.tupleOf()),
                         mb.return_(mb.recordOf(TList.of(
                                 new TestMb.RecordPair("type", mb.field(mb.scopeUse("builder"), mb.str("type"))),
@@ -3773,7 +3753,7 @@ public final class T0160EvenOddTest {
                         mb.bind("a", mb.as(mb.as(mb.num(2.0), mb.typesLong()), mb.scopeUse("even_type"))),
                         mb.call(mb.log(), mb.str("unreachable")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
@@ -3944,7 +3924,7 @@ public final class T0160EvenOddTest {
                         mb.bind("c", mb.operatorAdd(mb.scopeUse("a"), mb.as(mb.num(3.0), mb.typesLong()))),
                         mb.call(mb.log(), mb.str("unreachable")))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;

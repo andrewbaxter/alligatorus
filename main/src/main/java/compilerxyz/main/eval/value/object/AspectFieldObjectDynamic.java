@@ -35,7 +35,7 @@ public record AspectFieldObjectDynamic(TypeObjectDynamic type) implements Aspect
         var keyStr = ckStr.value();
         var dynRes = DynUtil.valueReg(loc, self);
         if (dynRes.hasErrors()) return dynRes.reerr();
-        for (var f : type.dataFields) {
+        for (var f : type.dataFields()) {
             if (f.langName().equals(keyStr)) {
                 var b = new JavaBytecodeBuilder(loc);
                 var selfReg = b.reg(dynRes.requireValue("dyn"));
@@ -50,7 +50,7 @@ public record AspectFieldObjectDynamic(TypeObjectDynamic type) implements Aspect
             }
         }
         if (type.interfaceRepresented.optIsNone()) {
-            for (var m : type.methods) {
+            for (var m : type.methods()) {
                 if (m.langName().equals(keyStr)) {
                     return EResult.ok(DynUtil.methodRefOn(self, m.funcType()));
                 }
@@ -74,11 +74,11 @@ public record AspectFieldObjectDynamic(TypeObjectDynamic type) implements Aspect
             }
         }
         var name = keyStr.value();
-        for (var f : type.dataFields) {
+        for (var f : type.dataFields()) {
             if (f.langName().equals(name)) return Opt.some(f.fieldType());
         }
         if (type.interfaceRepresented.optIsNone()) {
-            for (var m : type.methods) {
+            for (var m : type.methods()) {
                 if (m.langName().equals(name)) return Opt.some(m.funcType());
             }
         }

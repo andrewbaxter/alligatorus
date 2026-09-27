@@ -18,6 +18,7 @@ import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
+import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
@@ -63,13 +64,14 @@ public record AspectFunctionImport(TypeImport type) implements AspectFunction {
         keys.addAll(specs.keySet());
         var outcomes = new TList<EResult<ImportRun.SpecOutcome>>(keys.size());
         if (keys.size() <= 1) {
-            for (var key : keys) outcomes.add(ImportRun.compileOne(xx, loc, specs.getOrNull(key)));
+            for (var key : keys)
+                outcomes.add(ImportRun.compileOne(xx, loc, specs.getOpt(key).optUnwrap()));
         } else {
             var pool = Executors.newFixedThreadPool(Math.min(keys.size(), 16));
             try {
                 var futures = new ArrayList<Future<EResult<ImportRun.SpecOutcome>>>(keys.size());
                 for (var key : keys) {
-                    var spec = specs.getOrNull(key);
+                    var spec = specs.getOpt(key).optUnwrap();
                     futures.add(pool.submit(() -> ImportRun.compileOne(xx, loc, spec)));
                 }
                 for (var future : futures) {
@@ -123,7 +125,7 @@ public record AspectFunctionImport(TypeImport type) implements AspectFunction {
             }
         }
         if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-        Value resultRecord = new Record(Opt.<RecordBaseDynamic>none(), fields);
+        Value resultRecord = new Record(Opt.<RecordBaseDynamic>none(), IOrderedMap.from(fields));
         return EResult.ok(new CodeValue(argument.code(), EvalOutcome.ofValue(resultRecord)));
     }
 

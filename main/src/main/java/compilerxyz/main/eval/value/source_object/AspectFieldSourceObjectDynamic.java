@@ -16,9 +16,10 @@ import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.function.FunctionParam;
 import compilerxyz.main.eval.value.function.TypeSourceMethodDynamic;
-import compilerxyz.main.eval.value.null_.TypeNullDynamic;
+import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
+import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -45,18 +46,14 @@ public record AspectFieldSourceObjectDynamic(TypeSourceObjectDynamic type) imple
             }
         }
         String keyName = keyStr.value();
-        String fieldName = null;
-        Type argType = null;
-        Opt<Type> retType = Opt.none();
+        Opt<SourceDataMethodData> foundOpt = Opt.none();
         for (var m : type.methods) {
             if (m.name.equals(keyName)) {
-                retType = m.retType;
-                argType = m.argType.optUnwrapOr(new TypeNullDynamic());
-                fieldName = m.jvmMethodName;
+                foundOpt = Opt.some(m);
                 break;
             }
         }
-        if (fieldName == null) {
+        if (foundOpt.optIsNone()) {
             var names = new TList<String>();
             for (var m : type.methods) names.add(m.name);
             return EResult.err(
@@ -69,6 +66,10 @@ public record AspectFieldSourceObjectDynamic(TypeSourceObjectDynamic type) imple
                             + names
                             + "; underlying-type Record fallback deferred)");
         }
+        var found = foundOpt.optUnwrap();
+        var retType = found.retType;
+        var argType = found.argType.optUnwrapOr(new Tuple(Opt.none(), IList.of()));
+        var fieldName = found.jvmMethodName;
         if (self.value().optIsNone() || !(self.value().optUnwrap() instanceof ValueDynamic selfVd)) {
             return EResult.err(loc, "TypeSourceObjectDynamic::field: receiver is not a ValueDynamic");
         }

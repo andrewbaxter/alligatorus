@@ -161,9 +161,9 @@ public final class EcoPipewire {
     public static SourceExpr module(EcoMb e) {
         var exprs = new TList<SourceExpr>();
         exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
-        exprs.add(e.let("probe", e.call(e.v("llvm"), e.nil())));
-        exprs.add(e.let("lmod_t", e.callM(e.v("probe"), "t_mod", e.nil())));
-        exprs.add(e.let("lref_t", e.callM(e.v("probe"), "t_ref", e.nil())));
+        exprs.add(e.let("probe", e.call(e.v("llvm"), e.tup())));
+        exprs.add(e.let("lmod_t", e.callM(e.v("probe"), "t_mod", e.tup())));
+        exprs.add(e.let("lref_t", e.callM(e.v("probe"), "t_ref", e.tup())));
 
         exprs.add(e.let("d", e.define()));
         exprs.add(e.let("pw_o", e.defObject(e.v("d"), "pipewire 1.6")));
@@ -184,14 +184,13 @@ public final class EcoPipewire {
             innerFields.add(e.p(s.name(), e.mb.evalType()));
             members.add(s.name());
         }
-        exprs.add(e.callM(e.v("pw_o"), "set_inner", e.rec(innerFields.toArray(new EcoMb.P[0]))));
+        exprs.add(e.callM(e.v("pw_o"), "set_inner", e.rec(innerFields.toArray(EcoMb.P[]::new))));
         for (var m : refMembers) {
-            exprs.add(e.methodImpl(
-                    e.v("pw_o"), m, e.mb.typesNull(), e.retSome(e.v("lref_t")), e.stage(e.fld(e.v("inner"), m))));
+            exprs.add(e.methodImpl(e.v("pw_o"), m, e.tup(), e.retSome(e.v("lref_t")), e.stage(e.fld(e.v("inner"), m))));
             exprs.add(e.methodImpl(
                     e.v("pw_o"),
                     m + "_t",
-                    e.mb.typesNull(),
+                    e.tup(),
                     e.retSome(e.mb.evalType()),
                     e.stage(e.fld(e.v("inner"), m + "_t"))));
         }
@@ -199,7 +198,7 @@ public final class EcoPipewire {
             exprs.add(e.methodImpl(
                     e.v("pw_o"),
                     s.name(),
-                    e.mb.typesNull(),
+                    e.tup(),
                     e.retSome(e.mb.evalType()),
                     e.stage(e.fld(e.v("inner"), s.name()))));
         }
@@ -213,7 +212,7 @@ public final class EcoPipewire {
                 fieldList.add(
                         e.callM(e.v("arg"), "field", e.rec(e.p("name", e.s(f.name())), e.p("ty", e.v("t_" + f.ty())))));
             }
-            var fields = fieldList.toArray(new SourceExpr[0]);
+            var fields = fieldList.toArray(SourceExpr[]::new);
             body.add(e.let(
                     "t_" + s.name(),
                     e.callM(
@@ -255,12 +254,12 @@ public final class EcoPipewire {
             ctorFields.add(e.p(m, e.v(m)));
             ctorFields.add(e.p(m + "_t", e.v(m + "_t")));
         }
-        body.add(e.ret(e.call(e.lower(e.fld(e.v("pw_o"), "new")), e.rec(ctorFields.toArray(new EcoMb.P[0])))));
+        body.add(e.ret(e.call(e.lower(e.fld(e.v("pw_o"), "new")), e.rec(ctorFields.toArray(EcoMb.P[]::new)))));
         exprs.add(e.funcImpl(
                 e.v("pw_builder"), e.v("lmod_t"), e.retSome(e.fld(e.v("pw_o"), "type")), e.stage(e.mb.seq(body))));
 
         exprs.add(e.finish(e.v("d")));
         exprs.add(e.ret(e.fld(e.v("pw_builder"), "func")));
-        return e.lower(e.mb.seq(exprs));
+        return e.mb.seq(exprs);
     }
 }

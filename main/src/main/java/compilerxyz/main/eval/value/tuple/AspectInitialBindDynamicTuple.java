@@ -10,9 +10,9 @@ public record AspectInitialBindDynamicTuple(Tuple type) implements AspectInitial
 
     @Override
     public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
-        var scopeFields = new TList<TupleScopeField>(type.elements.size());
-        for (int i = 0; i < type.elements.size(); i++) {
-            var e = type.elements.get(i);
+        var scopeFields = new TList<TupleScopeField>(type.elements().size());
+        for (int i = 0; i < type.elements().size(); i++) {
+            var e = type.elements().get(i);
             TupleElement.Dynamic d;
             switch (e) {
                 case TupleElement.Dynamic dyn -> d = dyn;

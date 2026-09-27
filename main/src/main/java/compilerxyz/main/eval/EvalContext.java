@@ -1,6 +1,7 @@
 package compilerxyz.main.eval;
 
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 
@@ -17,7 +18,7 @@ public final class EvalContext {
 
     public final TList<LogEntry> logs = new TList<>();
 
-    public String evalRootInternalName;
+    public Opt<String> evalRootInternalName = Opt.none();
 
     public EvalContext(CompileImportContext ix) {
         this.ix = ix;

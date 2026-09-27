@@ -171,12 +171,12 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
         var erb = new Erb(loc);
         var torderedMapIntname = JavaInternalName.fromClass(TOrderedMap.class);
         var descObject = JavaDataDescriptor.fromClass(Object.class);
-        var putDesc = JavaMethodDescriptor.fromParts(descObject, TList.of(descObject, descObject));
+        var putDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(descObject, descObject));
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
-        if (carryRes.hasErrors()) return carryRes.reerr();
+        if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
         var map = b.newInstance(torderedMapIntname, JavaMethodDescriptor.fromConstructorParts(TList.of()));
-        for (var entry : record.fields().entrySet()) {
+        for (var entry : record.fields()) {
             var fieldKey = entry.getKey();
             var fieldVal = entry.getValue();
             CodeValue keyCv;
@@ -214,7 +214,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
             if (valRes.hasErrors()) return valRes.reerr();
             var k = b.reg(keyRes.requireValue("map key"));
             var v = b.reg(valRes.requireValue("map value"));
-            b.invokeVirtual(torderedMapIntname, "put", putDesc, map, k, v);
+            b.invokeVirtualVoid(torderedMapIntname, "put", putDesc, map, k, v);
         }
         return EResult.ok(DynUtil.regToValue(b.code(), map, this));
     }

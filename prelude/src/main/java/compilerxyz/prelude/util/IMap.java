@@ -20,17 +20,15 @@ public final class IMap<K, V> implements Iterable<Map.Entry<K, V>> {
         return new IMap<>(Map.copyOf(staging));
     }
 
-    public static <K, V> IMap<K, V> from(Map<? extends K, ? extends V> source) {
-        return new IMap<>(Map.copyOf(source));
+    public static <K, V> IMap<K, V> from(TMap<K, V> source) {
+        var staging = new HashMap<K, V>(source.size());
+        for (var e : source.entrySet()) staging.put(e.getKey(), e.getValue());
+        return new IMap<>(Map.copyOf(staging));
     }
 
     public Opt<V> getOpt(K key) {
         var v = backing.get(key);
         return v == null ? Opt.none() : Opt.some(v);
-    }
-
-    public V getOrNull(K key) {
-        return backing.get(key);
     }
 
     public boolean containsKey(K key) {

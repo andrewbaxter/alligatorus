@@ -1,8 +1,10 @@
 package compilerxyz.main.gen;
 
+import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.source_object.SourceDataMethodData;
+import compilerxyz.prelude.annotations.BuiltinEvalContext;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -14,7 +16,10 @@ public final class SourceObjectMethodResult {
         this.method = method;
     }
 
-    public void impl(Type arg, Opt<Type> ret, StagedExprCell implBody) {
+    @BuiltinEvalContext
+    public void impl(EvalContext vx, Type arg, Opt<Type> ret, StagedExprCell implBody) {
+        DefinitionSetBuilder.requireArgBindable(
+                DefinitionSetBuilder.builderContext(vx), arg, "Method '" + this.method.name + "'");
         if (this.method.argType.optIsSome()) {
             throw new IllegalStateException("Method already has an arg type");
         }

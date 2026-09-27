@@ -54,48 +54,39 @@ public final class T0170NodejsTest {
                 mb.bind("code", mb.field(mb.scopeUse("code_data"), mb.str("type"))),
                 mb.bind(
                         "code_tu_call",
-                        mb.field(
-                                mb.call(
-                                        mb.field(mb.scopeUse("code_tu_builder"), mb.str("variant")),
-                                        mb.recordOf(TList.of(
-                                                rp("tag", mb.str("call")),
-                                                rp(
-                                                        "type_ref",
-                                                        mb.recordOf(
-                                                                TList.of(
-                                                                        rp("func", mb.scopeUse("code")),
-                                                                        rp("arg", mb.scopeUse("code")))))))),
-                                mb.str("value"))),
+                        mb.call(
+                                mb.field(mb.scopeUse("code_tu_builder"), mb.str("variant")),
+                                mb.recordOf(TList.of(
+                                        rp("tag", mb.str("call")),
+                                        rp(
+                                                "type_ref",
+                                                mb.recordOf(
+                                                        TList.of(
+                                                                rp("func", mb.scopeUse("code")),
+                                                                rp("arg", mb.scopeUse("code"))))))))),
                 mb.bind(
                         "code_tu_lit_str",
-                        mb.field(
-                                mb.call(
-                                        mb.field(mb.scopeUse("code_tu_builder"), mb.str("variant")),
-                                        mb.recordOf(TList.of(
-                                                rp("tag", mb.str("lit_str")), rp("type_ref", mb.typesString())))),
-                                mb.str("value"))),
+                        mb.call(
+                                mb.field(mb.scopeUse("code_tu_builder"), mb.str("variant")),
+                                mb.recordOf(TList.of(rp("tag", mb.str("lit_str")), rp("type_ref", mb.typesString()))))),
                 mb.bind(
                         "code_tu_field",
-                        mb.field(
-                                mb.call(
-                                        mb.field(mb.scopeUse("code_tu_builder"), mb.str("variant")),
-                                        mb.recordOf(TList.of(
-                                                rp("tag", mb.str("field")),
-                                                rp(
-                                                        "type_ref",
-                                                        mb.recordOf(
-                                                                TList.of(
-                                                                        rp("base", mb.scopeUse("code")),
-                                                                        rp("field", mb.scopeUse("code")))))))),
-                                mb.str("value"))),
+                        mb.call(
+                                mb.field(mb.scopeUse("code_tu_builder"), mb.str("variant")),
+                                mb.recordOf(TList.of(
+                                        rp("tag", mb.str("field")),
+                                        rp(
+                                                "type_ref",
+                                                mb.recordOf(
+                                                        TList.of(
+                                                                rp("base", mb.scopeUse("code")),
+                                                                rp("field", mb.scopeUse("code"))))))))),
                 mb.bind(
                         "code_tu_scope_use",
-                        mb.field(
-                                mb.call(
-                                        mb.field(mb.scopeUse("code_tu_builder"), mb.str("variant")),
-                                        mb.recordOf(TList.of(
-                                                rp("tag", mb.str("scope_use")), rp("type_ref", mb.typesString())))),
-                                mb.str("value"))),
+                        mb.call(
+                                mb.field(mb.scopeUse("code_tu_builder"), mb.str("variant")),
+                                mb.recordOf(
+                                        TList.of(rp("tag", mb.str("scope_use")), rp("type_ref", mb.typesString()))))),
                 mb.call(
                         mb.field(mb.scopeUse("code_data"), mb.str("impl_interface")),
                         mb.recordOf(TList.of(
@@ -105,7 +96,7 @@ public final class T0170NodejsTest {
                 mb.call(
                         mb.field(mb.scopeUse("code_get_builder"), mb.str("impl")),
                         mb.recordOf(TList.of(
-                                rp("arg", mb.typesNull()),
+                                rp("arg", mb.tupleOf()),
                                 rp("ret", mb.optSomeType(mb.scopeUse("code_tu"))),
                                 rp("impl_body", mb.stage(mb.scopeUse("inner")))))),
                 mb.bind("code_call_builder", mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("code.call"))),
@@ -429,7 +420,7 @@ public final class T0170NodejsTest {
                                                                                 "lit_str",
                                                                                 mb.str("Hello world (node)")))))))))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
@@ -467,7 +458,7 @@ public final class T0170NodejsTest {
     }
 
     private static SourceExpr optionAspectNone(TestMb mb) {
-        return mb.call(mb.field(mb.call(mb.typesOption(), mb.typesAspect()), mb.str("none")), mb.literalNull());
+        return mb.call(mb.field(mb.call(mb.typesOption(), mb.typesAspect()), mb.str("none")), mb.tupleOf());
     }
 
     private static SourceExpr aspectDispatch(TestMb mb, SourceExpr aspectId) {
@@ -595,7 +586,7 @@ public final class T0170NodejsTest {
                                                 new TestMb.Branch(mb.str("none"), dynStr.apply("none"))),
                                         Opt.none())))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
@@ -620,18 +611,14 @@ public final class T0170NodejsTest {
         exprs.add(mb.bind("nvalue_base", mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())));
         exprs.add(mb.bind(
                 "nvalue_binding",
-                mb.field(
-                        mb.call(
-                                mb.field(mb.scopeUse("nvalue_base"), mb.str("variant")),
-                                mb.recordOf(TList.of(rp("tag", mb.str("binding")), rp("type_ref", mb.typesString())))),
-                        mb.str("value"))));
+                mb.call(
+                        mb.field(mb.scopeUse("nvalue_base"), mb.str("variant")),
+                        mb.recordOf(TList.of(rp("tag", mb.str("binding")), rp("type_ref", mb.typesString()))))));
         exprs.add(mb.bind(
                 "nvalue_expr",
-                mb.field(
-                        mb.call(
-                                mb.field(mb.scopeUse("nvalue_base"), mb.str("variant")),
-                                mb.recordOf(TList.of(rp("tag", mb.str("expr")), rp("type_ref", mb.typesNull())))),
-                        mb.str("value"))));
+                mb.call(
+                        mb.field(mb.scopeUse("nvalue_base"), mb.str("variant")),
+                        mb.recordOf(TList.of(rp("tag", mb.str("expr")), rp("type_ref", mb.tupleOf()))))));
         exprs.add(mb.bind("nvalue_base_t", mb.field(mb.scopeUse("nvalue_base"), mb.str("type"))));
         exprs.add(mb.bind("nvalue", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs value"))));
         exprs.add(mb.call(
@@ -643,16 +630,14 @@ public final class T0170NodejsTest {
         exprs.add(mb.bind(
                 "aspect_consume_nodejs", mb.call(mb.field(mb.scopeUse("d"), mb.str("interface")), mb.tupleOf())));
         exprs.add(mb.call(mb.field(mb.scopeUse("aspect_consume_nodejs"), mb.str("set_is_aspect")), mb.bool(true)));
-        exprs.add(mb.bind(
-                "acn_to_code",
-                mb.call(mb.field(mb.scopeUse("aspect_consume_nodejs"), mb.str("func")), mb.str("to_code"))));
         exprs.add(mb.call(
-                mb.field(mb.scopeUse("acn_to_code"), mb.str("impl")),
+                mb.field(mb.scopeUse("aspect_consume_nodejs"), mb.str("func")),
                 mb.recordOf(TList.of(
+                        rp("name", mb.str("to_code")),
                         rp("arg", mb.typesCve()),
                         rp("ret", mb.optSomeType(mb.field(mb.scopeUse("code"), mb.str("type"))))))));
         exprs.add(mb.bind("ntype_str", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs string"))));
-        exprs.add(mb.call(mb.field(mb.scopeUse("ntype_str"), mb.str("set_inner")), mb.typesNull()));
+        exprs.add(mb.call(mb.field(mb.scopeUse("ntype_str"), mb.str("set_inner")), mb.tupleOf()));
 
         exprs.addAll(implAsSelfType(mb, "ntype_str", "nodejs string", optionAspectNone(mb)));
         exprs.add(implInterface(
@@ -678,7 +663,7 @@ public final class T0170NodejsTest {
                                         "exception_type",
                                         mb.call(
                                                 mb.field(mb.call(mb.typesOption(), mb.evalType()), mb.str("none")),
-                                                mb.literalNull())),
+                                                mb.tupleOf())),
                                 rp(
                                         "call",
                                         mb.seqOf(
@@ -819,7 +804,7 @@ public final class T0170NodejsTest {
                                                                                                                                                                                 .scopeUse(
                                                                                                                                                                                         "nvalue_expr")),
                                                                                                                                                         mb
-                                                                                                                                                                .literalNull())),
+                                                                                                                                                                .tupleOf())),
                                                                                                                                 rp(
                                                                                                                                         "type",
                                                                                                                                         mb
@@ -932,7 +917,7 @@ public final class T0170NodejsTest {
                                                                                                                                                                 .scopeUse(
                                                                                                                                                                         "nvalue_expr")),
                                                                                                                                         mb
-                                                                                                                                                .literalNull())),
+                                                                                                                                                .tupleOf())),
                                                                                                                 rp(
                                                                                                                         "type",
                                                                                                                         mb
@@ -1052,7 +1037,7 @@ public final class T0170NodejsTest {
                                         mb.call(mb.typesOption(), mb.typesCode()),
                                         mb.call(
                                                 mb.field(mb.call(mb.typesOption(), mb.typesCode()), mb.str("none")),
-                                                mb.literalNull()))),
+                                                mb.tupleOf()))),
                         rp("initial_bind", targetPanic(mb, "initial_bind")),
                         rp("seq", eresultOk(mb, mb.typesCode(), codeNone(mb))),
                         rp("jump", targetPanic(mb, "jump")),
@@ -1079,7 +1064,7 @@ public final class T0170NodejsTest {
                 mb.field(mb.scopeUse("napp_root"), mb.str("impl")),
                 mb.recordOf(TList.of(
                         rp("arg", mb.typesExpr()),
-                        rp("ret", mb.optSomeType(mb.typesNull())),
+                        rp("ret", mb.optNoneType()),
                         rp(
                                 "impl_body",
                                 mb.stage(mb.set(
@@ -1091,7 +1076,7 @@ public final class T0170NodejsTest {
         exprs.add(mb.call(
                 mb.field(mb.scopeUse("napp_build"), mb.str("impl")),
                 mb.recordOf(TList.of(
-                        rp("arg", mb.typesNull()),
+                        rp("arg", mb.tupleOf()),
                         rp("ret", mb.optSomeType(mb.typesString())),
                         rp(
                                 "impl_body",
@@ -1118,7 +1103,7 @@ public final class T0170NodejsTest {
                                                                                                                                 "ntype_str"),
                                                                                                                 mb.str(
                                                                                                                         "new"))),
-                                                                                                mb.literalNull())),
+                                                                                                mb.tupleOf())),
                                                                                 mb.bind(
                                                                                         "ntype_log",
                                                                                         mb.call(
@@ -1337,7 +1322,7 @@ public final class T0170NodejsTest {
         exprs.add(mb.call(
                 mb.field(mb.scopeUse("nodejs"), mb.str("impl")),
                 mb.recordOf(TList.of(
-                        rp("arg", mb.typesNull()),
+                        rp("arg", mb.tupleOf()),
                         rp("ret", mb.optSomeType(mb.field(mb.scopeUse("napp"), mb.str("type")))),
                         rp(
                                 "impl_body",
@@ -1351,7 +1336,7 @@ public final class T0170NodejsTest {
                                                                         mb.field(
                                                                                 mb.lower(mb.scopeUse("root_t")),
                                                                                 mb.str("none")),
-                                                                        mb.literalNull())))))))))));
+                                                                        mb.tupleOf())))))))))));
         exprs.add(mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()));
         exprs.add(mb.return_(mb.field(mb.scopeUse("nodejs"), mb.str("func"))));
         modules.put("nodejs", new SourceModule.V1(mb.lower(mb.seq(exprs))));
@@ -1359,16 +1344,16 @@ public final class T0170NodejsTest {
                 "main",
                 new SourceModule.V1(mb.seqOf(
                         mb.bind("nodejs", mb.importExpr(mb.str("nodejs"))),
-                        mb.bind("app", mb.call(mb.scopeUse("nodejs"), mb.literalNull())),
+                        mb.bind("app", mb.call(mb.scopeUse("nodejs"), mb.tupleOf())),
                         mb.call(
                                 mb.field(mb.scopeUse("app"), mb.str("root")),
                                 mb.stage(mb.call(
                                         mb.field(mb.scopeUse("console"), mb.str("log")),
                                         mb.str("Hello world (node)")))),
-                        mb.call(mb.log(), mb.call(mb.field(mb.scopeUse("app"), mb.str("build")), mb.literalNull())))));
+                        mb.call(mb.log(), mb.call(mb.field(mb.scopeUse("app"), mb.str("build")), mb.tupleOf())))));
 
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;

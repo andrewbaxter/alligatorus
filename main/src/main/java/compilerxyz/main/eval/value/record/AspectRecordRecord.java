@@ -16,7 +16,7 @@ public record AspectRecordRecord(Record type) implements AspectRecord {
     @Override
     public TOrderedMap<ConstKey, Type> aspectRecordFieldTypes() {
         var out = new TOrderedMap<ConstKey, Type>();
-        for (var entry : type.fields.entrySet()) {
+        for (var entry : type.fields()) {
             switch (entry.getValue()) {
                 case RecordField.Dynamic d -> out.put(entry.getKey(), d.type());
                 case RecordField.EvalRes er -> {
@@ -52,7 +52,7 @@ public record AspectRecordRecord(Record type) implements AspectRecord {
                     "Record::recordTakeFields: expected Record value, got " + value.getClass());
         }
         var out = new TOrderedMap<ConstKey, EResult<CodeValue>>();
-        for (var entry : r.fields.entrySet()) {
+        for (var entry : r.fields()) {
             RecordField.EvalRes er;
             switch (entry.getValue()) {
                 case RecordField.EvalRes erVal -> er = erVal;

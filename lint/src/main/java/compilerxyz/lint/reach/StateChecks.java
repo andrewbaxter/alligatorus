@@ -129,6 +129,41 @@ public final class StateChecks {
             fieldFlows.merge(fieldKey(f), classify(kind, a.getAssignment(), Map.of(), 0), (x, y) -> x | y);
         }
 
+        for (CtInvocation<?> inv : index.invocations) {
+            var ex = inv.getExecutable();
+            if (ex == null
+                    || !"set".equals(ex.getSimpleName())
+                    || inv.getArguments().size() != 2) continue;
+            if (ex.getDeclaringType() == null
+                    || !"java.lang.reflect.Field".equals(ex.getDeclaringType().getQualifiedName())) {
+                continue;
+            }
+            CtExpression<?> fieldExpr = inv.getTarget();
+            if (fieldExpr instanceof CtVariableRead<?> vr
+                    && vr.getVariable() != null
+                    && vr.getVariable().getDeclaration() instanceof CtLocalVariable<?> lv) {
+                fieldExpr = lv.getDefaultExpression();
+            }
+            if (!(fieldExpr instanceof CtInvocation<?> gdf)
+                    || gdf.getExecutable() == null
+                    || !"getDeclaredField".equals(gdf.getExecutable().getSimpleName())
+                    || gdf.getArguments().size() != 1
+                    || !(gdf.getArguments().get(0) instanceof CtLiteral<?> lit)
+                    || !(lit.getValue() instanceof String fieldName)
+                    || !(gdf.getTarget() instanceof CtFieldRead<?> classLiteral)
+                    || classLiteral.getVariable() == null
+                    || !"class".equals(classLiteral.getVariable().getSimpleName())
+                    || classLiteral.getVariable().getDeclaringType() == null) {
+                continue;
+            }
+            CtType<?> owner = classLiteral.getVariable().getDeclaringType().getTypeDeclaration();
+            CtField<?> f = owner == null ? null : owner.getField(fieldName);
+            if (f == null) continue;
+            Kind kind = kindOf(f.getType());
+            if (kind == null) continue;
+            fieldFlows.merge(fieldKey(f), classify(kind, inv.getArguments().get(1), Map.of(), 0), (x, y) -> x | y);
+        }
+
         for (CtType<?> t : index.types) {
             List<CtExecutable<?>> execs = new ArrayList<>(t.getMethods());
             if (t instanceof CtClass<?> c) execs.addAll(c.getConstructors());

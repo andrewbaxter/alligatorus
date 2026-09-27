@@ -187,7 +187,7 @@ public final class T0020DefineObjectTest {
                                                                                                                                                 .str(
                                                                                                                                                         "none")),
                                                                                                                         mb
-                                                                                                                                .literalNull()))),
+                                                                                                                                .tupleOf()))),
                                                                                                 new TestMb.RecordPair(
                                                                                                         "keys",
                                                                                                         mb.stage(
@@ -235,7 +235,7 @@ public final class T0020DefineObjectTest {
                         mb.bind("val", mb.call(mb.scopeUse("make_upper"), mb.str("hello"))),
                         mb.call(mb.log(), mb.call(mb.field(mb.scopeUse("val"), mb.str("to_string")), mb.tupleOf())))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
         switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;

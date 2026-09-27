@@ -22,7 +22,10 @@ public final class CompositeSlotSort {
         var keys = new TList<K>(entries.size());
         keys.addAll(entries.keySet());
         keys.sort((a, b) -> {
-            int c = descOfKey.get(a).compareTo(descOfKey.get(b));
+            int c = descOfKey
+                    .getOpt(a)
+                    .optUnwrap()
+                    .compareTo(descOfKey.getOpt(b).optUnwrap());
             if (c != 0) return c;
             return tiebreaker.compare(a, b);
         });
@@ -30,7 +33,7 @@ public final class CompositeSlotSort {
         var slotOfKey = new TMap<K, Integer>();
         for (int i = 0; i < keys.size(); i++) {
             var k = keys.get(i);
-            sortedTypes.add(entries.getOrNull(k));
+            sortedTypes.add(entries.getOpt(k).optUnwrap());
             slotOfKey.put(k, i);
         }
         return new Result<>(sortedTypes, slotOfKey);

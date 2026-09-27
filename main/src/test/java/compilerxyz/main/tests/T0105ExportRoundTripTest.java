@@ -17,7 +17,7 @@ public final class T0105ExportRoundTripTest {
         var modules = new TMap<String, SourceModule>();
         modules.put("lib", new SourceModule.V1(lib));
         modules.put("main", new SourceModule.V1(main));
-        var res = Compile.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, ?> ok;
         switch (res) {
             case Result.Ok<Compile.CompileResult, ?> o -> ok = o;
@@ -64,10 +64,10 @@ public final class T0105ExportRoundTripTest {
         var lib = e.lower(defsetLib(
                 e,
                 e.let("fb", e.defFunc(e.v("d"), "greet")),
-                e.funcImpl(e.v("fb"), e.mb.typesNull(), e.retSome(e.mb.typesString()), e.stage(e.s("from-func"))),
+                e.funcImpl(e.v("fb"), e.mb.tupleOf(), e.retSome(e.mb.typesString()), e.stage(e.s("from-func"))),
                 e.finish(e.v("d")),
                 e.ret(e.rec(e.p("f", e.fld(e.v("fb"), "func"))))));
-        var main = e.seq(importLib(e), e.call(e.mb.log(), e.call(e.fld(e.v("r"), "f"), e.nil())));
+        var main = e.seq(importLib(e), e.call(e.mb.log(), e.call(e.fld(e.v("r"), "f"), e.tup())));
         assertEquals(TList.of("from-func"), compileLogs(lib, main));
     }
 
@@ -81,7 +81,7 @@ public final class T0105ExportRoundTripTest {
                 e.methodImpl(
                         e.v("obj"),
                         "name",
-                        e.mb.typesNull(),
+                        e.mb.tupleOf(),
                         e.retSome(e.mb.typesString()),
                         e.stage(e.fld(e.v("inner"), "name"))),
                 e.let("mk", e.defFunc(e.v("d"), "mk")),
@@ -95,7 +95,7 @@ public final class T0105ExportRoundTripTest {
         var main = e.seq(
                 importLib(e),
                 e.let("inst", e.call(e.fld(e.v("r"), "mk"), e.s("roundtrip"))),
-                e.call(e.mb.log(), e.callM(e.v("inst"), "name", e.nil())));
+                e.call(e.mb.log(), e.callM(e.v("inst"), "name", e.tup())));
         assertEquals(TList.of("roundtrip"), compileLogs(lib, main));
     }
 
@@ -107,12 +107,10 @@ public final class T0105ExportRoundTripTest {
                 e.let("uni", e.callM0(e.v("d"), "union")),
                 e.let(
                         "uni_a",
-                        e.fld(
-                                e.callM(
-                                        e.v("uni"),
-                                        "variant",
-                                        e.rec(e.p("tag", e.s("a")), e.p("type_ref", e.mb.typesString()))),
-                                "value")),
+                        e.callM(
+                                e.v("uni"),
+                                "variant",
+                                e.rec(e.p("tag", e.s("a")), e.p("type_ref", e.mb.typesString())))),
                 e.finish(e.v("d")),
                 e.ret(e.rec(e.p("uni_a", e.v("uni_a"))))));
         var main = e.seq(
@@ -134,12 +132,10 @@ public final class T0105ExportRoundTripTest {
                 e.let("uni", e.callM0(e.v("d"), "union")),
                 e.let(
                         "uni_a",
-                        e.fld(
-                                e.callM(
-                                        e.v("uni"),
-                                        "variant",
-                                        e.rec(e.p("tag", e.s("a")), e.p("type_ref", e.mb.typesString()))),
-                                "value")),
+                        e.callM(
+                                e.v("uni"),
+                                "variant",
+                                e.rec(e.p("tag", e.s("a")), e.p("type_ref", e.mb.typesString())))),
                 e.finish(e.v("d")),
                 e.ret(e.rec(e.p("uni_t", e.fld(e.v("uni"), "type"))))));
         var main = e.seq(
@@ -153,11 +149,13 @@ public final class T0105ExportRoundTripTest {
         var lib = e.lower(defsetLib(
                 e,
                 e.let("iface", e.callM0(e.v("d"), "interface")),
-                e.let("iface_m", e.callM(e.v("iface"), "func", e.s("m"))),
                 e.callM(
-                        e.v("iface_m"),
-                        "impl",
-                        e.rec(e.p("arg", e.mb.typesNull()), e.p("ret", e.retSome(e.mb.typesString())))),
+                        e.v("iface"),
+                        "func",
+                        e.rec(
+                                e.p("name", e.s("m")),
+                                e.p("arg", e.mb.tupleOf()),
+                                e.p("ret", e.retSome(e.mb.typesString())))),
                 e.finish(e.v("d")),
                 e.ret(e.rec(e.p("iface_t", e.fld(e.v("iface"), "type"))))));
         var main = e.seq(
@@ -175,24 +173,24 @@ public final class T0105ExportRoundTripTest {
                 e.methodImpl(
                         e.v("obj"),
                         "name",
-                        e.mb.typesNull(),
+                        e.mb.tupleOf(),
                         e.retSome(e.mb.typesString()),
                         e.stage(e.fld(e.v("inner"), "name"))),
                 e.let("uni", e.callM0(e.v("d"), "union")),
                 e.let(
                         "uni_a",
-                        e.fld(
-                                e.callM(
-                                        e.v("uni"),
-                                        "variant",
-                                        e.rec(e.p("tag", e.s("a")), e.p("type_ref", e.mb.typesString()))),
-                                "value")),
+                        e.callM(
+                                e.v("uni"),
+                                "variant",
+                                e.rec(e.p("tag", e.s("a")), e.p("type_ref", e.mb.typesString())))),
                 e.let("iface", e.callM0(e.v("d"), "interface")),
-                e.let("iface_m", e.callM(e.v("iface"), "func", e.s("m"))),
                 e.callM(
-                        e.v("iface_m"),
-                        "impl",
-                        e.rec(e.p("arg", e.mb.typesNull()), e.p("ret", e.retSome(e.mb.typesString())))),
+                        e.v("iface"),
+                        "func",
+                        e.rec(
+                                e.p("name", e.s("m")),
+                                e.p("arg", e.mb.tupleOf()),
+                                e.p("ret", e.retSome(e.mb.typesString())))),
                 e.let("mk", e.defFunc(e.v("d"), "mk")),
                 e.funcImpl(
                         e.v("mk"),
@@ -209,7 +207,7 @@ public final class T0105ExportRoundTripTest {
         var main = e.seq(
                 importLib(e),
                 e.let("inst", e.call(e.fld(e.v("r"), "mk"), e.s("roundtrip"))),
-                e.call(e.mb.log(), e.callM(e.v("inst"), "name", e.nil())),
+                e.call(e.mb.log(), e.callM(e.v("inst"), "name", e.tup())),
                 e.let("av", e.call(e.fld(e.v("r"), "uni_a"), e.s("in-union"))),
                 e.mb.matchOf(
                         e.v("av"),

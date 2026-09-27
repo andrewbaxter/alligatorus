@@ -2,27 +2,11 @@ package compilerxyz.main.eval;
 
 import static compilerxyz.prelude.util.MustCast.mustCast;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeDynamicReg;
-import compilerxyz.main.eval.dynamic.CodeLoc;
-import compilerxyz.main.eval.dynamic.DynCompileErrors;
-import compilerxyz.main.eval.dynamic.DynException;
-import compilerxyz.main.eval.dynamic.DynPanic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.EmitCtx;
-import compilerxyz.main.eval.dynamic.EvalRootEmitter;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.dynamic.JvmConstants;
-import compilerxyz.main.eval.dynamic.Prefixes;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.eval.value.string.TypeStringDynamic;
@@ -31,16 +15,10 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenBuiltinTree;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.langhelp.GlobalContext;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
-import compilerxyz.prelude.util.TOrderedMap;
-import compilerxyz.prelude.util.TSet;
-import java.util.ArrayDeque;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
 
 public final class CompileModule {
     private CompileModule() {}
@@ -117,8 +95,7 @@ public final class CompileModule {
                 for (var entry : scopeEntries.entrySet()) {
                     evalRootScope.pushNamed(entry.getKey(), entry.getValue());
                 }
-                var evalBinaryName = "compilerxyz.main.eval.gen.EvalRoot$" + evalXx.vx.ix.evalRootCounter.next();
-                evalVx.evalRootInternalName = EvalRootEmitter.toInternalName(evalBinaryName);
+                var evalBinaryName = EvalRoot.newBinaryName(evalXx);
                 var cvRes = ConstEval.constEval(evalXx, rootExpr);
                 if (cvRes.hasErrors()) {
                     evalResult = new EvalOutcome.Err(cvRes.errorsOpt().optUnwrap());
@@ -165,165 +142,26 @@ public final class CompileModule {
                     evalResult = new EvalOutcome.Ok(fallbackValue, new TList<>(), false);
                     break evalBlock;
                 }
-                var dependencyLoaders = new TList<DefinitionSetClassLoader>();
-                var seenSets = new TSet<DefSetId>();
-                var dss = new TList<DefinitionSet>();
-                var toVisit = new ArrayDeque<DefinitionSet>();
-                for (var ds : evalVx.definitionSets.values()) {
-                    toVisit.push(ds);
+                var installRes = EvalRoot.installDefinitionSets(evalXx, evalRootLoc);
+                if (installRes.hasErrors()) {
+                    evalResult = new EvalOutcome.Err(installRes.errorsOpt().optUnwrap());
+                    break evalBlock;
                 }
-                defSetLoop:
-                while (true) {
-                    while (!toVisit.isEmpty()) {
-                        var ds = toVisit.pop();
-                        if (!seenSets.add(ds.defSetId)) {
-                            continue;
-                        }
-                        var installRes = ds.install(evalXx, evalRootLoc);
-                        if (installRes.hasErrors()) {
-                            evalResult =
-                                    new EvalOutcome.Err(installRes.errorsOpt().optUnwrap());
-                            break evalBlock;
-                        }
-                        var installedLoader = installRes.requireValue("Eval::eval installDefSetToDynamic");
-                        dependencyLoaders.add(installedLoader);
-                        for (var dep : ds.dependencies.values()) {
-                            if (!seenSets.contains(dep.defSetId)) {
-                                toVisit.push(dep);
-                            }
-                        }
-                        dss.add(ds);
-                    }
-                    boolean foundNew = false;
-                    for (var ds : evalVx.definitionSets.values()) {
-                        if (!seenSets.contains(ds.defSetId)) {
-                            toVisit.push(ds);
-                            foundNew = true;
-                        }
-                    }
-                    if (!foundNew) {
-                        break defSetLoop;
-                    }
+                if (stage1Code.optIsNone()) {
+                    evalResult = new EvalOutcome.Ok(fallbackValue, evalVx.logs, false);
+                    break evalBlock;
                 }
-                Object rawResult;
-                try {
-                    if (stage1Code.optIsNone()) {
-                        evalResult = new EvalOutcome.Ok(fallbackValue, evalVx.logs, false);
-                        break evalBlock;
-                    }
-                    var internalName = EvalRootEmitter.toInternalName(evalBinaryName);
-                    var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
-                        @Override
-                        protected String getCommonSuperClass(String type1, String type2) {
-                            return JvmConstants.INTNAME_OBJECT.value();
-                        }
-                    };
-                    cw.visit(
-                            Opcodes.V11,
-                            Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
-                            internalName,
-                            null,
-                            JvmConstants.INTNAME_OBJECT.value(),
-                            null);
-                    var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
-                    fieldDescriptors.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, EvalRootEmitter.DESC_EXPR_CONTEXT);
-                    var externalFieldNames = new TList<String>(evalVx.externals.size());
-                    for (int ereI = 0; ereI < evalVx.externals.size(); ereI++) {
-                        var ereEntry = evalVx.externals.get(ereI);
-                        var fieldName = Prefixes.EXTERNAL_PREFIX + ereI;
-                        externalFieldNames.add(fieldName);
-                        fieldDescriptors.put(
-                                fieldName,
-                                JavaDataDescriptor.fromClass(ereEntry.external().externalHostClass()));
-                    }
-                    for (var fieldEntry : fieldDescriptors.entrySet()) {
-                        cw.visitField(
-                                        Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
-                                        fieldEntry.getKey(),
-                                        fieldEntry.getValue().value(),
-                                        null,
-                                        null)
-                                .visitEnd();
-                    }
-                    var mdescRun = JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, TList.of());
-                    var mv = cw.visitMethod(
-                            Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "run", mdescRun.value(), null, null);
-                    var ctx = new EmitCtx(internalName, 0);
-                    var ereSeq = new JavaBytecodeSequence();
-                    var ownerInternal = JavaInternalName.of(internalName);
-                    var externalFields = JavaBytecodeUtils.externalFields(ownerInternal, "", evalVx.externals);
-                    var stage1 = stage1Code.optUnwrap();
-                    evalTarget.emit(ereSeq, ctx, stage1.code());
-                    {
-                        var rb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
-                        var result = stage1.reg();
-                        if (!result.desc.isReference()) {
-                            throw new IllegalStateException("eval root: stage-1 result is not a reference");
-                        }
-                        rb.ret(result);
-                        ereSeq.add(rb.code());
-                    }
-                    JavaBytecodeUtils.renderMethodTyped(
-                            ereSeq,
-                            mv,
-                            TList.of(),
-                            ownerInternal.value() + ".run",
-                            JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, TList.of()),
-                            externalFields);
-                    cw.visitEnd();
-                    var bytecode = cw.toByteArray();
-                    var staticFields = new TOrderedMap<String, Object>();
-                    for (int i = 0; i < evalVx.externals.size(); i++) {
-                        staticFields.put(
-                                externalFieldNames.get(i),
-                                evalVx.externals.get(i).external().externalHostValue());
-                    }
-                    if (evalXx.vx.ix.classLoader.optIsNone()) {
-                        evalXx.vx.ix.classLoader = Opt.some(new DefinitionSetClassLoader(
-                                evalXx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders));
-                    }
-                    var loader = evalXx.vx.ix.classLoader.optUnwrap();
-                    loader.registerClass(evalBinaryName, bytecode);
-                    var rootStaticFields = new TOrderedMap<String, Object>();
-                    rootStaticFields.putAll(staticFields);
-                    rootStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, evalXx);
-                    loader.registerExternals(evalBinaryName, rootStaticFields);
-                    Class<?> rootClass;
-                    try {
-                        rootClass = Class.forName(evalBinaryName, true, loader);
-                    } catch (ClassNotFoundException e) {
-                        throw new AssertionError("Generated root class " + evalBinaryName + " failed to load", e);
-                    }
-                    try {
-                        var runMethod = rootClass.getDeclaredMethod("run");
-                        rawResult = runMethod.invoke(null);
-                    } catch (ReflectiveOperationException e) {
-                        var cause = e.getCause();
-                        if (cause instanceof DynPanic panic) {
-                            evalResult = new EvalOutcome.Err(TList.of(new ExprErr(
-                                    evalRootLoc, TList.of(new ExprSubErr.Opaque("panic: " + panic.getMessage())))));
-                            break evalBlock;
-                        }
-                        if (cause instanceof DynCompileErrors compileErrs) {
-                            evalResult = new EvalOutcome.Err(compileErrs.errors);
-                            break evalBlock;
-                        }
-                        if (cause instanceof DynException dynEx) {
-                            var rendered = dynEx.payload == null ? "null" : dynEx.payload.toString();
-                            evalResult = new EvalOutcome.Err(
-                                    TList.of(new ExprErr(evalRootLoc, TList.of(new ExprSubErr.Opaque(rendered)))));
-                            break evalBlock;
-                        }
-                        if (cause instanceof RuntimeException re) {
-                            throw re;
-                        }
-                        var causeMsg =
-                                cause == null ? e.toString() : (cause.getClass().getName() + ": " + cause.getMessage());
-                        throw new AssertionError(
-                                "Generated root class " + evalBinaryName + " invoke failed: " + causeMsg, e);
-                    }
-                } finally {
+                var runRes = EvalRoot.run(
+                        evalXx,
+                        evalRootLoc,
+                        evalBinaryName,
+                        stage1Code.optUnwrap(),
+                        installRes.requireValue("Eval::eval installDefinitionSets"));
+                if (runRes.hasErrors()) {
+                    evalResult = new EvalOutcome.Err(runRes.errorsOpt().optUnwrap());
+                    break evalBlock;
                 }
+                Object rawResult = runRes.requireValue("Eval::eval run");
                 Opt<Value> finalValue;
                 if (fallbackValue.optIsSome()) {
                     finalValue = fallbackValue;
@@ -336,7 +174,7 @@ public final class CompileModule {
                         break evalBlock;
                     }
                     var liftAspect = liftRes.requireValue("Eval::eval lift aspect");
-                    var liftedRes = liftAspect.aspectLiftLift(evalXx, evalRootLoc, Opt.ofNullable(rawResult));
+                    var liftedRes = liftAspect.aspectLiftLift(evalXx, evalRootLoc, rawResult);
                     if (liftedRes.hasErrors()) {
                         evalResult = new EvalOutcome.Err(liftedRes.errorsOpt().optUnwrap());
                         break evalBlock;
@@ -356,10 +194,7 @@ public final class CompileModule {
                         if (compilePath.isEmpty()
                                 && (ok.producedDynamicRoot() || ok.value().optIsNone())) {
                             return new CompileModuleResult(
-                                    new CompileRes(
-                                            allLogs,
-                                            new CompileResResult.Ok(new Artifact.Body(new ArtifactBody(
-                                                    new JsonValueNull(), new ArtifactBodyExporter.Root())))),
+                                    new CompileRes(allLogs, new CompileResResult.Ok(Opt.none())),
                                     cix.localDependencies);
                         }
                         var vx = new EvalContext(cix);
@@ -384,7 +219,8 @@ public final class CompileModule {
                         }
                         var artifact = exportArt.requireValue("ArtifactSupport::exportArtifact artifact");
                         return new CompileModuleResult(
-                                new CompileRes(allLogs, new CompileResResult.Ok(artifact)), cix.localDependencies);
+                                new CompileRes(allLogs, new CompileResResult.Ok(Opt.some(artifact))),
+                                cix.localDependencies);
                     }
                     if (ok.value().optIsNone()) {
                         return new CompileModuleResult(

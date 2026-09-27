@@ -23,34 +23,25 @@ public final class T0085UnionVariantSetTest {
                         mb.bind("builder", mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
                         mb.bind(
                                 "new_str",
-                                mb.field(
-                                        mb.call(
-                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                mb.recordOf(
-                                                        TList.of(
-                                                                new TestMb.RecordPair("tag", mb.str("strtag")),
-                                                                new TestMb.RecordPair("type_ref", mb.typesString())))),
-                                        mb.str("value"))),
+                                mb.call(
+                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                        mb.recordOf(TList.of(
+                                                new TestMb.RecordPair("tag", mb.str("strtag")),
+                                                new TestMb.RecordPair("type_ref", mb.typesString()))))),
                         mb.bind(
                                 "new_num",
-                                mb.field(
-                                        mb.call(
-                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                mb.recordOf(
-                                                        TList.of(
-                                                                new TestMb.RecordPair("tag", mb.str("numtag")),
-                                                                new TestMb.RecordPair("type_ref", mb.typesInt())))),
-                                        mb.str("value"))),
+                                mb.call(
+                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                        mb.recordOf(TList.of(
+                                                new TestMb.RecordPair("tag", mb.str("numtag")),
+                                                new TestMb.RecordPair("type_ref", mb.typesInt()))))),
                         mb.bind(
                                 "new_other",
-                                mb.field(
-                                        mb.call(
-                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                mb.recordOf(
-                                                        TList.of(
-                                                                new TestMb.RecordPair("tag", mb.str("othertag")),
-                                                                new TestMb.RecordPair("type_ref", mb.typesInt())))),
-                                        mb.str("value"))),
+                                mb.call(
+                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                        mb.recordOf(TList.of(
+                                                new TestMb.RecordPair("tag", mb.str("othertag")),
+                                                new TestMb.RecordPair("type_ref", mb.typesInt()))))),
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                         mb.return_(mb.recordOf(TList.of(
                                 new TestMb.RecordPair("type", mb.field(mb.scopeUse("builder"), mb.str("type"))),
@@ -77,7 +68,7 @@ public final class T0085UnionVariantSetTest {
 
     private static Compile.CompileResult compileOk(TMap<String, SourceModule> modules) {
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(res.resultIsOk(), () -> "compile failed: " + res);
         @SuppressWarnings("unchecked")
         var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
@@ -86,7 +77,7 @@ public final class T0085UnionVariantSetTest {
 
     private static void compileErrContaining(TMap<String, SourceModule> modules, String message) {
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(res.resultIsErr(), () -> "expected compile error but got: " + res);
         assertTrue(
                 res.toString().contains(message), () -> "expected error containing [" + message + "] but got: " + res);
@@ -244,7 +235,7 @@ public final class T0085UnionVariantSetTest {
                         new TestMb.Branch(mb.str("strtag"), mb.call(mb.log(), mb.scopeUse("y"))),
                         new TestMb.Branch(mb.str("numtag"), logToString(mb, "y"))),
                 Opt.none()));
-        modules.put("main", new SourceModule.V1(mb.seqOf(exprs.toArray(new SourceExpr[0]))));
+        modules.put("main", new SourceModule.V1(mb.seqOf(exprs.toArray(SourceExpr[]::new))));
         var ok = compileOk(modules);
         assertEquals(1, ok.logs().size());
         assertEquals("s", ok.logs().get(0).message());
@@ -261,7 +252,7 @@ public final class T0085UnionVariantSetTest {
                 mb.str("y"),
                 TList.of(new TestMb.Branch(mb.str("numtag"), logToString(mb, "y"))),
                 Opt.none()));
-        modules.put("main", new SourceModule.V1(mb.seqOf(exprs.toArray(new SourceExpr[0]))));
+        modules.put("main", new SourceModule.V1(mb.seqOf(exprs.toArray(SourceExpr[]::new))));
         compileErrContaining(modules, "Non-exhaustive match");
     }
 
@@ -279,7 +270,7 @@ public final class T0085UnionVariantSetTest {
                         new TestMb.Branch(mb.str("numtag"), logToString(mb, "y")),
                         new TestMb.Branch(mb.str("othertag"), logToString(mb, "y"))),
                 Opt.none()));
-        modules.put("main", new SourceModule.V1(mb.seqOf(exprs.toArray(new SourceExpr[0]))));
+        modules.put("main", new SourceModule.V1(mb.seqOf(exprs.toArray(SourceExpr[]::new))));
         compileErrContaining(modules, "not an active variant");
     }
 
@@ -308,47 +299,42 @@ public final class T0085UnionVariantSetTest {
     @Test
     public void test00100VariantAfterFinishRejected() {
         var mb = new TestMb();
+        var lateVariant = mb.call(
+                mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                mb.recordOf(TList.of(
+                        new TestMb.RecordPair("tag", mb.str("b")), new TestMb.RecordPair("type_ref", mb.typesInt()))));
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(mb.bind(
-                        "res",
-                        mb.lower(mb.seqOf(
-                                mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
-                                mb.bind("builder", mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
-                                mb.bind(
-                                        "new_a",
-                                        mb.field(
-                                                mb.call(
-                                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                        mb.recordOf(
-                                                                TList.of(
-                                                                        new TestMb.RecordPair("tag", mb.str("a")),
-                                                                        new TestMb.RecordPair(
-                                                                                "type_ref", mb.typesInt())))),
-                                                mb.str("value"))),
-                                mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                                mb.bind(
-                                        "late",
-                                        mb.call(
-                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                mb.recordOf(
-                                                        TList.of(
-                                                                new TestMb.RecordPair("tag", mb.str("b")),
-                                                                new TestMb.RecordPair("type_ref", mb.typesInt()))))),
-                                mb.return_(mb.ifOf(
-                                        TList.of(
-                                                new TestMb.Branch(
-                                                        mb.field(mb.scopeUse("late"), mb.str("has_errors")),
-                                                        mb.seqOf(
-                                                                mb.call(mb.log(), mb.str("guarded")),
-                                                                mb.return_(mb.as(mb.str("g"), mb.typesString()))))),
-                                        Opt.some(
-                                                mb.seqOf(
-                                                        mb.call(mb.log(), mb.str("unguarded")),
-                                                        mb.return_(mb.as(mb.str("u"), mb.typesString()))))))))))));
-        var ok = compileOk(modules);
-        assertEquals(1, ok.logs().size());
-        assertEquals("guarded", ok.logs().get(0).message());
+                new SourceModule.V1(mb.lower(mb.seqOf(
+                        mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
+                        mb.bind("builder", mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
+                        mb.bind(
+                                "new_a",
+                                mb.call(
+                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                        mb.recordOf(TList.of(
+                                                new TestMb.RecordPair("tag", mb.str("a")),
+                                                new TestMb.RecordPair("type_ref", mb.typesInt()))))),
+                        mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
+                        mb.bind("late", lateVariant),
+                        mb.return_(mb.as(mb.str("unreached"), mb.typesString()))))));
+        var gx = Helpers.newGx(modules);
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var errs =
+                switch (res) {
+                    case Result.Ok<Compile.CompileResult, TList<ExprErr>> o ->
+                        throw new AssertionError("late variant should be rejected; got: " + res);
+                    case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> e.error();
+                };
+        assertEquals(1, errs.size(), () -> "expected one error; got: " + errs);
+        var err = errs.get(0);
+        assertEquals(
+                lateVariant.id().value(),
+                err.loc().expr(),
+                () -> "error should point at the late variant call; got: " + err);
+        assertTrue(
+                err.message().contains("Cannot add a union variant after its definition set is finished"),
+                () -> "unexpected message: " + err.message());
     }
 }

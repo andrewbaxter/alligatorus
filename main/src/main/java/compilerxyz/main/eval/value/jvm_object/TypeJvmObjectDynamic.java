@@ -1,4 +1,4 @@
-package compilerxyz.main.eval.value.null_;
+package compilerxyz.main.eval.value.jvm_object;
 
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ExporterRoot;
@@ -11,16 +11,12 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
-import compilerxyz.main.eval.aspect.AspectNullDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
-import compilerxyz.main.gen.GenAspectNull;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -28,34 +24,31 @@ import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("types.null")
-@BuiltinFull(uniqueId = 6128L)
-public record TypeNullDynamic() implements Type, Aspect {
+@BuiltinPath("types.object")
+@BuiltinFull(uniqueId = 6453L)
+public record TypeJvmObjectDynamic() implements Type, Aspect {
 
     @Override
     public String typeDesc() {
-        return "dynamic null";
+        return "dynamic object";
     }
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicNullDynamic(this));
+            return Opt.some(new AspectInitialBindDynamicJvmObjectDynamic(this));
         }
-        if (key.equals(GenTrivialIdentityAspects.TYPE_NULL_DYNAMIC_IDENTITY)) {
+        if (key.equals(GenTrivialIdentityAspects.TYPE_JVM_OBJECT_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicNullDynamic(this));
-        }
-        if (key.equals(GenAspectNull.AspectId)) {
-            return Opt.some(AspectNullDefault.INSTANCE);
+            return Opt.some(new AspectStackValueDynamicJvmObjectDynamic(this));
         }
         if (key.equals(GenAspectLift.AspectId)) {
-            return Opt.some(AspectLiftNullDynamic.INSTANCE);
+            return Opt.some(AspectLiftJvmObjectDynamic.INSTANCE);
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
-            return Opt.some(AspectConsumeDynamicNullDynamic.INSTANCE);
+            return Opt.some(AspectConsumeDynamicJvmObjectDynamic.INSTANCE);
         }
         if (key.equals(GenAspectBindDynamic.AspectId)) {
             return Opt.some(AspectBindDynamicDefault.INSTANCE);
@@ -74,43 +67,31 @@ public record TypeNullDynamic() implements Type, Aspect {
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.NULL_DYNAMIC);
+        return EResult.ok(ExporterRoot.JVM_OBJECT_DYNAMIC);
     }
 
     @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
-        return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_NULL_DYNAMIC_IDENTITY)
+        return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_JVM_OBJECT_DYNAMIC_IDENTITY)
                 .optIsSome();
     }
 
     @Override
     public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-        return GenAspectNull.getMaybe(xx, sourceType).optIsSome();
+        return sourceType
+                .typeAspect(xx, GenTrivialIdentityAspects.TYPE_JVM_OBJECT_CONST_IDENTITY)
+                .optIsSome();
     }
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return GenAspectNull.getMaybe(xx, destType).optIsSome()
-                || destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY)
-                        .optIsSome();
+        return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_JVM_OBJECT_DYNAMIC_IDENTITY)
+                .optIsSome();
     }
 
     @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-        if (cv.value().optIsNone()) {
-            return EResult.err(loc, "TypeNullDynamic::typeCastFrom: CodeValue has no value");
-        }
-        var sourceType = cv.value().optUnwrap().valueType();
-        var nullRes = GenAspectNull.get(xx, loc, sourceType);
-        if (nullRes.hasErrors()) {
-            return nullRes.reerr();
-        }
-        if (!DynUtil.dynamicHasCode(cv)) {
-            var b = new JavaBytecodeBuilder(loc);
-            var raw = b.constNull();
-            return EResult.ok(DynUtil.regToValue(b.code(), raw, this));
-        }
-        return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, this));
+        return AspectConsumeDynamicJvmObjectConst.INSTANCE.aspectConsumeDynamicToDynamic(xx, loc, cv);
     }
 
     @Override

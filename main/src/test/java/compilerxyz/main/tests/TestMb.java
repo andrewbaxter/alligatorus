@@ -15,10 +15,6 @@ public final class TestMb {
         return new ExprId(nextPhraseId++);
     }
 
-    public SourceExpr literalNull() {
-        return new SourceExpr(id(), new SourceExpr.Literal(new SourceLiteral.Null()));
-    }
-
     public SourceExpr num(double v) {
         return new SourceExpr(id(), new SourceExpr.Literal(new SourceLiteral.Number(v)));
     }
@@ -426,8 +422,8 @@ public final class TestMb {
         return builtin("types", "map");
     }
 
-    public SourceExpr typesNull() {
-        return builtin("types", "null");
+    public SourceExpr typesObject() {
+        return builtin("types", "object");
     }
 
     public SourceExpr typesIntBox() {
@@ -464,6 +460,10 @@ public final class TestMb {
 
     public SourceExpr optSomeType(SourceExpr typeExpr) {
         return call(field(call(typesOption(), evalType()), str("some")), typeExpr);
+    }
+
+    public SourceExpr optNoneType() {
+        return call(field(call(typesOption(), evalType()), str("none")), tupleOf());
     }
 
     public SourceExpr typesString() {

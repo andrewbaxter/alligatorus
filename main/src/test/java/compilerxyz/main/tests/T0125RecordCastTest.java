@@ -38,7 +38,7 @@ public final class T0125RecordCastTest {
                                         mb.field(mb.field(mb.scopeUse("r"), mb.str("b")), mb.str("to_string")),
                                         mb.tupleOf())))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Ok<?, ?> o -> true;
@@ -78,7 +78,7 @@ public final class T0125RecordCastTest {
                                         mb.field(mb.field(mb.scopeUse("r"), mb.str("b")), mb.str("to_string")),
                                         mb.tupleOf())))));
         var gx = Helpers.newGx(modules);
-        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Ok<?, ?> o -> true;

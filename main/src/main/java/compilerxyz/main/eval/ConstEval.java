@@ -37,6 +37,8 @@ import compilerxyz.main.gen.TargetCase;
 import compilerxyz.main.gen.TargetMatchFallback;
 import compilerxyz.main.gen.TryCatchClause;
 import compilerxyz.main.gen.Value;
+import compilerxyz.prelude.util.IList;
+import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
@@ -361,11 +363,12 @@ public final class ConstEval {
                         yield EResult.errs(erb.errors());
                     }
                     var code = dropRes.requireValue("entryClose drop");
-                    var splice = blocksSplice(xx, loc, current.scopeLevelEmission().blocks, erb);
-                    if (splice == null) yield EResult.errs(erb.errors());
+                    var spliceOpt = blocksSplice(xx, loc, current.scopeLevelEmission().blocks, erb);
+                    if (spliceOpt.optIsNone()) yield EResult.errs(erb.errors());
+                    var splice = spliceOpt.optUnwrap();
                     codes.add(code);
                     codes.add(splice);
-                    xx.scope.levels.remove(xx.scope.levels.size() - 1);
+                    xx.scope.levels.removeLast();
                 }
                 var seqOpt = erb.mustErMaybeUnreachable(xx.target.targetSeq(loc, codes));
                 if (seqOpt.optIsNone()) yield EResult.errs(erb.errors());
@@ -439,10 +442,12 @@ public final class ConstEval {
                 }
                 var pendingBlocks = operandPendingClose(xx, operandBase);
                 if (!erb.errors().isEmpty()) yield EResult.errs(erb.errors());
-                var tupleCode = pendingBlocks.isEmpty() ? Code.none(loc) : blocksSplice(xx, loc, pendingBlocks, erb);
-                if (tupleCode == null) yield EResult.errs(erb.errors());
+                var tupleCodeOpt = blocksSplice(xx, loc, pendingBlocks, erb);
+                if (tupleCodeOpt.optIsNone()) yield EResult.errs(erb.errors());
+                var tupleCode = tupleCodeOpt.optUnwrap();
                 yield EResult.ok(EvalRes.of(
-                        new CodeValue(tupleCode, EvalOutcome.ofValue(new Tuple(Opt.none(), elements))), xx.scope));
+                        new CodeValue(tupleCode, EvalOutcome.ofValue(new Tuple(Opt.none(), IList.from(elements)))),
+                        xx.scope));
             }
             case Expr.Record r -> {
                 var entries = new TOrderedMap<ConstKey, EResult<CodeValue>>();
@@ -490,8 +495,9 @@ public final class ConstEval {
                 if (!errors.isEmpty()) yield EResult.errs(errors);
                 if (!pendingBlocks.isEmpty()) {
                     var spliceErb = new Erb(loc);
-                    var splice = blocksSplice(xx, loc, pendingBlocks, spliceErb);
-                    if (splice == null) yield EResult.errs(spliceErb.errors());
+                    var spliceOpt = blocksSplice(xx, loc, pendingBlocks, spliceErb);
+                    if (spliceOpt.optIsNone()) yield EResult.errs(spliceErb.errors());
+                    var splice = spliceOpt.optUnwrap();
                     keyCodes.add(splice);
                 }
                 var codeRes = xx.target.targetSeq(loc, keyCodes);
@@ -500,7 +506,8 @@ public final class ConstEval {
                 var fields = new TOrderedMap<ConstKey, RecordField>();
                 for (var fe : entries.entrySet()) fields.put(fe.getKey(), new RecordField.EvalRes(fe.getValue()));
                 yield EResult.ok(EvalRes.of(
-                        new CodeValue(rCode, EvalOutcome.ofValue(new Record(Opt.none(), fields))), xx.scope));
+                        new CodeValue(rCode, EvalOutcome.ofValue(new Record(Opt.none(), IOrderedMap.from(fields)))),
+                        xx.scope));
             }
             case Expr.OperatorBinary e -> {
                 var erb = new Erb(loc);
@@ -700,23 +707,25 @@ public final class ConstEval {
                     bodyResult.drainInto(erb.errors());
                     var bodyEv = bodyResult.requireValue("constEvalForeach body");
                     var bodyRanScope = bodyEv.scope();
-                    var elemSplice = blocksSplice(xx, loc, elemEntry.scopeLevelEmission().blocks, erb);
-                    if (elemSplice == null) {
+                    var elemSpliceOpt = blocksSplice(xx, loc, elemEntry.scopeLevelEmission().blocks, erb);
+                    if (elemSpliceOpt.optIsNone()) {
                         res = EResult.errs(erb.errors());
                         break foreachCompute;
                     }
-                    var iterSplice = blocksSplice(xx, loc, iterEntry.scopeLevelEmission().blocks, erb);
-                    if (iterSplice == null) {
+                    var elemSplice = elemSpliceOpt.optUnwrap();
+                    var iterSpliceOpt = blocksSplice(xx, loc, iterEntry.scopeLevelEmission().blocks, erb);
+                    if (iterSpliceOpt.optIsNone()) {
                         res = EResult.errs(erb.errors());
                         break foreachCompute;
                     }
+                    var iterSplice = iterSpliceOpt.optUnwrap();
                     popByBox(bodyRanScope, elemEntry);
                     popByBox(bodyRanScope, iterEntry);
                     var others = new TList<Scope>();
                     others.add(xx.scope);
                     var mergeRes = bodyRanScope.merge(xx, loc, others);
-                    if (mergeRes.hasErrors()) {
-                        res = mergeRes.reerr();
+                    if (mergeRes.optIsSome()) {
+                        res = EResult.errs(mergeRes.optUnwrap());
                         break foreachCompute;
                     }
                     xx.scope.adopt(bodyRanScope);
@@ -860,11 +869,12 @@ public final class ConstEval {
                         var bodyEv = bodyResult.requireValue("constEvalMatch case body");
                         var caseRanScope = bodyEv.scope();
                         var bodyCv = bodyEv.cv();
-                        var payloadSplice = blocksSplice(caseXx, loc, payloadEntry.scopeLevelEmission().blocks, erb);
-                        if (payloadSplice == null) {
+                        var payloadSpliceOpt = blocksSplice(caseXx, loc, payloadEntry.scopeLevelEmission().blocks, erb);
+                        if (payloadSpliceOpt.optIsNone()) {
                             res = EResult.errs(erb.errors());
                             break matchCompute;
                         }
+                        var payloadSplice = payloadSpliceOpt.optUnwrap();
                         var bodySeq = seqCode(xx, loc, erb, TList.of(bodyCv.code(), payloadSplice));
                         if (bodySeq.optIsNone()) {
                             res = EResult.errs(erb.errors());
@@ -917,12 +927,13 @@ public final class ConstEval {
                         var fallbackEv = fallbackResult.requireValue("constEvalMatch fallback");
                         var fallbackRanScope = fallbackEv.scope();
                         var fbCv = fallbackEv.cv();
-                        var fallbackSplice =
+                        var fallbackSpliceOpt =
                                 blocksSplice(fallbackXx, loc, fallbackEntry.scopeLevelEmission().blocks, erb);
-                        if (fallbackSplice == null) {
+                        if (fallbackSpliceOpt.optIsNone()) {
                             res = EResult.errs(erb.errors());
                             break matchCompute;
                         }
+                        var fallbackSplice = fallbackSpliceOpt.optUnwrap();
                         var fbSeq = seqCode(xx, loc, erb, TList.of(fbCv.code(), fallbackSplice));
                         if (fbSeq.optIsNone()) {
                             res = EResult.errs(erb.errors());
@@ -955,8 +966,8 @@ public final class ConstEval {
                         var rest = new TList<Scope>(branchScopes.size() - 1);
                         for (int i = 1; i < branchScopes.size(); i++) rest.add(branchScopes.get(i));
                         var mergeRes = merged.merge(xx, loc, rest);
-                        if (mergeRes.hasErrors()) {
-                            res = mergeRes.reerr();
+                        if (mergeRes.optIsSome()) {
+                            res = EResult.errs(mergeRes.optUnwrap());
                             break matchCompute;
                         }
                         xx.scope.adopt(merged);
@@ -1139,8 +1150,8 @@ public final class ConstEval {
                         var rest = new TList<Scope>(branchScopes.size() - 1);
                         for (int i = 1; i < branchScopes.size(); i++) rest.add(branchScopes.get(i));
                         var mergeRes = merged.merge(xx, loc, rest);
-                        if (mergeRes.hasErrors()) {
-                            res = mergeRes.reerr();
+                        if (mergeRes.optIsSome()) {
+                            res = EResult.errs(mergeRes.optUnwrap());
                             break ifCompute;
                         }
                         xx.scope.adopt(merged);
@@ -1251,8 +1262,9 @@ public final class ConstEval {
                     var catchEv = catchResult.requireValue("constEvalTry catch body");
                     var catchRanScope = catchEv.scope();
                     var catchCv = catchEv.cv();
-                    var payloadSplice = blocksSplice(catchXx, loc, payloadEntry.scopeLevelEmission().blocks, erb);
-                    if (payloadSplice == null) yield EResult.errs(erb.errors());
+                    var payloadSpliceOpt = blocksSplice(catchXx, loc, payloadEntry.scopeLevelEmission().blocks, erb);
+                    if (payloadSpliceOpt.optIsNone()) yield EResult.errs(erb.errors());
+                    var payloadSplice = payloadSpliceOpt.optUnwrap();
                     var catchSeq = seqCode(xx, loc, erb, TList.of(catchCv.code(), payloadSplice));
                     if (catchSeq.optIsNone()) yield EResult.errs(erb.errors());
                     catchCv = new CodeValue(catchSeq.optUnwrap(), catchCv.outcome());
@@ -1260,7 +1272,7 @@ public final class ConstEval {
                     var mergeOthers = new TList<Scope>();
                     mergeOthers.add(catchRanScope);
                     var mergeRes = bodyRanScope.merge(xx, loc, mergeOthers);
-                    if (mergeRes.hasErrors()) yield mergeRes.reerr();
+                    if (mergeRes.optIsSome()) yield EResult.errs(mergeRes.optUnwrap());
                     boolean bodyFalls = !bodyCv.controlEnded();
                     boolean catchFalls = !catchCv.controlEnded();
                     if (bodyFalls
@@ -1326,15 +1338,17 @@ public final class ConstEval {
                 var tryCv = tryOpt.optUnwrap();
                 Code tryCode = tryCv.code();
                 if (finallyLevel != null) {
-                    var finSplice = blocksSplice(xx, loc, finallyLevel.scopeLevelEmission().blocks, erb);
-                    if (finSplice == null) yield EResult.errs(erb.errors());
+                    var finSpliceOpt = blocksSplice(xx, loc, finallyLevel.scopeLevelEmission().blocks, erb);
+                    if (finSpliceOpt.optIsNone()) yield EResult.errs(erb.errors());
+                    var finSplice = finSpliceOpt.optUnwrap();
                     var finSeq = seqCode(xx, loc, erb, TList.of(tryCode, finSplice));
                     if (finSeq.optIsNone()) yield EResult.errs(erb.errors());
                     tryCode = finSeq.optUnwrap();
                 }
                 if (catchLevel != null) {
-                    var catchSplice = blocksSplice(xx, loc, catchLevel.scopeLevelEmission().blocks, erb);
-                    if (catchSplice == null) yield EResult.errs(erb.errors());
+                    var catchSpliceOpt = blocksSplice(xx, loc, catchLevel.scopeLevelEmission().blocks, erb);
+                    if (catchSpliceOpt.optIsNone()) yield EResult.errs(erb.errors());
+                    var catchSplice = catchSpliceOpt.optUnwrap();
                     var catchSeq = seqCode(xx, loc, erb, TList.of(tryCode, catchSplice));
                     if (catchSeq.optIsNone()) yield EResult.errs(erb.errors());
                     tryCode = catchSeq.optUnwrap();
@@ -1563,8 +1577,9 @@ public final class ConstEval {
     private static Opt<CodeValue> withPendingBlocks(
             ExprContext xx, QExprId loc, Erb erb, CodeValue cv, TList<Code> blocks) {
         if (blocks.isEmpty()) return Opt.some(cv);
-        var splice = blocksSplice(xx, loc, blocks, erb);
-        if (splice == null) return Opt.none();
+        var spliceOpt = blocksSplice(xx, loc, blocks, erb);
+        if (spliceOpt.optIsNone()) return Opt.none();
+        var splice = spliceOpt.optUnwrap();
         var code = seqCode(xx, loc, erb, TList.of(cv.code(), splice));
         if (code.optIsNone()) return Opt.none();
         return Opt.some(new CodeValue(code.optUnwrap(), cv.outcome()));
@@ -1579,7 +1594,7 @@ public final class ConstEval {
     }
 
     private static void popByBox(Scope scope, ScopeLevel level) {
-        var top = scope.levels.remove(scope.levels.size() - 1);
+        var top = scope.levels.removeLast();
         if (top.scopeLevelEmission().id != level.scopeLevelEmission().id) {
             throw new AssertionError("scope level pop does not match the owning level");
         }
@@ -1589,19 +1604,18 @@ public final class ConstEval {
         return erb.mustEr(xx.target.targetSeq(loc, parts));
     }
 
-    private static Code blocksSplice(ExprContext xx, QExprId loc, TList<Code> blocks, Erb erb) {
-        if (blocks.isEmpty()) return Code.none(loc);
+    private static Opt<Code> blocksSplice(ExprContext xx, QExprId loc, TList<Code> blocks, Erb erb) {
+        if (blocks.isEmpty()) return Opt.some(Code.none(loc));
         var skip = new JumpKey();
         var jumpOpt = erb.mustEr(xx.target.targetJump(loc, skip));
         var landOpt = erb.mustErMaybeUnreachable(xx.target.targetLand(xx, loc, skip, Opt.none()));
-        if (jumpOpt.optIsNone() || landOpt.optIsNone()) return null;
+        if (jumpOpt.optIsNone() || landOpt.optIsNone()) return Opt.none();
         var parts = new TList<Code>();
         parts.add(jumpOpt.optUnwrap());
         parts.addAll(blocks);
         blocks.clear();
         parts.add(landOpt.optUnwrap().code());
-        var res = seqCode(xx, loc, erb, parts);
-        return res.optIsNone() ? null : res.optUnwrap();
+        return seqCode(xx, loc, erb, parts);
     }
 
     private static EResult<EvalRes> labeledConsume(
@@ -1626,7 +1640,7 @@ public final class ConstEval {
         if (top.scopeLevelEmission().id != level.scopeLevelEmission().id) {
             throw new AssertionError("labeledConsume: consumer level is not on top");
         }
-        xx.scope.levels.remove(xx.scope.levels.size() - 1);
+        xx.scope.levels.removeLast();
         var innerCv = inner.cv();
         var arrivals = level.landing.arrivals;
         if (!arrivals.isEmpty()
@@ -1674,8 +1688,8 @@ public final class ConstEval {
             }
             if (fallsThrough) {
                 var mergeRes = xx.scope.merge(xx, loc, arrivalScopes);
-                if (mergeRes.hasErrors()) {
-                    mergeRes.drainInto(erb.errors());
+                if (mergeRes.optIsSome()) {
+                    if (mergeRes.optIsSome()) erb.errors().addAll(mergeRes.optUnwrap());
                     return EResult.errs(erb.errors());
                 }
             } else {
@@ -1683,8 +1697,8 @@ public final class ConstEval {
                 var rest = new TList<Scope>(arrivalScopes.size() - 1);
                 for (int i = 1; i < arrivalScopes.size(); i++) rest.add(arrivalScopes.get(i));
                 var mergeRes = first.merge(xx, loc, rest);
-                if (mergeRes.hasErrors()) {
-                    mergeRes.drainInto(erb.errors());
+                if (mergeRes.optIsSome()) {
+                    if (mergeRes.optIsSome()) erb.errors().addAll(mergeRes.optUnwrap());
                     return EResult.errs(erb.errors());
                 }
                 xx.scope.adopt(first);
