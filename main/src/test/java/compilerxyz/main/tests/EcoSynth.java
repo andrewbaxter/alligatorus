@@ -54,18 +54,18 @@ public final class EcoSynth {
             ints[i] = bytes[i] & 0xFF;
         }
         ints[bytes.length] = 0;
+        defType(e, cx, bind + "_arr_t", EcoPipewire.byteArrayType(e, EcoExtern.Llvm.top(e), ints.length));
         defValue(
                 e,
                 cx,
                 bind,
-                e.callM(
-                        e.v("ll"),
-                        "global_const",
+                e.call(
+                        e.mb.as(e.v("ll"), e.v("global_const_fn")),
                         e.rec(
                                 e.p("name", e.s(globalName)),
-                                e.p("ty", EcoPipewire.byteArrayType(e, "ll", ints.length)),
-                                e.p("init", e.stage(EcoPipewire.byteTuple(e, ints))))),
-                EcoPipewire.byteArrayConstType(e, "ll", ints.length));
+                                e.p("ty", e.v(bind + "_arr_t")),
+                                e.p("init", EcoPipewire.byteTuple(e, ints)))),
+                EcoPipewire.byteArrayConstType(e, EcoExtern.Llvm.top(e), ints.length));
     }
 
     private static void global(EcoMb e, Cx cx, String bind, String name, String type, SourceExpr init) {
@@ -73,11 +73,10 @@ public final class EcoSynth {
                 e,
                 cx,
                 bind,
-                e.callM(
-                        e.v("ll"),
-                        "global",
-                        e.rec(e.p("name", e.s(name)), e.p("ty", e.v(type)), e.p("init", e.stage(init)))),
-                EcoExtern.globalT(e, "ll", e.v(type), true));
+                e.call(
+                        e.mb.as(e.v("ll"), e.v("global_fn")),
+                        e.rec(e.p("name", e.s(name)), e.p("ty", e.v(type)), e.p("init", init))),
+                EcoExtern.globalT(e, EcoExtern.Llvm.top(e), e.v(type), true));
     }
 
     private static void func(
@@ -85,12 +84,12 @@ public final class EcoSynth {
         var fields = new TList<SourceExpr>();
         var types = new TList<SourceExpr>();
         for (int i = 0; i < paramNames.length; i++) {
-            fields.add(
-                    e.callM(e.v("ll"), "field", e.rec(e.p("name", e.s(paramNames[i])), e.p("ty", e.v(paramTypes[i])))));
+            fields.add(e.callM(
+                    e.v("llvm"), "field", e.rec(e.p("name", e.s(paramNames[i])), e.p("ty", e.v(paramTypes[i])))));
             types.add(e.v(paramTypes[i]));
         }
         var fnType = e.callM(
-                e.v("ll"),
+                e.v("llvm"),
                 "fn",
                 e.rec(
                         e.p("params", e.listNew(e.mb.evalType(), types.toArray(SourceExpr[]::new))),
@@ -107,7 +106,7 @@ public final class EcoSynth {
                                 e.p("params", e.listNew(e.mb.evalValue(), fields.toArray(SourceExpr[]::new))),
                                 e.p("ret", e.v(ret)),
                                 e.p("body", e.stage(body)))),
-                EcoExtern.globalT(e, "ll", fnType, false));
+                EcoExtern.globalT(e, EcoExtern.Llvm.top(e), fnType, false));
     }
 
     private static void events(EcoMb e, Cx cx, String bind, String name, String process) {
@@ -126,20 +125,19 @@ public final class EcoSynth {
             "command",
             "trigger_done"
         }) {
-            fields.add(e.p(f, lo(e, f.equals("process") ? process : "nullp")));
+            fields.add(e.p(f, e.v(f.equals("process") ? process : "nullp")));
         }
         defValue(
                 e,
                 cx,
                 bind,
-                e.callM(
-                        e.v("ll"),
-                        "global_const",
+                e.call(
+                        e.mb.as(e.v("ll"), e.v("global_const_fn")),
                         e.rec(
                                 e.p("name", e.s(name)),
                                 e.p("ty", e.v("t_events")),
-                                e.p("init", e.stage(e.rec(fields.toArray(EcoMb.P[]::new)))))),
-                EcoExtern.globalT(e, "ll", e.callM(e.v("ll"), "ptr", e.v("t_events")), false));
+                                e.p("init", e.rec(fields.toArray(EcoMb.P[]::new))))),
+                EcoExtern.globalT(e, EcoExtern.Llvm.top(e), e.callM(e.v("llvm"), "ptr", e.v("t_events")), false));
     }
 
     private static SourceExpr pwT(EcoMb e, String name) {
@@ -157,19 +155,30 @@ public final class EcoSynth {
         setup.add(e.let("c", e.call(e.v("libc"), e.v("ll"))));
         setup.add(e.let("pw", e.call(e.v("pipewire"), e.v("ll"))));
         for (var n : new String[] {"ll", "c", "pw"}) cx.exported().add(n);
-        EcoExtern.bindTypes(e, setup, "ll");
+        EcoExtern.bindTypes(e, setup, EcoExtern.Llvm.top(e));
         for (var t : new String[] {"i1", "i8", "i32", "i64", "u8", "u32", "u64", "f32", "f64", "void", "pv", "pu8"}) {
             cx.exported().add("t_" + t);
         }
-        defType(e, cx, "t_pf32", e.callM(e.v("ll"), "ptr", e.v("t_f32")));
-        defType(e, cx, "t_pu32", e.callM(e.v("ll"), "ptr", e.v("t_u32")));
+        defType(e, cx, "global_fn", e.callM0(e.v("llvm"), "global_fn"));
+        defType(e, cx, "global_const_fn", e.callM0(e.v("llvm"), "global_const_fn"));
+        defType(e, cx, "t_pf32", e.callM(e.v("llvm"), "ptr", e.v("t_f32")));
+        defType(e, cx, "t_pu32", e.callM(e.v("llvm"), "ptr", e.v("t_u32")));
         defType(e, cx, "t_events", pwT(e, "pw_stream_events"));
-        defType(e, cx, "t_pseq", e.callM(e.v("ll"), "ptr", pwT(e, "spa_pod_sequence")));
-        defType(e, cx, "t_pctl", e.callM(e.v("ll"), "ptr", pwT(e, "spa_pod_control")));
-        defValue(e, cx, "nullp", e.callM(e.v("ll"), "null", e.tup()), EcoExtern.globalT(e, "ll", e.v("t_pv"), false));
+        defType(e, cx, "t_pseq", e.callM(e.v("llvm"), "ptr", pwT(e, "spa_pod_sequence")));
+        defType(e, cx, "t_pctl", e.callM(e.v("llvm"), "ptr", pwT(e, "spa_pod_control")));
         defValue(
-                e, cx, "range_u32", e.callM(e.v("ll"), "ref", e.s("range")), e.callM(e.v("ll"), "range", e.v("t_u32")));
-        defValue(e, cx, "loop", e.callM(e.v("ll"), "ref", e.s("loop")), e.callM(e.v("ll"), "loop", e.tup()));
+                e,
+                cx,
+                "nullp",
+                e.callM(e.v("llvm"), "null", e.tup()),
+                EcoExtern.globalT(e, EcoExtern.Llvm.top(e), e.v("t_pv"), false));
+        defValue(
+                e,
+                cx,
+                "range_u32",
+                e.callM(e.v("llvm"), "ref", e.s("range")),
+                e.callM(e.v("llvm"), "range", e.v("t_u32")));
+        defValue(e, cx, "loop", e.callM(e.v("llvm"), "ref", e.s("loop")), e.callM(e.v("llvm"), "loop", e.tup()));
 
         for (var fn : new String[] {"sin", "exp2"}) {
             defValue(e, cx, fn, e.callM(e.v("c"), fn, e.tup()), e.callM(e.v("c"), fn + "_t", e.tup()));
@@ -203,8 +212,8 @@ public final class EcoSynth {
         global(e, cx, "g_inc", "g_inc", "t_f64", e.n(0));
         global(e, cx, "g_gate", "g_gate", "t_f64", e.n(0));
         global(e, cx, "g_note", "g_note", "t_u32", e.n(0));
-        global(e, cx, "g_audio_stream", "g_audio_stream", "t_pv", lo(e, "nullp"));
-        global(e, cx, "g_midi_stream", "g_midi_stream", "t_pv", lo(e, "nullp"));
+        global(e, cx, "g_audio_stream", "g_audio_stream", "t_pv", e.v("nullp"));
+        global(e, cx, "g_midi_stream", "g_midi_stream", "t_pv", e.v("nullp"));
 
         cstr(e, cx, "s_media_type", "s.media_type", "media.type");
         cstr(e, cx, "s_audio", "s.audio", "Audio");
@@ -852,6 +861,7 @@ public final class EcoSynth {
         for (var n : cx.exported()) exportedFields.add(e.p(n, e.v(n)));
         setup.add(e.ret(e.rec(exportedFields.toArray(EcoMb.P[]::new))));
         var module = new TList<SourceExpr>();
+        module.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
         module.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : cx.exported()) module.add(e.let(n, e.fld(e.v("k"), n)));
         module.addAll(top);

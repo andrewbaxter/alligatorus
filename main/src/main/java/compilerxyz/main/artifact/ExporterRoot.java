@@ -225,6 +225,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return ValueSourceObjectConst.DELEGATE;
         }
     },
+    SOURCE_OBJECT_TYPE_INSTANCE("source_object_type_instance") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return ValueSourceObjectConst.TYPE_INSTANCE_DELEGATE;
+        }
+    },
     SOURCE_OBJECT_NEW_CONST("source_object_new_const") {
         @Override
         ExporterRootDelegate delegate() {

@@ -1,6 +1,8 @@
 package compilerxyz.main.eval.builtin;
 
 import com.google.gson.stream.JsonWriter;
+import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.CompileId;
@@ -26,6 +28,8 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.expr.StagedExprCell;
+import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.Binding;
@@ -56,6 +60,16 @@ public final class BuiltinBodies {
             return EResult.err(loc, "codevalue_dynamic: code defines no value");
         }
         return EResult.ok(DynUtil.regToTypedValue(xx, loc, dyn.optUnwrap(), out.optUnwrap(), type));
+    }
+
+    @BuiltinPath(value = "eval.value_dynamic", scopeId = 5040L)
+    public static ValueDynamic valueDynamic(ValueDynamicSource source, Type type) {
+        return new ValueDynamic(source, type);
+    }
+
+    @BuiltinPath(value = "eval.exporter_source_object_type_instance", scopeId = 5041L)
+    public static ArtifactExporter exporterSourceObjectTypeInstance() {
+        return ExporterRoot.SOURCE_OBJECT_TYPE_INSTANCE;
     }
 
     @BuiltinPath(value = "log", scopeId = 5001L)

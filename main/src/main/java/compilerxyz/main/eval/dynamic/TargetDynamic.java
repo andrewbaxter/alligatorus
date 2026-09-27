@@ -25,10 +25,12 @@ import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleBaseDynamic;
 import compilerxyz.main.eval.value.tuple.TupleElement;
+import compilerxyz.main.gen.AspectDynamicBoxed;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
+import compilerxyz.main.gen.GenAspectDynamicBoxed;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.IfBranch;
@@ -483,7 +485,17 @@ public final class TargetDynamic implements Target {
                 var liftEntry = new EvalContext.ExternalEntry(
                         new BindingId(), vtype, new External(StageLiftCell.class, liftCell));
                 xx.vx.externals.add(liftEntry);
-                var innerRes = DynUtil.materialize(xx, loc, cv);
+                CodeValue hostCv;
+                switch (GenAspectDynamicBoxed.getMaybe(xx, vtype)) {
+                    case Opt.Some<AspectDynamicBoxed> boxed -> {
+                        var boxRes =
+                                Eval.typecheckConvert(xx, loc, boxed.value().aspectDynamicBoxedBoxedForm(), cv);
+                        if (boxRes.hasErrors()) return boxRes.reerr();
+                        hostCv = boxRes.requireValue("TargetDynamic::stage boxed lower value");
+                    }
+                    case Opt.None<AspectDynamicBoxed> unboxedNone -> hostCv = cv;
+                }
+                var innerRes = DynUtil.materialize(xx, loc, hostCv);
                 if (innerRes.hasErrors()) return innerRes.reerr();
                 restElements.add(b.external(liftEntry));
                 restElements.add(b.reg(innerRes.requireValue("stage lower value")));

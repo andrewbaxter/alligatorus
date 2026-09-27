@@ -46,11 +46,11 @@ public final class EcoLibc {
 
         exprs.add(e.let("libc_builder", e.defFunc(e.v("d"), "libc")));
         var body = new TList<SourceExpr>();
-        EcoExtern.bindTypes(e, body, "arg");
+        EcoExtern.bindTypes(e, body, EcoExtern.Llvm.staged(e));
         var ctorFields = new TList<EcoMb.P>();
         for (var ex : EXTERNS) {
-            body.add(e.let(ex.name(), ex.declare(e, "arg")));
-            body.add(e.let(ex.name() + "_t", ex.constType(e, "arg")));
+            body.add(e.let(ex.name(), ex.declare(e, "arg", EcoExtern.Llvm.staged(e))));
+            body.add(e.let(ex.name() + "_t", ex.constType(e, EcoExtern.Llvm.staged(e))));
             ctorFields.add(e.p(ex.name(), e.v(ex.name())));
             ctorFields.add(e.p(ex.name() + "_t", e.v(ex.name() + "_t")));
         }

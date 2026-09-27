@@ -39,7 +39,9 @@ import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
+import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenType;
+import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.util.IList;
@@ -696,6 +698,36 @@ public final class DefinitionSet implements Artifactable {
                                 JavaBytecodeUtils.renderMethod(ehaSeq, ehaMv, TList.of(), soeLocTable);
                             }
                         }
+                    }
+                }
+                {
+                    var valueInternalName =
+                            JavaInternalName.fromClass(Value.class).value();
+                    var implementsValue = false;
+                    for (var aeImpl : obj.interfaceImpls) {
+                        if (aeImpl.interface_
+                                .jvmInternalNameForSet(this)
+                                .value()
+                                .equals(valueInternalName)) {
+                            implementsValue = true;
+                        }
+                    }
+                    if (implementsValue) {
+                        var aeDescriptor = JavaMethodDescriptor.fromParts(
+                                JavaDataDescriptor.fromClass(EResult.class),
+                                JavaDataDescriptor.fromClass(ExprContext.class),
+                                JavaDataDescriptor.fromClass(QExprId.class));
+                        var aeMv = soeCw.visitMethod(
+                                Opcodes.ACC_PUBLIC, "artifactableExporter", aeDescriptor.value(), null, null);
+                        var aeSeq = new JavaBytecodeSequence();
+                        var ab = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+                        var aeSelf = ab.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName));
+                        var aeXx = ab.loadIndexed(1, JavaDataDescriptor.fromClass(ExprContext.class));
+                        var aeLoc = ab.loadIndexed(2, JavaDataDescriptor.fromClass(QExprId.class));
+                        ab.ret(ab.invokeStatic(
+                                GenCodegenDescriptors.DYN_RUNTIME_SOURCE_OBJECT_EXPORTER, aeSelf, aeXx, aeLoc));
+                        aeSeq.add(ab.code());
+                        JavaBytecodeUtils.renderMethod(aeSeq, aeMv, TList.of(), soeLocTable);
                     }
                 }
                 soeCw.visitEnd();

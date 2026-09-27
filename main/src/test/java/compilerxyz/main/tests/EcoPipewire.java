@@ -122,40 +122,48 @@ public final class EcoPipewire {
         return out;
     }
 
-    static SourceExpr byteArrayType(EcoMb e, String ll, int count) {
-        return e.callM(e.v(ll), "array", e.rec(e.p("elem", e.v("t_u8")), e.p("count", e.intOf(count))));
+    static SourceExpr byteArrayType(EcoMb e, EcoExtern.Llvm llvm, int count) {
+        return e.call(
+                llvm.llvmField("array"),
+                e.rec(e.p("elem", e.call(llvm.llvmField("u8"), e.tup())), e.p("count", e.intOf(count))));
     }
 
-    static SourceExpr byteArrayConstType(EcoMb e, String ll, int count) {
-        return EcoExtern.globalT(e, ll, e.callM(e.v(ll), "ptr", byteArrayType(e, ll, count)), false);
+    static SourceExpr byteArrayConstType(EcoMb e, EcoExtern.Llvm llvm, int count) {
+        return EcoExtern.globalT(e, llvm, e.call(llvm.llvmField("ptr"), byteArrayType(e, llvm, count)), false);
     }
 
-    private static SourceExpr paramsArrayType(EcoMb e, String ll) {
-        return e.callM(e.v(ll), "array", e.rec(e.p("elem", e.v("t_pv")), e.p("count", e.intOf(1))));
+    private static SourceExpr paramsArrayType(EcoMb e, EcoExtern.Llvm llvm) {
+        return e.call(
+                llvm.llvmField("array"),
+                e.rec(
+                        e.p("elem", e.call(llvm.llvmField("ptr"), e.call(llvm.llvmField("void"), e.tup()))),
+                        e.p("count", e.intOf(1))));
     }
 
-    private static SourceExpr paramsConstType(EcoMb e, String ll) {
-        return EcoExtern.globalT(e, ll, e.callM(e.v(ll), "ptr", paramsArrayType(e, ll)), false);
+    private static SourceExpr paramsConstType(EcoMb e, EcoExtern.Llvm llvm) {
+        return EcoExtern.globalT(e, llvm, e.call(llvm.llvmField("ptr"), paramsArrayType(e, llvm)), false);
+    }
+
+    private static SourceExpr globalConstStaged(EcoMb e, String ll) {
+        return e.mb.as(e.v(ll), e.lower(e.callM0(e.v("llvm"), "global_const_fn")));
     }
 
     private static SourceExpr byteArrayConst(EcoMb e, String ll, String name, int[] bytes) {
-        return e.callM(
-                e.v(ll),
-                "global_const",
+        return e.call(
+                globalConstStaged(e, ll),
                 e.rec(
                         e.p("name", e.s(name)),
-                        e.p("ty", byteArrayType(e, ll, bytes.length)),
-                        e.p("init", e.stage(byteTuple(e, bytes)))));
+                        e.p("ty", e.lower(byteArrayType(e, EcoExtern.Llvm.top(e), bytes.length))),
+                        e.p("init", byteTuple(e, bytes))));
     }
 
     private static SourceExpr paramsConst(EcoMb e, String ll, String name, String pod) {
-        return e.callM(
-                e.v(ll),
-                "global_const",
+        return e.call(
+                globalConstStaged(e, ll),
                 e.rec(
                         e.p("name", e.s(name)),
-                        e.p("ty", paramsArrayType(e, ll)),
-                        e.p("init", e.stage(e.tup(e.mb.as(e.lower(e.v(pod)), e.lower(e.v(pod + "_t"))))))));
+                        e.p("ty", e.lower(paramsArrayType(e, EcoExtern.Llvm.top(e)))),
+                        e.p("init", e.tup(e.v(pod)))));
     }
 
     public static SourceExpr module(EcoMb e) {
@@ -208,35 +216,34 @@ public final class EcoPipewire {
 
         exprs.add(e.let("pw_builder", e.defFunc(e.v("d"), "pipewire")));
         var body = new TList<SourceExpr>();
-        EcoExtern.bindTypes(e, body, "arg");
+        var llvm = EcoExtern.Llvm.staged(e);
+        EcoExtern.bindTypes(e, body, llvm);
         for (var s : STRUCTS) {
             var fieldList = new TList<SourceExpr>();
             for (var f : s.fields()) {
-                fieldList.add(
-                        e.callM(e.v("arg"), "field", e.rec(e.p("name", e.s(f.name())), e.p("ty", e.v("t_" + f.ty())))));
+                fieldList.add(e.call(
+                        llvm.llvmField("field"), e.rec(e.p("name", e.s(f.name())), e.p("ty", e.v("t_" + f.ty())))));
             }
             var fields = fieldList.toArray(SourceExpr[]::new);
             body.add(e.let(
                     "t_" + s.name(),
-                    e.callM(
-                            e.v("arg"),
-                            "struct",
+                    e.call(
+                            llvm.llvmField("struct"),
                             e.rec(e.p("name", e.s(s.name())), e.p("fields", e.listNew(e.mb.evalValue(), fields))))));
-            body.add(e.let("t_p_" + s.name(), e.callM(e.v("arg"), "ptr", e.v("t_" + s.name()))));
+            body.add(e.let("t_p_" + s.name(), e.call(llvm.llvmField("ptr"), e.v("t_" + s.name()))));
         }
         var ctorFields = new TList<EcoMb.P>();
         for (var ex : EXTERNS) {
-            body.add(e.let(ex.name(), ex.declare(e, "arg")));
-            body.add(e.let(ex.name() + "_t", ex.constType(e, "arg")));
+            body.add(e.let(ex.name(), ex.declare(e, "arg", llvm)));
+            body.add(e.let(ex.name() + "_t", ex.constType(e, llvm)));
         }
         for (var k : KONSTS) {
             body.add(e.let(
                     k.name(),
-                    e.callM(
-                            e.v("arg"),
-                            "constant",
-                            e.rec(e.p("ty", e.v("t_u32")), e.p("value", e.stage(e.n(k.value())))))));
-            body.add(e.let(k.name() + "_t", EcoExtern.globalT(e, "arg", e.v("t_u32"), false)));
+                    e.call(
+                            e.mb.as(e.v("arg"), e.lower(e.callM0(e.v("llvm"), "constant_fn"))),
+                            e.rec(e.p("ty", e.lower(e.callM0(e.v("llvm"), "u32"))), e.p("value", e.n(k.value()))))));
+            body.add(e.let(k.name() + "_t", EcoExtern.globalT(e, llvm, e.v("t_u32"), false)));
         }
         for (var s : STRUCTS) {
             ctorFields.add(e.p(s.name(), e.v("t_" + s.name())));
@@ -247,12 +254,12 @@ public final class EcoPipewire {
         body.add(e.let(
                 "pod_midi_control", byteArrayConst(e, "arg", "pw.pod.midi_control", escapedBytes(POD_MIDI_CONTROL))));
         body.add(e.let(
-                "pod_audio_f32_mono_48k_t", byteArrayConstType(e, "arg", escapedBytes(POD_AUDIO_F32_MONO_48K).length)));
-        body.add(e.let("pod_midi_control_t", byteArrayConstType(e, "arg", escapedBytes(POD_MIDI_CONTROL).length)));
+                "pod_audio_f32_mono_48k_t", byteArrayConstType(e, llvm, escapedBytes(POD_AUDIO_F32_MONO_48K).length)));
+        body.add(e.let("pod_midi_control_t", byteArrayConstType(e, llvm, escapedBytes(POD_MIDI_CONTROL).length)));
         body.add(e.let("params_audio", paramsConst(e, "arg", "pw.params.audio", "pod_audio_f32_mono_48k")));
-        body.add(e.let("params_audio_t", paramsConstType(e, "arg")));
+        body.add(e.let("params_audio_t", paramsConstType(e, llvm)));
         body.add(e.let("params_midi", paramsConst(e, "arg", "pw.params.midi", "pod_midi_control")));
-        body.add(e.let("params_midi_t", paramsConstType(e, "arg")));
+        body.add(e.let("params_midi_t", paramsConstType(e, llvm)));
         for (var m : refMembers) {
             ctorFields.add(e.p(m, e.v(m)));
             ctorFields.add(e.p(m + "_t", e.v(m + "_t")));

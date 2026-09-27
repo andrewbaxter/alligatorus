@@ -1422,6 +1422,11 @@ public final class GenMain {
                         BuiltinTreeGen.TUC_TYPE_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
+                        "eval.aspect_artifact_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectArtifact")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
                         "eval.aspect_record_id",
                         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectRecord")),
                         BuiltinTreeGen.TUC_TYPE_EXPR);

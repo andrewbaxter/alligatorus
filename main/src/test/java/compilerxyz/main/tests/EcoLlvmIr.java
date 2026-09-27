@@ -1,6 +1,7 @@
 package compilerxyz.main.tests;
 
 import compilerxyz.main.syntax.SourceExpr;
+import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -37,6 +38,111 @@ public final class EcoLlvmIr {
 
     private static SourceExpr lmodT(EcoMb e) {
         return t(e, "lmod");
+    }
+
+    private static SourceExpr lmodOptT(EcoMb e) {
+        return e.call(e.mb.typesOption(), e.mb.evalValue());
+    }
+
+    private static SourceExpr constEvalIn(EcoMb e, SourceExpr xx, SourceExpr staged) {
+        return e.call(e.mb.evalConstEval(), e.rec(e.p("xx", xx), e.p("staged", staged)));
+    }
+
+    private static SourceExpr hostCve(EcoMb e, SourceExpr staged) {
+        return unwrapCveT(e, constEvalIn(e, xx(e), staged));
+    }
+
+    private static SourceExpr strCve(EcoMb e, SourceExpr str) {
+        return hostCve(e, e.stage(e.lower(str)));
+    }
+
+    private static SourceExpr graft(EcoMb e, SourceExpr cv) {
+        return e.mb.graft(cv);
+    }
+
+    private static SourceExpr initFn(EcoMb e, SourceExpr ty, SourceExpr cv) {
+        return hf(e, "h_init", e.p("xx", xx(e)), e.p("loc", loc(e)), e.p("ty", ty), e.p("cv", cv));
+    }
+
+    private static SourceExpr keyStr(EcoMb e, SourceExpr key) {
+        return e.call(e.evalBuiltin("constkey_to_str"), key);
+    }
+
+    private static SourceExpr tyDesc(EcoMb e, SourceExpr ty) {
+        return bim0(e, e.mb.evalType(), "desc", ty);
+    }
+
+    private static SourceExpr initMismatch(EcoMb e, SourceExpr st) {
+        return throwErr(
+                e, loc(e), e.cat(e.s("cannot initialize llvm "), tyDesc(e, a(e, "ty")), e.s(" from "), tyDesc(e, st)));
+    }
+
+    private static SourceExpr foldJoin(EcoMb e, SourceExpr parts, String open, String close) {
+        return e.mb.labeled(
+                "fold",
+                e.seq(
+                        e.let("accs", e.mapNew(str(e), cveT(e))),
+                        e.callM(e.v("accs"), "put", e.tup(e.dstr("0"), hostCve(e, e.stage(e.s(open))))),
+                        e.let("fi", e.rec(e.p("i", num(e, 0)))),
+                        e.foreach(
+                                parts,
+                                "p",
+                                e.seq(
+                                        e.let("k0", toStr(e, e.fld(e.v("fi"), "i"))),
+                                        e.incr(e.fld(e.v("fi"), "i")),
+                                        e.callM(
+                                                e.v("accs"),
+                                                "put",
+                                                e.tup(
+                                                        toStr(e, e.fld(e.v("fi"), "i")),
+                                                        hostCve(
+                                                                e,
+                                                                e.stage(
+                                                                        e.cat(
+                                                                                graft(
+                                                                                        e,
+                                                                                        e.callM(
+                                                                                                e.v("accs"),
+                                                                                                "get",
+                                                                                                e.v("k0"))),
+                                                                                e.lower(
+                                                                                        e.ifElse(
+                                                                                                e.eq(
+                                                                                                        e.fld(
+                                                                                                                e.v(
+                                                                                                                        "fi"),
+                                                                                                                "i"),
+                                                                                                        num(e, 1)),
+                                                                                                e.dstr(""),
+                                                                                                e.dstr(", "))),
+                                                                                graft(e, e.v("p"))))))))),
+                        e.mb.return_(
+                                "fold",
+                                hostCve(
+                                        e,
+                                        e.stage(e.cat(
+                                                graft(e, e.callM(e.v("accs"), "get", toStr(e, e.fld(e.v("fi"), "i")))),
+                                                e.s(close)))))));
+    }
+
+    private static SourceExpr countLet(EcoMb e, String counter) {
+        return e.let(counter, e.rec(e.p("v", num(e, 0))));
+    }
+
+    private static SourceExpr countLoop(EcoMb e, String counter, SourceExpr list) {
+        return e.foreach(list, "_", e.incr(e.fld(e.v(counter), "v")));
+    }
+
+    private static SourceExpr irArgXx(EcoMb e) {
+        return e.callM(e.v("arg"), "xx", e.tup());
+    }
+
+    private static SourceExpr irArgMod(EcoMb e) {
+        return e.callM(e.v("arg"), "mod", e.tup());
+    }
+
+    private static SourceExpr irFn(EcoMb e, SourceExpr xx, SourceExpr mod, SourceExpr ty) {
+        return hf(e, "h_ir", e.p("xx", xx), e.p("mod", mod), e.p("ty", ty));
     }
 
     private static SourceExpr xxT(EcoMb e) {
@@ -199,15 +305,6 @@ public final class EcoLlvmIr {
         return e.matchOf(res, "__r", Opt.none(), e.p("ok", e.v("__r")), e.p("errs", panicErrs(e, what, e.v("__r"))));
     }
 
-    private static SourceExpr panicErr(EcoMb e, String what, SourceExpr loc, SourceExpr msg) {
-        return e.matchOf(
-                e.eresultErr(e.mb.evalValue(), loc, msg),
-                "__x",
-                Opt.none(),
-                e.p("ok", e.mb.panic(e.s("unreachable"))),
-                e.p("errs", panicErrs(e, what, e.v("__x"))));
-    }
-
     private static SourceExpr xx(EcoMb e) {
         return e.fld(e.v("arg"), "xx");
     }
@@ -230,6 +327,42 @@ public final class EcoLlvmIr {
 
     private static SourceExpr mod(EcoMb e) {
         return in(e, "mod");
+    }
+
+    private static SourceExpr xmod(EcoMb e) {
+        return modOf(e, xx(e));
+    }
+
+    private static SourceExpr modOf(EcoMb e, SourceExpr xx) {
+        return e.callM(reinterpret(e, e.fld(xx, "target"), "ltarget"), "mod", e.tup());
+    }
+
+    private record IntSpec(String name, double bits, boolean signed, double min, double max) {}
+
+    private static final IList<IntSpec> INT_SPECS = IList.of(
+            new IntSpec("i1", 1, false, 0, 1),
+            new IntSpec("i8", 8, true, -128, 127),
+            new IntSpec("i16", 16, true, -32768, 32767),
+            new IntSpec("i32", 32, true, -2147483648.0, 2147483647.0),
+            new IntSpec("i64", 64, true, -9223372036854775808.0, 9223372036854775807.0),
+            new IntSpec("u8", 8, false, 0, 255),
+            new IntSpec("u16", 16, false, 0, 65535),
+            new IntSpec("u32", 32, false, 0, 4294967295.0),
+            new IntSpec("u64", 64, false, 0, 18446744073709551615.0));
+
+    private static SourceExpr intTy(EcoMb e, String name) {
+        for (var spec : INT_SPECS) {
+            if (spec.name().equals(name)) {
+                return mk(
+                        e,
+                        "lt_int",
+                        e.p("bits", num(e, spec.bits())),
+                        e.p("signed", e.b(spec.signed())),
+                        e.p("min", e.n(spec.min())),
+                        e.p("max", e.n(spec.max())));
+            }
+        }
+        throw new IllegalArgumentException("no int type " + name);
     }
 
     private static SourceExpr reinterpret(EcoMb e, SourceExpr value, String obj) {
@@ -454,25 +587,6 @@ public final class EcoLlvmIr {
         method(e, x, obj, field, e.tup(), typ, in(e, field));
     }
 
-    private static void intType(
-            EcoMb e, TList<SourceExpr> x, String name, double bits, boolean signed, double min, double max) {
-        method(
-                e,
-                x,
-                "lmod",
-                name,
-                e.tup(),
-                e.mb.evalType(),
-                mk(
-                        e,
-                        "lt_int",
-                        e.p("bits", num(e, bits)),
-                        e.p("signed", e.b(signed)),
-                        e.p("min", e.n(min)),
-                        e.p("max", e.n(max)),
-                        e.p("mod", outer(e))));
-    }
-
     private static SourceExpr renderArm(EcoMb e, SourceExpr... lineParts) {
         return e.seq(push(e, e.v("out"), e.cat(lineParts)), e.mb.set(e.fld(e.v("st"), "open"), num(e, 1)));
     }
@@ -523,6 +637,10 @@ public final class EcoLlvmIr {
         x.add(e.implInterface(e.v(obj), aspIface(e, "type"), e.p("type", body(e, e.ret(outer(e))))));
         x.add(e.implInterface(
                 e.v(obj),
+                aspIface(e, "artifact"),
+                e.p("exporter", e.call(e.evalBuiltin("exporter_source_object_type_instance"), e.tup()))));
+        x.add(e.implInterface(
+                e.v(obj),
                 e.mb.evalType(),
                 e.p("desc", desc),
                 e.p(
@@ -530,7 +648,10 @@ public final class EcoLlvmIr {
                         e.ifElse(
                                 e.mb.operatorEq(e.fld(e.v("arg"), "key"), aspId(e, "type")),
                                 e.optSome(e.mb.typesAspect(), e.v("outer")),
-                                dispatch)),
+                                e.ifElse(
+                                        e.mb.operatorEq(e.fld(e.v("arg"), "key"), aspId(e, "artifact")),
+                                        e.optSome(e.mb.typesAspect(), e.v("outer")),
+                                        dispatch))),
                 e.p("can_cast_from", canCastFrom),
                 e.p("cast_from", castFrom),
                 e.p("can_cast_to", canCastTo),
@@ -564,7 +685,7 @@ public final class EcoLlvmIr {
                 "h_binop",
                 e.p("xx", xx(e)),
                 e.p("loc", loc(e)),
-                e.p("mod", mod(e)),
+                e.p("mod", xmod(e)),
                 e.p("ty", outer(e)),
                 e.p("op", op),
                 e.p("a", a(e, "base")),
@@ -578,7 +699,7 @@ public final class EcoLlvmIr {
                 "h_cmp",
                 e.p("xx", xx(e)),
                 e.p("loc", loc(e)),
-                e.p("mod", mod(e)),
+                e.p("mod", xmod(e)),
                 e.p("ty", outer(e)),
                 e.p("op", op),
                 e.p("a", a(e, "base")),
@@ -594,11 +715,11 @@ public final class EcoLlvmIr {
     }
 
     private static SourceExpr conv(EcoMb e, SourceExpr op, SourceExpr from, SourceExpr to) {
-        return okCve(e, hf(e, "h_conv", e.p("mod", mod(e)), e.p("op", op), e.p("a", from), e.p("to", to)));
+        return okCve(e, hf(e, "h_conv", e.p("mod", xmod(e)), e.p("op", op), e.p("a", from), e.p("to", to)));
     }
 
     private static SourceExpr retag(EcoMb e, SourceExpr cv, SourceExpr ty) {
-        return okCve(e, hf(e, "h_retag", e.p("mod", mod(e)), e.p("cv", cv), e.p("ty", ty)));
+        return okCve(e, hf(e, "h_retag", e.p("mod", xmod(e)), e.p("cv", cv), e.p("ty", ty)));
     }
 
     private static SourceExpr literal(EcoMb e, SourceExpr ty, SourceExpr ref) {
@@ -620,7 +741,7 @@ public final class EcoLlvmIr {
                                                 "h_set",
                                                 e.p("xx", xx(e)),
                                                 e.p("loc", loc(e)),
-                                                e.p("mod", mod(e)),
+                                                e.p("mod", xmod(e)),
                                                 e.p("ty", outer(e)),
                                                 e.p("self", a(e, "self")),
                                                 e.p("value", a(e, "value"))),
@@ -647,7 +768,7 @@ public final class EcoLlvmIr {
                                                                 "h_store_new",
                                                                 e.p("xx", xx(e)),
                                                                 e.p("loc", loc(e)),
-                                                                e.p("mod", mod(e)),
+                                                                e.p("mod", xmod(e)),
                                                                 e.p("cv", a(e, "cv"))),
                                                         cveT(e)),
                                                 brT)),
@@ -676,7 +797,7 @@ public final class EcoLlvmIr {
         parts.add(e.ifOnly(e.not(cveHas(e, e.v("cv"))), retM(e, errCve(e, loc(e), "expression has no value"))));
         parts.add(e.let("st0", cveType(e, e.v("cv"))));
         parts.add(e.ifOnly(isConst(e, xx(e), e.v("st0")), retM(e, castValue(e, xx(e), loc(e), outer(e), e.v("cv")))));
-        parts.add(e.let("v", unwrapCveM(e, tryEr(e, ssa(e, xx(e), loc(e), mod(e), e.v("cv")), cveT(e)))));
+        parts.add(e.let("v", unwrapCveM(e, tryEr(e, ssa(e, xx(e), loc(e), xmod(e), e.v("cv")), cveT(e)))));
         parts.add(e.let("st", cveType(e, e.v("v"))));
         for (var c : cases) parts.add(c);
         parts.add(e.ret(errCve(e, loc(e), "cannot convert to " + what)));
@@ -777,7 +898,7 @@ public final class EcoLlvmIr {
         return new TestMb.Branch(e.mb.operatorEq(e.fld(e.v("arg"), "key"), id), value);
     }
 
-    private static SourceExpr rtDispatch(EcoMb e, SourceExpr inner) {
+    private static SourceExpr rtDispatch(EcoMb e, String under, SourceExpr inner) {
         var delegated = new SourceExpr[] {
             e.mb.evalAspectBindDynamicId(),
             e.mb.evalAspectConsumeDynamicId(),
@@ -788,33 +909,47 @@ public final class EcoLlvmIr {
         branches.add(rtBranch(e, aspId(e, "lift"), e.optSome(e.mb.typesAspect(), outer(e))));
         branches.add(rtBranch(e, aspId(e, "bind"), e.optSome(e.mb.typesAspect(), outer(e))));
         for (var id : delegated) {
-            branches.add(rtBranch(e, id, typeAspect(e, xx(e), lt(e, "lref"), a(e, "key"))));
+            branches.add(rtBranch(e, id, typeAspect(e, xx(e), lt(e, under), a(e, "key"))));
         }
         return e.mb.ifOf(branches, Opt.some(inner));
     }
 
-    private static SourceExpr rtCanCastFrom(EcoMb e) {
+    private static SourceExpr rtCanCastFrom(EcoMb e, String under) {
         return body(
-                e,
-                e.ret(orB(e, isEqual(e, xx(e), lt(e, "lref"), srcType(e)), isEqual(e, xx(e), outer(e), srcType(e)))));
+                e, e.ret(orB(e, isEqual(e, xx(e), lt(e, under), srcType(e)), isEqual(e, xx(e), outer(e), srcType(e)))));
     }
 
-    private static SourceExpr rtCastFrom(EcoMb e) {
+    private static SourceExpr isRuntime(EcoMb e, SourceExpr cv) {
+        return bim(
+                e,
+                e.mb.evalTarget(),
+                "value_is_runtime",
+                e.fld(xx(e), "target"),
+                e.rec(e.p("xx", xx(e)), e.p("value", cveValue(e, cv))));
+    }
+
+    private static SourceExpr retagRuntime(EcoMb e, SourceExpr cv, SourceExpr type) {
+        return cvOf(
+                e,
+                cveCode(e, cv),
+                e.call(
+                        e.evalBuiltin("value_dynamic"),
+                        e.rec(
+                                e.p(
+                                        "source",
+                                        e.fld(
+                                                e.call(
+                                                        e.mb.mustReinterpret(),
+                                                        e.tup(cveValue(e, cv), e.mb.builtin("types", "value_dynamic"))),
+                                                "source")),
+                                e.p("type", type))));
+    }
+
+    private static SourceExpr rtCastFrom(EcoMb e, String under) {
         return body(
                 e,
-                e.ifOnly(
-                        e.not(isEqual(e, xx(e), lt(e, "lref"), cveType(e, a(e, "cv")))), retM(e, okCve(e, a(e, "cv")))),
-                e.ifOnly(
-                        isTargetCode(e, cveCode(e, a(e, "cv"))),
-                        retM(
-                                e,
-                                e.call(
-                                        e.evalBuiltin("codevalue_dynamic"),
-                                        e.rec(
-                                                e.p("xx", xx(e)),
-                                                e.p("loc", loc(e)),
-                                                e.p("code", cveCode(e, a(e, "cv"))),
-                                                e.p("type", outer(e)))))),
+                e.ifOnly(e.not(isEqual(e, xx(e), lt(e, under), cveType(e, a(e, "cv")))), retM(e, okCve(e, a(e, "cv")))),
+                e.ifOnly(isRuntime(e, a(e, "cv")), retM(e, okCve(e, retagRuntime(e, a(e, "cv"), outer(e))))),
                 e.ret(okCve(
                         e,
                         cvOf(
@@ -846,7 +981,7 @@ public final class EcoLlvmIr {
                                         e.rec(e.p("type", outer(e)), e.p("data", a(e, "external_host_value"))))))));
     }
 
-    private static void rtBindImpl(EcoMb e, TList<SourceExpr> x, String obj) {
+    private static void rtBindImpl(EcoMb e, TList<SourceExpr> x, String obj, String under) {
         x.add(e.implInterface(
                 e.v(obj),
                 e.mb.evalAspectBind(),
@@ -856,25 +991,31 @@ public final class EcoLlvmIr {
                                 e,
                                 e.mb.evalAspectBind(),
                                 "bind",
-                                lookupV(e, xx(e), lt(e, "lref"), e.mb.evalAspectBind()),
+                                lookupV(e, xx(e), lt(e, under), e.mb.evalAspectBind()),
                                 e.rec(e.p("xx", xx(e)), e.p("loc", loc(e)), e.p("cv", a(e, "cv")))))));
     }
 
     private static void rtType(
-            EcoMb e, TList<SourceExpr> x, String obj, String desc, String marker, SourceExpr dispatchInner) {
+            EcoMb e,
+            TList<SourceExpr> x,
+            String obj,
+            String under,
+            String desc,
+            String marker,
+            SourceExpr dispatchInner) {
         selfType(
                 e,
                 x,
                 obj,
                 e.dstr(desc),
-                rtDispatch(e, dispatchInner),
-                rtCanCastFrom(e),
-                rtCastFrom(e),
+                rtDispatch(e, under, dispatchInner),
+                rtCanCastFrom(e, under),
+                rtCastFrom(e, under),
                 noCastTo(e),
                 castToPanic(e),
                 body(e, e.ret(has(e, xx(e), a(e, "other"), marker))));
         rtLiftImpl(e, x, obj);
-        rtBindImpl(e, x, obj);
+        rtBindImpl(e, x, obj, under);
     }
 
     public static SourceExpr module(EcoMb e) {
@@ -882,18 +1023,26 @@ public final class EcoLlvmIr {
         x.add(e.let("d", e.define()));
         x.add(e.optionTypeLet());
         {
-            defIface(e, x, "ltype", e.p("ir", str(e)), e.p("ssa", ty(e)));
-            defIface(e, x, "lint", e.p("bits", intT(e)), e.p("signed", boolT(e)));
+            defIface(
+                    e,
+                    x,
+                    "lint",
+                    e.p("bits", intT(e)),
+                    e.p("signed", boolT(e)),
+                    e.p("min", e.typesDouble()),
+                    e.p("max", e.typesDouble()));
             defIface(e, x, "lfloat", e.p("bits", intT(e)));
             defIface(e, x, "lptr", e.p("pointee", ty(e)));
             defIface(e, x, "larr", e.p("elem", ty(e)), e.p("count", intT(e)));
             defIface(e, x, "lvoid");
             defIface(e, x, "lslot", e.p("base", ty(e)), e.p("ptr", str(e)));
             defIface(e, x, "lunit_m");
-            defIface(e, x, "lrange_m", e.p("elem", ty(e)), e.p("mod", e.mb.evalValue()));
+            defIface(e, x, "lrange_m", e.p("elem", ty(e)));
             defIface(e, x, "lloop_m");
             defIface(e, x, "lgtype_m", e.p("base", ty(e)), e.p("mem", boolT(e)));
             defIface(e, x, "lrange_fn_m");
+            defIface(e, x, "lgfn_m", e.p("kind", intT(e)));
+            defIface(e, x, "linit_fn_m", e.p("ty", ty(e)));
 
             x.add(e.let("lsrc_u", e.callM0(e.v("d"), "union")));
             for (var tag : new String[] {"ssa", "mem"}) {
@@ -904,14 +1053,7 @@ public final class EcoLlvmIr {
             defObj(e, x, "lval", "llvm value", e.rec(e.p("ty", ty(e)), e.p("source", t(e, "lsrc_u"))));
             defObj(e, x, "lfield", "llvm field", e.rec(e.p("name", str(e)), e.p("ty", ty(e))));
             defIface(e, x, "lstruct", e.p("name", str(e)), e.p("fields", e.listType(e.mb.evalValue())));
-            defIface(
-                    e,
-                    x,
-                    "lfn",
-                    e.p("params", e.listType(ty(e))),
-                    e.p("ret", ty(e)),
-                    e.p("varargs", boolT(e)),
-                    e.p("sig", str(e)));
+            defIface(e, x, "lfn", e.p("params", e.listType(ty(e))), e.p("ret", ty(e)), e.p("varargs", boolT(e)));
             defObj(e, x, "lglobal", "llvm global", e.rec(e.p("name", str(e)), e.p("ty", ty(e)), e.p("init", str(e))));
             defObj(e, x, "llabel", "llvm label", e.rec(e.p("key", e.typesJumpKey()), e.p("name", str(e))));
 
@@ -969,6 +1111,7 @@ public final class EcoLlvmIr {
                             e.p("n", intT(e)),
                             e.p("xx", e.call(e.mb.typesOption(), e.typesExprContext())),
                             e.p("structs", e.listType(ty(e))),
+                            e.p("struct_lines", e.listType(str(e))),
                             e.p("externs", e.listType(e.mb.evalValue())),
                             e.p("globals", e.listType(e.mb.evalValue())),
                             e.p("constants", e.listType(e.mb.evalValue())),
@@ -976,6 +1119,18 @@ public final class EcoLlvmIr {
                             e.p("funcs", e.listType(str(e))),
                             e.p("labels", e.listType(e.mb.evalValue()))));
             defObj(e, x, "ltarget", "llvm target", e.rec(e.p("mod", lmodT(e))));
+            defObj(e, x, "lirctx", "llvm ir rendering context", e.rec(e.p("xx", xxT(e)), e.p("mod", lmodOptT(e))));
+            x.add(e.let("ltype", e.callM0(e.v("d"), "interface")));
+            x.add(e.callM(e.v("ltype"), "set_is_aspect", e.b(true)));
+            x.add(e.let("ltype_id", e.callM0(e.v("ltype"), "aspect_id")));
+            x.add(e.callM(
+                    e.v("ltype"),
+                    "func",
+                    e.rec(e.p("name", e.s("ir")), e.p("arg", t(e, "lirctx")), e.p("ret", e.optionTypeSome(str(e))))));
+            x.add(e.callM(
+                    e.v("ltype"),
+                    "func",
+                    e.rec(e.p("name", e.s("ssa")), e.p("arg", e.tup()), e.p("ret", e.optionTypeSome(ty(e))))));
             defObj(e, x, "lbinding", "llvm binding", e.rec(e.p("ty", ty(e)), e.p("ptr", str(e))));
             defObj(e, x, "lbinding_none", "llvm empty binding", e.tup());
             defObj(e, x, "lunit", "llvm unit", e.tup());
@@ -988,40 +1143,25 @@ public final class EcoLlvmIr {
                             e.p("bits", intT(e)),
                             e.p("signed", boolT(e)),
                             e.p("min", e.typesDouble()),
-                            e.p("max", e.typesDouble()),
-                            e.p("mod", lmodT(e))));
-            defObj(e, x, "lt_float", "llvm float type", e.rec(e.p("bits", intT(e)), e.p("mod", lmodT(e))));
-            defObj(e, x, "lt_ptr", "llvm pointer type", e.rec(e.p("pointee", ty(e)), e.p("mod", lmodT(e))));
-            defObj(
-                    e,
-                    x,
-                    "lt_arr",
-                    "llvm array type",
-                    e.rec(e.p("elem", ty(e)), e.p("count", intT(e)), e.p("mod", lmodT(e))));
+                            e.p("max", e.typesDouble())));
+            defObj(e, x, "lt_float", "llvm float type", e.rec(e.p("bits", intT(e))));
+            defObj(e, x, "lt_ptr", "llvm pointer type", e.rec(e.p("pointee", ty(e))));
+            defObj(e, x, "lt_arr", "llvm array type", e.rec(e.p("elem", ty(e)), e.p("count", intT(e))));
             defObj(
                     e,
                     x,
                     "lt_struct",
                     "llvm struct type",
-                    e.rec(e.p("name", str(e)), e.p("fields", e.listType(e.mb.evalValue())), e.p("mod", lmodT(e))));
+                    e.rec(e.p("name", str(e)), e.p("fields", e.listType(e.mb.evalValue()))));
             defObj(
                     e,
                     x,
                     "lt_fn",
                     "llvm function type",
-                    e.rec(
-                            e.p("params", e.listType(ty(e))),
-                            e.p("ret", ty(e)),
-                            e.p("varargs", boolT(e)),
-                            e.p("mod", lmodT(e))));
-            defObj(e, x, "lt_void", "llvm void type", e.rec(e.p("mod", lmodT(e))));
-            defObj(
-                    e,
-                    x,
-                    "lt_slot",
-                    "llvm slot type",
-                    e.rec(e.p("base", ty(e)), e.p("ptr", str(e)), e.p("mod", lmodT(e))));
-            defObj(e, x, "lrange_t", "llvm range type", e.rec(e.p("elem", ty(e)), e.p("mod", lmodT(e))));
+                    e.rec(e.p("params", e.listType(ty(e))), e.p("ret", ty(e)), e.p("varargs", boolT(e))));
+            defObj(e, x, "lt_void", "llvm void type", e.tup());
+            defObj(e, x, "lt_slot", "llvm slot type", e.rec(e.p("base", ty(e)), e.p("ptr", str(e))));
+            defObj(e, x, "lrange_t", "llvm range type", e.rec(e.p("elem", ty(e))));
             defObj(
                     e,
                     x,
@@ -1029,16 +1169,48 @@ public final class EcoLlvmIr {
                     "llvm range",
                     e.rec(e.p("t", ty(e)), e.p("code", e.mb.typesCode()), e.p("n", lvalT(e))));
             defObj(e, x, "lrange_fn_t", "llvm range function type", e.rec(e.p("t", ty(e)), e.p("elem", ty(e))));
-            defObj(e, x, "lloop_t", "llvm loop type", e.rec(e.p("mod", lmodT(e))));
+            defObj(e, x, "lloop_t", "llvm loop type", e.tup());
             defObj(e, x, "lref", "llvm reference", e.rec(e.p("ref", str(e))));
-            defObj(
-                    e,
-                    x,
-                    "lt_global",
-                    "llvm global type",
-                    e.rec(e.p("base", ty(e)), e.p("mem", boolT(e)), e.p("mod", lmodT(e))));
+            defObj(e, x, "lgfn_t", "llvm global definition function", e.rec(e.p("kind", intT(e))));
+            defObj(e, x, "linit_fn_t", "llvm initializer renderer", e.rec(e.p("ty", ty(e))));
+            defObj(e, x, "lt_global", "llvm global type", e.rec(e.p("base", ty(e)), e.p("mem", boolT(e))));
         }
         {
+            fnDef(e, x, "h_ir", e.rec(e.p("xx", xxT(e)), e.p("mod", lmodOptT(e)), e.p("ty", ty(e))), str(e));
+            fnDef(e, x, "h_params_ir", e.rec(e.p("xx", xxT(e)), e.p("mod", lmodOptT(e)), e.p("ty", ty(e))), str(e));
+            fnImpl(
+                    e,
+                    x,
+                    "h_ir",
+                    body(
+                            e,
+                            e.let("lk", lookup(e, xx(e), a(e, "ty"), lt(e, "ltype"))),
+                            e.ifOnly(
+                                    e.not(e.fld(e.v("lk"), "is_some")),
+                                    e.mb.panic(e.cat(
+                                            e.s("llvm: not an llvm type: "),
+                                            bim0(e, e.mb.evalType(), "desc", a(e, "ty"))))),
+                            e.ret(bim(
+                                    e,
+                                    lt(e, "ltype"),
+                                    "ir",
+                                    e.fld(e.v("lk"), "value"),
+                                    mk(e, "lirctx", e.p("xx", xx(e)), e.p("mod", a(e, "mod")))))));
+            fnImpl(
+                    e,
+                    x,
+                    "h_params_ir",
+                    body(
+                            e,
+                            e.let("parts", e.listNew(str(e))),
+                            e.foreach(
+                                    im0(e, "lfn", "params", asp(e, xx(e), a(e, "ty"), "lfn")),
+                                    "p",
+                                    push(e, e.v("parts"), irFn(e, xx(e), a(e, "mod"), e.v("p")))),
+                            e.ifOnly(
+                                    im0(e, "lfn", "varargs", asp(e, xx(e), a(e, "ty"), "lfn")),
+                                    push(e, e.v("parts"), e.dstr("..."))),
+                            e.ret(e.join(e.v("parts"), ", "))));
             fnDef(e, x, "h_insts", codeT(e), instsT(e));
             fnDef(e, x, "h_code", instsT(e), codeT(e));
             x.add(e.let("h_append_b", e.defFunc(e.v("d"), "llvm.h_append")));
@@ -1386,10 +1558,7 @@ public final class EcoLlvmIr {
                                             e.p("op", a(e, "op")),
                                             e.p("a", lvalOf(e, e.v("a2"))),
                                             e.p("b", lvalOf(e, e.v("b2"))))),
-                            e.ret(cvOf(
-                                    e,
-                                    codeOf(e, e.v("out")),
-                                    lvalNew(e, e.callM(a(e, "mod"), "i1", e.tup()), e.v("r"))))));
+                            e.ret(cvOf(e, codeOf(e, e.v("out")), lvalNew(e, intTy(e, "i1"), e.v("r"))))));
             fnImpl(
                     e,
                     x,
@@ -1465,10 +1634,7 @@ public final class EcoLlvmIr {
                             e.ret(cvOf(
                                     e,
                                     codeOf(e, e.v("out")),
-                                    lvalNew(
-                                            e,
-                                            mk(e, "lt_ptr", e.p("pointee", a(e, "base")), e.p("mod", a(e, "mod"))),
-                                            e.v("r"))))));
+                                    lvalNew(e, mk(e, "lt_ptr", e.p("pointee", a(e, "base"))), e.v("r"))))));
             fnImpl(
                     e,
                     x,
@@ -1524,7 +1690,7 @@ public final class EcoLlvmIr {
                             e.ifOnly(
                                     e.eq(e.fld(e.v("st"), "idx"), num(e, -1)),
                                     throwErr(e, loc(e), e.cat(e.s("no struct field named "), a(e, "name")))),
-                            e.let("i32", e.callM(a(e, "mod"), "i32", e.tup())),
+                            e.let("i32", intTy(e, "i32")),
                             e.let(
                                     "g",
                                     hf(
@@ -1557,14 +1723,7 @@ public final class EcoLlvmIr {
                                     e.ifElse(
                                             isLlvm(e, xx(e), a(e, "key")),
                                             ssa(e, xx(e), loc(e), a(e, "mod"), a(e, "key")),
-                                            unwrapCveT(
-                                                    e,
-                                                    castValue(
-                                                            e,
-                                                            xx(e),
-                                                            loc(e),
-                                                            e.callM(a(e, "mod"), "i32", e.tup()),
-                                                            a(e, "key"))))),
+                                            unwrapCveT(e, castValue(e, xx(e), loc(e), intTy(e, "i32"), a(e, "key"))))),
                             e.ifOnly(
                                     e.not(has(e, xx(e), cveType(e, e.v("k")), "lint")),
                                     throwErr(e, loc(e), "index must be an integer")),
@@ -1583,6 +1742,388 @@ public final class EcoLlvmIr {
                             e.ret(cvOf(e, codeOf(e, e.v("out")), lvalMem(e, a(e, "base"), e.v("r"))))));
         }
         {
+            fnDef(e, x, "c_ptr", ty(e), ty(e));
+            fnImpl(e, x, "c_ptr", body(e, e.ret(mk(e, "lt_ptr", e.p("pointee", e.v("arg"))))));
+            fnDef(e, x, "c_array", e.rec(e.p("elem", ty(e)), e.p("count", intT(e))), ty(e));
+            fnImpl(
+                    e,
+                    x,
+                    "c_array",
+                    body(e, e.ret(mk(e, "lt_arr", e.p("elem", a(e, "elem")), e.p("count", a(e, "count"))))));
+            fnDef(e, x, "c_field", e.rec(e.p("name", str(e)), e.p("ty", ty(e))), t(e, "lfield"));
+            fnImpl(e, x, "c_field", body(e, e.ret(mk(e, "lfield", e.p("name", a(e, "name")), e.p("ty", a(e, "ty"))))));
+            fnDef(e, x, "c_struct", e.rec(e.p("name", str(e)), e.p("fields", e.listType(e.mb.evalValue()))), ty(e));
+            fnImpl(
+                    e,
+                    x,
+                    "c_struct",
+                    body(e, e.ret(mk(e, "lt_struct", e.p("name", a(e, "name")), e.p("fields", a(e, "fields"))))));
+            for (var varargs : new boolean[] {false, true}) {
+                var name = varargs ? "c_fn_varargs" : "c_fn";
+                fnDef(e, x, name, e.rec(e.p("params", e.listType(ty(e))), e.p("ret", ty(e))), ty(e));
+                fnImpl(
+                        e,
+                        x,
+                        name,
+                        body(
+                                e,
+                                e.ret(mk(
+                                        e,
+                                        "lt_fn",
+                                        e.p("params", a(e, "params")),
+                                        e.p("ret", a(e, "ret")),
+                                        e.p("varargs", e.b(varargs))))));
+            }
+            fnDef(e, x, "c_range", ty(e), ty(e));
+            fnImpl(
+                    e,
+                    x,
+                    "c_range",
+                    body(
+                            e,
+                            e.ret(mk(
+                                    e,
+                                    "lrange_fn_t",
+                                    e.p("t", mk(e, "lrange_t", e.p("elem", e.v("arg")))),
+                                    e.p("elem", e.v("arg"))))));
+            fnDef(e, x, "c_global_t", e.rec(e.p("ty", ty(e)), e.p("mem", boolT(e))), ty(e));
+            fnImpl(
+                    e,
+                    x,
+                    "c_global_t",
+                    body(e, e.ret(mk(e, "lt_global", e.p("base", a(e, "ty")), e.p("mem", a(e, "mem"))))));
+            for (var spec : INT_SPECS) {
+                fnDef(e, x, "c_" + spec.name(), e.tup(), ty(e));
+                fnImpl(e, x, "c_" + spec.name(), body(e, e.ret(intTy(e, spec.name()))));
+            }
+            for (var bits : new int[] {32, 64}) {
+                fnDef(e, x, "c_f" + bits, e.tup(), ty(e));
+                fnImpl(e, x, "c_f" + bits, body(e, e.ret(mk(e, "lt_float", e.p("bits", num(e, bits))))));
+            }
+            fnDef(e, x, "c_void", e.tup(), ty(e));
+            fnImpl(e, x, "c_void", body(e, e.ret(mkArg(e, "lt_void", e.tup()))));
+            fnDef(e, x, "c_loop", e.tup(), ty(e));
+            fnImpl(e, x, "c_loop", body(e, e.ret(mkArg(e, "lloop_t", e.tup()))));
+            fnDef(e, x, "c_null", e.tup(), t(e, "lref"));
+            fnImpl(e, x, "c_null", body(e, e.ret(mk(e, "lref", e.p("ref", e.s("null"))))));
+            var gfnKinds = new String[] {"global_fn", "global_const_fn", "constant_fn"};
+            for (int kind = 0; kind < gfnKinds.length; kind++) {
+                fnDef(e, x, "c_" + gfnKinds[kind], e.tup(), ty(e));
+                fnImpl(e, x, "c_" + gfnKinds[kind], body(e, e.ret(mk(e, "lgfn_t", e.p("kind", num(e, kind))))));
+            }
+            fnDef(e, x, "c_ref", str(e), t(e, "lref"));
+            fnImpl(e, x, "c_ref", body(e, e.ret(mk(e, "lref", e.p("ref", e.v("arg"))))));
+        }
+        {
+            for (var name :
+                    new String[] {"h_init", "h_init_int", "h_init_float", "h_init_ptr", "h_init_arr", "h_init_struct"
+                    }) {
+                fnDef(
+                        e,
+                        x,
+                        name,
+                        e.rec(e.p("xx", xxT(e)), e.p("loc", locT(e)), e.p("ty", ty(e)), e.p("cv", cveT(e))),
+                        cveT(e));
+                x.add(e.callM(e.v(name + "_b"), "set_exception_type", errsT(e)));
+            }
+            fnImpl(
+                    e,
+                    x,
+                    "h_init",
+                    body(
+                            e,
+                            e.ifOnly(e.not(cveHas(e, a(e, "cv"))), throwErr(e, loc(e), "initializer has no value")),
+                            e.ifOnly(has(e, xx(e), a(e, "ty"), "lint"), retM(e, hf(e, "h_init_int", e.v("arg")))),
+                            e.ifOnly(has(e, xx(e), a(e, "ty"), "lfloat"), retM(e, hf(e, "h_init_float", e.v("arg")))),
+                            e.ifOnly(has(e, xx(e), a(e, "ty"), "lptr"), retM(e, hf(e, "h_init_ptr", e.v("arg")))),
+                            e.ifOnly(has(e, xx(e), a(e, "ty"), "larr"), retM(e, hf(e, "h_init_arr", e.v("arg")))),
+                            e.ifOnly(
+                                    e.not(has(e, xx(e), a(e, "ty"), "lstruct")),
+                                    throwErr(
+                                            e,
+                                            loc(e),
+                                            e.cat(e.s("llvm "), tyDesc(e, a(e, "ty")), e.s(" cannot be initialized")))),
+                            e.ret(hf(e, "h_init_struct", e.v("arg")))));
+            fnImpl(
+                    e,
+                    x,
+                    "h_init_int",
+                    body(
+                            e,
+                            e.let("st", cveType(e, a(e, "cv"))),
+                            e.ifOnly(
+                                    isConst(e, xx(e), e.v("st")),
+                                    e.seq(
+                                            e.let(
+                                                    "d",
+                                                    e.call(
+                                                            e.evalBuiltin("const_numeric_to_double"),
+                                                            e.rec(
+                                                                    e.p("xx", xx(e)),
+                                                                    e.p("value", cveValue(e, a(e, "cv")))))),
+                                            e.let("l", e.mb.as(e.v("d"), e.mb.typesLong())),
+                                            e.ifOnly(
+                                                    e.not(e.eq(e.mb.as(e.v("l"), e.typesDouble()), e.v("d"))),
+                                                    throwErr(e, loc(e), "integer initializer is not integral")),
+                                            e.ifOnly(
+                                                    orB(
+                                                            e,
+                                                            e.mb.operatorLt(
+                                                                    e.v("d"), acc(e, xx(e), a(e, "ty"), "lint", "min")),
+                                                            e.mb.operatorGt(
+                                                                    e.v("d"),
+                                                                    acc(e, xx(e), a(e, "ty"), "lint", "max"))),
+                                                    throwErr(e, loc(e), "integer initializer out of range")),
+                                            e.let("s", toStr(e, e.v("l"))),
+                                            retM(e, strCve(e, e.v("s"))))),
+                            e.ifOnly(e.not(isEqual(e, xx(e), e.mb.typesInt(), e.v("st"))), initMismatch(e, e.v("st"))),
+                            e.ret(hostCve(e, e.stage(toStr(e, graft(e, a(e, "cv"))))))));
+            fnImpl(
+                    e,
+                    x,
+                    "h_init_float",
+                    body(
+                            e,
+                            e.let("st", cveType(e, a(e, "cv"))),
+                            e.let("bits", acc(e, xx(e), a(e, "ty"), "lfloat", "bits")),
+                            e.ifOnly(
+                                    isConst(e, xx(e), e.v("st")),
+                                    e.seq(
+                                            e.let(
+                                                    "d",
+                                                    e.call(
+                                                            e.evalBuiltin("const_numeric_to_double"),
+                                                            e.rec(
+                                                                    e.p("xx", xx(e)),
+                                                                    e.p("value", cveValue(e, a(e, "cv")))))),
+                                            e.let(
+                                                    "s",
+                                                    e.ifElse(
+                                                            e.eq(e.v("bits"), num(e, 64)),
+                                                            toStr(e, e.v("d")),
+                                                            toStr(
+                                                                    e,
+                                                                    e.mb.as(
+                                                                            e.mb.as(e.v("d"), e.typesFloat()),
+                                                                            e.typesDouble())))),
+                                            retM(e, strCve(e, e.v("s"))))),
+                            e.ifOnly(e.not(isEqual(e, xx(e), e.typesDouble(), e.v("st"))), initMismatch(e, e.v("st"))),
+                            e.ifOnly(
+                                    e.eq(e.v("bits"), num(e, 64)),
+                                    retM(e, hostCve(e, e.stage(toStr(e, graft(e, a(e, "cv"))))))),
+                            e.ret(hostCve(
+                                    e,
+                                    e.stage(toStr(
+                                            e,
+                                            e.mb.as(
+                                                    e.mb.as(graft(e, a(e, "cv")), e.typesFloat()),
+                                                    e.typesDouble())))))));
+            fnImpl(
+                    e,
+                    x,
+                    "h_init_ptr",
+                    body(
+                            e,
+                            e.let("st", cveType(e, a(e, "cv"))),
+                            e.ifOnly(
+                                    has(e, xx(e), e.v("st"), "lgtype_m"),
+                                    e.seq(
+                                            e.ifOnly(
+                                                    e.not(isRuntime(e, a(e, "cv"))),
+                                                    e.seq(
+                                                            e.let("s", hf(e, "h_gref", a(e, "cv"))),
+                                                            retM(e, strCve(e, e.v("s"))))),
+                                            e.let("rv", retagRuntime(e, a(e, "cv"), lt(e, "lref"))),
+                                            retM(
+                                                    e,
+                                                    hostCve(
+                                                            e,
+                                                            e.stage(e.callM(graft(e, e.v("rv")), "ref", e.tup())))))),
+                            e.ifOnly(e.not(isEqual(e, xx(e), lt(e, "lref"), e.v("st"))), initMismatch(e, e.v("st"))),
+                            e.ret(hostCve(e, e.stage(e.callM(graft(e, a(e, "cv")), "ref", e.tup()))))));
+            fnImpl(
+                    e,
+                    x,
+                    "h_init_arr",
+                    body(
+                            e,
+                            e.let("elem", acc(e, xx(e), a(e, "ty"), "larr", "elem")),
+                            e.let("count", acc(e, xx(e), a(e, "ty"), "larr", "count")),
+                            e.let("eir", irFn(e, xx(e), e.optNone(e.mb.evalValue()), e.v("elem"))),
+                            e.let("st", cveType(e, a(e, "cv"))),
+                            e.let("tk", lookup(e, xx(e), e.v("st"), aspIface(e, "tuple"))),
+                            e.ifOnly(
+                                    e.fld(e.v("tk"), "is_some"),
+                                    e.seq(
+                                            e.let("parts", e.listNew(cveT(e))),
+                                            e.foreach(
+                                                    bim(
+                                                            e,
+                                                            aspIface(e, "tuple"),
+                                                            "take_elements",
+                                                            e.fld(e.v("tk"), "value"),
+                                                            e.rec(
+                                                                    e.p("xx", xx(e)),
+                                                                    e.p("loc", loc(e)),
+                                                                    e.p("value", cveValue(e, a(e, "cv"))))),
+                                                    "er",
+                                                    e.seq(
+                                                            e.let(
+                                                                    "v",
+                                                                    initFn(e, e.v("elem"), unwrapCveT(e, e.v("er")))),
+                                                            push(
+                                                                    e,
+                                                                    e.v("parts"),
+                                                                    hostCve(
+                                                                            e,
+                                                                            e.stage(
+                                                                                    e.cat(
+                                                                                            e.lower(e.v("eir")),
+                                                                                            e.s(" "),
+                                                                                            graft(e, e.v("v")))))))),
+                                            countLet(e, "n"),
+                                            countLoop(e, "n", e.v("parts")),
+                                            e.ifOnly(
+                                                    e.not(e.eq(e.fld(e.v("n"), "v"), e.v("count"))),
+                                                    throwErr(
+                                                            e,
+                                                            loc(e),
+                                                            e.cat(
+                                                                    e.s("array initializer has "),
+                                                                    toStr(e, e.fld(e.v("n"), "v")),
+                                                                    e.s(" elements, expected "),
+                                                                    toStr(e, e.v("count"))))),
+                                            retM(e, foldJoin(e, e.v("parts"), "[", "]")))),
+                            e.ifOnly(
+                                    e.not(e.fld(lookup(e, xx(e), e.v("st"), aspIface(e, "iterable")), "is_some")),
+                                    initMismatch(e, e.v("st"))),
+                            e.let("rty", mk(e, "linit_fn_t", e.p("ty", e.v("elem")))),
+                            e.let("rref", mk(e, "lref", e.p("ref", e.s("init")))),
+                            e.let("cstr", toStr(e, e.v("count"))),
+                            e.ret(hostCve(
+                                    e,
+                                    e.stage(e.seq(
+                                            e.let("parts", e.listNew(str(e))),
+                                            e.let("n", e.rec(e.p("v", num(e, 0)))),
+                                            e.foreach(
+                                                    graft(e, a(e, "cv")),
+                                                    "x",
+                                                    e.seq(
+                                                            push(
+                                                                    e,
+                                                                    e.v("parts"),
+                                                                    e.cat(
+                                                                            e.lower(e.v("eir")),
+                                                                            e.s(" "),
+                                                                            e.call(
+                                                                                    e.mb.as(
+                                                                                            e.lower(e.v("rref")),
+                                                                                            e.lower(e.v("rty"))),
+                                                                                    e.v("x")))),
+                                                            e.incr(e.fld(e.v("n"), "v")))),
+                                            e.ifOnly(
+                                                    e.not(e.eq(e.fld(e.v("n"), "v"), e.lower(e.v("count")))),
+                                                    e.mb.panic(
+                                                            e.cat(
+                                                                    e.s("llvm: array initializer has "),
+                                                                    toStr(e, e.fld(e.v("n"), "v")),
+                                                                    e.s(" elements, expected "),
+                                                                    e.lower(e.v("cstr"))))),
+                                            e.ret(e.cat(e.s("["), e.join(e.v("parts"), ", "), e.s("]")))))))));
+            fnImpl(
+                    e,
+                    x,
+                    "h_init_struct",
+                    body(
+                            e,
+                            e.let("st", cveType(e, a(e, "cv"))),
+                            e.let("rk", lookup(e, xx(e), e.v("st"), aspIface(e, "record"))),
+                            e.ifOnly(e.not(e.fld(e.v("rk"), "is_some")), initMismatch(e, e.v("st"))),
+                            e.let("sfields", acc(e, xx(e), a(e, "ty"), "lstruct", "fields")),
+                            e.let("kc", e.rec(e.p("n", num(e, 0)), e.p("bad", e.dstr("")))),
+                            e.foreach(
+                                    bim0(e, aspIface(e, "record"), "field_types", e.fld(e.v("rk"), "value")),
+                                    "en",
+                                    e.seq(
+                                            e.incr(e.fld(e.v("kc"), "n")),
+                                            e.let("ks", keyStr(e, e.fld(e.v("en"), "key"))),
+                                            e.let("hit", e.rec(e.p("v", num(e, 0)))),
+                                            e.foreach(
+                                                    e.v("sfields"),
+                                                    "f0",
+                                                    e.ifOnly(
+                                                            e.eq(
+                                                                    e.callM(
+                                                                            reinterpret(e, e.v("f0"), "lfield"),
+                                                                            "name",
+                                                                            e.tup()),
+                                                                    e.v("ks")),
+                                                            e.mb.set(e.fld(e.v("hit"), "v"), num(e, 1)))),
+                                            e.ifOnly(
+                                                    e.eq(e.fld(e.v("hit"), "v"), num(e, 0)),
+                                                    e.mb.set(e.fld(e.v("kc"), "bad"), e.v("ks"))))),
+                            e.ifOnly(
+                                    e.not(e.eq(e.fld(e.v("kc"), "bad"), e.dstr(""))),
+                                    throwErr(
+                                            e,
+                                            loc(e),
+                                            e.cat(
+                                                    e.s("llvm "),
+                                                    tyDesc(e, a(e, "ty")),
+                                                    e.s(" has no field "),
+                                                    e.fld(e.v("kc"), "bad")))),
+                            countLet(e, "sn"),
+                            countLoop(e, "sn", e.v("sfields")),
+                            e.ifOnly(
+                                    e.not(e.eq(e.fld(e.v("kc"), "n"), e.fld(e.v("sn"), "v"))),
+                                    throwErr(
+                                            e,
+                                            loc(e),
+                                            e.cat(
+                                                    e.s("initializer for llvm "),
+                                                    tyDesc(e, a(e, "ty")),
+                                                    e.s(" is missing fields")))),
+                            e.let(
+                                    "fields",
+                                    bim(
+                                            e,
+                                            aspIface(e, "record"),
+                                            "take_fields",
+                                            e.fld(e.v("rk"), "value"),
+                                            e.rec(
+                                                    e.p("xx", xx(e)),
+                                                    e.p("loc", loc(e)),
+                                                    e.p("value", cveValue(e, a(e, "cv")))))),
+                            e.let("parts", e.listNew(cveT(e))),
+                            e.foreach(
+                                    e.v("sfields"),
+                                    "f0",
+                                    e.seq(
+                                            e.let("f", reinterpret(e, e.v("f0"), "lfield")),
+                                            e.let("fty", e.callM(e.v("f"), "ty", e.tup())),
+                                            e.let("fir", irFn(e, xx(e), e.optNone(e.mb.evalValue()), e.v("fty"))),
+                                            e.let(
+                                                    "v",
+                                                    initFn(
+                                                            e,
+                                                            e.v("fty"),
+                                                            unwrapCveT(
+                                                                    e,
+                                                                    e.callM(
+                                                                            e.v("fields"),
+                                                                            "get",
+                                                                            e.callM(e.v("f"), "name", e.tup()))))),
+                                            push(
+                                                    e,
+                                                    e.v("parts"),
+                                                    hostCve(
+                                                            e,
+                                                            e.stage(
+                                                                    e.cat(
+                                                                            e.lower(e.v("fir")),
+                                                                            e.s(" "),
+                                                                            graft(e, e.v("v")))))))),
+                            e.ret(foldJoin(e, e.v("parts"), "{ ", " }"))));
             accessor(e, x, "lval", "ty", ty(e));
             method(
                     e,
@@ -1622,6 +2163,9 @@ public final class EcoLlvmIr {
             accessor(e, x, "lfield", "name", str(e));
             accessor(e, x, "lfield", "ty", ty(e));
             accessor(e, x, "lref", "ref", str(e));
+            accessor(e, x, "ltarget", "mod", lmodT(e));
+            accessor(e, x, "lirctx", "xx", xxT(e));
+            accessor(e, x, "lirctx", "mod", lmodOptT(e));
             accessor(e, x, "linst", "k", t(e, "linst_u"));
             for (var vo : new String[] {"lfield", "lglobal", "llabel", "linst", "lmod"}) {
                 markerType(e, x, vo, vo, vo + "_m", e.aspectDispatch(lv(e, vo + "_m_id")));
@@ -1687,14 +2231,6 @@ public final class EcoLlvmIr {
                     e,
                     x,
                     "lmod",
-                    "slot_type",
-                    e.rec(e.p("base", ty(e)), e.p("ptr", str(e))),
-                    ty(e),
-                    mk(e, "lt_slot", e.p("base", a(e, "base")), e.p("ptr", a(e, "ptr")), e.p("mod", outer(e))));
-            method(
-                    e,
-                    x,
-                    "lmod",
                     "label_of",
                     e.typesJumpKey(),
                     str(e),
@@ -1734,14 +2270,52 @@ public final class EcoLlvmIr {
                     "ir",
                     ty(e),
                     str(e),
+                    irFn(e, in(e, "xx", "value"), e.optSome(e.mb.evalValue(), outer(e)), e.v("arg")));
+            method(
+                    e,
+                    x,
+                    "lmod",
+                    "use_struct",
+                    ty(e),
+                    str(e),
                     e.seq(
-                            e.let("lk", lookup(e, in(e, "xx", "value"), e.v("arg"), lt(e, "ltype"))),
+                            e.let("name", acc(e, in(e, "xx", "value"), e.v("arg"), "lstruct", "name")),
+                            e.let("st", e.rec(e.p("hit", num(e, 0)))),
+                            e.foreach(
+                                    in(e, "structs"),
+                                    "s",
+                                    e.ifOnly(
+                                            e.eq(
+                                                    acc(e, in(e, "xx", "value"), e.v("s"), "lstruct", "name"),
+                                                    e.v("name")),
+                                            e.mb.set(e.fld(e.v("st"), "hit"), num(e, 1)))),
                             e.ifOnly(
-                                    e.not(e.fld(e.v("lk"), "is_some")),
-                                    e.mb.panic(e.cat(
-                                            e.s("llvm: not an llvm ty(e): "),
-                                            bim0(e, e.mb.evalType(), "desc", e.v("arg"))))),
-                            e.ret(im0(e, "ltype", "ir", e.fld(e.v("lk"), "value")))));
+                                    e.eq(e.fld(e.v("st"), "hit"), num(e, 0)),
+                                    e.seq(
+                                            push(e, in(e, "structs"), e.v("arg")),
+                                            e.let("parts", e.listNew(str(e))),
+                                            e.foreach(
+                                                    acc(e, in(e, "xx", "value"), e.v("arg"), "lstruct", "fields"),
+                                                    "f0",
+                                                    push(
+                                                            e,
+                                                            e.v("parts"),
+                                                            irOf(
+                                                                    e,
+                                                                    e.callM(
+                                                                            reinterpret(e, e.v("f0"), "lfield"),
+                                                                            "ty",
+                                                                            e.tup())))),
+                                            push(
+                                                    e,
+                                                    in(e, "struct_lines"),
+                                                    e.cat(
+                                                            e.s("%"),
+                                                            e.v("name"),
+                                                            e.s(" = type { "),
+                                                            e.join(e.v("parts"), ", "),
+                                                            e.s(" }"))))),
+                            e.ret(e.cat(e.s("%"), e.v("name")))));
             method(
                     e,
                     x,
@@ -1757,16 +2331,12 @@ public final class EcoLlvmIr {
                     "params_ir",
                     ty(e),
                     str(e),
-                    e.seq(
-                            e.let("parts", e.listNew(str(e))),
-                            e.foreach(
-                                    im0(e, "lfn", "params", asp(e, in(e, "xx", "value"), e.v("arg"), "lfn")),
-                                    "p",
-                                    push(e, e.v("parts"), irOf(e, e.v("p")))),
-                            e.ifOnly(
-                                    im0(e, "lfn", "varargs", asp(e, in(e, "xx", "value"), e.v("arg"), "lfn")),
-                                    push(e, e.v("parts"), e.dstr("..."))),
-                            e.ret(e.join(e.v("parts"), ", "))));
+                    hf(
+                            e,
+                            "h_params_ir",
+                            e.p("xx", in(e, "xx", "value")),
+                            e.p("mod", e.optSome(e.mb.evalValue(), outer(e))),
+                            e.p("ty", e.v("arg"))));
             method(
                     e,
                     x,
@@ -2045,31 +2615,6 @@ public final class EcoLlvmIr {
                     e.seq(
                             e.let("out", e.listNew(str(e))),
                             e.foreach(
-                                    in(e, "structs"),
-                                    "s",
-                                    e.seq(
-                                            e.let("parts", e.listNew(str(e))),
-                                            e.foreach(
-                                                    acc(e, in(e, "xx", "value"), e.v("s"), "lstruct", "fields"),
-                                                    "f0",
-                                                    push(
-                                                            e,
-                                                            e.v("parts"),
-                                                            irOf(
-                                                                    e,
-                                                                    e.callM(
-                                                                            reinterpret(e, e.v("f0"), "lfield"),
-                                                                            "ty",
-                                                                            e.tup())))),
-                                            push(
-                                                    e,
-                                                    e.v("out"),
-                                                    e.cat(
-                                                            irOf(e, e.v("s")),
-                                                            e.s(" = type { "),
-                                                            e.join(e.v("parts"), ", "),
-                                                            e.s(" }"))))),
-                            e.foreach(
                                     in(e, "externs"),
                                     "f0",
                                     e.seq(
@@ -2147,105 +2692,11 @@ public final class EcoLlvmIr {
                                                     e.s(" "),
                                                     e.callM(reinterpret(e, e.v("g0"), "lglobal"), "init", e.tup())))),
                             e.foreach(in(e, "funcs"), "f", push(e, e.v("out"), e.v("f"))),
-                            e.ret(e.cat(e.join(e.v("out"), "\n"), e.s("\n")))));
+                            e.let("all", e.listNew(str(e))),
+                            e.foreach(in(e, "struct_lines"), "l", push(e, e.v("all"), e.v("l"))),
+                            e.foreach(e.v("out"), "l", push(e, e.v("all"), e.v("l"))),
+                            e.ret(e.cat(e.join(e.v("all"), "\n"), e.s("\n")))));
 
-            intType(e, x, "i1", 1, false, 0, 1);
-            intType(e, x, "i8", 8, true, -128, 127);
-            intType(e, x, "i16", 16, true, -32768, 32767);
-            intType(e, x, "i32", 32, true, -2147483648.0, 2147483647.0);
-            intType(e, x, "i64", 64, true, -9223372036854775808.0, 9223372036854775807.0);
-            intType(e, x, "u8", 8, false, 0, 255);
-            intType(e, x, "u16", 16, false, 0, 65535);
-            intType(e, x, "u32", 32, false, 0, 4294967295.0);
-            intType(e, x, "u64", 64, false, 0, 18446744073709551615.0);
-            method(
-                    e,
-                    x,
-                    "lmod",
-                    "f32",
-                    e.tup(),
-                    ty(e),
-                    mk(e, "lt_float", e.p("bits", num(e, 32)), e.p("mod", outer(e))));
-            method(
-                    e,
-                    x,
-                    "lmod",
-                    "f64",
-                    e.tup(),
-                    ty(e),
-                    mk(e, "lt_float", e.p("bits", num(e, 64)), e.p("mod", outer(e))));
-            method(e, x, "lmod", "void", e.tup(), ty(e), mk(e, "lt_void", e.p("mod", outer(e))));
-            method(
-                    e,
-                    x,
-                    "lmod",
-                    "ptr",
-                    ty(e),
-                    ty(e),
-                    mk(e, "lt_ptr", e.p("pointee", e.v("arg")), e.p("mod", outer(e))));
-            method(
-                    e,
-                    x,
-                    "lmod",
-                    "array",
-                    e.rec(e.p("elem", ty(e)), e.p("count", e.mb.typesInt())),
-                    ty(e),
-                    mk(e, "lt_arr", e.p("elem", a(e, "elem")), e.p("count", a(e, "count")), e.p("mod", outer(e))));
-            method(
-                    e,
-                    x,
-                    "lmod",
-                    "field",
-                    e.rec(e.p("name", str(e)), e.p("ty", ty(e))),
-                    t(e, "lfield"),
-                    mk(e, "lfield", e.p("name", a(e, "name")), e.p("ty", a(e, "ty"))));
-            method(
-                    e,
-                    x,
-                    "lmod",
-                    "struct",
-                    e.rec(e.p("name", str(e)), e.p("fields", e.listType(e.mb.evalValue()))),
-                    ty(e),
-                    e.seq(
-                            e.let(
-                                    "t",
-                                    mk(
-                                            e,
-                                            "lt_struct",
-                                            e.p("name", a(e, "name")),
-                                            e.p("fields", a(e, "fields")),
-                                            e.p("mod", outer(e)))),
-                            push(e, in(e, "structs"), e.v("t")),
-                            e.ret(e.v("t"))));
-            method(
-                    e,
-                    x,
-                    "lmod",
-                    "fn",
-                    e.rec(e.p("params", e.listType(ty(e))), e.p("ret", ty(e))),
-                    ty(e),
-                    mk(
-                            e,
-                            "lt_fn",
-                            e.p("params", a(e, "params")),
-                            e.p("ret", a(e, "ret")),
-                            e.p("varargs", e.b(false)),
-                            e.p("mod", outer(e))));
-            method(
-                    e,
-                    x,
-                    "lmod",
-                    "fn_varargs",
-                    e.rec(e.p("params", e.listType(ty(e))), e.p("ret", ty(e))),
-                    ty(e),
-                    mk(
-                            e,
-                            "lt_fn",
-                            e.p("params", a(e, "params")),
-                            e.p("ret", a(e, "ret")),
-                            e.p("varargs", e.b(true)),
-                            e.p("mod", outer(e))));
-            method(e, x, "lmod", "null", e.tup(), t(e, "lref"), mk(e, "lref", e.p("ref", e.s("null"))));
             method(
                     e,
                     x,
@@ -2257,114 +2708,27 @@ public final class EcoLlvmIr {
                             e.let("gname", e.cat(e.s("@"), a(e, "name"))),
                             push(e, in(e, "externs"), lvalNew(e, a(e, "ty"), e.v("gname"))),
                             e.ret(mk(e, "lref", e.p("ref", e.v("gname"))))));
+            method(e, x, "lmod", "const_ref", str(e), t(e, "lref"), mk(e, "lref", e.p("ref", e.v("arg"))));
             method(
                     e,
                     x,
                     "lmod",
-                    "range",
-                    ty(e),
-                    ty(e),
-                    mk(
-                            e,
-                            "lrange_fn_t",
-                            e.p("t", mk(e, "lrange_t", e.p("elem", e.v("arg")), e.p("mod", outer(e)))),
-                            e.p("elem", e.v("arg"))));
-            method(e, x, "lmod", "loop", e.tup(), ty(e), mk(e, "lloop_t", e.p("mod", outer(e))));
-            method(
-                    e,
-                    x,
-                    "lmod",
-                    "global_t",
-                    e.rec(e.p("ty", ty(e)), e.p("mem", boolT(e))),
-                    ty(e),
-                    mk(e, "lt_global", e.p("base", a(e, "ty")), e.p("mem", a(e, "mem")), e.p("mod", outer(e))));
-            method(e, x, "lmod", "ref", str(e), t(e, "lref"), mk(e, "lref", e.p("ref", e.v("arg"))));
-            method(
-                    e,
-                    x,
-                    "lmod",
-                    "constant",
-                    e.rec(e.p("ty", ty(e)), e.p("value", e.mb.typesExpr())),
+                    "add_global",
+                    e.rec(e.p("konst", boolT(e)), e.p("name", str(e)), e.p("ty", ty(e)), e.p("init", str(e))),
                     t(e, "lref"),
-                    body(
-                            e,
-                            e.let("loc", e.call(e.evalBuiltin("expr_loc"), a(e, "value"))),
-                            e.let("xx", in(e, "xx", "value")),
+                    e.seq(
+                            e.let("gname", e.cat(e.s("@"), a(e, "name"))),
                             e.let(
-                                    "r",
-                                    mustV(
+                                    "g",
+                                    mk(
                                             e,
-                                            e.call(
-                                                    e.mb.evalConstEval(),
-                                                    e.rec(e.p("xx", e.v("xx")), e.p("staged", a(e, "value")))),
-                                            "compile failed")),
-                            e.let(
-                                    "v",
-                                    mustV(
-                                            e,
-                                            tryEr(
-                                                    e,
-                                                    operand(e, e.v("xx"), e.v("loc"), outer(e), a(e, "ty"), e.v("r")),
-                                                    cveT(e)),
-                                            "compile failed")),
-                            e.ifOnly(
-                                    isTargetCode(e, cveCode(e, e.v("v"))),
-                                    panicErr(e, "compile failed", e.v("loc"), e.s("constant value is not a constant"))),
-                            e.ret(mk(e, "lref", e.p("ref", lvRef(e, lvalOf(e, e.v("v"))))))));
-            for (var konst : new boolean[] {false, true}) {
-                method(
-                        e,
-                        x,
-                        "lmod",
-                        konst ? "global_const" : "global",
-                        e.rec(e.p("name", str(e)), e.p("ty", ty(e)), e.p("init", e.mb.typesExpr())),
-                        t(e, "lref"),
-                        body(
-                                e,
-                                e.let("loc", e.call(e.evalBuiltin("expr_loc"), a(e, "init"))),
-                                e.let("xx", in(e, "xx", "value")),
-                                e.let("gname", e.cat(e.s("@"), a(e, "name"))),
-                                e.let(
-                                        "r",
-                                        mustV(
-                                                e,
-                                                e.call(
-                                                        e.mb.evalConstEval(),
-                                                        e.rec(e.p("xx", e.v("xx")), e.p("staged", a(e, "init")))),
-                                                "compile failed")),
-                                e.let(
-                                        "v",
-                                        mustV(
-                                                e,
-                                                tryEr(
-                                                        e,
-                                                        operand(
-                                                                e,
-                                                                e.v("xx"),
-                                                                e.v("loc"),
-                                                                outer(e),
-                                                                a(e, "ty"),
-                                                                e.v("r")),
-                                                        cveT(e)),
-                                                "compile failed")),
-                                e.ifOnly(
-                                        isTargetCode(e, cveCode(e, e.v("v"))),
-                                        panicErr(
-                                                e,
-                                                "compile failed",
-                                                e.v("loc"),
-                                                e.s("global initializer must be a constant"))),
-                                push(
-                                        e,
-                                        in(e, konst ? "constants" : "globals"),
-                                        mk(
-                                                e,
-                                                "lglobal",
-                                                e.p("name", e.v("gname")),
-                                                e.p("ty", a(e, "ty")),
-                                                e.p("init", lvRef(e, lvalOf(e, e.v("v")))))),
-                                e.ret(mk(e, "lref", e.p("ref", e.v("gname"))))));
-            }
+                                            "lglobal",
+                                            e.p("name", e.v("gname")),
+                                            e.p("ty", a(e, "ty")),
+                                            e.p("init", a(e, "init")))),
+                            e.ifOnly(a(e, "konst"), push(e, in(e, "constants"), e.v("g"))),
+                            e.ifOnly(e.not(a(e, "konst")), push(e, in(e, "globals"), e.v("g"))),
+                            e.ret(mk(e, "lref", e.p("ref", e.v("gname"))))));
 
             method(
                     e,
@@ -2395,8 +2759,7 @@ public final class EcoLlvmIr {
                                             "lt_fn",
                                             e.p("params", e.v("ptypes")),
                                             e.p("ret", a(e, "ret")),
-                                            e.p("varargs", e.b(false)),
-                                            e.p("mod", outer(e)))),
+                                            e.p("varargs", e.b(false)))),
                             e.let("fnv", lvalNew(e, e.v("fnt"), e.cat(e.s("@"), a(e, "name")))),
                             e.let("out", instsNew(e)),
                             e.let("entries", e.mapNew(e.mb.typesConstkey(), e.mb.evalBinding())),
@@ -2457,8 +2820,15 @@ public final class EcoLlvmIr {
                                             e,
                                             e.not(e.v("ended")),
                                             andB(e, e.v("is_void"), isLlvm(e, e.v("ctx"), e.v("r")))),
-                                    panicErr(
-                                            e, "compile failed", e.v("loc"), e.s("void function body yields a value"))),
+                                    e.matchOf(
+                                            e.eresultErr(
+                                                    e.mb.evalValue(),
+                                                    e.v("loc"),
+                                                    e.s("void function body yields a value")),
+                                            "__x",
+                                            Opt.none(),
+                                            e.p("ok", e.mb.panic(e.s("unreachable"))),
+                                            e.p("errs", panicErrs(e, "compile failed", e.v("__x"))))),
                             e.let("need_cast", andB(e, e.not(e.v("ended")), e.not(e.v("is_void")))),
                             e.let(
                                     "v",
@@ -2618,7 +2988,12 @@ public final class EcoLlvmIr {
                     e.p("ir", e.cat(e.s("i"), toStr(e, in(e, "bits")))),
                     e.p("ssa", outer(e))));
             x.add(e.implInterface(
-                    e.v("lt_int"), t(e, "lint"), e.p("bits", in(e, "bits")), e.p("signed", in(e, "signed"))));
+                    e.v("lt_int"),
+                    t(e, "lint"),
+                    e.p("bits", in(e, "bits")),
+                    e.p("signed", in(e, "signed")),
+                    e.p("min", in(e, "min")),
+                    e.p("max", in(e, "max"))));
             op(e, x, "lt_int", "add", tryEr(e, binopBody(e, e.dstr("add")), cveT(e)));
             op(e, x, "lt_int", "sub", tryEr(e, binopBody(e, e.dstr("sub")), cveT(e)));
             op(e, x, "lt_int", "mul", tryEr(e, binopBody(e, e.dstr("mul")), cveT(e)));
@@ -2650,7 +3025,7 @@ public final class EcoLlvmIr {
                                                     "h_binop",
                                                     e.p("xx", xx(e)),
                                                     e.p("loc", loc(e)),
-                                                    e.p("mod", mod(e)),
+                                                    e.p("mod", xmod(e)),
                                                     e.p("ty", outer(e)),
                                                     e.p("op", e.dstr("sub")),
                                                     e.p("a", literal(e, outer(e), e.dstr("0"))),
@@ -2671,7 +3046,7 @@ public final class EcoLlvmIr {
                                                     "h_binop",
                                                     e.p("xx", xx(e)),
                                                     e.p("loc", loc(e)),
-                                                    e.p("mod", mod(e)),
+                                                    e.p("mod", xmod(e)),
                                                     e.p("ty", outer(e)),
                                                     e.p("op", e.dstr("xor")),
                                                     e.p("a", a(e, "base")),
@@ -2823,7 +3198,7 @@ public final class EcoLlvmIr {
                                                     "h_unop",
                                                     e.p("xx", xx(e)),
                                                     e.p("loc", loc(e)),
-                                                    e.p("mod", mod(e)),
+                                                    e.p("mod", xmod(e)),
                                                     e.p("ty", outer(e)),
                                                     e.p("op", e.dstr("fneg")),
                                                     e.p("a", a(e, "base"))),
@@ -2920,7 +3295,8 @@ public final class EcoLlvmIr {
                                     e.let(
                                             "p",
                                             unwrapCveM(
-                                                    e, tryEr(e, ssa(e, xx(e), loc(e), mod(e), a(e, "base")), cveT(e)))),
+                                                    e,
+                                                    tryEr(e, ssa(e, xx(e), loc(e), xmod(e), a(e, "base")), cveT(e)))),
                                     e.let(
                                             "i",
                                             unwrapCveM(
@@ -2929,13 +3305,13 @@ public final class EcoLlvmIr {
                                                             isLlvm(e, xx(e), a(e, "reference")),
                                                             tryEr(
                                                                     e,
-                                                                    ssa(e, xx(e), loc(e), mod(e), a(e, "reference")),
+                                                                    ssa(e, xx(e), loc(e), xmod(e), a(e, "reference")),
                                                                     cveT(e)),
                                                             castValue(
                                                                     e,
                                                                     xx(e),
                                                                     loc(e),
-                                                                    e.callM(mod(e), "i64", e.tup()),
+                                                                    intTy(e, "i64"),
                                                                     a(e, "reference"))))),
                                     e.ifOnly(
                                             e.not(has(e, xx(e), cveType(e, e.v("i")), "lint")),
@@ -2948,7 +3324,7 @@ public final class EcoLlvmIr {
                                             hf(
                                                     e,
                                                     "h_gep",
-                                                    e.p("mod", mod(e)),
+                                                    e.p("mod", xmod(e)),
                                                     e.p("base", in(e, "pointee")),
                                                     e.p("ptr", lvRef(e, lvalOf(e, e.v("p")))),
                                                     e.p("idx", e.listNew(e.mb.evalValue(), lvalOf(e, e.v("i")))))),
@@ -2982,7 +3358,8 @@ public final class EcoLlvmIr {
                                     e.let(
                                             "s",
                                             unwrapCveM(
-                                                    e, tryEr(e, ssa(e, xx(e), loc(e), mod(e), a(e, "self")), cveT(e)))),
+                                                    e,
+                                                    tryEr(e, ssa(e, xx(e), loc(e), xmod(e), a(e, "self")), cveT(e)))),
                                     e.let("out", instsNew(e)),
                                     appendCode(e, e.v("out"), cveCode(e, e.v("s"))),
                                     e.let("p", lvRef(e, lvalOf(e, e.v("s")))),
@@ -2999,7 +3376,7 @@ public final class EcoLlvmIr {
                                                                             "h_gep_field",
                                                                             e.p("xx", xx(e)),
                                                                             e.p("loc", loc(e)),
-                                                                            e.p("mod", mod(e)),
+                                                                            e.p("mod", xmod(e)),
                                                                             e.p("st", in(e, "pointee")),
                                                                             e.p("ptr", e.v("p")),
                                                                             e.p(
@@ -3017,7 +3394,7 @@ public final class EcoLlvmIr {
                                                                             "h_gep_index",
                                                                             e.p("xx", xx(e)),
                                                                             e.p("loc", loc(e)),
-                                                                            e.p("mod", mod(e)),
+                                                                            e.p("mod", xmod(e)),
                                                                             e.p("base", in(e, "pointee")),
                                                                             e.p("ptr", e.v("p")),
                                                                             e.p("key", a(e, "key"))),
@@ -3081,14 +3458,14 @@ public final class EcoLlvmIr {
                                                                             e,
                                                                             xx(e),
                                                                             loc(e),
-                                                                            mod(e),
+                                                                            xmod(e),
                                                                             in(e, "elem"),
                                                                             e.v("ec")),
                                                                     cveT(e)))),
                                             e.ifOnly(
                                                     isTargetCode(e, cveCode(e, e.v("v"))),
                                                     e.mb.set(e.fld(e.v("st2"), "bad"), num(e, 1))),
-                                            push(e, e.v("parts"), e.callM(mod(e), "typed", lvalOf(e, e.v("v")))),
+                                            push(e, e.v("parts"), e.callM(xmod(e), "typed", lvalOf(e, e.v("v")))),
                                             e.incr(e.fld(e.v("st2"), "n")))),
                             e.ifOnly(
                                     e.eq(e.fld(e.v("st2"), "bad"), num(e, 1)),
@@ -3129,7 +3506,7 @@ public final class EcoLlvmIr {
                                     e.s("["),
                                     toStr(e, in(e, "count")),
                                     e.s(" x "),
-                                    e.callM(mod(e), "ir", in(e, "elem")),
+                                    irFn(e, irArgXx(e), irArgMod(e), in(e, "elem")),
                                     e.s("]"))),
                     e.p("ssa", outer(e))));
             x.add(e.implInterface(
@@ -3150,7 +3527,7 @@ public final class EcoLlvmIr {
                                     e.let("p", lvMem(e, e.v("sl"))),
                                     e.let("out", instsNew(e)),
                                     appendCode(e, e.v("out"), cveCode(e, a(e, "self"))),
-                                    e.let("i32", e.callM(mod(e), "i32", e.tup())),
+                                    e.let("i32", intTy(e, "i32")),
                                     e.let(
                                             "k",
                                             unwrapCveM(
@@ -3159,7 +3536,7 @@ public final class EcoLlvmIr {
                                                             isLlvm(e, xx(e), a(e, "key")),
                                                             tryEr(
                                                                     e,
-                                                                    ssa(e, xx(e), loc(e), mod(e), a(e, "key")),
+                                                                    ssa(e, xx(e), loc(e), xmod(e), a(e, "key")),
                                                                     cveT(e)),
                                                             castValue(e, xx(e), loc(e), e.v("i32"), a(e, "key"))))),
                                     e.ifOnly(
@@ -3171,7 +3548,7 @@ public final class EcoLlvmIr {
                                             hf(
                                                     e,
                                                     "h_gep",
-                                                    e.p("mod", mod(e)),
+                                                    e.p("mod", xmod(e)),
                                                     e.p("base", outer(e)),
                                                     e.p("ptr", e.v("p")),
                                                     e.p(
@@ -3248,14 +3625,14 @@ public final class EcoLlvmIr {
                                                                             e,
                                                                             xx(e),
                                                                             loc(e),
-                                                                            mod(e),
+                                                                            xmod(e),
                                                                             e.callM(e.v("f"), "ty", e.tup()),
                                                                             e.v("ec")),
                                                                     cveT(e)))),
                                             e.ifOnly(
                                                     isTargetCode(e, cveCode(e, e.v("v"))),
                                                     e.mb.set(e.fld(e.v("bad"), "v"), num(e, 1))),
-                                            push(e, e.v("parts"), e.callM(mod(e), "typed", lvalOf(e, e.v("v")))))),
+                                            push(e, e.v("parts"), e.callM(xmod(e), "typed", lvalOf(e, e.v("v")))))),
                             e.ifOnly(
                                     e.eq(e.fld(e.v("bad"), "v"), num(e, 1)),
                                     retM(e, errCve(e, loc(e), "struct initializer field is not a constant"))),
@@ -3277,7 +3654,18 @@ public final class EcoLlvmIr {
                                     has(e, xx(e), a(e, "other"), "lstruct"),
                                     e.eq(acc(e, xx(e), a(e, "other"), "lstruct", "name"), in(e, "name"))))));
             x.add(e.implInterface(
-                    e.v("lt_struct"), t(e, "ltype"), e.p("ir", e.cat(e.s("%"), in(e, "name"))), e.p("ssa", outer(e))));
+                    e.v("lt_struct"),
+                    t(e, "ltype"),
+                    e.p(
+                            "ir",
+                            e.ifElse(
+                                    e.fld(irArgMod(e), "is_some"),
+                                    e.callM(
+                                            reinterpret(e, e.fld(irArgMod(e), "value"), "lmod"),
+                                            "use_struct",
+                                            outer(e)),
+                                    e.cat(e.s("%"), in(e, "name")))),
+                    e.p("ssa", outer(e))));
             x.add(e.implInterface(
                     e.v("lt_struct"), t(e, "lstruct"), e.p("name", in(e, "name")), e.p("fields", in(e, "fields"))));
             bindImpl(e, x, "lt_struct");
@@ -3306,7 +3694,7 @@ public final class EcoLlvmIr {
                                                                     "h_gep_field",
                                                                     e.p("xx", xx(e)),
                                                                     e.p("loc", loc(e)),
-                                                                    e.p("mod", mod(e)),
+                                                                    e.p("mod", xmod(e)),
                                                                     e.p("st", outer(e)),
                                                                     e.p("ptr", lvMem(e, e.v("sl"))),
                                                                     e.p(
@@ -3384,9 +3772,14 @@ public final class EcoLlvmIr {
                     e.p(
                             "ir",
                             e.cat(
-                                    e.callM(mod(e), "ir", in(e, "ret")),
+                                    irFn(e, irArgXx(e), irArgMod(e), in(e, "ret")),
                                     e.s(" ("),
-                                    e.callM(mod(e), "params_ir", outer(e)),
+                                    hf(
+                                            e,
+                                            "h_params_ir",
+                                            e.p("xx", irArgXx(e)),
+                                            e.p("mod", irArgMod(e)),
+                                            e.p("ty", outer(e))),
                                     e.s(")"))),
                     e.p("ssa", outer(e))));
             x.add(e.implInterface(
@@ -3394,8 +3787,7 @@ public final class EcoLlvmIr {
                     t(e, "lfn"),
                     e.p("params", in(e, "params")),
                     e.p("ret", in(e, "ret")),
-                    e.p("varargs", in(e, "varargs")),
-                    e.p("sig", e.callM(mod(e), "params_ir", outer(e)))));
+                    e.p("varargs", in(e, "varargs"))));
             x.add(e.implInterface(
                     e.v("lt_fn"),
                     aspIface(e, "function"),
@@ -3478,7 +3870,7 @@ public final class EcoLlvmIr {
                                                                                                     e,
                                                                                                     xx(e),
                                                                                                     loc(e),
-                                                                                                    mod(e),
+                                                                                                    xmod(e),
                                                                                                     e.callM(
                                                                                                             e.v("pmap"),
                                                                                                             "get",
@@ -3514,7 +3906,7 @@ public final class EcoLlvmIr {
                                                                                             e,
                                                                                             ssa(
                                                                                                     e, xx(e), loc(e),
-                                                                                                    mod(e), e.v("ec")),
+                                                                                                    xmod(e), e.v("ec")),
                                                                                             cveT(e)))),
                                                                     appendCode(e, e.v("out"), cveCode(e, e.v("v"))),
                                                                     push(e, e.v("args"), lvalOf(e, e.v("v"))))),
@@ -3535,7 +3927,7 @@ public final class EcoLlvmIr {
                                                                     e.p("fn", e.v("fnv")),
                                                                     e.p("args", e.v("args")))),
                                                     retM(e, okCve(e, cvNo(e, codeOf(e, e.v("out"))))))),
-                                    e.let("r", fresh(e, mod(e))),
+                                    e.let("r", fresh(e, xmod(e))),
                                     push(
                                             e,
                                             e.v("out"),
@@ -3586,7 +3978,7 @@ public final class EcoLlvmIr {
                                             e,
                                             tryEr(
                                                     e,
-                                                    operand(e, xx(e), loc(e), mod(e), in(e, "base"), a(e, "cv")),
+                                                    operand(e, xx(e), loc(e), xmod(e), in(e, "base"), a(e, "cv")),
                                                     cveT(e)))),
                             e.let("out", instsNew(e)),
                             appendCode(e, e.v("out"), cveCode(e, e.v("v"))),
@@ -3595,7 +3987,7 @@ public final class EcoLlvmIr {
                     body(e, e.ret(typeCanCastFrom(e, xx(e), loc(e), a(e, "dest_type"), in(e, "base")))),
                     body(
                             e,
-                            e.let("r", fresh(e, mod(e))),
+                            e.let("r", fresh(e, xmod(e))),
                             e.let("out", instsNew(e)),
                             appendCode(e, e.v("out"), cveCode(e, a(e, "cv"))),
                             push(e, e.v("out"), loadInst(e, e.v("r"), in(e, "base"), in(e, "ptr"))),
@@ -3617,7 +4009,7 @@ public final class EcoLlvmIr {
             x.add(e.implInterface(
                     e.v("lt_slot"),
                     t(e, "ltype"),
-                    e.p("ir", e.callM(mod(e), "ir", in(e, "base"))),
+                    e.p("ir", irFn(e, irArgXx(e), irArgMod(e), in(e, "base"))),
                     e.p("ssa", in(e, "base"))));
             x.add(e.implInterface(e.v("lt_slot"), t(e, "lslot"), e.p("base", in(e, "base")), e.p("ptr", in(e, "ptr"))));
             {
@@ -3641,9 +4033,9 @@ public final class EcoLlvmIr {
                                 e.ifElse(in(e, "mem"), e.dstr("global("), e.dstr("const(")),
                                 bim0(e, ty(e), "desc", in(e, "base")),
                                 e.s(")")),
-                        rtDispatch(e, e.aspectDispatch(ids.toArray(SourceExpr[]::new))),
-                        rtCanCastFrom(e),
-                        rtCastFrom(e),
+                        rtDispatch(e, "lref", e.aspectDispatch(ids.toArray(SourceExpr[]::new))),
+                        rtCanCastFrom(e, "lref"),
+                        rtCastFrom(e, "lref"),
                         body(
                                 e,
                                 e.ret(orB(
@@ -3673,7 +4065,7 @@ public final class EcoLlvmIr {
                 x.add(e.implInterface(
                         e.v("lt_global"), t(e, "lgtype_m"), e.p("base", in(e, "base")), e.p("mem", in(e, "mem"))));
                 rtLiftImpl(e, x, "lt_global");
-                rtBindImpl(e, x, "lt_global");
+                rtBindImpl(e, x, "lt_global", "lref");
                 x.add(e.implInterface(
                         e.v("lt_global"),
                         e.mb.evalAspectSet(),
@@ -3691,7 +4083,7 @@ public final class EcoLlvmIr {
                                                         "h_set",
                                                         e.p("xx", xx(e)),
                                                         e.p("loc", loc(e)),
-                                                        e.p("mod", mod(e)),
+                                                        e.p("mod", xmod(e)),
                                                         e.p("ty", in(e, "base")),
                                                         e.p("self", gval(e, a(e, "self"))),
                                                         e.p("value", a(e, "value"))),
@@ -3831,8 +4223,7 @@ public final class EcoLlvmIr {
                                             xx(e),
                                             in(e, "elem"),
                                             acc(e, xx(e), a(e, "other"), "lrange_m", "elem"))))));
-            x.add(e.implInterface(
-                    e.v("lrange_t"), t(e, "lrange_m"), e.p("elem", in(e, "elem")), e.p("mod", in(e, "mod"))));
+            x.add(e.implInterface(e.v("lrange_t"), t(e, "lrange_m"), e.p("elem", in(e, "elem"))));
             x.add(e.implInterface(
                     e.v("lrange_t"),
                     aspIface(e, "iterable"),
@@ -3841,7 +4232,7 @@ public final class EcoLlvmIr {
                             "loop_binding",
                             body(
                                     e,
-                                    e.let("s", e.callM(mod(e), "slot", in(e, "elem"))),
+                                    e.let("s", e.callM(modOf(e, e.v("arg")), "slot", in(e, "elem"))),
                                     e.ret(mk(e, "lbinding", e.p("ty", in(e, "elem")), e.p("ptr", e.v("s")))))),
                     e.p(
                             "element_access",
@@ -3855,7 +4246,7 @@ public final class EcoLlvmIr {
                             "foreach",
                             body(
                                     e,
-                                    e.let("mod", mod(e)),
+                                    e.let("mod", xmod(e)),
                                     e.let("elem", in(e, "elem")),
                                     e.let("out", instsNew(e)),
                                     appendCode(e, e.v("out"), cveCode(e, a(e, "base"))),
@@ -3897,9 +4288,7 @@ public final class EcoLlvmIr {
                                             inst(
                                                     e,
                                                     "condbr",
-                                                    e.p(
-                                                            "cond",
-                                                            lvalNew(e, e.callM(e.v("mod"), "i1", e.tup()), e.v("c"))),
+                                                    e.p("cond", lvalNew(e, intTy(e, "i1"), e.v("c"))),
                                                     e.p("t", e.v("bodyl")),
                                                     e.p("f", e.v("end")))),
                                     push(e, e.v("out"), labelInst(e, e.v("bodyl"))),
@@ -3933,6 +4322,7 @@ public final class EcoLlvmIr {
                     e,
                     x,
                     "lrange_fn_t",
+                    "lref",
                     "range constructor",
                     "lrange_fn_m",
                     e.aspectDispatch(lv(e, "lrange_fn_m_id"), aspId(e, "function")));
@@ -3954,15 +4344,7 @@ public final class EcoLlvmIr {
                                                                     e,
                                                                     xx(e),
                                                                     loc(e),
-                                                                    reinterpret(
-                                                                            e,
-                                                                            acc(
-                                                                                    e,
-                                                                                    xx(e),
-                                                                                    in(e, "t"),
-                                                                                    "lrange_m",
-                                                                                    "mod"),
-                                                                            "lmod"),
+                                                                    xmod(e),
                                                                     in(e, "elem"),
                                                                     a(e, "argument")),
                                                             cveT(e)))),
@@ -3979,7 +4361,14 @@ public final class EcoLlvmIr {
                                                             e.p("n", lvalOf(e, e.v("a2"))))))))),
                     e.p("exception_type", e.optionTypeLoweredNone())));
 
-            rtType(e, x, "lloop_t", "loop", "lloop_m", e.aspectDispatch(lv(e, "lloop_m_id"), aspId(e, "iterable")));
+            rtType(
+                    e,
+                    x,
+                    "lloop_t",
+                    "lref",
+                    "loop",
+                    "lloop_m",
+                    e.aspectDispatch(lv(e, "lloop_m_id"), aspId(e, "iterable")));
             x.add(e.implInterface(e.v("lloop_t"), t(e, "lloop_m")));
             x.add(e.implInterface(
                     e.v("lloop_t"),
@@ -3991,7 +4380,7 @@ public final class EcoLlvmIr {
                             "foreach",
                             body(
                                     e,
-                                    e.let("mod", mod(e)),
+                                    e.let("mod", xmod(e)),
                                     e.let("out", instsNew(e)),
                                     appendCode(e, e.v("out"), cveCode(e, a(e, "base"))),
                                     e.let("head", freshLabel(e, e.v("mod"))),
@@ -4002,6 +4391,237 @@ public final class EcoLlvmIr {
                                             e.not(cveEnded(e, a(e, "body"))),
                                             push(e, e.v("out"), brInst(e, e.v("head")))),
                                     e.ret(okCve(e, cvNo(e, codeOf(e, e.v("out")))))))));
+
+            selfType(
+                    e,
+                    x,
+                    "lgfn_t",
+                    e.cat(e.s("llvm global definition function "), toStr(e, in(e, "kind"))),
+                    rtDispatch(e, "lmod", e.aspectDispatch(lv(e, "lgfn_m_id"), aspId(e, "function"))),
+                    rtCanCastFrom(e, "lmod"),
+                    rtCastFrom(e, "lmod"),
+                    noCastTo(e),
+                    castToPanic(e),
+                    body(
+                            e,
+                            e.ret(andB(
+                                    e,
+                                    has(e, xx(e), a(e, "other"), "lgfn_m"),
+                                    e.eq(acc(e, xx(e), a(e, "other"), "lgfn_m", "kind"), in(e, "kind"))))));
+            rtLiftImpl(e, x, "lgfn_t");
+            rtBindImpl(e, x, "lgfn_t", "lmod");
+            x.add(e.implInterface(e.v("lgfn_t"), t(e, "lgfn_m"), e.p("kind", in(e, "kind"))));
+            x.add(e.implInterface(
+                    e.v("lgfn_t"),
+                    aspIface(e, "function"),
+                    e.p(
+                            "call",
+                            body(
+                                    e,
+                                    e.let("argv", a(e, "argument")),
+                                    e.ifOnly(
+                                            e.not(cveHas(e, e.v("argv"))),
+                                            retM(e, errCve(e, loc(e), "llvm global definition argument has no value"))),
+                                    e.let("st", cveType(e, e.v("argv"))),
+                                    e.let("rk", lookup(e, xx(e), e.v("st"), aspIface(e, "record"))),
+                                    e.ifOnly(
+                                            e.not(e.fld(e.v("rk"), "is_some")),
+                                            retM(
+                                                    e,
+                                                    errCve(
+                                                            e,
+                                                            loc(e),
+                                                            "llvm global definition argument must be a record"))),
+                                    e.let("konst_def", e.eq(in(e, "kind"), num(e, 2))),
+                                    e.let(
+                                            "want",
+                                            e.ifElse(
+                                                    e.v("konst_def"),
+                                                    e.listNew(str(e), e.s("ty"), e.s("value")),
+                                                    e.listNew(str(e), e.s("name"), e.s("ty"), e.s("init")))),
+                                    e.let("kc", e.rec(e.p("n", num(e, 0)), e.p("bad", e.dstr("")))),
+                                    e.foreach(
+                                            bim0(e, aspIface(e, "record"), "field_types", e.fld(e.v("rk"), "value")),
+                                            "en",
+                                            e.seq(
+                                                    e.incr(e.fld(e.v("kc"), "n")),
+                                                    e.let("ks", keyStr(e, e.fld(e.v("en"), "key"))),
+                                                    e.let("hit", e.rec(e.p("v", num(e, 0)))),
+                                                    e.foreach(
+                                                            e.v("want"),
+                                                            "w",
+                                                            e.ifOnly(
+                                                                    e.eq(e.v("w"), e.v("ks")),
+                                                                    e.mb.set(e.fld(e.v("hit"), "v"), num(e, 1)))),
+                                                    e.ifOnly(
+                                                            e.eq(e.fld(e.v("hit"), "v"), num(e, 0)),
+                                                            e.mb.set(e.fld(e.v("kc"), "bad"), e.v("ks"))))),
+                                    e.ifOnly(
+                                            e.not(e.eq(e.fld(e.v("kc"), "bad"), e.dstr(""))),
+                                            retM(
+                                                    e,
+                                                    errCve(
+                                                            e,
+                                                            loc(e),
+                                                            e.cat(
+                                                                    e.s("llvm global definition has no argument "),
+                                                                    e.fld(e.v("kc"), "bad"))))),
+                                    countLet(e, "wn"),
+                                    countLoop(e, "wn", e.v("want")),
+                                    e.ifOnly(
+                                            e.not(e.eq(e.fld(e.v("kc"), "n"), e.fld(e.v("wn"), "v"))),
+                                            retM(
+                                                    e,
+                                                    errCve(
+                                                            e,
+                                                            loc(e),
+                                                            e.cat(
+                                                                    e.s("llvm global definition requires arguments "),
+                                                                    e.join(e.v("want"), ", "))))),
+                                    e.let(
+                                            "fields",
+                                            bim(
+                                                    e,
+                                                    aspIface(e, "record"),
+                                                    "take_fields",
+                                                    e.fld(e.v("rk"), "value"),
+                                                    e.rec(
+                                                            e.p("xx", xx(e)),
+                                                            e.p("loc", loc(e)),
+                                                            e.p("value", cveValue(e, e.v("argv")))))),
+                                    e.let("tycv", unwrapCveM(e, e.callM(e.v("fields"), "get", e.s("ty")))),
+                                    e.let("tk", lookup(e, xx(e), cveType(e, e.v("tycv")), aspIface(e, "type"))),
+                                    e.ifOnly(
+                                            orB(e, isRuntime(e, e.v("tycv")), e.not(e.fld(e.v("tk"), "is_some"))),
+                                            retM(
+                                                    e,
+                                                    errCve(
+                                                            e,
+                                                            loc(e),
+                                                            "llvm global definition ty must be a constant type"))),
+                                    e.let(
+                                            "tyv",
+                                            bim(
+                                                    e,
+                                                    aspIface(e, "type"),
+                                                    "type",
+                                                    e.fld(e.v("tk"), "value"),
+                                                    cveValue(e, e.v("tycv")))),
+                                    e.ifOnly(
+                                            e.not(has(e, xx(e), e.v("tyv"), "ltype")),
+                                            retM(
+                                                    e,
+                                                    errCve(
+                                                            e,
+                                                            loc(e),
+                                                            e.cat(
+                                                                    e.s(
+                                                                            "llvm global definition ty is not an llvm type: "),
+                                                                    tyDesc(e, e.v("tyv")))))),
+                                    e.let(
+                                            "initcv",
+                                            unwrapCveM(
+                                                    e,
+                                                    e.callM(
+                                                            e.v("fields"),
+                                                            "get",
+                                                            e.ifElse(
+                                                                    e.v("konst_def"),
+                                                                    e.dstr("value"),
+                                                                    e.dstr("init"))))),
+                                    e.let("ir", unwrapCveM(e, tryEr(e, initFn(e, e.v("tyv"), e.v("initcv")), cveT(e)))),
+                                    e.let("self", a(e, "self")),
+                                    e.let(
+                                            "modcv",
+                                            unwrapCveM(
+                                                    e,
+                                                    e.ifElse(
+                                                            isRuntime(e, e.v("self")),
+                                                            okCve(e, retagRuntime(e, e.v("self"), lt(e, "lmod"))),
+                                                            e.mb.labeled(
+                                                                    "mc",
+                                                                    e.seq(
+                                                                            e.let(
+                                                                                    "modv",
+                                                                                    reinterpret(
+                                                                                            e,
+                                                                                            e.fld(
+                                                                                                    e.call(
+                                                                                                            e.mb
+                                                                                                                    .mustReinterpret(),
+                                                                                                            e.tup(
+                                                                                                                    cveValue(
+                                                                                                                            e,
+                                                                                                                            e
+                                                                                                                                    .v(
+                                                                                                                                            "self")),
+                                                                                                                    vocT(
+                                                                                                                            e))),
+                                                                                                    "data"),
+                                                                                            "lmod")),
+                                                                            e.mb.return_(
+                                                                                    "mc",
+                                                                                    constEvalIn(
+                                                                                            e,
+                                                                                            xx(e),
+                                                                                            e.stage(
+                                                                                                    e.lower(
+                                                                                                            e.v(
+                                                                                                                    "modv")))))))))),
+                                    e.ifOnly(
+                                            e.v("konst_def"),
+                                            retM(
+                                                    e,
+                                                    constEvalIn(
+                                                            e,
+                                                            xx(e),
+                                                            e.stage(
+                                                                    e.callM(
+                                                                            graft(e, e.v("modcv")),
+                                                                            "const_ref",
+                                                                            graft(e, e.v("ir"))))))),
+                                    e.let("namecv", unwrapCveM(e, e.callM(e.v("fields"), "get", e.s("name")))),
+                                    e.ret(constEvalIn(
+                                            e,
+                                            xx(e),
+                                            e.stage(e.callM(
+                                                    graft(e, e.v("modcv")),
+                                                    "add_global",
+                                                    e.rec(
+                                                            e.p("konst", e.lower(e.eq(in(e, "kind"), num(e, 1)))),
+                                                            e.p("name", graft(e, e.v("namecv"))),
+                                                            e.p("ty", e.lower(e.v("tyv"))),
+                                                            e.p("init", graft(e, e.v("ir")))))))))),
+                    e.p("exception_type", e.optionTypeLoweredNone())));
+
+            selfType(
+                    e,
+                    x,
+                    "linit_fn_t",
+                    e.cat(e.s("llvm initializer renderer for "), tyDesc(e, in(e, "ty"))),
+                    rtDispatch(e, "lref", e.aspectDispatch(lv(e, "linit_fn_m_id"), aspId(e, "function"))),
+                    rtCanCastFrom(e, "lref"),
+                    rtCastFrom(e, "lref"),
+                    noCastTo(e),
+                    castToPanic(e),
+                    body(
+                            e,
+                            e.ret(andB(
+                                    e,
+                                    has(e, xx(e), a(e, "other"), "linit_fn_m"),
+                                    isEqual(
+                                            e,
+                                            xx(e),
+                                            in(e, "ty"),
+                                            acc(e, xx(e), a(e, "other"), "linit_fn_m", "ty"))))));
+            rtLiftImpl(e, x, "linit_fn_t");
+            rtBindImpl(e, x, "linit_fn_t", "lref");
+            x.add(e.implInterface(e.v("linit_fn_t"), t(e, "linit_fn_m"), e.p("ty", in(e, "ty"))));
+            x.add(e.implInterface(
+                    e.v("linit_fn_t"),
+                    aspIface(e, "function"),
+                    e.p("call", body(e, e.ret(tryEr(e, initFn(e, in(e, "ty"), a(e, "argument")), cveT(e))))),
+                    e.p("exception_type", e.optionTypeLoweredNone())));
 
             x.add(e.implInterface(
                     e.v("ltarget"),
@@ -4106,12 +4726,11 @@ public final class EcoLlvmIr {
                                             cveCode(e, e.v("r")),
                                             lvalMem(
                                                     e,
-                                                    e.callM(
-                                                            mod(e),
-                                                            "slot_type",
-                                                            e.rec(
-                                                                    e.p("base", lvTy(e, e.v("lv"))),
-                                                                    e.p("ptr", lvMem(e, e.v("lv"))))),
+                                                    mk(
+                                                            e,
+                                                            "lt_slot",
+                                                            e.p("base", lvTy(e, e.v("lv"))),
+                                                            e.p("ptr", lvMem(e, e.v("lv")))),
                                                     lvMem(e, e.v("lv"))))))),
                     e.p("stage", errCve(e, loc(e), "llvm target: nested staging is not supported")),
                     e.p(
@@ -4120,7 +4739,7 @@ public final class EcoLlvmIr {
                                     e,
                                     e.let("mod", mod(e)),
                                     e.let("out", instsNew(e)),
-                                    e.let("i1", e.callM(e.v("mod"), "i1", e.tup())),
+                                    e.let("i1", intTy(e, "i1")),
                                     e.let("end", freshLabel(e, e.v("mod"))),
                                     e.let(
                                             "st",
@@ -4223,6 +4842,7 @@ public final class EcoLlvmIr {
                                         e.p("n", num(e, 0)),
                                         e.p("xx", e.optNone(e.typesExprContext())),
                                         e.p("structs", e.listNew(ty(e))),
+                                        e.p("struct_lines", e.listNew(str(e))),
                                         e.p("externs", e.listNew(e.mb.evalValue())),
                                         e.p("globals", e.listNew(e.mb.evalValue())),
                                         e.p("constants", e.listNew(e.mb.evalValue())),
@@ -4250,11 +4870,34 @@ public final class EcoLlvmIr {
                         e.callM(e.v("m"), "set_xx", e.v("ctx")),
                         e.ret(e.v("m"))))));
         x.add(e.finish(e.v("d")));
-        x.add(e.ret(e.rec(
-                e.p("new", e.fld(e.v("llvm_b"), "func")),
-                e.p("mod_t", t(e, "lmod")),
-                e.p("ref_t", t(e, "lref")),
-                e.p("field_t", t(e, "lfield")))));
+        var exports = new TList<EcoMb.P>();
+        exports.add(e.p("new", e.fld(e.v("llvm_b"), "func")));
+        exports.add(e.p("mod_t", t(e, "lmod")));
+        exports.add(e.p("ref_t", t(e, "lref")));
+        exports.add(e.p("field_t", t(e, "lfield")));
+        for (var spec : INT_SPECS) exports.add(e.p(spec.name(), e.v("c_" + spec.name())));
+        for (var fn : new String[] {
+            "f32",
+            "f64",
+            "void",
+            "loop",
+            "null",
+            "ptr",
+            "array",
+            "field",
+            "struct",
+            "fn",
+            "fn_varargs",
+            "range",
+            "global_t",
+            "ref",
+            "global_fn",
+            "global_const_fn",
+            "constant_fn"
+        }) {
+            exports.add(e.p(fn, e.v("c_" + fn)));
+        }
+        x.add(e.ret(e.rec(exports.toArray(EcoMb.P[]::new))));
         return e.mb.seq(x);
     }
 }
