@@ -286,7 +286,7 @@ public final class EcoLlvmIr {
     }
 
     private static SourceExpr dfalse(EcoMb e) {
-        return e.mb.operatorLt(num(e, 1), num(e, 0));
+        return e.mb.as(e.b(false), boolT(e));
     }
 
     private static SourceExpr isLlvm(EcoMb e, SourceExpr xx, SourceExpr cv) {
@@ -543,7 +543,7 @@ public final class EcoLlvmIr {
     }
 
     private static SourceExpr noCastTo(EcoMb e) {
-        return e.b(false);
+        return e.mb.as(e.b(false), boolT(e));
     }
 
     private static SourceExpr castToPanic(EcoMb e) {
@@ -2269,8 +2269,6 @@ public final class EcoLlvmIr {
                             e.p("t", mk(e, "lrange_t", e.p("elem", e.v("arg")), e.p("mod", outer(e)))),
                             e.p("elem", e.v("arg"))));
             method(e, x, "lmod", "loop", e.tup(), ty(e), mk(e, "lloop_t", e.p("mod", outer(e))));
-            method(e, x, "lmod", "t_mod", e.tup(), ty(e), lt(e, "lmod"));
-            method(e, x, "lmod", "t_ref", e.tup(), ty(e), lt(e, "lref"));
             method(
                     e,
                     x,
@@ -2280,7 +2278,6 @@ public final class EcoLlvmIr {
                     ty(e),
                     mk(e, "lt_global", e.p("base", a(e, "ty")), e.p("mem", a(e, "mem")), e.p("mod", outer(e))));
             method(e, x, "lmod", "ref", str(e), t(e, "lref"), mk(e, "lref", e.p("ref", e.v("arg"))));
-            method(e, x, "lmod", "t_field", e.tup(), ty(e), lt(e, "lfield"));
             method(
                     e,
                     x,
@@ -4252,7 +4249,11 @@ public final class EcoLlvmIr {
                         e.callM(e.v("m"), "set_xx", e.v("ctx")),
                         e.ret(e.v("m"))))));
         x.add(e.finish(e.v("d")));
-        x.add(e.ret(e.fld(e.v("llvm_b"), "func")));
+        x.add(e.ret(e.rec(
+                e.p("new", e.fld(e.v("llvm_b"), "func")),
+                e.p("mod_t", t(e, "lmod")),
+                e.p("ref_t", t(e, "lref")),
+                e.p("field_t", t(e, "lfield")))));
         return e.mb.seq(x);
     }
 }

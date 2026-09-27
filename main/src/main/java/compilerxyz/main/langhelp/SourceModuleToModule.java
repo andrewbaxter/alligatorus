@@ -3,6 +3,7 @@ package compilerxyz.main.langhelp;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.SourceId;
+import compilerxyz.main.eval.value.bool.TypeBoolConst;
 import compilerxyz.main.eval.value.double_.TypeDoubleConst;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.string.TypeStringConst;
@@ -32,6 +33,8 @@ public final class SourceModuleToModule {
                                         Expr.LitValue.shared(new ValueObjectConst(new TypeStringConst(), s.value()));
                                     case SourceLiteral.Number n ->
                                         Expr.LitValue.shared(new ValueObjectConst(new TypeDoubleConst(), n.value()));
+                                    case SourceLiteral.Bool b ->
+                                        Expr.LitValue.shared(new ValueObjectConst(new TypeBoolConst(), b.value()));
                                 });
                     case SourceExpr.ScopeUse u -> new Expr.ScopeUse(sourceExprToExpr(sourceId, u.key()));
                     case SourceExpr.Call c ->

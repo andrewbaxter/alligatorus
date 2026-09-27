@@ -19,15 +19,12 @@ public final class EcoLibc {
     public static SourceExpr module(EcoMb e) {
         var exprs = new TList<SourceExpr>();
         exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
-        exprs.add(e.let("probe", e.call(e.v("llvm"), e.tup())));
-        exprs.add(e.let("lmod_t", e.callM(e.v("probe"), "t_mod", e.tup())));
-        exprs.add(e.let("lref_t", e.callM(e.v("probe"), "t_ref", e.tup())));
 
         exprs.add(e.let("d", e.define()));
         exprs.add(e.let("libc_o", e.defObject(e.v("d"), "libc 2.42")));
         var innerFields = new TList<EcoMb.P>();
         for (var ex : EXTERNS) {
-            innerFields.add(e.p(ex.name(), e.v("lref_t")));
+            innerFields.add(e.p(ex.name(), e.fld(e.v("llvm"), "ref_t")));
             innerFields.add(e.p(ex.name() + "_t", e.mb.evalType()));
         }
         exprs.add(e.callM(e.v("libc_o"), "set_inner", e.rec(innerFields.toArray(EcoMb.P[]::new))));
@@ -36,7 +33,7 @@ public final class EcoLibc {
                     e.v("libc_o"),
                     ex.name(),
                     e.tup(),
-                    e.retSome(e.v("lref_t")),
+                    e.retSome(e.fld(e.v("llvm"), "ref_t")),
                     e.stage(e.fld(e.v("inner"), ex.name()))));
             exprs.add(e.methodImpl(
                     e.v("libc_o"),
@@ -58,7 +55,10 @@ public final class EcoLibc {
         }
         body.add(e.ret(e.call(e.lower(e.fld(e.v("libc_o"), "new")), e.rec(ctorFields.toArray(EcoMb.P[]::new)))));
         exprs.add(e.funcImpl(
-                e.v("libc_builder"), e.v("lmod_t"), e.retSome(e.fld(e.v("libc_o"), "type")), e.stage(e.mb.seq(body))));
+                e.v("libc_builder"),
+                e.fld(e.v("llvm"), "mod_t"),
+                e.retSome(e.fld(e.v("libc_o"), "type")),
+                e.stage(e.mb.seq(body))));
 
         exprs.add(e.finish(e.v("d")));
         exprs.add(e.ret(e.fld(e.v("libc_builder"), "func")));

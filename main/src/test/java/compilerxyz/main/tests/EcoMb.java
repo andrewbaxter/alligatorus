@@ -250,7 +250,7 @@ public final class EcoMb {
     }
 
     public SourceExpr not(SourceExpr a) {
-        return ifElse(a, mb.operatorLt(intOf(1), intOf(0)), b(true));
+        return ifElse(a, mb.as(b(false), mb.typesBool()), b(true));
     }
 
     public SourceExpr eq(SourceExpr a, SourceExpr b) {

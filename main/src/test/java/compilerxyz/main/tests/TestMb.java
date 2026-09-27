@@ -24,7 +24,7 @@ public final class TestMb {
     }
 
     public SourceExpr bool(boolean v) {
-        return v ? operatorLt(num(0.0), num(1.0)) : operatorLt(num(1.0), num(0.0));
+        return new SourceExpr(id(), new SourceExpr.Literal(new SourceLiteral.Bool(v)));
     }
 
     public SourceExpr as(SourceExpr base, SourceExpr target) {

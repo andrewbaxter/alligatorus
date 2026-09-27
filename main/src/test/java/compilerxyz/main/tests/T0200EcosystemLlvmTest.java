@@ -108,7 +108,7 @@ public final class T0200EcosystemLlvmTest {
         for (int i = 0; i < hello.length; i++) ints[i] = hello[i] & 0xFF;
         var setup = new TList<SourceExpr>();
         setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
-        setup.add(e.let("ll", e.call(e.v("llvm"), e.tup())));
+        setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
         EcoExtern.bindTypes(e, setup, "ll");
         var puts = new EcoExtern("puts", IList.of("pu8"), "i32", false);
         setup.add(e.let("puts_t", puts.constType(e, "ll")));
@@ -188,7 +188,7 @@ public final class T0200EcosystemLlvmTest {
         var setup = new TList<SourceExpr>();
         setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
         setup.add(e.let("libc", e.importLocal("libc", "libc-2.42.at")));
-        setup.add(e.let("ll", e.call(e.v("llvm"), e.tup())));
+        setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
         setup.add(e.let("c", e.call(e.v("libc"), e.v("ll"))));
         EcoExtern.bindTypes(e, setup, "ll");
         setup.add(e.let("sin_t", e.callM(e.v("c"), "sin_t", e.tup())));

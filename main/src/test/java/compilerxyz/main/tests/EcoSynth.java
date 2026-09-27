@@ -153,7 +153,7 @@ public final class EcoSynth {
         setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
         setup.add(e.let("libc", e.importLocal("libc", "libc-2.42.at")));
         setup.add(e.let("pipewire", e.importLocal("pipewire", "pipewire-1.6.at")));
-        setup.add(e.let("ll", e.call(e.v("llvm"), e.tup())));
+        setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
         setup.add(e.let("c", e.call(e.v("libc"), e.v("ll"))));
         setup.add(e.let("pw", e.call(e.v("pipewire"), e.v("ll"))));
         for (var n : new String[] {"ll", "c", "pw"}) cx.exported().add(n);

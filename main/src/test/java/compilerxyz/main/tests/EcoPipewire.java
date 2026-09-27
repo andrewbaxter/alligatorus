@@ -161,9 +161,6 @@ public final class EcoPipewire {
     public static SourceExpr module(EcoMb e) {
         var exprs = new TList<SourceExpr>();
         exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
-        exprs.add(e.let("probe", e.call(e.v("llvm"), e.tup())));
-        exprs.add(e.let("lmod_t", e.callM(e.v("probe"), "t_mod", e.tup())));
-        exprs.add(e.let("lref_t", e.callM(e.v("probe"), "t_ref", e.tup())));
 
         exprs.add(e.let("d", e.define()));
         exprs.add(e.let("pw_o", e.defObject(e.v("d"), "pipewire 1.6")));
@@ -176,7 +173,7 @@ public final class EcoPipewire {
             refMembers.add(g);
         }
         for (var m : refMembers) {
-            innerFields.add(e.p(m, e.v("lref_t")));
+            innerFields.add(e.p(m, e.fld(e.v("llvm"), "ref_t")));
             innerFields.add(e.p(m + "_t", e.mb.evalType()));
             members.add(m);
         }
@@ -186,7 +183,8 @@ public final class EcoPipewire {
         }
         exprs.add(e.callM(e.v("pw_o"), "set_inner", e.rec(innerFields.toArray(EcoMb.P[]::new))));
         for (var m : refMembers) {
-            exprs.add(e.methodImpl(e.v("pw_o"), m, e.tup(), e.retSome(e.v("lref_t")), e.stage(e.fld(e.v("inner"), m))));
+            exprs.add(e.methodImpl(
+                    e.v("pw_o"), m, e.tup(), e.retSome(e.fld(e.v("llvm"), "ref_t")), e.stage(e.fld(e.v("inner"), m))));
             exprs.add(e.methodImpl(
                     e.v("pw_o"),
                     m + "_t",
@@ -256,7 +254,10 @@ public final class EcoPipewire {
         }
         body.add(e.ret(e.call(e.lower(e.fld(e.v("pw_o"), "new")), e.rec(ctorFields.toArray(EcoMb.P[]::new)))));
         exprs.add(e.funcImpl(
-                e.v("pw_builder"), e.v("lmod_t"), e.retSome(e.fld(e.v("pw_o"), "type")), e.stage(e.mb.seq(body))));
+                e.v("pw_builder"),
+                e.fld(e.v("llvm"), "mod_t"),
+                e.retSome(e.fld(e.v("pw_o"), "type")),
+                e.stage(e.mb.seq(body))));
 
         exprs.add(e.finish(e.v("d")));
         exprs.add(e.ret(e.fld(e.v("pw_builder"), "func")));
