@@ -25,7 +25,7 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectSet;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
+import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -86,8 +86,8 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
         if (key.equals(identity)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicOptionDynamic(this));
+        if (key.equals(GenAspectUnion.AspectId)) {
+            return Opt.some(new AspectUnionOptionSpecializedDynamic<>(this));
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldOptionSpecializedDynamic<>(this));

@@ -33,9 +33,6 @@ public record AspectFieldTuple(Tuple type) implements AspectField {
 
     @Override
     public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        if (type.base().optIsNone()) {
-            return new TList<>();
-        }
         var out = new TList<ConstKey>(type.elements().size());
         for (int i = 0; i < type.elements().size(); i++) {
             out.add(new ConstKey.Uint(i));

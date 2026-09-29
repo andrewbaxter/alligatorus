@@ -5,17 +5,16 @@ import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.BindingDynamicSlot;
 import compilerxyz.main.eval.dynamic.CompositeClassEmitter;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
+import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
@@ -36,24 +35,6 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
 
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
-        Opt<RecordBaseDynamic> base;
-        Code baseCode = Code.none(loc);
-        switch (jsKey) {
-            case Opt.Some<BindingId> some -> {
-                var dynamicTypes = new TOrderedMap<ConstKey, Type>();
-                for (var entry : fields.entrySet()) {
-                    switch (entry.getValue()) {
-                        case RecordScopeField.Dynamic d -> dynamicTypes.put(entry.getKey(), d.type());
-                        default -> {}
-                    }
-                }
-                var slotInfo = Record.computeSlotInfoFromTypes(xx, dynamicTypes);
-                var desc = JavaDataDescriptor.fromInternalName(
-                        JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, slotInfo.sortedTypes())));
-                base = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Slot(some.value(), desc, setter)));
-            }
-            case Opt.None<BindingId> none -> base = Opt.none();
-        }
         var resultFields = new TOrderedMap<ConstKey, RecordField>();
         for (var entry : fields.entrySet()) {
             RecordField rf =
@@ -70,10 +51,19 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
                     };
             resultFields.put(entry.getKey(), rf);
         }
-        var combined = Eval.codeConcat(xx, loc, code, baseCode);
-        return new CodeValue(
-                combined.requireValue("BindingRecord use"),
-                EvalOutcome.ofValue(new Record(base, IOrderedMap.from(resultFields))));
+        var record = new Record(IOrderedMap.from(resultFields));
+        return switch (jsKey) {
+            case Opt.Some<BindingId> some -> {
+                var slotInfo = Record.computeSlotInfoFromTypes(xx, Record.slotFieldTypes(record.fields()));
+                var desc = JavaDataDescriptor.fromInternalName(
+                        JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, slotInfo.sortedTypes())));
+                yield new CodeValue(
+                        code,
+                        EvalOutcome.ofValue(
+                                new ValueDynamic(new ValueDynamicSource.Slot(some.value(), desc, setter), record)));
+            }
+            case Opt.None<BindingId> none -> new CodeValue(code, EvalOutcome.ofValue(record));
+        };
     }
 
     @Override

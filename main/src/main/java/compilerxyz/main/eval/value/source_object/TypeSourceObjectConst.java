@@ -88,7 +88,9 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic) implements 
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-        return dynamic.typeCastTo(xx, loc, cv, destType);
+        var dynRes = new AspectConsumeDynamicSourceObjectConst(this).aspectConsumeDynamicToDynamic(xx, loc, cv);
+        if (dynRes.hasErrors()) return dynRes.reerr();
+        return dynamic.typeCastTo(xx, loc, dynRes.requireValue(typeDesc() + "::typeCastTo materialize"), destType);
     }
 
     @Override

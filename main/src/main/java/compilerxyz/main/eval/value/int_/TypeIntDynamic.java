@@ -66,7 +66,6 @@ import compilerxyz.main.gen.GenAspectOperatorUshr;
 import compilerxyz.main.gen.GenAspectOperatorXor;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
@@ -147,9 +146,6 @@ public record TypeIntDynamic() implements Aspect, Type {
         }
         if (key.equals(GenAspectOperatorAdd.AspectId)) {
             return Opt.some(AspectOperatorAddNumeric.INSTANCE);
-        }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicIntDynamic(this));
         }
         if (key.equals(GenAspectSet.AspectId)) {
             return Opt.some(AspectSetDynamicDefault.INSTANCE);

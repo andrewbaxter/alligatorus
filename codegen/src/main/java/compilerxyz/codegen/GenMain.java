@@ -993,6 +993,9 @@ public final class GenMain {
         }
         {
             for (var store : ListsGen.STORES) {
+                for (var bytecodeCalled : new String[] {"push", "get", "size"}) {
+                    dispatchRoots.add(ListsGen.GEN_PACKAGE + "." + store.simple() + "#" + bytecodeCalled);
+                }
                 TypeSpec storeClass;
                 _storeClass:
                 {
@@ -1000,6 +1003,7 @@ public final class GenMain {
                     {
                         storeClass = TypeSpec.classBuilder(store.simple())
                                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                                .addSuperinterface(ClassName.get("compilerxyz.main.eval.value.list", "ListStore"))
                                 .addField(FieldSpec.builder(
                                                 arrayType, "EMPTY", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                                         .initializer("new $T[0]", store.javaPrim())
@@ -1021,12 +1025,6 @@ public final class GenMain {
                                         .addStatement("data[size] = value")
                                         .addStatement("size += 1")
                                         .build())
-                                .addMethod(MethodSpec.methodBuilder("pop")
-                                        .addModifiers(Modifier.PUBLIC)
-                                        .returns(store.javaPrim())
-                                        .addStatement("size -= 1")
-                                        .addStatement("return data[size]")
-                                        .build())
                                 .addMethod(MethodSpec.methodBuilder("get")
                                         .addModifiers(Modifier.PUBLIC)
                                         .returns(store.javaPrim())
@@ -1040,6 +1038,19 @@ public final class GenMain {
                                         .addModifiers(Modifier.PUBLIC)
                                         .returns(TypeName.INT)
                                         .addStatement("return size")
+                                        .build())
+                                .addMethod(MethodSpec.methodBuilder("listStoreSize")
+                                        .addAnnotation(Override.class)
+                                        .addModifiers(Modifier.PUBLIC)
+                                        .returns(TypeName.INT)
+                                        .addStatement("return size")
+                                        .build())
+                                .addMethod(MethodSpec.methodBuilder("listStoreBoxed")
+                                        .addAnnotation(Override.class)
+                                        .addModifiers(Modifier.PUBLIC)
+                                        .returns(Object.class)
+                                        .addParameter(TypeName.INT, "index")
+                                        .addStatement("return get(index)")
                                         .build())
                                 .build();
                         break _storeClass;
@@ -1442,20 +1453,8 @@ public final class GenMain {
                         BuiltinTreeGen.TUC_TYPE_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
-                        "eval.aspect_stack_value_dynamic_id",
-                        CodeBlock.of(
-                                "$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectStackValueDynamic")),
-                        BuiltinTreeGen.TUC_TYPE_EXPR);
-                BuiltinTreeGen.addSpecial(
-                        pathToLeaf,
                         "eval.aspect_field_use_dynamic_id",
                         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectFieldUseDynamic")),
-                        BuiltinTreeGen.TUC_TYPE_EXPR);
-                BuiltinTreeGen.addSpecial(
-                        pathToLeaf,
-                        "eval.aspect_element_use_dynamic_id",
-                        CodeBlock.of(
-                                "$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectElementUseDynamic")),
                         BuiltinTreeGen.TUC_TYPE_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,

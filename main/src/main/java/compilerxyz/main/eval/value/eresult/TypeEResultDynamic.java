@@ -12,26 +12,17 @@ import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.dynamic.CodeDynamicReg;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
-import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.dynamic.MatchDynamic;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectUnion;
-import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactEResultTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
@@ -42,10 +33,9 @@ import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 import java.util.function.Function;
-import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6017L)
-public final class TypeEResultDynamic<T extends Type> implements Aspect, Type, MatchDynamic {
+public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
 
     public final T elementType;
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
@@ -75,9 +65,6 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type, M
         if (key.equals(GenAspectUnion.AspectId)) {
             return Opt.some(new AspectUnionEResultDynamic<>(this));
         }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicEResultDynamic<>(this));
-        }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldEResultDynamic<>(this));
         }
@@ -90,49 +77,10 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type, M
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(new AspectBindEResultDynamic<>(this));
         }
-        if (key.equals(GenTrivialIdentityAspects.TYPE_E_RESULT_DYNAMIC_IDENTITY)
-                || key.equals(GenAspectStackValueDynamic.AspectId)) {
+        if (key.equals(GenTrivialIdentityAspects.TYPE_E_RESULT_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
         return Opt.none();
-    }
-
-    @Override
-    public Opt<TList<ExprErr>> matchDynamicPrepare(ExprContext xx) {
-        return Opt.none();
-    }
-
-    @Override
-    public EResult<CodeDynamicReg> matchDynamicTest(QExprId loc, JavaBytecodeReg base, int variantIndex) {
-        var b = new JavaBytecodeBuilder(loc);
-        var hasErrors = b.invokeVirtual(GenCodegenDescriptors.E_RESULT_HAS_ERRORS, base);
-        if (variantIndex == 0) {
-            hasErrors = b.op(Opcodes.IXOR, JavaDataDescriptor.DESC_BOOL, hasErrors, b.constBool(true));
-        }
-        return EResult.ok(b.code(hasErrors));
-    }
-
-    @Override
-    public EResult<CodeDynamicReg> matchDynamicExtract(
-            ExprContext xx, QExprId loc, JavaBytecodeReg base, int variantIndex, Type variantType) {
-        var b = new JavaBytecodeBuilder(loc);
-        if (variantIndex == 0) {
-            var what = b.constString("eresult match ok");
-            var value = b.invokeVirtual(GenCodegenDescriptors.E_RESULT_REQUIRE_VALUE, base, what);
-            var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
-            if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
-            var elemDesc = elemConsumeRes
-                    .requireValue("TypeEResultDynamic::matchExtract ok consume")
-                    .aspectConsumeDynamicJvmClass(xx);
-            if (elemDesc.value().startsWith("L") && !elemDesc.value().equals("Ljava/lang/Object;")) {
-                value = b.checkcast(elemDesc, value);
-            }
-            return EResult.ok(b.code(value));
-        }
-        var errsOpt = b.invokeVirtual(GenCodegenDescriptors.E_RESULT_ERRORS_OPT, base);
-        var errs = b.invokeVirtual(GenCodegenDescriptors.OPT_OPT_UNWRAP, errsOpt);
-        var casted = b.checkcast(JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(TList.class)), errs);
-        return EResult.ok(b.code(casted));
     }
 
     sealed interface FieldSpec {

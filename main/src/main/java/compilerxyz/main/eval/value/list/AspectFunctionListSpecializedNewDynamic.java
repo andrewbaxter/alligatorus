@@ -1,5 +1,6 @@
 package compilerxyz.main.eval.value.list;
 
+import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -23,8 +24,10 @@ public record AspectFunctionListSpecializedNewDynamic(TypeListSpecializedNewDyna
         var argValue = argument.value().optUnwrap();
         var argType = argValue.valueType();
         var dynamicElements = new TList<CodeDynamicReg>();
+        var elementsCarry = Code.none(loc);
         var argTupleOpt = GenAspectTuple.getMaybe(xx, argType);
         if (argTupleOpt.optIsSome()) {
+            elementsCarry = argument.code();
             var elements = argTupleOpt.optUnwrap().aspectTupleTakeElements(xx, loc, argValue);
             for (var elemRes : elements) {
                 if (elemRes.hasErrors()) return elemRes.reerr();
@@ -40,8 +43,10 @@ public record AspectFunctionListSpecializedNewDynamic(TypeListSpecializedNewDyna
         var b = new JavaBytecodeBuilder(loc);
         var selfRes = b.addCode(loc, self.code());
         if (selfRes.optIsSome()) return EResult.errs(selfRes.optUnwrap());
+        var carryAdd = b.addCode(loc, elementsCarry);
+        if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
         var list = b.reg(type.listType().emitNew(xx, loc, dynamicElements));
-        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), list, type.listType()));
+        return EResult.ok(DynUtil.regToValue(b.code(), list, type.listType()));
     }
 
     @Override

@@ -14,6 +14,7 @@ import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.JvmSort;
+import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -23,7 +24,7 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectIterable;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
+import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -52,6 +53,13 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectLift.AspectId)) {
+            return switch (GenAspectLift.getMaybe(xx, elementType)) {
+                case Opt.Some<AspectLift> elementLift ->
+                    Opt.some(new AspectLiftListBoxedDynamic<>(this, elementLift.value()));
+                case Opt.None<AspectLift> none -> Opt.none();
+            };
+        }
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
             return Opt.some(new AspectInitialBindDynamicListBoxedDynamic<>(this));
         }
@@ -65,9 +73,6 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
         }
         if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
             return Opt.some(new AspectFieldUseDynamicListBoxedDynamic<>(this));
-        }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicListBoxedDynamic<>(this));
         }
         if (key.equals(GenAspectIterable.AspectId)) {
             return Opt.some(new AspectIterableListBoxedDynamic<>(this));

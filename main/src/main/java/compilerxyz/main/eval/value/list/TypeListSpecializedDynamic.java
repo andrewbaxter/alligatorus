@@ -15,6 +15,7 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -23,7 +24,7 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectIterable;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
+import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -74,14 +75,18 @@ public final class TypeListSpecializedDynamic<T extends Type> implements Aspect,
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectLift.AspectId)) {
+            return switch (GenAspectLift.getMaybe(xx, elementType)) {
+                case Opt.Some<AspectLift> elementLift ->
+                    Opt.some(new AspectLiftListSpecializedDynamic<>(this, elementLift.value()));
+                case Opt.None<AspectLift> none -> Opt.none();
+            };
+        }
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
             return Opt.some(new AspectInitialBindDynamicListSpecializedDynamic<>(this));
         }
         if (key.equals(identity)) {
             return Opt.some(this);
-        }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicListSpecializedDynamic<>(this));
         }
         if (key.equals(GenAspectIterable.AspectId)) {
             return Opt.some(new AspectIterableListSpecializedDynamic<>(this));

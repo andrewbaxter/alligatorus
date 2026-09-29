@@ -32,7 +32,6 @@ import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectIterable;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -72,9 +71,6 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
                             || GenAspectDropDynamic.getMaybe(xx, valueType).optIsSome()
                     ? Opt.some(new AspectDropDynamicMapDynamic<>(this))
                     : Opt.none();
-        }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicMapDynamic<>(this));
         }
         if (key.equals(GenAspectIterable.AspectId)) {
             return Opt.some(new AspectIterableMapDynamic<>(this));

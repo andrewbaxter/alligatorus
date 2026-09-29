@@ -59,6 +59,8 @@ public record AspectFunctionMapPutFnDynamic(TypeMapPutFnDynamic type) implements
                 JavaDataDescriptor.DESC_VOID, TList.of(JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT));
         var b = new JavaBytecodeBuilder(loc);
         var selfReg = b.reg(selfRes.requireValue("selfDyn"));
+        var argumentAdd = b.addCode(loc, argument.code());
+        if (argumentAdd.optIsSome()) return EResult.errs(argumentAdd.optUnwrap());
         var k = b.reg(keyDynRes.requireValue("toDynamic key"));
         var v = b.reg(valDynRes.requireValue("toDynamic value"));
         b.invokeVirtualVoid(mapName, "put", putDesc, selfReg, k, v);

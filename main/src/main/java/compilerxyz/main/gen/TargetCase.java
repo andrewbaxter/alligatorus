@@ -6,14 +6,12 @@ import compilerxyz.prelude.annotations.BuiltinFull;
 
 @BuiltinFull(uniqueId = 6351L)
 public final class TargetCase {
-    public final String dynamicTag;
     public final Type variantType;
     public final int variantIndex;
     public final Binding payloadBinding;
     public final CodeValue body;
 
-    public TargetCase(String dynamicTag, Type variantType, int variantIndex, Binding payloadBinding, CodeValue body) {
-        this.dynamicTag = dynamicTag;
+    public TargetCase(Type variantType, int variantIndex, Binding payloadBinding, CodeValue body) {
         this.variantType = variantType;
         this.variantIndex = variantIndex;
         this.payloadBinding = payloadBinding;

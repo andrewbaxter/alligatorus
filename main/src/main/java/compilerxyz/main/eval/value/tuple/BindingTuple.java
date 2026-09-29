@@ -4,7 +4,6 @@ import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
@@ -15,6 +14,7 @@ import compilerxyz.main.eval.dynamic.BindingDynamicSlot;
 import compilerxyz.main.eval.dynamic.CompositeClassEmitter;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
+import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
@@ -34,22 +34,6 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
 
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
-        Opt<TupleBaseDynamic> base;
-        Code baseCode = Code.none(loc);
-        if (jsKey.optIsSome()) {
-            var dynamicTypes = new TList<Type>();
-            for (var e : elements) {
-                switch (e) {
-                    case TupleScopeField.Dynamic d -> dynamicTypes.add(d.type());
-                    default -> {}
-                }
-            }
-            var desc = JavaDataDescriptor.fromInternalName(JavaInternalName.of(
-                    CompositeClassEmitter.internalNameFor(xx, Tuple.sortTupleTypes(xx, dynamicTypes))));
-            base = Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Slot(jsKey.optUnwrap(), desc, setter)));
-        } else {
-            base = Opt.none();
-        }
         var resultElements = new TList<TupleElement>(elements.size());
         for (int i = 0; i < elements.size(); i++) {
             var e = elements.get(i);
@@ -64,10 +48,22 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
                     };
             resultElements.add(te);
         }
-        var combined = Eval.codeConcat(xx, loc, code, baseCode);
+        var tuple = new Tuple(IList.from(resultElements));
+        if (jsKey.optIsNone()) return new CodeValue(code, EvalOutcome.ofValue(tuple));
+        var dynamicTypes = new TList<Type>();
+        for (var e : elements) {
+            switch (e) {
+                case TupleScopeField.Dynamic d -> dynamicTypes.add(d.type());
+                case TupleScopeField.Scope held -> {}
+                case TupleScopeField.Error err -> {}
+            }
+        }
+        var desc = JavaDataDescriptor.fromInternalName(
+                JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, Tuple.sortTupleTypes(xx, dynamicTypes))));
         return new CodeValue(
-                combined.requireValue("BindingTuple use"),
-                EvalOutcome.ofValue(new Tuple(base, IList.from(resultElements))));
+                code,
+                EvalOutcome.ofValue(
+                        new ValueDynamic(new ValueDynamicSource.Slot(jsKey.optUnwrap(), desc, setter), tuple)));
     }
 
     @Override

@@ -12,7 +12,6 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.record.Record;
-import compilerxyz.main.eval.value.record.RecordBaseDynamic;
 import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectRecord;
@@ -125,7 +124,7 @@ public record AspectFunctionImport(TypeImport type) implements AspectFunction {
             }
         }
         if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-        Value resultRecord = new Record(Opt.<RecordBaseDynamic>none(), IOrderedMap.from(fields));
+        Value resultRecord = new Record(IOrderedMap.from(fields));
         return EResult.ok(new CodeValue(argument.code(), EvalOutcome.ofValue(resultRecord)));
     }
 

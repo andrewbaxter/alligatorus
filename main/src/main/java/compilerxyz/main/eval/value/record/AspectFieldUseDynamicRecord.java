@@ -7,11 +7,11 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
+import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.AspectFieldUseDynamic;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.IOrderedMap;
-import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TOrderedMap;
 
 public record AspectFieldUseDynamicRecord(Record type) implements AspectFieldUseDynamic {
@@ -32,7 +32,7 @@ public record AspectFieldUseDynamicRecord(Record type) implements AspectFieldUse
                     };
             newFields.put(entry.getKey(), new RecordField.Dynamic(t));
         }
-        Value innerRecord = new Record(Opt.some(new RecordBaseDynamic(source)), IOrderedMap.from(newFields));
+        Value innerRecord = new ValueDynamic(source, new Record(IOrderedMap.from(newFields)));
         return EResult.ok(new CodeValue(fieldCode, EvalOutcome.ofValue(innerRecord)));
     }
 }

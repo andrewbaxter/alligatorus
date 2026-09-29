@@ -7,7 +7,6 @@ import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.IOrderedMap;
-import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 
@@ -15,7 +14,7 @@ public record FunctionParam(String name, Type type) {
 
     public static Type argType(TList<FunctionParam> params) {
         if (params.isEmpty()) {
-            return new Tuple(Opt.none(), IList.of());
+            return new Tuple(IList.of());
         }
         if (params.size() == 1) {
             return params.get(0).type();
@@ -24,6 +23,6 @@ public record FunctionParam(String name, Type type) {
         for (var p : params) {
             fields.put(new ConstKey.Str(p.name()), new RecordField.Dynamic(p.type()));
         }
-        return new Record(Opt.none(), IOrderedMap.from(fields));
+        return new Record(IOrderedMap.from(fields));
     }
 }

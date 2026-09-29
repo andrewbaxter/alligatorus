@@ -10,13 +10,11 @@ import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
-import compilerxyz.main.eval.Counter;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
@@ -25,12 +23,7 @@ import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.AspectConsumeDynamicObject;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.dynamic.CodeDynamicReg;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
-import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.dynamic.MatchDynamic;
 import compilerxyz.main.eval.dynamic.SourceUnionEmitter;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.GenAspectBind;
@@ -39,7 +32,6 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectSet;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenType;
@@ -53,7 +45,7 @@ import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6021L)
-public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic {
+public final class TypeSourceUnionDynamic implements Aspect, Type {
 
     @SuppressWarnings("NullAway.Init")
     public final DefinitionSet set;
@@ -61,7 +53,6 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
     public final String baseBinaryName;
 
     public final Unique identity;
-    public final Counter nextTagId;
     public final TList<SourceUnionVariant> variants;
     public final TList<Integer> active;
     public final ArtifactIdHolder artifactIdCell;
@@ -71,7 +62,6 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
         this.set = set;
         this.baseBinaryName = baseBinaryName;
         this.identity = identity;
-        this.nextTagId = new Counter();
         this.variants = new TList<>();
         this.active = new TList<>();
         this.artifactIdCell = new ArtifactIdHolder();
@@ -83,7 +73,6 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
         this.set = (DefinitionSet) null;
         this.baseBinaryName = baseBinaryName;
         this.identity = identity;
-        this.nextTagId = new Counter();
         this.variants = new TList<>();
         this.active = new TList<>();
         this.artifactIdCell = new ArtifactIdHolder();
@@ -94,7 +83,6 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
         this.set = base.set;
         this.baseBinaryName = base.baseBinaryName;
         this.identity = base.identity;
-        this.nextTagId = base.nextTagId;
         this.variants = base.variants;
         this.active = active;
         this.artifactIdCell = base.artifactIdCell;
@@ -156,9 +144,6 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
         if (key.equals(GenAspectUnion.AspectId)) {
             return Opt.some(new AspectUnionSourceUnionDynamic(this));
         }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicSourceUnionDynamic(this));
-        }
         if (key.equals(GenAspectSet.AspectId)) {
             return Opt.some(new AspectSetSourceUnionDynamic(this));
         }
@@ -182,31 +167,9 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
         return Opt.none();
     }
 
-    private JavaInternalName variantInternal(int variantIndex) {
+    JavaInternalName variantInternal(int variantIndex) {
         return JavaInternalName.of(SourceUnionEmitter.variantBinaryNameFor(baseBinaryName, variantIndex)
                 .replace('.', '/'));
-    }
-
-    @Override
-    public Opt<TList<ExprErr>> matchDynamicPrepare(ExprContext xx) {
-        xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
-        return Opt.none();
-    }
-
-    @Override
-    public EResult<CodeDynamicReg> matchDynamicTest(QExprId loc, JavaBytecodeReg base, int variantIndex) {
-        var b = new JavaBytecodeBuilder(loc);
-        return EResult.ok(b.code(b.instanceOf(variantInternal(variantIndex), base)));
-    }
-
-    @Override
-    public EResult<CodeDynamicReg> matchDynamicExtract(
-            ExprContext xx, QExprId loc, JavaBytecodeReg base, int variantIndex, Type variantType) {
-        var internal = variantInternal(variantIndex);
-        var payloadDesc = SourceUnionEmitter.payloadDescriptor(xx, variantType);
-        var b = new JavaBytecodeBuilder(loc);
-        var variant = b.checkcast(JavaDataDescriptor.fromInternalName(internal), base);
-        return EResult.ok(b.code(b.getField(internal, SourceUnionEmitter.PAYLOAD_FIELD, payloadDesc, variant)));
     }
 
     @Override
@@ -258,7 +221,7 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
                 for (var v : tu.variants) {
                     var tArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, v.type));
                     if (tArt.optIsSome()) {
-                        variantsOut.add(new ArtifactDataSourceUnionVariant(v.jsTag, v.tag, tArt.optUnwrap()));
+                        variantsOut.add(new ArtifactDataSourceUnionVariant(v.tag, tArt.optUnwrap()));
                     }
                 }
                 if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
@@ -303,7 +266,7 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
                         tu.compiled.variantBytecode = body.compiledVariantBytecode();
                         for (var v : body.variants()) {
                             tu.active.add(tu.variants.size());
-                            tu.variants.add(new SourceUnionVariant(v.tag(), v.jsTag(), GenType.dynamicType()));
+                            tu.variants.add(new SourceUnionVariant(v.tag(), GenType.dynamicType()));
                         }
                         var deps = new TList<Artifact>();
                         deps.add(body.defSet());
@@ -325,7 +288,7 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
                                 var tRes =
                                         ArtifactSupport.independentFinalizeImportTypeArtifact(xx2, loc2, artV.type());
                                 var tVal = tRes.requireValue("TypeTypeSourceUnionConst::finalizer variant type");
-                                tu.variants.set(i, new SourceUnionVariant(v.tag, v.jsTag, tVal));
+                                tu.variants.set(i, new SourceUnionVariant(v.tag, tVal));
                             }
                             return tu;
                         };

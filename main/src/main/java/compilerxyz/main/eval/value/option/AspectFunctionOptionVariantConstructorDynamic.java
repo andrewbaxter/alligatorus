@@ -21,7 +21,7 @@ public record AspectFunctionOptionVariantConstructorDynamic(TypeOptionVariantCon
 
     @Override
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-        Type underlyingType = type.isSome() ? type.elementType() : new Tuple(Opt.none(), IList.of());
+        Type underlyingType = type.isSome() ? type.elementType() : new Tuple(IList.of());
         var erb = new Erb(loc);
         var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
         if (convertedOpt.optIsNone()) {

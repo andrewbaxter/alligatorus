@@ -38,7 +38,7 @@ public record AspectFunctionMapNewDynamic(TypeMapNewDynamic type) implements Asp
             var map = b.newInstance(
                     JavaInternalName.fromClass(TOrderedMap.class),
                     JavaMethodDescriptor.fromConstructorParts(TList.of()));
-            return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), map, instanceType));
+            return EResult.ok(DynUtil.regToValue(b.code(), map, instanceType));
         }
         return Eval.typecheckConvert(xx, loc, instanceType, argument);
     }

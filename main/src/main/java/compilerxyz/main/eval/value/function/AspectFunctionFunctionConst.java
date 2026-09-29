@@ -21,9 +21,9 @@ public record AspectFunctionFunctionConst(TypeFunctionConst type) implements Asp
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
         var argType = type.arg();
         var argList = new TList<CodeDynamicReg>();
-        EResult<TList<CodeDynamicReg>> argsDynRes;
+        EResult<DynUtil.Positional> argsDynRes;
         if (DynUtil.zeroArgSignature(xx, argType)) {
-            argsDynRes = EResult.ok(new TList<>());
+            argsDynRes = EResult.ok(new DynUtil.Positional(Code.none(loc), new TList<>()));
         } else {
             var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
             if (convertedRes.hasErrors()) return convertedRes.reerr();
@@ -31,12 +31,15 @@ public record AspectFunctionFunctionConst(TypeFunctionConst type) implements Asp
             argsDynRes = DynUtil.destructurePositional(xx, loc, argType, converted);
             if (argsDynRes.hasErrors()) return argsDynRes.reerr();
         }
-        for (var c : argsDynRes.requireValue("TypeFunctionConst::call positional args")) {
+        var positional = argsDynRes.requireValue("TypeFunctionConst::call positional args");
+        for (var c : positional.args()) {
             argList.add(c);
         }
         var descRes = TypeFunctionConst.descriptorFor(xx, loc, type.arg(), type.ret(), type.needsEvalContext());
         if (descRes.hasErrors()) return descRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
+        var carryAdd = b.addCode(loc, positional.carry());
+        if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
         var invocation = DynUtil.invokeStaticFunction(
                 xx,
                 loc,
@@ -49,8 +52,8 @@ public record AspectFunctionFunctionConst(TypeFunctionConst type) implements Asp
         if (type.ret().optIsNone() || invocation.optIsNone()) {
             return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
         }
-        return EResult.ok(DynUtil.regToTypedValue(
-                xx, loc, b.code(), invocation.optUnwrap(), type.ret().optUnwrap()));
+        return EResult.ok(
+                DynUtil.regToValue(b.code(), invocation.optUnwrap(), type.ret().optUnwrap()));
     }
 
     @Override

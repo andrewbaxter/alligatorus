@@ -32,8 +32,8 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectLift;
+import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -45,7 +45,6 @@ import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectRecord;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -64,23 +63,19 @@ import java.lang.reflect.Field;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6134L)
-public record Record(
-        Opt<RecordBaseDynamic> base,
-        IOrderedMap<ConstKey, RecordField> fields,
-        ArtifactSupport.ArtifactIdHolder artifactIdCell)
+public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.ArtifactIdHolder artifactIdCell)
         implements Aspect, Type, Value {
 
-    public Record(Opt<RecordBaseDynamic> base, IOrderedMap<ConstKey, RecordField> fields) {
-        this(base, fields, new ArtifactSupport.ArtifactIdHolder());
+    public Record(IOrderedMap<ConstKey, RecordField> fields) {
+        this(fields, new ArtifactSupport.ArtifactIdHolder());
     }
 
     public EResult<CodeValue> accessOrDrop(ExprContext xx, QExprId loc, CodeValue selfCv, Opt<ConstKey> accessKey) {
         if (selfCv.value().optIsNone()) {
             throw new IllegalStateException("Record::accessOrDrop: CodeValue has no value");
         }
-        var record = MustCast.mustCast(Record.class, selfCv.value().optUnwrap());
-        return switch (record.base()) {
-            case Opt.None<RecordBaseDynamic> n -> {
+        return switch (selfCv.value().optUnwrap()) {
+            case Record record -> {
                 var b = new JavaBytecodeBuilder(loc);
                 var carryRes = b.addCode(loc, selfCv.code());
                 if (carryRes.optIsSome()) yield EResult.errs(carryRes.optUnwrap());
@@ -160,8 +155,9 @@ public record Record(
                 if (b.isEmpty()) yield EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.NO_VALUE));
                 yield EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
             }
-            case Opt.Some<RecordBaseDynamic> s -> {
-                var baseSource = s.value().source();
+            case ValueDynamic vd -> {
+                var record = MustCast.mustCast(Record.class, vd.type());
+                var baseSource = vd.source();
                 var dynamicFieldTypes = new TOrderedMap<ConstKey, Type>();
                 for (var entry : record.fields()) {
                     switch (entry.getValue()) {
@@ -202,7 +198,7 @@ public record Record(
                                     CompositeClassEmitter.slotFieldName(slotIdx),
                                     CompositeClassEmitter.slotDescriptor(xx, t),
                                     DynUtil.sourceReg(access, baseSource));
-                            var childCv = DynUtil.regToTypedValue(xx, loc, access.code(), child, t);
+                            var childCv = DynUtil.regToValue(access.code(), child, t);
                             var cfdcDropRes = cfdcFullDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, childCv);
                             if (cfdcDropRes.hasErrors()) yield cfdcDropRes.reerr();
                             out.add(access.code());
@@ -221,10 +217,14 @@ public record Record(
                     var f = fOpt.optUnwrap();
                     switch (f) {
                         case RecordField.Dynamic d -> {}
-                        case RecordField.EvalRes er ->
-                            throw new IllegalStateException(
-                                    "Record::accessSourced: accessed field '" + accessedKey.constKeyToCanonical()
-                                            + "' is scope-bound (non-dynamic); access should be routed elsewhere");
+                        case RecordField.EvalRes held -> {
+                            if (held.result().hasErrors()) yield held.result().reerr();
+                            var heldCv = held.result().requireValue("Record::accessSourced held field");
+                            var heldCombined = Eval.codeConcat(xx, loc, selfCv.code(), heldCv.code());
+                            if (heldCombined.hasErrors()) yield heldCombined.reerr();
+                            yield EResult.ok(new CodeValue(
+                                    heldCombined.requireValue("Record::accessSourced held code"), heldCv.outcome()));
+                        }
                     }
                     var accessedType = recordFieldType(f);
                     int accessedSlot = slotInfo.slotOfKey().getOpt(accessedKey).optUnwrap();
@@ -253,6 +253,9 @@ public record Record(
                             new CodeValue(combined.requireValue("Record::accessSourced code"), useCv.outcome()));
                 }
             }
+            default ->
+                throw new IllegalStateException("Record::accessOrDrop: expected Record or ValueDynamic value, got "
+                        + selfCv.value().optUnwrap().getClass());
         };
     }
 
@@ -277,7 +280,7 @@ public record Record(
             var t = recordFieldType(entry.getValue());
             fieldTypes.put(entry.getKey(), new RecordField.Dynamic(t));
         }
-        return new Record(base, IOrderedMap.from(fieldTypes));
+        return new Record(IOrderedMap.from(fieldTypes));
     }
 
     @Override
@@ -289,7 +292,13 @@ public record Record(
             return Opt.some(this);
         }
         if (key.equals(GenAspectType.AspectId)) {
-            return recordFieldsAllTypes() ? Opt.some(AspectTypeRecord.INSTANCE) : Opt.none();
+            var fieldAspects = new TOrderedMap<ConstKey, AspectType>();
+            for (var entry : fields) {
+                var fieldAspect = GenAspectType.getMaybe(xx, recordFieldType(entry.getValue()));
+                if (fieldAspect.optIsNone()) return Opt.none();
+                fieldAspects.put(entry.getKey(), fieldAspect.optUnwrap());
+            }
+            return Opt.some(new AspectTypeRecord(IOrderedMap.from(fieldAspects)));
         }
         if (key.equals(GenAspectRecord.AspectId)) {
             return Opt.some(new AspectRecordRecord(this));
@@ -441,7 +450,7 @@ public record Record(
                                     fields.put(entry.getKey(), new RecordField.Dynamic(t));
                                 }
                             }
-                            var out = new Record(Opt.none(), IOrderedMap.from(fields));
+                            var out = new Record(IOrderedMap.from(fields));
                             out.artifactIdCell().set(idValue);
                             return out;
                         };
@@ -460,6 +469,7 @@ public record Record(
             var otherFieldOpt = o.fields().getOpt(entry.getKey());
             if (otherFieldOpt.optIsNone()) return false;
             var otherField = otherFieldOpt.optUnwrap();
+            if (isSlotField(entry.getValue()) != isSlotField(otherField)) return false;
             var thisType = recordFieldType(entry.getValue());
             var otherType = recordFieldType(otherField);
             if (!thisType.typeIsEqual(xx, otherType)) return false;
@@ -500,7 +510,7 @@ public record Record(
         }
         var srcAsp = srcAspOpt.optUnwrap();
 
-        if (srcValue instanceof Record srcRec && srcRec.base().optIsNone()) {
+        if (srcValue instanceof Record) {
             var srcTakenFields = srcAsp.aspectRecordTakeFields(xx, loc, srcValue);
             var erb = new Erb(loc);
             var convertedFields = new TOrderedMap<ConstKey, RecordField>();
@@ -530,39 +540,32 @@ public record Record(
             if (!erb.errors().isEmpty()) {
                 return EResult.errs(erb.errors());
             }
-            return EResult.ok(new CodeValue(
-                    cv.code(), EvalOutcome.ofValue(new Record(Opt.none(), IOrderedMap.from(convertedFields)))));
+            return EResult.ok(
+                    new CodeValue(cv.code(), EvalOutcome.ofValue(new Record(IOrderedMap.from(convertedFields)))));
         }
 
-        ValueDynamicSource sourcedSource;
-        if (srcValue instanceof Record srcRecSourced && srcRecSourced.base().optIsSome()) {
-            sourcedSource = srcRecSourced.base().optUnwrap().source();
-        } else if (srcValue instanceof ValueDynamic vd) {
-            sourcedSource = vd.source();
-        } else {
-            throw new IllegalStateException(
-                    "Record::typeCastFrom: unexpected source value class: " + srcValue.getClass());
-        }
-
-        var srcFieldTypes = srcAsp.aspectRecordFieldTypes();
-        var srcSlotInfo = computeSlotInfoFromTypes(xx, srcFieldTypes);
-        var destSlotInfo = computeSlotInfoFromTypes(xx, recordFieldTypesRaw(fields));
+        var srcDyn = MustCast.mustCast(ValueDynamic.class, srcValue);
+        var srcRecordType = MustCast.mustCast(Record.class, srcDyn.type());
+        var srcSlotTypes = slotFieldTypes(srcRecordType.fields());
+        var srcSlotInfo = computeSlotInfoFromTypes(xx, srcSlotTypes);
+        var destFields = MustCast.mustCast(Record.class, valueType()).fields();
+        var destSlotInfo = computeSlotInfoFromTypes(xx, slotFieldTypes(destFields));
 
         var a = srcSlotInfo.sortedTypes();
         var stlB = destSlotInfo.sortedTypes();
-        boolean types = a.size() == stlB.size();
+        boolean types = srcSlotTypes.size() == fields.size() && a.size() == stlB.size();
         for (int stlI = 0; types && stlI < a.size(); stlI++) {
             if (!a.get(stlI).typeIsEqual(xx, stlB.get(stlI))) types = false;
         }
         if (types) {
-            var sourcedResult = new Record(Opt.some(new RecordBaseDynamic(sourcedSource)), asDynamicFields(fields));
-            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue((Value) sourcedResult)));
+            return EResult.ok(new CodeValue(
+                    cv.code(), EvalOutcome.ofValue(new ValueDynamic(srcDyn.source(), new Record(destFields)))));
         }
 
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
         if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
-        var srcReg = DynUtil.sourceReg(b, sourcedSource);
+        var srcReg = DynUtil.sourceReg(b, srcDyn.source());
         var srcKlass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, srcSlotInfo.sortedTypes()));
 
         var destSortedKeys = new TList<ConstKey>(fields.size());
@@ -575,15 +578,23 @@ public record Record(
         var destFieldRegs = new TList<JavaBytecodeReg>(destSortedKeys.size());
         for (int i = 0; i < destSortedKeys.size(); i++) {
             var key = destSortedKeys.get(i);
-            var destType = recordFieldType(fields.getOpt(key).optUnwrap());
-            var srcFieldType = srcFieldTypes.getOpt(key).optUnwrap();
-            int srcSlot = srcSlotInfo.slotOfKey().getOpt(key).optUnwrap();
-            var load = b.getField(
-                    srcKlass,
-                    CompositeClassEmitter.slotFieldName(srcSlot),
-                    CompositeClassEmitter.slotDescriptor(xx, srcFieldType),
-                    srcReg);
-            var srcFieldCv = DynUtil.regToValue(new CodeDynamic(loc, new JavaBytecodeSequence()), load, srcFieldType);
+            var destType = recordFieldType(destFields.getOpt(key).optUnwrap());
+            CodeValue srcFieldCv;
+            switch (srcRecordType.fields().getOpt(key).optUnwrap()) {
+                case RecordField.Dynamic d -> {
+                    int srcSlot = srcSlotInfo.slotOfKey().getOpt(key).optUnwrap();
+                    var load = b.getField(
+                            srcKlass,
+                            CompositeClassEmitter.slotFieldName(srcSlot),
+                            CompositeClassEmitter.slotDescriptor(xx, d.type()),
+                            srcReg);
+                    srcFieldCv = DynUtil.regToValue(new CodeDynamic(loc, new JavaBytecodeSequence()), load, d.type());
+                }
+                case RecordField.EvalRes held -> {
+                    if (held.result().hasErrors()) return held.result().reerr();
+                    srcFieldCv = held.result().requireValue("Record::typeCastFrom held field");
+                }
+            }
             var convOpt = erb.mustEr(DynUtil.materialize(xx, loc, destType, srcFieldCv));
             if (convOpt.optIsNone()) {
                 return EResult.errs(erb.errors());
@@ -596,50 +607,32 @@ public record Record(
         var destKlass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, destSlotInfo.sortedTypes()));
         var ctorDesc = CompositeClassEmitter.constructorDesc(xx, destSlotInfo.sortedTypes());
         var newObj = b.newInstance(destKlass, ctorDesc, destFieldRegs);
-        var newBase = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Reg(newObj)));
-        var newRecord = new Record(newBase, asDynamicFields(fields));
-        return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.ofValue((Value) newRecord)));
+        return EResult.ok(new CodeValue(
+                Code.target(b.code()),
+                EvalOutcome.ofValue(new ValueDynamic(new ValueDynamicSource.Reg(newObj), new Record(destFields)))));
     }
 
-    private static IOrderedMap<ConstKey, RecordField> asDynamicFields(IOrderedMap<ConstKey, RecordField> in) {
-        var out = new TOrderedMap<ConstKey, RecordField>();
-        for (var e : in) {
-            var t =
-                    switch (e.getValue()) {
-                        case RecordField.Dynamic d -> d.type();
-                        case RecordField.EvalRes er -> {
-                            if (er.result().hasErrors()
-                                    || er.result()
-                                            .requireValue("asDynamicFields")
-                                            .value()
-                                            .optIsNone()) {
-                                throw new IllegalStateException("Record::asDynamicFields: EvalRes with no value for '"
-                                        + e.getKey().constKeyToCanonical()
-                                        + "'");
-                            }
-                            yield er.result()
-                                    .requireValue("asDynamicFields")
-                                    .value()
-                                    .optUnwrap()
-                                    .valueType();
-                        }
-                    };
-            out.put(e.getKey(), new RecordField.Dynamic(t));
+    static TOrderedMap<ConstKey, Type> slotFieldTypes(IOrderedMap<ConstKey, RecordField> fields) {
+        var out = new TOrderedMap<ConstKey, Type>();
+        for (var e : fields) {
+            switch (e.getValue()) {
+                case RecordField.Dynamic d -> out.put(e.getKey(), d.type());
+                case RecordField.EvalRes held -> {}
+            }
         }
-        return IOrderedMap.from(out);
+        return out;
+    }
+
+    private static boolean isSlotField(RecordField f) {
+        return switch (f) {
+            case RecordField.Dynamic d -> true;
+            case RecordField.EvalRes held -> false;
+        };
     }
 
     static CompositeSlotSort.Result<ConstKey> computeSlotInfoFromTypes(
             ExprContext xx, TOrderedMap<ConstKey, Type> fieldTypes) {
         return CompositeSlotSort.sort(xx, fieldTypes, ConstKey.CANONICAL_ORDER);
-    }
-
-    static TOrderedMap<ConstKey, Type> recordFieldTypesRaw(IOrderedMap<ConstKey, RecordField> fields) {
-        var out = new TOrderedMap<ConstKey, Type>();
-        for (var e : fields) {
-            out.put(e.getKey(), recordFieldType(e.getValue()));
-        }
-        return out;
     }
 
     public static final class RecordLift implements AspectLift {
@@ -720,31 +713,8 @@ public record Record(
             if (!errors.isEmpty()) {
                 return EResult.errs(errors);
             }
-            return EResult.ok(new Record(Opt.none(), IOrderedMap.from(out)));
+            return EResult.ok(new Record(IOrderedMap.from(out)));
         }
-    }
-
-    private boolean recordFieldsAllTypes() {
-        for (var entry : fields) {
-            switch (entry.getValue()) {
-                case RecordField.Dynamic d -> {}
-                case RecordField.EvalRes er -> {
-                    var inner = er.result();
-                    if (inner.hasErrors()) return false;
-                    var innerCv = inner.requireValue("Record::recordFieldsAllTypes field");
-                    if (innerCv.value().optIsNone()) return false;
-                    var fieldValue = innerCv.value().optUnwrap();
-                    if (fieldValue instanceof Record nested) {
-                        if (!nested.recordFieldsAllTypes()) return false;
-                    } else if (fieldValue instanceof ValueObjectConst voc) {
-                        if (!(voc.data() instanceof Type)) return false;
-                    } else if (!(fieldValue instanceof Type)) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
     }
 
     static Type recordFieldType(RecordField f) {
@@ -753,14 +723,7 @@ public record Record(
             case RecordField.EvalRes er -> {
                 var innerOpt = er.result().valueOpt();
                 if (innerOpt.optIsSome() && innerOpt.optUnwrap().value().optIsSome()) {
-                    var v = innerOpt.optUnwrap().value().optUnwrap();
-                    if (v instanceof Type asType) {
-                        yield asType;
-                    }
-                    if (v instanceof ValueObjectConst voc && voc.data() instanceof Type asDataType) {
-                        yield asDataType;
-                    }
-                    yield v.valueType();
+                    yield innerOpt.optUnwrap().value().optUnwrap().valueType();
                 }
                 throw new IllegalStateException("Record::recordFieldType: field has no value");
             }
@@ -769,70 +732,72 @@ public record Record(
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome() && recordFieldsAllTypes();
+        if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsNone()) return false;
+        for (var entry : fields) {
+            if (!recordFieldType(entry.getValue()).typeCanCastTo(xx, loc, destType)) return false;
+        }
+        return true;
     }
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-        if (destType.typeAspect(xx, GenAspectStackValueDynamic.AspectId).optIsSome()) {
-            if (cv.value().optIsNone()) {
-                return EResult.err(loc, "Record::typeCastTo: CodeValue has no value");
-            }
-            if (!(cv.value().optUnwrap() instanceof Record record)) {
-                return EResult.err(
-                        loc,
-                        "Record::typeCastTo: expected Record value, got "
-                                + cv.value().optUnwrap().getClass());
-            }
-            var b = new JavaBytecodeBuilder(loc);
-            var carryRes = b.addCode(loc, cv.code());
-            if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
-            var elems = new TList<JavaBytecodeReg>();
-            for (var entry : record.fields()) {
-                var key = entry.getKey();
-                ConstKey.Str keyStr;
-                switch (key) {
-                    case ConstKey.Str ks -> keyStr = ks;
-                    case ConstKey.Uint u -> {
-                        return EResult.err(loc, "Record::typeCastTo: non-string key " + key);
-                    }
-                }
-                RecordField.EvalRes er;
-                switch (entry.getValue()) {
-                    case RecordField.EvalRes erVal -> er = erVal;
-                    case RecordField.Dynamic d -> {
-                        return EResult.err(
-                                loc, "Record::typeCastTo: field '" + key.constKeyToCanonical() + "' is dynamic-only");
-                    }
-                }
-                var elemRes = er.result();
-                if (elemRes.hasErrors()) return elemRes.reerr();
-                var elemCv = elemRes.requireValue("Record::typeCastTo field");
-                if (elemCv.value().optIsNone()) {
-                    return EResult.err(
-                            loc, "Record::typeCastTo: field '" + key.constKeyToCanonical() + "' has no value");
-                }
-                JavaBytecodeReg loweredReg;
-                if (elemCv.value().optUnwrap() instanceof Record nestedRecord) {
-                    var nestedRes = nestedRecord.typeCastTo(xx, loc, elemCv, destType);
-                    if (nestedRes.hasErrors()) return nestedRes.reerr();
-                    var nestedReg = DynUtil.valueReg(loc, nestedRes.requireValue("Record::typeCastTo nested record"));
-                    if (nestedReg.hasErrors()) return nestedReg.reerr();
-                    elems.add(b.constString(keyStr.value()));
-                    loweredReg = b.reg(nestedReg.requireValue("nestedDyn"));
-                } else {
-                    var lowered = DynUtil.materialize(xx, loc, elemCv);
-                    if (lowered.hasErrors()) return lowered.reerr();
-                    elems.add(b.constString(keyStr.value()));
-                    loweredReg = b.reg(lowered.requireValue("Record::typeCastTo field lowered"));
-                }
-                elems.add(loweredReg);
-            }
-            var array = b.newObjectArray(elems);
-            var out = b.invokeStatic(GenCodegenDescriptors.RECORD_NEW_DYNAMIC, array);
-            return EResult.ok(DynUtil.regToValue(b.code(), out, destType));
+        if (cv.value().optIsNone()) {
+            return EResult.err(loc, "Record::typeCastTo: CodeValue has no value");
         }
-        return EResult.ok(cv);
+        var b = new JavaBytecodeBuilder(loc);
+        var carryRes = b.addCode(loc, cv.code());
+        if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
+        var fieldResults = new TOrderedMap<ConstKey, EResult<CodeValue>>();
+        switch (cv.value().optUnwrap()) {
+            case Record record -> {
+                for (var entry : record.fields()) {
+                    switch (entry.getValue()) {
+                        case RecordField.EvalRes er -> fieldResults.put(entry.getKey(), er.result());
+                        case RecordField.Dynamic d ->
+                            throw new IllegalStateException("Record::typeCastTo: record value has a Dynamic field");
+                    }
+                }
+            }
+            case ValueDynamic vd -> {
+                var runtimeRecord = MustCast.mustCast(Record.class, vd.type());
+                var baseCv = new CodeValue(
+                        Code.none(loc),
+                        EvalOutcome.ofValue(new ValueDynamic(
+                                new ValueDynamicSource.Reg(DynUtil.sourceReg(b, vd.source())), vd.type())));
+                for (var key : runtimeRecord.fields().keys()) {
+                    fieldResults.put(key, runtimeRecord.accessOrDrop(xx, loc, baseCv, Opt.some(key)));
+                }
+            }
+            default ->
+                throw new IllegalStateException("Record::typeCastTo: expected Record or ValueDynamic value, got "
+                        + cv.value().optUnwrap().getClass());
+        }
+        var elems = new TList<JavaBytecodeReg>();
+        for (var entry : fieldResults.entrySet()) {
+            var key = entry.getKey();
+            ConstKey.Str keyStr;
+            switch (key) {
+                case ConstKey.Str ks -> keyStr = ks;
+                case ConstKey.Uint u -> {
+                    return EResult.err(loc, "Record::typeCastTo: non-string key " + key);
+                }
+            }
+            var elemRes = entry.getValue();
+            if (elemRes.hasErrors()) return elemRes.reerr();
+            var elemCv = elemRes.requireValue("Record::typeCastTo field");
+            if (elemCv.value().optIsNone()) {
+                return EResult.err(loc, "Record::typeCastTo: field '" + key.constKeyToCanonical() + "' has no value");
+            }
+            var fieldCast = elemCv.value().optUnwrap().valueType().typeCastTo(xx, loc, elemCv, destType);
+            if (fieldCast.hasErrors()) return fieldCast.reerr();
+            var fieldReg = DynUtil.valueReg(loc, fieldCast.requireValue("Record::typeCastTo field cast"));
+            if (fieldReg.hasErrors()) return fieldReg.reerr();
+            elems.add(b.constString(keyStr.value()));
+            elems.add(b.reg(fieldReg.requireValue("Record::typeCastTo field reg")));
+        }
+        var array = b.newObjectArray(elems);
+        var out = b.invokeStatic(GenCodegenDescriptors.RECORD_NEW_DYNAMIC, array);
+        return EResult.ok(DynUtil.regToValue(b.code(), out, destType));
     }
 
     @CodegenDescriptor
@@ -847,7 +812,7 @@ public record Record(
             }
             fields.put(key, new RecordField.Dynamic(t));
         }
-        return new Record(Opt.none(), IOrderedMap.from(fields));
+        return new Record(IOrderedMap.from(fields));
     }
 
     @Override

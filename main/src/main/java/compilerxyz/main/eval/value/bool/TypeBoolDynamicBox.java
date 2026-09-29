@@ -25,7 +25,6 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDynamicUnboxed;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
@@ -48,9 +47,6 @@ public record TypeBoolDynamicBox() implements Aspect, Type {
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_BOOL_DYNAMIC_BOX_IDENTITY)) {
             return Opt.some(this);
-        }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicBoolDynamicBox(this));
         }
         if (key.equals(GenAspectDynamicUnboxed.AspectId)) {
             return Opt.some(AspectDynamicUnboxedBoolDynamicBox.INSTANCE);

@@ -446,8 +446,7 @@ public final class ConstEval {
                 if (tupleCodeOpt.optIsNone()) yield EResult.errs(erb.errors());
                 var tupleCode = tupleCodeOpt.optUnwrap();
                 yield EResult.ok(EvalRes.of(
-                        new CodeValue(tupleCode, EvalOutcome.ofValue(new Tuple(Opt.none(), IList.from(elements)))),
-                        xx.scope));
+                        new CodeValue(tupleCode, EvalOutcome.ofValue(new Tuple(IList.from(elements)))), xx.scope));
             }
             case Expr.Record r -> {
                 var entries = new TOrderedMap<ConstKey, EResult<CodeValue>>();
@@ -506,8 +505,7 @@ public final class ConstEval {
                 var fields = new TOrderedMap<ConstKey, RecordField>();
                 for (var fe : entries.entrySet()) fields.put(fe.getKey(), new RecordField.EvalRes(fe.getValue()));
                 yield EResult.ok(EvalRes.of(
-                        new CodeValue(rCode, EvalOutcome.ofValue(new Record(Opt.none(), IOrderedMap.from(fields)))),
-                        xx.scope));
+                        new CodeValue(rCode, EvalOutcome.ofValue(new Record(IOrderedMap.from(fields)))), xx.scope));
             }
             case Expr.OperatorBinary e -> {
                 var erb = new Erb(loc);
@@ -896,8 +894,7 @@ public final class ConstEval {
                                 bodyCv = convertedOpt.optUnwrap();
                             }
                         }
-                        matchCases.add(
-                                new TargetCase(variant.jsTag(), variant.type(), variantIdx, payloadBinding, bodyCv));
+                        matchCases.add(new TargetCase(variant.type(), variantIdx, payloadBinding, bodyCv));
                     }
                     Opt<TargetMatchFallback> fallbackCv = Opt.none();
                     if (e.fallback().optIsSome()) {

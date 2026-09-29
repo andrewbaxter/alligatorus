@@ -3163,17 +3163,6 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                         "loc"))),
                                                                                                                                                 new TestMb
                                                                                                                                                         .RecordPair(
-                                                                                                                                                        "xx",
-                                                                                                                                                        mb
-                                                                                                                                                                .field(
-                                                                                                                                                                        mb
-                                                                                                                                                                                .scopeUse(
-                                                                                                                                                                                        "arg"),
-                                                                                                                                                                        mb
-                                                                                                                                                                                .str(
-                                                                                                                                                                                        "xx"))),
-                                                                                                                                                new TestMb
-                                                                                                                                                        .RecordPair(
                                                                                                                                                         "code",
                                                                                                                                                         mb
                                                                                                                                                                 .field(

@@ -23,7 +23,6 @@ import compilerxyz.main.eval.value.expr.TypeExprStagedPlaceholder;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.eval.value.tuple.Tuple;
-import compilerxyz.main.eval.value.tuple.TupleBaseDynamic;
 import compilerxyz.main.eval.value.tuple.TupleElement;
 import compilerxyz.main.gen.AspectDynamicBoxed;
 import compilerxyz.main.gen.Binding;
@@ -32,6 +31,7 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.main.gen.GenAspectDynamicBoxed;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.IfBranch;
 import compilerxyz.main.gen.Target;
@@ -111,7 +111,7 @@ public final class TargetDynamic implements Target {
         var type = argument.optUnwrap();
         var param = new JavaBytecodeReg(JvmSort.descriptor(xx, type));
         b.land(dest, param);
-        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), param, type));
+        return EResult.ok(DynUtil.regToValue(b.code(), param, type));
     }
 
     private static BindingId initialBindSlot(Binding binding) {
@@ -194,7 +194,7 @@ public final class TargetDynamic implements Target {
         }
         CodeValue out;
         if (resultParam.optIsSome()) {
-            out = DynUtil.regToTypedValue(xx, loc, b.code(), resultParam.optUnwrap(), resultType.optUnwrap());
+            out = DynUtil.regToValue(b.code(), resultParam.optUnwrap(), resultType.optUnwrap());
         } else {
             out = new CodeValue(Code.target(b.code()), outcome);
         }
@@ -362,8 +362,7 @@ public final class TargetDynamic implements Target {
         return Opt.none();
     }
 
-    private static CodeValue finishArms(
-            ExprContext xx, QExprId loc, JavaBytecodeBuilder b, ArmsShape shape, JumpKey endKey) {
+    private static CodeValue finishArms(ExprContext xx, JavaBytecodeBuilder b, ArmsShape shape, JumpKey endKey) {
         if (shape.allControlEnded()) {
             return new CodeValue(Code.target(b.code()), EvalOutcome.CONTROL_ENDED);
         }
@@ -374,7 +373,7 @@ public final class TargetDynamic implements Target {
         var type = shape.resultType().optUnwrap();
         var param = new JavaBytecodeReg(JvmSort.descriptor(xx, type));
         b.land(endKey, param);
-        return DynUtil.regToTypedValue(xx, loc, b.code(), param, type);
+        return DynUtil.regToValue(b.code(), param, type);
     }
 
     @Override
@@ -401,26 +400,23 @@ public final class TargetDynamic implements Target {
             var elseRes = emitBranchBody(xx, loc, b, else_.optUnwrap(), shape, endKey);
             if (elseRes.optIsSome()) return EResult.errs(elseRes.optUnwrap());
         }
-        return EResult.ok(finishArms(xx, loc, b, shape, endKey));
+        return EResult.ok(finishArms(xx, b, shape, endKey));
     }
 
     @Override
     public EResult<CodeValue> targetMatch(
             ExprContext xx, QExprId loc, CodeValue base, TList<TargetCase> cases, Opt<TargetMatchFallback> fallback) {
         var baseType = base.value().optUnwrap().valueType();
-        MatchDynamic md;
-        if (baseType instanceof MatchDynamic direct) {
-            md = direct;
-        } else {
-            return EResult.err(loc, "Match: base type is not matchable: " + baseType.typeDesc());
-        }
+        var unionRes = GenAspectUnion.get(xx, loc, baseType);
+        if (unionRes.hasErrors()) return unionRes.reerr();
+        var union = unionRes.requireValue("targetMatch union");
         var arms = new TList<CodeValue>();
         for (var branch : cases) arms.add(branch.body);
         if (fallback.optIsSome()) arms.add(fallback.optUnwrap().body);
         var shapeRes = armsShape(loc, arms, false, "Match");
         if (shapeRes.hasErrors()) return shapeRes.reerr();
         var shape = shapeRes.requireValue("targetMatch shape");
-        var prepRes = md.matchDynamicPrepare(xx);
+        var prepRes = union.aspectUnionPrepare(xx);
         if (prepRes.optIsSome()) return EResult.errs(prepRes.optUnwrap());
         var b = new JavaBytecodeBuilder(loc);
         var baseRes = DynUtil.materialize(xx, loc, base);
@@ -429,11 +425,11 @@ public final class TargetDynamic implements Target {
         var endKey = new JumpKey();
         for (var branch : cases) {
             var nextCaseKey = new JumpKey();
-            var testRes = md.matchDynamicTest(loc, baseReg, branch.variantIndex);
+            var testRes = union.aspectUnionTest(loc, baseReg, branch.variantIndex);
             if (testRes.hasErrors()) return testRes.reerr();
             var test = b.reg(testRes.requireValue("targetMatch variant test"));
             b.branch(Opcodes.IFEQ, nextCaseKey, test);
-            var extractRes = md.matchDynamicExtract(xx, loc, baseReg, branch.variantIndex, branch.variantType);
+            var extractRes = union.aspectUnionExtract(xx, loc, baseReg, branch.variantIndex, branch.variantType);
             if (extractRes.hasErrors()) return extractRes.reerr();
             var payload = b.reg(extractRes.requireValue("targetMatch variant extract"));
             b.store(initialBindSlot(branch.payloadBinding), payload);
@@ -451,7 +447,7 @@ public final class TargetDynamic implements Target {
                     JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID));
             b.athrow(err);
         }
-        return EResult.ok(finishArms(xx, loc, b, shape, endKey));
+        return EResult.ok(finishArms(xx, b, shape, endKey));
     }
 
     @Override
@@ -545,7 +541,7 @@ public final class TargetDynamic implements Target {
         for (var f : fields) {
             dynamicFields.put(f.key, new RecordField.Dynamic(f.sub.type()));
         }
-        Type recordType = new Record(Opt.none(), IOrderedMap.from(dynamicFields));
+        Type recordType = new Record(IOrderedMap.from(dynamicFields));
         var dynamicCode = emitCompositeInstantiation(xx, loc, carry, sortedSubs);
         if (dynamicCode.hasErrors()) return dynamicCode.reerr();
         var composite = dynamicCode.requireValue("record composite");
@@ -560,7 +556,7 @@ public final class TargetDynamic implements Target {
         for (var slot : slots) {
             dynamicElements.add(new TupleElement.Dynamic(slot.sub.type()));
         }
-        Type tupleType = new Tuple(Opt.<TupleBaseDynamic>none(), IList.from(dynamicElements));
+        Type tupleType = new Tuple(IList.from(dynamicElements));
         var dynamicCode = emitCompositeInstantiation(xx, loc, carry, sortedSubs);
         if (dynamicCode.hasErrors()) return dynamicCode.reerr();
         var composite = dynamicCode.requireValue("tuple composite");

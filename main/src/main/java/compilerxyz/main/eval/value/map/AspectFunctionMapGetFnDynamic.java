@@ -35,7 +35,7 @@ public record AspectFunctionMapGetFnDynamic(TypeMapGetFnDynamic type) implements
         if (valueDesc.value().startsWith("L") && !valueDesc.value().equals("Ljava/lang/Object;")) {
             out = b.checkcast(valueDesc, out);
         }
-        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), out, type.valueType()));
+        return EResult.ok(DynUtil.regToValue(b.code(), out, type.valueType()));
     }
 
     @Override

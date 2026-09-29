@@ -25,7 +25,6 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
@@ -48,9 +47,6 @@ public record TypeUintDynamicBox() implements Aspect, Type {
         if (key.equals(GenTrivialIdentityAspects.TYPE_UINT_DYNAMIC_BOX_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicUintDynamicBox(this));
-        }
         if (key.equals(GenAspectSet.AspectId)) {
             return Opt.some(AspectSetDynamicDefault.INSTANCE);
         }
@@ -68,9 +64,6 @@ public record TypeUintDynamicBox() implements Aspect, Type {
         }
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(AspectBindViaTarget.INSTANCE);
-        }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);

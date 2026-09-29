@@ -24,7 +24,7 @@ public final class AspectFunctionFloatToStringDynamic implements AspectFunction 
         var b = new JavaBytecodeBuilder(loc);
         var out = b.invokeStatic(
                 GenCodegenDescriptors.NUMERIC_FORMAT_FORMAT_FLOAT, b.reg(selfRes.requireValue("selfDyn")));
-        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), out, new TypeStringDynamic()));
+        return EResult.ok(DynUtil.regToValue(b.code(), out, new TypeStringDynamic()));
     }
 
     @Override

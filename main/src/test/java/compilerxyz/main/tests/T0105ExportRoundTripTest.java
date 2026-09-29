@@ -241,4 +241,69 @@ public final class T0105ExportRoundTripTest {
         var main = e.seq(importLib(e), e.call(e.mb.log(), e.toStr(e.mb.as(e.n(3.), e.fld(e.v("r"), "t")))));
         assertEquals(TList.of("3"), compileLogs(lib, main));
     }
+
+    private static SourceExpr thingDefs(EcoMb e) {
+        return e.lower(defsetLib(
+                e,
+                e.let("obj", e.defObject(e.v("d"), "thing")),
+                e.callM(e.v("obj"), "set_inner", e.rec(e.p("name", e.mb.typesString()))),
+                e.methodImpl(
+                        e.v("obj"),
+                        "name",
+                        e.mb.tupleOf(),
+                        e.retSome(e.mb.typesString()),
+                        e.stage(e.fld(e.v("inner"), "name"))),
+                e.let("fb", e.defFunc(e.v("d"), "greet")),
+                e.funcImpl(e.v("fb"), e.mb.tupleOf(), e.retSome(e.mb.typesString()), e.stage(e.s("from-func"))),
+                e.finish(e.v("d")),
+                e.ret(e.rec(
+                        e.p("f", e.fld(e.v("fb"), "func")),
+                        e.p("obj_t", e.fld(e.v("obj"), "type")),
+                        e.p("obj_new", e.fld(e.v("obj"), "new"))))));
+    }
+
+    @Test
+    public void test00900LoweredFuncReexported() {
+        var e = new EcoMb();
+        var lib = e.seq(e.let("k", thingDefs(e)), e.ret(e.rec(e.p("f", e.fld(e.v("k"), "f")))));
+        var main = e.seq(importLib(e), e.call(e.mb.log(), e.call(e.fld(e.v("r"), "f"), e.tup())));
+        assertEquals(TList.of("from-func"), compileLogs(lib, main));
+    }
+
+    @Test
+    public void test01000LoweredObjectTypeReexported() {
+        var e = new EcoMb();
+        var lib = e.seq(e.let("k", thingDefs(e)), e.ret(e.rec(e.p("obj_t", e.fld(e.v("k"), "obj_t")))));
+        var main =
+                e.seq(importLib(e), e.let("t", e.fld(e.v("r"), "obj_t")), e.call(e.mb.log(), e.s("obj-type-imported")));
+        assertEquals(TList.of("obj-type-imported"), compileLogs(lib, main));
+    }
+
+    @Test
+    public void test01100InstanceBuiltFromLoweredCtor() {
+        var e = new EcoMb();
+        var lib = e.seq(
+                e.let("k", thingDefs(e)),
+                e.ret(e.rec(e.p("inst", e.call(e.fld(e.v("k"), "obj_new"), e.rec(e.p("name", e.s("inst-name"))))))));
+        var main = e.seq(importLib(e), e.call(e.mb.log(), e.callM(e.fld(e.v("r"), "inst"), "name", e.tup())));
+        assertEquals(TList.of("inst-name"), compileLogs(lib, main));
+    }
+
+    @Test
+    public void test01200LoweredDefsAndInstanceReexported() {
+        var e = new EcoMb();
+        var lib = e.seq(
+                e.let("k", thingDefs(e)),
+                e.ret(e.rec(
+                        e.p("f", e.fld(e.v("k"), "f")),
+                        e.p("obj_t", e.fld(e.v("k"), "obj_t")),
+                        e.p("inst", e.call(e.fld(e.v("k"), "obj_new"), e.rec(e.p("name", e.s("inst-name"))))))));
+        var main = e.seq(
+                importLib(e),
+                e.call(e.mb.log(), e.call(e.fld(e.v("r"), "f"), e.tup())),
+                e.call(
+                        e.mb.log(),
+                        e.callM(e.mb.as(e.fld(e.v("r"), "inst"), e.fld(e.v("r"), "obj_t")), "name", e.tup())));
+        assertEquals(TList.of("from-func", "inst-name"), compileLogs(lib, main));
+    }
 }

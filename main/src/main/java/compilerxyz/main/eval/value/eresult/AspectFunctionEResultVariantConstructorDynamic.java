@@ -64,21 +64,21 @@ public record AspectFunctionEResultVariantConstructorDynamic(TypeEResultVariantC
                     b.reg(listRes.requireValue("eresult errs list")));
             return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));
         }
-        var argTupleType = new Tuple(
-                Opt.none(),
-                IList.of(
-                        new TupleElement.Dynamic(GenQExprId.dynamicType()),
-                        new TupleElement.Dynamic(new TypeStringDynamic())));
+        var argTupleType = new Tuple(IList.of(
+                new TupleElement.Dynamic(GenQExprId.dynamicType()), new TupleElement.Dynamic(new TypeStringDynamic())));
         var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, argTupleType, argument));
         if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
         var slotsRes = DynUtil.destructurePositional(xx, loc, argTupleType, convertedOpt.optUnwrap());
         if (slotsRes.hasErrors()) return slotsRes.reerr();
-        var slots = slotsRes.requireValue("TypeEResultVariantConstructorDynamic::call destructure");
+        var positional = slotsRes.requireValue("TypeEResultVariantConstructorDynamic::call destructure");
+        var slots = positional.args();
         if (slots.size() != 2) {
             throw new AssertionError(
                     "TypeEResultVariantConstructorDynamic::call err: expected 2 slots, got " + slots.size());
         }
         var b = new JavaBytecodeBuilder(loc);
+        var carryAdd = b.addCode(loc, positional.carry());
+        if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
         var locReg = b.reg(slots.get(0));
         var msgReg = b.reg(slots.get(1));
         var out = b.invokeStatic(

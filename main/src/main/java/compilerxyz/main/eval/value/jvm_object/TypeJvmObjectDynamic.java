@@ -18,7 +18,6 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
@@ -40,9 +39,6 @@ public record TypeJvmObjectDynamic() implements Type, Aspect {
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_JVM_OBJECT_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
-        }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicJvmObjectDynamic(this));
         }
         if (key.equals(GenAspectLift.AspectId)) {
             return Opt.some(AspectLiftJvmObjectDynamic.INSTANCE);

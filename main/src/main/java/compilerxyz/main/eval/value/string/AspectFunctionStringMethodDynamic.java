@@ -24,7 +24,7 @@ public record AspectFunctionStringMethodDynamic(TypeStringMethodDynamic type) im
                 type.methodName(),
                 JavaMethodDescriptor.fromParts(JvmConstants.DESC_STRING),
                 b.reg(selfRes.requireValue("selfDyn")));
-        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), out, new TypeStringDynamic()));
+        return EResult.ok(DynUtil.regToValue(b.code(), out, new TypeStringDynamic()));
     }
 
     @Override

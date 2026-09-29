@@ -157,17 +157,6 @@ public final class T0130DropThrowTest {
                                                                                                                                                         "loc"))),
                                                                                                                 new TestMb
                                                                                                                         .RecordPair(
-                                                                                                                        "xx",
-                                                                                                                        mb
-                                                                                                                                .field(
-                                                                                                                                        mb
-                                                                                                                                                .scopeUse(
-                                                                                                                                                        "arg"),
-                                                                                                                                        mb
-                                                                                                                                                .str(
-                                                                                                                                                        "xx"))),
-                                                                                                                new TestMb
-                                                                                                                        .RecordPair(
                                                                                                                         "code",
                                                                                                                         mb
                                                                                                                                 .field(
@@ -536,17 +525,6 @@ public final class T0130DropThrowTest {
                                                                                                                                 mb
                                                                                                                                         .str(
                                                                                                                                                 "loc"))),
-                                                                                                        new TestMb
-                                                                                                                .RecordPair(
-                                                                                                                "xx",
-                                                                                                                mb
-                                                                                                                        .field(
-                                                                                                                                mb
-                                                                                                                                        .scopeUse(
-                                                                                                                                                "arg"),
-                                                                                                                                mb
-                                                                                                                                        .str(
-                                                                                                                                                "xx"))),
                                                                                                         new TestMb
                                                                                                                 .RecordPair(
                                                                                                                 "code",
@@ -1556,9 +1534,8 @@ public final class T0130DropThrowTest {
         var sourceRecord = mb.recordOf(TList.of(
                 new TestMb.RecordPair("a", canaryInstance(mb, "cA", "a")),
                 new TestMb.RecordPair("b", canaryInstance(mb, "cB", "b"))));
-        var reorderedType = mb.recordOf(TList.of(
-                new TestMb.RecordPair("b", canaryInstance(mb, "cB", "")),
-                new TestMb.RecordPair("a", canaryInstance(mb, "cA", ""))));
+        var reorderedType = mb.recordOf(
+                TList.of(new TestMb.RecordPair("b", mb.scopeUse("cB")), new TestMb.RecordPair("a", mb.scopeUse("cA"))));
         modules.put(
                 "main",
                 new SourceModule.V1(mb.seqOf(
@@ -1581,9 +1558,8 @@ public final class T0130DropThrowTest {
         var sourceRecord = mb.recordOf(TList.of(
                 new TestMb.RecordPair("a", canaryInstance(mb, "cA", "a")),
                 new TestMb.RecordPair("b", canaryInstance(mb, "cB", "b"))));
-        var reorderedType = mb.recordOf(TList.of(
-                new TestMb.RecordPair("b", canaryInstance(mb, "cB", "")),
-                new TestMb.RecordPair("a", canaryInstance(mb, "cA", ""))));
+        var reorderedType = mb.recordOf(
+                TList.of(new TestMb.RecordPair("b", mb.scopeUse("cB")), new TestMb.RecordPair("a", mb.scopeUse("cA"))));
         modules.put(
                 "main",
                 new SourceModule.V1(mb.seqOf(

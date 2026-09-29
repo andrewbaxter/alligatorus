@@ -27,9 +27,6 @@ public record AspectFieldRecord(Record type) implements AspectField {
 
     @Override
     public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        if (type.base().optIsNone()) {
-            return new TList<>();
-        }
         var out = new TList<ConstKey>(type.fields().size());
         for (var k : type.fields().keys()) out.add(k);
         return out;

@@ -17,9 +17,8 @@ public final class T0125RecordCastTest {
     public void test00100RecordCastSourceless() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        var reorderedType = mb.recordOf(TList.of(
-                new TestMb.RecordPair("b", mb.as(mb.num(0.0), mb.typesInt())),
-                new TestMb.RecordPair("a", mb.as(mb.num(0.0), mb.typesInt()))));
+        var reorderedType = mb.recordOf(
+                TList.of(new TestMb.RecordPair("b", mb.typesInt()), new TestMb.RecordPair("a", mb.typesInt())));
         var sourceRecord = mb.recordOf(TList.of(
                 new TestMb.RecordPair("a", mb.as(mb.num(1.0), mb.typesInt())),
                 new TestMb.RecordPair("b", mb.as(mb.num(2.0), mb.typesInt()))));
@@ -56,9 +55,8 @@ public final class T0125RecordCastTest {
     public void test00200RecordCastDynamic() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        var reorderedType = mb.recordOf(TList.of(
-                new TestMb.RecordPair("b", mb.as(mb.num(0.0), mb.typesInt())),
-                new TestMb.RecordPair("a", mb.as(mb.num(0.0), mb.typesInt()))));
+        var reorderedType = mb.recordOf(
+                TList.of(new TestMb.RecordPair("b", mb.typesInt()), new TestMb.RecordPair("a", mb.typesInt())));
         var sourceRecord = mb.recordOf(TList.of(
                 new TestMb.RecordPair("a", mb.as(mb.num(1.0), mb.typesInt())),
                 new TestMb.RecordPair("b", mb.as(mb.num(2.0), mb.typesInt()))));

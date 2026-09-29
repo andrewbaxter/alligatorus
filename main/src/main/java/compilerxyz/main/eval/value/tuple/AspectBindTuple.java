@@ -7,13 +7,14 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.BindSubDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.TupleBindSlot;
+import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.GenAspectBind;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -28,32 +29,57 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
             throw new IllegalStateException("Tuple::bindSub: CodeValue has no value");
         }
         var cvValue = cv.value().optUnwrap();
-        if (!(cvValue instanceof Tuple tuple)) {
-            throw new IllegalStateException("Tuple::bindSub: expected Tuple value, got " + cvValue.getClass());
-        }
         var carry = cv.code();
 
-        if (type.base().optIsSome()) {
-            Type tupleType = type;
-            var scopeFields = new TList<TupleScopeField>(type.elements().size());
-            for (var e : type.elements()) {
-                TupleElement.Dynamic d;
+        if (cvValue instanceof ValueDynamic vd) {
+            var tupleType = MustCast.mustCast(Tuple.class, vd.type());
+            var scopeFields = new TList<TupleScopeField>(tupleType.elements().size());
+            var heldBindCodes = new TList<Code>();
+            for (var e : tupleType.elements()) {
                 switch (e) {
-                    case TupleElement.Dynamic dyn -> d = dyn;
-                    case TupleElement.EvalRes r ->
-                        throw new IllegalStateException("Tuple::bindSub: bind on non-type tuple");
+                    case TupleElement.Dynamic d -> scopeFields.add(new TupleScopeField.Dynamic(d.type()));
+                    case TupleElement.EvalRes held -> {
+                        if (held.result().hasErrors()) {
+                            scopeFields.add(new TupleScopeField.Error(
+                                    held.result().errorsOpt().optUnwrap()));
+                            continue;
+                        }
+                        var heldCv = held.result().requireValue("Tuple::bindSub held element");
+                        var heldBindRes = GenAspectBind.get(
+                                xx, loc, heldCv.value().optUnwrap().valueType());
+                        if (heldBindRes.hasErrors()) {
+                            scopeFields.add(new TupleScopeField.Error(
+                                    heldBindRes.errorsOpt().optUnwrap()));
+                            continue;
+                        }
+                        var heldBound = heldBindRes
+                                .requireValue("Tuple::bindSub held AspectBind")
+                                .aspectBindBind(xx, loc, heldCv);
+                        if (heldBound.hasErrors()) {
+                            scopeFields.add(new TupleScopeField.Error(
+                                    heldBound.errorsOpt().optUnwrap()));
+                            continue;
+                        }
+                        var heldBinding = heldBound.requireValue("Tuple::bindSub held bind");
+                        heldBindCodes.add(heldBinding.code());
+                        scopeFields.add(new TupleScopeField.Scope(heldBinding.binding()));
+                    }
                 }
-                scopeFields.add(new TupleScopeField.Dynamic(d.type()));
             }
             var subBuilder = new JavaBytecodeBuilder(loc);
             var carryAdd = subBuilder.addCode(loc, carry);
             if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
-            var baseReg = DynUtil.sourceReg(subBuilder, type.base().optUnwrap().source());
+            var baseReg = DynUtil.sourceReg(subBuilder, vd.source());
             var sub = new BindSubDynamic(subBuilder.code(baseReg), tupleType);
             var bound = jvmTarget.bindSlot(loc, sub);
-            return EResult.ok(
-                    new BindResult(Code.target(bound.code), new BindingTuple(scopeFields, Opt.some(bound.id))));
+            heldBindCodes.add(Code.target(bound.code));
+            var codeRes = xx.target.targetSeq(loc, heldBindCodes);
+            if (codeRes.hasErrors()) return codeRes.reerr();
+            return EResult.ok(new BindResult(
+                    codeRes.requireValue("Tuple::bindSub runtime codes"),
+                    new BindingTuple(scopeFields, Opt.some(bound.id))));
         }
+        var tuple = MustCast.mustCast(Tuple.class, cvValue);
 
         TList<ExprErr> errors = null;
         record ElemBindResult(Opt<BindSubDynamic> targetSub, Opt<CodeValue> constCv) {}

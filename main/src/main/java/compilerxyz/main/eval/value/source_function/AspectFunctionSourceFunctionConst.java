@@ -37,11 +37,13 @@ public record AspectFunctionSourceFunctionConst(TypeSourceFunctionConst type) im
         var converted = convertedRes.requireValue("TypeSourceFunctionConst::call converted arg");
         var argCodesRes = DynUtil.destructurePositional(xx, loc, argType, converted);
         if (argCodesRes.hasErrors()) return argCodesRes.reerr();
-        var argCodes = argCodesRes.requireValue("TypeSourceFunctionConst::call arg codes");
+        var positional = argCodesRes.requireValue("TypeSourceFunctionConst::call arg codes");
 
         var descRes = TypeFunctionConst.descriptorFor(xx, loc, argType, retType, false);
         if (descRes.hasErrors()) return descRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
+        var carryAdd = b.addCode(loc, positional.carry());
+        if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
         var invocation = DynUtil.invokeStaticFunction(
                 xx,
                 loc,
@@ -50,11 +52,11 @@ public record AspectFunctionSourceFunctionConst(TypeSourceFunctionConst type) im
                 methodName,
                 descRes.requireValue("TypeSourceFunctionConst::call descriptor"),
                 false,
-                argCodes);
+                positional.args());
         if (retType.optIsNone() || invocation.optIsNone()) {
             return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
         }
-        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), invocation.optUnwrap(), retType.optUnwrap()));
+        return EResult.ok(DynUtil.regToValue(b.code(), invocation.optUnwrap(), retType.optUnwrap()));
     }
 
     @Override

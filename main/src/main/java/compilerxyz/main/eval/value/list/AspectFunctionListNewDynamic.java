@@ -1,5 +1,6 @@
 package compilerxyz.main.eval.value.list;
 
+import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -27,8 +28,10 @@ public record AspectFunctionListNewDynamic(TypeListNewDynamic type) implements A
         var argValue = argument.value().optUnwrap();
         var argType = argValue.valueType();
         var dynamicElements = new TList<CodeDynamicReg>();
+        var elementsCarry = Code.none(loc);
         var argTupleOpt = GenAspectTuple.getMaybe(xx, argType);
         if (argTupleOpt.optIsSome()) {
+            elementsCarry = argument.code();
             var elements = argTupleOpt.optUnwrap().aspectTupleTakeElements(xx, loc, argValue);
             for (var elemRes : elements) {
                 if (elemRes.hasErrors()) return elemRes.reerr();
@@ -46,13 +49,15 @@ public record AspectFunctionListNewDynamic(TypeListNewDynamic type) implements A
         var descObject = JavaDataDescriptor.fromClass(Object.class);
         var addDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(descObject));
         var b = new JavaBytecodeBuilder(loc);
+        var carryAdd = b.addCode(loc, elementsCarry);
+        if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
         var regs = new TList<JavaBytecodeReg>(dynamicElements.size());
         for (var element : dynamicElements) regs.add(b.reg(element));
         var selfRes = b.addCode(loc, self.code());
         if (selfRes.optIsSome()) return EResult.errs(selfRes.optUnwrap());
         var list = b.newInstance(tlistIntname, JavaMethodDescriptor.fromConstructorParts(TList.of()));
         for (var reg : regs) b.invokeVirtualVoid(tlistIntname, "add", addDesc, list, reg);
-        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), list, instanceType));
+        return EResult.ok(DynUtil.regToValue(b.code(), list, instanceType));
     }
 
     @Override

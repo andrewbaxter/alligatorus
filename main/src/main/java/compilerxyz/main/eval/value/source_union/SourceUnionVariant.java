@@ -6,13 +6,11 @@ import compilerxyz.main.eval.Type;
 
 public final class SourceUnionVariant {
     public final ConstKey tag;
-    public final String jsTag;
     public final Type type;
     public final ArtifactIdHolder newArtifactIdCell = new ArtifactIdHolder();
 
-    public SourceUnionVariant(ConstKey tag, String jsTag, Type type) {
+    public SourceUnionVariant(ConstKey tag, Type type) {
         this.tag = tag;
-        this.jsTag = jsTag;
         this.type = type;
     }
 }

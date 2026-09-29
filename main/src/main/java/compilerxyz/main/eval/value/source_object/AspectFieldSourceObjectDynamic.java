@@ -68,7 +68,7 @@ public record AspectFieldSourceObjectDynamic(TypeSourceObjectDynamic type) imple
         }
         var found = foundOpt.optUnwrap();
         var retType = found.retType;
-        var argType = found.argType.optUnwrapOr(new Tuple(Opt.none(), IList.of()));
+        var argType = found.argType.optUnwrapOr(new Tuple(IList.of()));
         var fieldName = found.jvmMethodName;
         if (self.value().optIsNone() || !(self.value().optUnwrap() instanceof ValueDynamic selfVd)) {
             return EResult.err(loc, "TypeSourceObjectDynamic::field: receiver is not a ValueDynamic");

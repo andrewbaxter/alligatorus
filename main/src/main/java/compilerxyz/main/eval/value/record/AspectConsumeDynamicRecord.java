@@ -22,7 +22,6 @@ import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.IOrderedMap;
-import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 
@@ -30,7 +29,7 @@ public record AspectConsumeDynamicRecord(Record type) implements AspectConsumeDy
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-        var slotInfo = Record.computeSlotInfoFromTypes(xx, Record.recordFieldTypesRaw(type.fields()));
+        var slotInfo = Record.computeSlotInfoFromTypes(xx, Record.slotFieldTypes(type.fields()));
         var klass = CompositeClassEmitter.getOrEmit(xx, slotInfo.sortedTypes());
         return JavaDataDescriptor.fromInternalName(
                 JavaInternalName.of(klass.getName().replace('.', '/')));
@@ -47,9 +46,6 @@ public record AspectConsumeDynamicRecord(Record type) implements AspectConsumeDy
         if (!(cv.value().optUnwrap() instanceof Record record)) {
             throw new IllegalStateException("Record::toDynamic: expected Record value, got "
                     + cv.value().optUnwrap().getClass());
-        }
-        if (record.base().optIsSome()) {
-            return EResult.ok(cv);
         }
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
@@ -133,8 +129,7 @@ public record AspectConsumeDynamicRecord(Record type) implements AspectConsumeDy
         for (var entry : type.fields()) {
             dynamicFields.put(entry.getKey(), new RecordField.Dynamic(Record.recordFieldType(entry.getValue())));
         }
-        Value result = new Record(
-                Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Reg(obj))), IOrderedMap.from(dynamicFields));
+        Value result = new ValueDynamic(new ValueDynamicSource.Reg(obj), new Record(IOrderedMap.from(dynamicFields)));
         return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.ofValue(result)));
     }
 }

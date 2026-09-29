@@ -19,7 +19,6 @@ import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 
@@ -29,13 +28,10 @@ public record AspectConsumeDynamicTuple(Tuple type) implements AspectConsumeDyna
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
         var types = new TList<Type>(type.elements().size());
         for (var e : type.elements()) {
-            TupleElement.Dynamic d;
             switch (e) {
-                case TupleElement.Dynamic dyn -> d = dyn;
-                case TupleElement.EvalRes r ->
-                    throw new IllegalStateException("Tuple::jvmClass: self has non-Dynamic element");
+                case TupleElement.Dynamic d -> types.add(d.type());
+                case TupleElement.EvalRes held -> {}
             }
-            types.add(d.type());
         }
         var sortedTypes = Tuple.sortTupleTypes(xx, types);
         var klass = CompositeClassEmitter.getOrEmit(xx, sortedTypes);
@@ -54,9 +50,6 @@ public record AspectConsumeDynamicTuple(Tuple type) implements AspectConsumeDyna
         }
         if (!(someValue instanceof Tuple tuple)) {
             throw new IllegalStateException("Tuple::toDynamic: expected Tuple value, got " + someValue.getClass());
-        }
-        if (tuple.base().optIsSome()) {
-            return EResult.ok(cv);
         }
         var types = new TList<Type>(type.elements().size());
         for (var e : type.elements()) {
@@ -124,7 +117,7 @@ public record AspectConsumeDynamicTuple(Tuple type) implements AspectConsumeDyna
         var klass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortedTypes));
         var ctorDesc = CompositeClassEmitter.constructorDesc(xx, sortedTypes);
         var obj = b.newInstance(klass, ctorDesc, sortedRegs);
-        Value result = new Tuple(Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Reg(obj))), type.elements());
+        Value result = new ValueDynamic(new ValueDynamicSource.Reg(obj), new Tuple(type.elements()));
         return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.ofValue(result)));
     }
 }

@@ -23,7 +23,7 @@ public record AspectFunctionSourceRemote(TypeSourceRemote type) implements Aspec
         var argRes = SourceSpecs.argValue(loc, argument, "source.remote");
         if (argRes.hasErrors()) return argRes.reerr();
         var val = argRes.requireValue("source.remote arg");
-        if (!(val instanceof Tuple tuple) || tuple.base().optIsSome()) {
+        if (!(val instanceof Tuple tuple)) {
             return EResult.err(loc, "source.remote: expected a const tuple");
         }
         var elements = new TList<Value>(tuple.elements().size());

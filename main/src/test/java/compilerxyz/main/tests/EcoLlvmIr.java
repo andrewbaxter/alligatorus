@@ -72,6 +72,18 @@ public final class EcoLlvmIr {
         return bim0(e, e.mb.evalType(), "desc", ty);
     }
 
+    private record HostInt(String name, double min, double max) {}
+
+    private static final IList<HostInt> HOST_INTS = IList.of(
+            new HostInt("byte", -128, 127),
+            new HostInt("ubyte", 0, 255),
+            new HostInt("short", -32768, 32767),
+            new HostInt("ushort", 0, 65535),
+            new HostInt("int", -2147483648.0, 2147483647.0),
+            new HostInt("uint", 0, 4294967295.0),
+            new HostInt("long", -9223372036854775808.0, 9223372036854775807.0),
+            new HostInt("ulong", 0, 18446744073709551615.0));
+
     private static SourceExpr initMismatch(EcoMb e, SourceExpr st) {
         return throwErr(
                 e, loc(e), e.cat(e.s("cannot initialize llvm "), tyDesc(e, a(e, "ty")), e.s(" from "), tyDesc(e, st)));
@@ -363,6 +375,10 @@ public final class EcoLlvmIr {
             }
         }
         throw new IllegalArgumentException("no int type " + name);
+    }
+
+    private static SourceExpr lty(EcoMb e, String obj, SourceExpr arg) {
+        return e.mb.as(e.call(e.fld(e.v("k"), obj + "_new"), arg), ty(e));
     }
 
     private static SourceExpr reinterpret(EcoMb e, SourceExpr value, String obj) {
@@ -1172,7 +1188,7 @@ public final class EcoLlvmIr {
             defObj(e, x, "lloop_t", "llvm loop type", e.tup());
             defObj(e, x, "lref", "llvm reference", e.rec(e.p("ref", str(e))));
             defObj(e, x, "lgfn_t", "llvm global definition function", e.rec(e.p("kind", intT(e))));
-            defObj(e, x, "linit_fn_t", "llvm initializer renderer", e.rec(e.p("ty", ty(e))));
+            defObj(e, x, "linit_fn_t", "llvm initializer renderer", e.rec(e.p("ty", ty(e)), e.p("loc", locT(e))));
             defObj(e, x, "lt_global", "llvm global type", e.rec(e.p("base", ty(e)), e.p("mem", boolT(e))));
         }
         {
@@ -1792,25 +1808,6 @@ public final class EcoLlvmIr {
                     x,
                     "c_global_t",
                     body(e, e.ret(mk(e, "lt_global", e.p("base", a(e, "ty")), e.p("mem", a(e, "mem"))))));
-            for (var spec : INT_SPECS) {
-                fnDef(e, x, "c_" + spec.name(), e.tup(), ty(e));
-                fnImpl(e, x, "c_" + spec.name(), body(e, e.ret(intTy(e, spec.name()))));
-            }
-            for (var bits : new int[] {32, 64}) {
-                fnDef(e, x, "c_f" + bits, e.tup(), ty(e));
-                fnImpl(e, x, "c_f" + bits, body(e, e.ret(mk(e, "lt_float", e.p("bits", num(e, bits))))));
-            }
-            fnDef(e, x, "c_void", e.tup(), ty(e));
-            fnImpl(e, x, "c_void", body(e, e.ret(mkArg(e, "lt_void", e.tup()))));
-            fnDef(e, x, "c_loop", e.tup(), ty(e));
-            fnImpl(e, x, "c_loop", body(e, e.ret(mkArg(e, "lloop_t", e.tup()))));
-            fnDef(e, x, "c_null", e.tup(), t(e, "lref"));
-            fnImpl(e, x, "c_null", body(e, e.ret(mk(e, "lref", e.p("ref", e.s("null"))))));
-            var gfnKinds = new String[] {"global_fn", "global_const_fn", "constant_fn"};
-            for (int kind = 0; kind < gfnKinds.length; kind++) {
-                fnDef(e, x, "c_" + gfnKinds[kind], e.tup(), ty(e));
-                fnImpl(e, x, "c_" + gfnKinds[kind], body(e, e.ret(mk(e, "lgfn_t", e.p("kind", num(e, kind))))));
-            }
             fnDef(e, x, "c_ref", str(e), t(e, "lref"));
             fnImpl(e, x, "c_ref", body(e, e.ret(mk(e, "lref", e.p("ref", e.v("arg"))))));
         }
@@ -1844,6 +1841,26 @@ public final class EcoLlvmIr {
                                             loc(e),
                                             e.cat(e.s("llvm "), tyDesc(e, a(e, "ty")), e.s(" cannot be initialized")))),
                             e.ret(hf(e, "h_init_struct", e.v("arg")))));
+            SourceExpr anyHostInt = dfalse(e);
+            var hostIntFits = new TList<SourceExpr>();
+            for (var host : HOST_INTS) {
+                var isHost = isEqual(e, xx(e), e.mb.builtin("types", host.name()), e.v("st"));
+                anyHostInt = orB(e, isHost, anyHostInt);
+                hostIntFits.add(e.ifOnly(
+                        andB(
+                                e,
+                                isHost,
+                                orB(
+                                        e,
+                                        e.mb.operatorLt(e.n(host.min()), acc(e, xx(e), a(e, "ty"), "lint", "min")),
+                                        e.mb.operatorGt(e.n(host.max()), acc(e, xx(e), a(e, "ty"), "lint", "max")))),
+                        throwErr(
+                                e,
+                                loc(e),
+                                e.cat(
+                                        e.s("host " + host.name() + " values do not fit llvm "),
+                                        tyDesc(e, a(e, "ty"))))));
+            }
             fnImpl(
                     e,
                     x,
@@ -1876,7 +1893,8 @@ public final class EcoLlvmIr {
                                                     throwErr(e, loc(e), "integer initializer out of range")),
                                             e.let("s", toStr(e, e.v("l"))),
                                             retM(e, strCve(e, e.v("s"))))),
-                            e.ifOnly(e.not(isEqual(e, xx(e), e.mb.typesInt(), e.v("st"))), initMismatch(e, e.v("st"))),
+                            e.ifOnly(e.not(anyHostInt), initMismatch(e, e.v("st"))),
+                            e.seq(hostIntFits.toArray(SourceExpr[]::new)),
                             e.ret(hostCve(e, e.stage(toStr(e, graft(e, a(e, "cv"))))))));
             fnImpl(
                     e,
@@ -1997,7 +2015,7 @@ public final class EcoLlvmIr {
                             e.ifOnly(
                                     e.not(e.fld(lookup(e, xx(e), e.v("st"), aspIface(e, "iterable")), "is_some")),
                                     initMismatch(e, e.v("st"))),
-                            e.let("rty", mk(e, "linit_fn_t", e.p("ty", e.v("elem")))),
+                            e.let("rty", mk(e, "linit_fn_t", e.p("ty", e.v("elem")), e.p("loc", loc(e)))),
                             e.let("rref", mk(e, "lref", e.p("ref", e.s("init")))),
                             e.let("cstr", toStr(e, e.v("count"))),
                             e.ret(hostCve(
@@ -4620,7 +4638,20 @@ public final class EcoLlvmIr {
             x.add(e.implInterface(
                     e.v("linit_fn_t"),
                     aspIface(e, "function"),
-                    e.p("call", body(e, e.ret(tryEr(e, initFn(e, in(e, "ty"), a(e, "argument")), cveT(e))))),
+                    e.p(
+                            "call",
+                            body(
+                                    e,
+                                    e.ret(tryEr(
+                                            e,
+                                            hf(
+                                                    e,
+                                                    "h_init",
+                                                    e.p("xx", xx(e)),
+                                                    e.p("loc", in(e, "loc")),
+                                                    e.p("ty", in(e, "ty")),
+                                                    e.p("cv", a(e, "argument"))),
+                                            cveT(e))))),
                     e.p("exception_type", e.optionTypeLoweredNone())));
 
             x.add(e.implInterface(
@@ -4870,18 +4901,11 @@ public final class EcoLlvmIr {
                         e.callM(e.v("m"), "set_xx", e.v("ctx")),
                         e.ret(e.v("m"))))));
         x.add(e.finish(e.v("d")));
-        var exports = new TList<EcoMb.P>();
-        exports.add(e.p("new", e.fld(e.v("llvm_b"), "func")));
-        exports.add(e.p("mod_t", t(e, "lmod")));
-        exports.add(e.p("ref_t", t(e, "lref")));
-        exports.add(e.p("field_t", t(e, "lfield")));
-        for (var spec : INT_SPECS) exports.add(e.p(spec.name(), e.v("c_" + spec.name())));
-        for (var fn : new String[] {
-            "f32",
-            "f64",
-            "void",
-            "loop",
-            "null",
+        var passthrough = new String[] {
+            "new",
+            "mod_t",
+            "ref_t",
+            "field_t",
             "ptr",
             "array",
             "field",
@@ -4890,14 +4914,45 @@ public final class EcoLlvmIr {
             "fn_varargs",
             "range",
             "global_t",
-            "ref",
-            "global_fn",
-            "global_const_fn",
-            "constant_fn"
-        }) {
-            exports.add(e.p(fn, e.v("c_" + fn)));
+            "ref"
+        };
+        var defs = new TList<EcoMb.P>();
+        defs.add(e.p("new", e.fld(e.v("llvm_b"), "func")));
+        defs.add(e.p("mod_t", t(e, "lmod")));
+        defs.add(e.p("ref_t", t(e, "lref")));
+        defs.add(e.p("field_t", t(e, "lfield")));
+        for (var i = 4; i < passthrough.length; i++) defs.add(e.p(passthrough[i], e.v("c_" + passthrough[i])));
+        for (var obj : new String[] {"lt_int", "lt_float", "lt_void", "lloop_t", "lref", "lgfn_t"}) {
+            defs.add(e.p(obj + "_new", e.fld(e.v(obj), "new")));
         }
-        x.add(e.ret(e.rec(exports.toArray(EcoMb.P[]::new))));
-        return e.mb.seq(x);
+        x.add(e.ret(e.rec(defs.toArray(EcoMb.P[]::new))));
+        var top = new TList<SourceExpr>();
+        top.add(e.let("k", e.lower(e.mb.seq(x))));
+        var exports = new TList<EcoMb.P>();
+        for (var name : passthrough) exports.add(e.p(name, e.fld(e.v("k"), name)));
+        for (var spec : INT_SPECS) {
+            exports.add(e.p(
+                    spec.name(),
+                    lty(
+                            e,
+                            "lt_int",
+                            e.rec(
+                                    e.p("bits", num(e, spec.bits())),
+                                    e.p("signed", e.b(spec.signed())),
+                                    e.p("min", e.n(spec.min())),
+                                    e.p("max", e.n(spec.max()))))));
+        }
+        for (var bits : new int[] {32, 64}) {
+            exports.add(e.p("f" + bits, lty(e, "lt_float", e.rec(e.p("bits", num(e, bits))))));
+        }
+        exports.add(e.p("void", lty(e, "lt_void", e.tup())));
+        exports.add(e.p("loop", lty(e, "lloop_t", e.tup())));
+        exports.add(e.p("null", e.call(e.fld(e.v("k"), "lref_new"), e.rec(e.p("ref", e.s("null"))))));
+        var gfnKinds = new String[] {"global_fn", "global_const_fn", "constant_fn"};
+        for (int kind = 0; kind < gfnKinds.length; kind++) {
+            exports.add(e.p(gfnKinds[kind], lty(e, "lgfn_t", e.rec(e.p("kind", num(e, kind))))));
+        }
+        top.add(e.ret(e.rec(exports.toArray(EcoMb.P[]::new))));
+        return e.mb.seq(top);
     }
 }

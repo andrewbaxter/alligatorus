@@ -89,6 +89,8 @@ public record AspectFunctionFunctionMustReinterpretConst(TypeFunctionMustReinter
                             + "; only object-shaped targets are supported");
         }
         var b = new JavaBytecodeBuilder(loc);
+        var argumentAdd = b.addCode(loc, argument.code());
+        if (argumentAdd.optIsSome()) return EResult.errs(argumentAdd.optUnwrap());
         var out = b.checkcast(targetJvmClass, b.reg(sourceRegOpt.optUnwrap()));
         return EResult.ok(DynUtil.regToValue(b.code(), out, targetType));
     }

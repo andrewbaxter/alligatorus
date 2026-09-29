@@ -19,7 +19,6 @@ import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -41,9 +40,6 @@ public record TypeConstkeyDynamic() implements Aspect, Type {
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
             return Opt.some(new AspectInitialBindDynamicConstkeyDynamic(this));
-        }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicConstkeyDynamic(this));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(AspectConsumeDynamicConstkeyDynamic.INSTANCE);

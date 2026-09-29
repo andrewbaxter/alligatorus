@@ -19,7 +19,7 @@ public record EcoExtern(String name, IList<String> params, String ret, boolean v
 
     public static void bindTypes(EcoMb e, TList<SourceExpr> out, Llvm llvm) {
         for (var t : new String[] {"i1", "i8", "i32", "i64", "u8", "u32", "u64", "f32", "f64", "void"}) {
-            out.add(e.let("t_" + t, e.call(llvm.llvmField(t), e.tup())));
+            out.add(e.let("t_" + t, llvm.llvmField(t)));
         }
         out.add(e.let("t_pv", e.call(llvm.llvmField("ptr"), e.v("t_void"))));
         out.add(e.let("t_pu8", e.call(llvm.llvmField("ptr"), e.v("t_u8"))));

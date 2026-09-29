@@ -51,7 +51,7 @@ public final class BuiltinBodies {
     private BuiltinBodies() {}
 
     @BuiltinPath(value = "eval.codevalue_dynamic", scopeId = 5039L)
-    public static EResult<CodeValue> codevalueDynamic(ExprContext xx, QExprId loc, Code code, Type type) {
+    public static EResult<CodeValue> codevalueDynamic(QExprId loc, Code code, Type type) {
         var castRes = CodeDynamic.castOpt(loc, code);
         if (castRes.hasErrors()) return castRes.reerr();
         var dyn = castRes.requireValue("codevalue_dynamic code");
@@ -59,7 +59,7 @@ public final class BuiltinBodies {
         if (out.optIsNone()) {
             return EResult.err(loc, "codevalue_dynamic: code defines no value");
         }
-        return EResult.ok(DynUtil.regToTypedValue(xx, loc, dyn.optUnwrap(), out.optUnwrap(), type));
+        return EResult.ok(DynUtil.regToValue(dyn.optUnwrap(), out.optUnwrap(), type));
     }
 
     @BuiltinPath(value = "eval.value_dynamic", scopeId = 5040L)

@@ -8,13 +8,14 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.BindSubDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.RecordBindField;
+import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.GenAspectBind;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
@@ -29,33 +30,64 @@ public record AspectBindRecord(Record type) implements AspectBind {
         if (cv.value().optIsNone()) {
             throw new IllegalStateException("Record::bindSub: CodeValue has no value");
         }
-        if (!(cv.value().optUnwrap() instanceof Record record)) {
-            throw new IllegalStateException("Record::bindSub: expected Record value, got "
-                    + cv.value().optUnwrap().getClass());
-        }
         var carry = cv.code();
 
-        if (type.base().optIsSome()) {
-            Type recordType = type;
+        if (cv.value().optUnwrap() instanceof ValueDynamic vd) {
+            var recordType = MustCast.mustCast(Record.class, vd.type());
             var scopeFields = new TOrderedMap<ConstKey, RecordScopeField>();
-            for (var entry : type.fields()) {
-                RecordField.Dynamic d;
+            var heldBindCodes = new TList<Code>();
+            for (var entry : recordType.fields()) {
                 switch (entry.getValue()) {
-                    case RecordField.Dynamic df -> d = df;
-                    case RecordField.EvalRes er ->
-                        throw new IllegalStateException("Record::bindSub: bind on non-type record");
+                    case RecordField.Dynamic d ->
+                        scopeFields.put(entry.getKey(), new RecordScopeField.Dynamic(d.type()));
+                    case RecordField.EvalRes held -> {
+                        if (held.result().hasErrors()) {
+                            scopeFields.put(
+                                    entry.getKey(),
+                                    new RecordScopeField.Error(
+                                            held.result().errorsOpt().optUnwrap()));
+                            continue;
+                        }
+                        var heldCv = held.result().requireValue("Record::bindSub held field");
+                        var heldBindRes = GenAspectBind.get(
+                                xx, loc, heldCv.value().optUnwrap().valueType());
+                        if (heldBindRes.hasErrors()) {
+                            scopeFields.put(
+                                    entry.getKey(),
+                                    new RecordScopeField.Error(
+                                            heldBindRes.errorsOpt().optUnwrap()));
+                            continue;
+                        }
+                        var heldBound = heldBindRes
+                                .requireValue("Record::bindSub held AspectBind")
+                                .aspectBindBind(xx, loc, heldCv);
+                        if (heldBound.hasErrors()) {
+                            scopeFields.put(
+                                    entry.getKey(),
+                                    new RecordScopeField.Error(
+                                            heldBound.errorsOpt().optUnwrap()));
+                            continue;
+                        }
+                        var heldBinding = heldBound.requireValue("Record::bindSub held bind");
+                        heldBindCodes.add(heldBinding.code());
+                        scopeFields.put(entry.getKey(), new RecordScopeField.Scope(heldBinding.binding()));
+                    }
                 }
-                scopeFields.put(entry.getKey(), new RecordScopeField.Dynamic(d.type()));
             }
             var subBuilder = new JavaBytecodeBuilder(loc);
             var carryAdd = subBuilder.addCode(loc, carry);
             if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
-            var baseReg = DynUtil.sourceReg(subBuilder, type.base().optUnwrap().source());
+            var baseReg = DynUtil.sourceReg(subBuilder, vd.source());
             var sub = new BindSubDynamic(subBuilder.code(baseReg), recordType);
             var bound = jvmTarget.bindSlot(loc, sub);
-            return EResult.ok(
-                    new BindResult(Code.target(bound.code), new BindingRecord(scopeFields, Opt.some(bound.id))));
+            heldBindCodes.add(Code.target(bound.code));
+            var codeRes = xx.target.targetSeq(loc, heldBindCodes);
+            if (codeRes.hasErrors()) return codeRes.reerr();
+            return EResult.ok(new BindResult(
+                    codeRes.requireValue("Record::bindSub runtime codes"),
+                    new BindingRecord(scopeFields, Opt.some(bound.id))));
         }
+        var record = MustCast.mustCast(Record.class, cv.value().optUnwrap());
 
         TList<ExprErr> errors = null;
         record FieldBindResult(ConstKey key, Opt<BindSubDynamic> targetSub, Opt<CodeValue> constCv) {}

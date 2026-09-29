@@ -40,7 +40,7 @@ public final class AspectFunctionListJoinDynamic implements AspectFunction {
         var sep = b.reg(argRes.requireValue("toDynamic"));
         var list = b.reg(selfRes.requireValue("selfDyn"));
         var out = b.invokeStatic(stringName, "join", joinDesc, sep, list);
-        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), out, sepType));
+        return EResult.ok(DynUtil.regToValue(b.code(), out, sepType));
     }
 
     @Override

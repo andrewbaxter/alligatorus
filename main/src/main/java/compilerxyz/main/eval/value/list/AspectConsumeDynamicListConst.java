@@ -51,7 +51,7 @@ public record AspectConsumeDynamicListConst<T extends Type>(TypeListConst<T> typ
                 var carryRes = carry.addCode(loc, cv.code());
                 if (carryRes.optIsSome()) yield EResult.errs(carryRes.optUnwrap());
                 var list = carry.reg(spec.emitNew(xx, loc, dynamicElements));
-                yield EResult.ok(DynUtil.regToTypedValue(xx, loc, carry.code(), list, spec));
+                yield EResult.ok(DynUtil.regToValue(carry.code(), list, spec));
             }
             case TypeListBoxedDynamic<?> boxed -> {
                 var listName = JavaInternalName.fromClass(TList.class);
@@ -70,7 +70,7 @@ public record AspectConsumeDynamicListConst<T extends Type>(TypeListConst<T> typ
                 var list = b.newInstance(
                         listName, JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of()));
                 for (var reg : regs) b.invokeVirtualVoid(listName, "add", addDesc, list, reg);
-                yield EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), list, boxed));
+                yield EResult.ok(DynUtil.regToValue(b.code(), list, boxed));
             }
         };
     }

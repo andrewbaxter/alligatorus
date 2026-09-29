@@ -62,7 +62,7 @@ public record AspectFunctionInterfaceMethodDynamic(TypeInterfaceMethodDynamic ty
         if (!retDesc.value().equals(descObject.value())) {
             out = b.checkcast(retDesc, out);
         }
-        var hostRetCv = DynUtil.regToTypedValue(xx, loc, b.code(), out, hostRetType);
+        var hostRetCv = DynUtil.regToValue(b.code(), out, hostRetType);
         return Eval.typecheckConvert(xx, loc, retTypeVal, hostRetCv);
     }
 

@@ -54,7 +54,7 @@ public final class EcoSynth {
             ints[i] = bytes[i] & 0xFF;
         }
         ints[bytes.length] = 0;
-        defType(e, cx, bind + "_arr_t", EcoPipewire.byteArrayType(e, EcoExtern.Llvm.top(e), ints.length));
+        defType(e, cx, bind + "_arr_t", EcoPipewire.byteArrayType(e, EcoExtern.Llvm.top(e), e.intOf(ints.length)));
         defValue(
                 e,
                 cx,
@@ -65,7 +65,7 @@ public final class EcoSynth {
                                 e.p("name", e.s(globalName)),
                                 e.p("ty", e.v(bind + "_arr_t")),
                                 e.p("init", EcoPipewire.byteTuple(e, ints)))),
-                EcoPipewire.byteArrayConstType(e, EcoExtern.Llvm.top(e), ints.length));
+                EcoPipewire.byteArrayConstType(e, EcoExtern.Llvm.top(e), e.intOf(ints.length)));
     }
 
     private static void global(EcoMb e, Cx cx, String bind, String name, String type, SourceExpr init) {
@@ -159,8 +159,8 @@ public final class EcoSynth {
         for (var t : new String[] {"i1", "i8", "i32", "i64", "u8", "u32", "u64", "f32", "f64", "void", "pv", "pu8"}) {
             cx.exported().add("t_" + t);
         }
-        defType(e, cx, "global_fn", e.callM0(e.v("llvm"), "global_fn"));
-        defType(e, cx, "global_const_fn", e.callM0(e.v("llvm"), "global_const_fn"));
+        defType(e, cx, "global_fn", e.fld(e.v("llvm"), "global_fn"));
+        defType(e, cx, "global_const_fn", e.fld(e.v("llvm"), "global_const_fn"));
         defType(e, cx, "t_pf32", e.callM(e.v("llvm"), "ptr", e.v("t_f32")));
         defType(e, cx, "t_pu32", e.callM(e.v("llvm"), "ptr", e.v("t_u32")));
         defType(e, cx, "t_events", pwT(e, "pw_stream_events"));
@@ -170,7 +170,7 @@ public final class EcoSynth {
                 e,
                 cx,
                 "nullp",
-                e.callM(e.v("llvm"), "null", e.tup()),
+                e.fld(e.v("llvm"), "null"),
                 EcoExtern.globalT(e, EcoExtern.Llvm.top(e), e.v("t_pv"), false));
         defValue(
                 e,
@@ -178,7 +178,7 @@ public final class EcoSynth {
                 "range_u32",
                 e.callM(e.v("llvm"), "ref", e.s("range")),
                 e.callM(e.v("llvm"), "range", e.v("t_u32")));
-        defValue(e, cx, "loop", e.callM(e.v("llvm"), "ref", e.s("loop")), e.callM(e.v("llvm"), "loop", e.tup()));
+        defValue(e, cx, "loop", e.callM(e.v("llvm"), "ref", e.s("loop")), e.fld(e.v("llvm"), "loop"));
 
         for (var fn : new String[] {"sin", "exp2"}) {
             defValue(e, cx, fn, e.callM(e.v("c"), fn, e.tup()), e.callM(e.v("c"), fn + "_t", e.tup()));

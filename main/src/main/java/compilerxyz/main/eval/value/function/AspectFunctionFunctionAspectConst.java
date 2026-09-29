@@ -75,6 +75,8 @@ public record AspectFunctionFunctionAspectConst(TypeFunctionAspectConst type) im
         xx.vx.externals.add(uniqueEntry);
 
         var b = new JavaBytecodeBuilder(loc);
+        var argumentAdd = b.addCode(loc, argument.code());
+        if (argumentAdd.optIsSome()) return EResult.errs(argumentAdd.optUnwrap());
         var subject = b.reg(subjectDynRes.requireValue("aspect_lookup subject toDynamic"));
         var xxReg = b.reg(xxDynRes.requireValue("xxDyn"));
         var uniqueLoad = b.external(uniqueEntry);

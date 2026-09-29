@@ -8,7 +8,6 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamicReg;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.EvalRootEmitter;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
@@ -37,9 +36,9 @@ public final class TypeMethodShared {
             boolean needsEvalContext) {
         var receiverDynRes = DynUtil.valueReg(loc, self);
         if (receiverDynRes.hasErrors()) return receiverDynRes.reerr();
-        EResult<TList<CodeDynamicReg>> argsDynRes;
+        EResult<DynUtil.Positional> argsDynRes;
         if (DynUtil.zeroArgSignature(xx, argType)) {
-            argsDynRes = EResult.ok(new TList<>());
+            argsDynRes = EResult.ok(new DynUtil.Positional(Code.none(loc), new TList<>()));
         } else {
             var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
             if (convertedRes.hasErrors()) return convertedRes.reerr();
@@ -53,7 +52,10 @@ public final class TypeMethodShared {
         if (needsEvalContext) {
             regs.add(b.reg(EvalRootEmitter.loadEvalContext(loc, xx)));
         }
-        var args = argsDynRes.requireValue(what + "::call args");
+        var positional = argsDynRes.requireValue(what + "::call args");
+        var carryAdd = b.addCode(loc, positional.carry());
+        if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
+        var args = positional.args();
         var paramDescs = descriptor.argumentDescriptors();
         var paramOffset = needsEvalContext ? 1 : 0;
         for (int i = 0; i < args.size(); i++) {
@@ -77,6 +79,6 @@ public final class TypeMethodShared {
         if (ret.optIsNone() || out.optIsNone()) {
             return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
         }
-        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), out.optUnwrap(), ret.optUnwrap()));
+        return EResult.ok(DynUtil.regToValue(b.code(), out.optUnwrap(), ret.optUnwrap()));
     }
 }

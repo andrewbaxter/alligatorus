@@ -14,7 +14,6 @@ import compilerxyz.main.eval.binding.BindingValue;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectDynamicBoxed;
@@ -23,7 +22,6 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDynamicBoxed;
 import compilerxyz.main.gen.GenAspectRecord;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.IList;
@@ -202,10 +200,6 @@ public final class DynUtil {
     public static Opt<ValueDynamicSource> sourceOf(Value value) {
         return switch (value) {
             case ValueDynamic vd -> Opt.some(vd.source());
-            case Tuple tuple ->
-                tuple.base().optIsSome() ? Opt.some(tuple.base().optUnwrap().source()) : Opt.none();
-            case Record record ->
-                record.base().optIsSome() ? Opt.some(record.base().optUnwrap().source()) : Opt.none();
             default -> Opt.none();
         };
     }
@@ -301,18 +295,6 @@ public final class DynUtil {
         return regToValue(value.code(), value.reg(), type);
     }
 
-    public static CodeValue sourceToValue(CodeDynamic code, ValueDynamicSource source, Type type) {
-        return new CodeValue(Code.target(code), EvalOutcome.ofValue(new ValueDynamic(source, type)));
-    }
-
-    public static CodeValue regToTypedValue(
-            ExprContext xx, QExprId loc, CodeDynamic code, JavaBytecodeReg reg, Type type) {
-        var source = new ValueDynamicSource.Reg(reg);
-        var aspect = GenAspectStackValueDynamic.getMaybe(xx, type);
-        if (aspect.optIsSome()) return aspect.optUnwrap().aspectStackValueDynamicToValue(xx, loc, code, source);
-        return sourceToValue(code, source, type);
-    }
-
     public static EResult<CodeValue> dynamicSet(ExprContext xx, QExprId loc, CodeValue self, CodeValue value) {
         if (self.value().optIsNone()) {
             throw new IllegalStateException("dynamicSet called with absent value in self_");
@@ -356,7 +338,9 @@ public final class DynUtil {
         return false;
     }
 
-    public static EResult<TList<CodeDynamicReg>> destructurePositional(
+    public record Positional(Code carry, TList<CodeDynamicReg> args) {}
+
+    public static EResult<Positional> destructurePositional(
             ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
         var tupleOpt = GenAspectTuple.getMaybe(xx, argType);
         if (tupleOpt.optIsSome()) {
@@ -370,7 +354,9 @@ public final class DynUtil {
                 throw new IllegalStateException(
                         "DynUtil::destructurePositional: elementTypes/takeElements size mismatch");
             }
-            return destructureFromElements(xx, loc, elementTypes, elemCvs);
+            var tupleArgs = destructureFromElements(xx, loc, elementTypes, elemCvs);
+            if (tupleArgs.hasErrors()) return tupleArgs.reerr();
+            return EResult.ok(new Positional(converted.code(), tupleArgs.requireValue("tuple args")));
         }
         var recordOpt = GenAspectRecord.getMaybe(xx, argType);
         if (recordOpt.optIsSome()) {
@@ -399,11 +385,14 @@ public final class DynUtil {
                 var cvRes = cvResOpt.optUnwrap();
                 elemCvs.add(cvRes);
             }
-            return destructureFromElements(xx, loc, elemTypes, elemCvs);
+            var recordArgs = destructureFromElements(xx, loc, elemTypes, elemCvs);
+            if (recordArgs.hasErrors()) return recordArgs.reerr();
+            return EResult.ok(new Positional(converted.code(), recordArgs.requireValue("record args")));
         }
         var argDyn = materialize(xx, loc, converted);
         if (argDyn.hasErrors()) return argDyn.reerr();
-        return EResult.ok(TList.of(argDyn.requireValue("DynUtil::destructurePositional arg")));
+        return EResult.ok(
+                new Positional(Code.none(loc), TList.of(argDyn.requireValue("DynUtil::destructurePositional arg"))));
     }
 
     public record MethodRefArg(CodeValue receiver, CodeValue methodArgs) {}
@@ -412,7 +401,7 @@ public final class DynUtil {
             ExprContext xx, QExprId loc, Type argType, CodeValue argument, String desc) {
         if (zeroArgSignature(xx, argType)) {
             return EResult.ok(new MethodRefArg(
-                    argument, new CodeValue(Code.none(loc), EvalOutcome.ofValue(new Tuple(Opt.none(), IList.of())))));
+                    argument, new CodeValue(Code.none(loc), EvalOutcome.ofValue(new Tuple(IList.of())))));
         }
         if (argument.value().optIsNone()) {
             return EResult.err(loc, desc + ": argument has no compile-time value");
@@ -429,8 +418,12 @@ public final class DynUtil {
         }
         if (elemCvs.get(0).hasErrors()) return elemCvs.get(0).reerr();
         if (elemCvs.get(1).hasErrors()) return elemCvs.get(1).reerr();
+        var receiver = elemCvs.get(0).requireValue("DynUtil::methodRefSplitArgument receiver");
+        var receiverCode = Eval.codeConcat(xx, loc, argument.code(), receiver.code());
+        if (receiverCode.hasErrors()) return receiverCode.reerr();
         return EResult.ok(new MethodRefArg(
-                elemCvs.get(0).requireValue("DynUtil::methodRefSplitArgument receiver"),
+                new CodeValue(
+                        receiverCode.requireValue("DynUtil::methodRefSplitArgument receiver code"), receiver.outcome()),
                 elemCvs.get(1).requireValue("DynUtil::methodRefSplitArgument args")));
     }
 

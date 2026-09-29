@@ -29,7 +29,7 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectSet;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
+import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenOptions;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -87,8 +87,8 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
             return Opt.some(new AspectInitialBindDynamicOptionDynamic(this));
         }
-        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicOptionDynamic(this));
+        if (key.equals(GenAspectUnion.AspectId)) {
+            return Opt.some(new AspectUnionOptionDynamic<>(this));
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldOptionDynamic<>(this));

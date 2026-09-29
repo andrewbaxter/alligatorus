@@ -125,8 +125,7 @@ public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) impleme
             if (convOpt.optIsNone()) return EResult.errs(erb.errors());
             convertedFields.put(key, new RecordField.EvalRes(EResult.ok(convOpt.optUnwrap())));
         }
-        return EResult.ok(new CodeValue(
-                cv.code(), EvalOutcome.ofValue(new Record(Opt.none(), IOrderedMap.from(convertedFields)))));
+        return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(new Record(IOrderedMap.from(convertedFields)))));
     }
 
     @Override
