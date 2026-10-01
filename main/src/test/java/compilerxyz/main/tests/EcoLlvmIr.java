@@ -526,7 +526,84 @@ public final class EcoLlvmIr {
     }
 
     private static SourceExpr body(EcoMb e, SourceExpr... exprs) {
-        return e.mb.labeled("m", e.seq(exprs));
+        var seq = e.seq(exprs);
+        if (!returnsTo(seq, "m")) {
+            return seq;
+        }
+        return e.mb.labeled("m", seq);
+    }
+
+    private static boolean returnsTo(SourceExpr expr, String label) {
+        return switch (expr.variant()) {
+            case SourceExpr.As v -> returnsTo(v.base(), label) || returnsTo(v.target(), label);
+            case SourceExpr.Bind v -> returnsTo(v.value(), label);
+            case SourceExpr.Call v -> returnsTo(v.func(), label) || returnsTo(v.arg(), label);
+            case SourceExpr.Field v -> returnsTo(v.base(), label) || returnsTo(v.key(), label);
+            case SourceExpr.Foreach v ->
+                returnsTo(v.base(), label) || returnsTo(v.elementKey(), label) || returnsTo(v.body(), label);
+            case SourceExpr.Graft v -> returnsTo(v.expr(), label);
+            case SourceExpr.If v -> {
+                for (var branch : v.conditions()) {
+                    if (returnsTo(branch.condition(), label) || returnsTo(branch.body(), label)) {
+                        yield true;
+                    }
+                }
+                yield returnsToOpt(v.fallback(), label);
+            }
+            case SourceExpr.Labeled v -> !v.label().equals(label) && returnsTo(v.inner(), label);
+            case SourceExpr.Literal v -> false;
+            case SourceExpr.Lower v -> returnsTo(v.expr(), label);
+            case SourceExpr.Match v -> {
+                if (returnsTo(v.base(), label) || returnsTo(v.elementKey(), label)) {
+                    yield true;
+                }
+                for (var branch : v.cases()) {
+                    if (returnsTo(branch.condition(), label) || returnsTo(branch.body(), label)) {
+                        yield true;
+                    }
+                }
+                yield returnsToOpt(v.fallback(), label);
+            }
+            case SourceExpr.OperatorBinary v -> returnsTo(v.base(), label) || returnsTo(v.reference(), label);
+            case SourceExpr.OperatorUnary v -> returnsTo(v.base(), label);
+            case SourceExpr.Record v -> {
+                for (var entry : v.entries()) {
+                    if (returnsTo(entry.key(), label) || returnsTo(entry.value(), label)) {
+                        yield true;
+                    }
+                }
+                yield false;
+            }
+            case SourceExpr.Return v ->
+                (v.label() instanceof Opt.Some<String> l && l.value().equals(label)) || returnsToOpt(v.value(), label);
+            case SourceExpr.ScopeUse v -> returnsTo(v.key(), label);
+            case SourceExpr.Seq v -> returnsToAny(v.exprs(), label);
+            case SourceExpr.Set v -> returnsTo(v.base(), label) || returnsTo(v.value(), label);
+            case SourceExpr.Stage v -> returnsTo(v.expr(), label);
+            case SourceExpr.Try v -> {
+                if (returnsTo(v.body(), label) || returnsToOpt(v.finallyBlock(), label)) {
+                    yield true;
+                }
+                yield v.catchClause() instanceof Opt.Some<SourceExpr.TryCatch> c
+                        && (returnsTo(c.value().bindingName(), label)
+                                || returnsTo(c.value().exceptionType(), label)
+                                || returnsTo(c.value().body(), label));
+            }
+            case SourceExpr.Tuple v -> returnsToAny(v.exprs(), label);
+        };
+    }
+
+    private static boolean returnsToOpt(Opt<SourceExpr> expr, String label) {
+        return expr instanceof Opt.Some<SourceExpr> s && returnsTo(s.value(), label);
+    }
+
+    private static boolean returnsToAny(TList<SourceExpr> exprs, String label) {
+        for (var expr : exprs) {
+            if (returnsTo(expr, label)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static SourceExpr unwrapM(EcoMb e, SourceExpr res, SourceExpr retInner) {

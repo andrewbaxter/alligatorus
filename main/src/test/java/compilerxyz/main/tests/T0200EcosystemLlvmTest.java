@@ -31,8 +31,8 @@ public final class T0200EcosystemLlvmTest {
         var sw = new StringWriter();
         var writer = new JsonWriter(sw);
         writer.setSerializeNulls(true);
-        writer.setIndent("");
-        SourceModuleCodec.encode(writer, new SourceModule.V1(expr), Json.Style.COMPACT);
+        writer.setIndent("  ");
+        SourceModuleCodec.encode(writer, new SourceModule.V1(expr), Json.Style.PRETTY);
         writer.close();
         return sw.toString();
     }
