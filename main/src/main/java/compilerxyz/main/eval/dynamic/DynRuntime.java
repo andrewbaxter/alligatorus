@@ -13,9 +13,12 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
+import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.gen.GenAspectLift;
+import compilerxyz.main.gen.GenLists;
+import compilerxyz.main.gen.GenOptions;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
 import compilerxyz.prelude.util.Opt;
@@ -25,6 +28,16 @@ import java.util.Iterator;
 
 public final class DynRuntime {
     private DynRuntime() {}
+
+    @CodegenDescriptor
+    public static Type listType(ExprContext xx, Type elementType) {
+        return GenLists.listDynamic(xx, elementType);
+    }
+
+    @CodegenDescriptor
+    public static Type optionType(ExprContext xx, Type elementType) {
+        return GenOptions.optionDynamic(xx, elementType);
+    }
 
     @CodegenDescriptor
     public static EResult<ArtifactExporter> sourceObjectExporter(Object self, ExprContext xx, QExprId loc) {

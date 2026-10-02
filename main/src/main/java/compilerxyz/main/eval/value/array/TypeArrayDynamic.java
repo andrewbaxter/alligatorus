@@ -1,6 +1,13 @@
 package compilerxyz.main.eval.value.array;
 
+import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ArtifactIdSource;
+import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
@@ -20,6 +27,7 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.int_.TypeIntDynamic;
+import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -28,17 +36,22 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectIterable;
+import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.IMap;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
+import java.util.function.Function;
 import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6461L)
 public final class TypeArrayDynamic<T extends Type> implements Aspect, Type {
 
     public final T elementType;
+    public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
 
     public TypeArrayDynamic(T elementType) {
         this.elementType = elementType;
@@ -76,6 +89,13 @@ public final class TypeArrayDynamic<T extends Type> implements Aspect, Type {
         }
         if (key.equals(GenAspectBindDynamic.AspectId)) {
             return Opt.some(new AspectBindDynamicArrayDynamic<>(this));
+        }
+        if (key.equals(GenAspectLift.AspectId)) {
+            return switch (GenAspectLift.getMaybe(xx, elementType)) {
+                case Opt.Some<AspectLift> elementLift ->
+                    Opt.some(new AspectLiftArrayDynamic<>(this, elementLift.value()));
+                case Opt.None<AspectLift> none -> Opt.none();
+            };
         }
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(new AspectBindArrayDynamic<>(this));
@@ -189,6 +209,25 @@ public final class TypeArrayDynamic<T extends Type> implements Aspect, Type {
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+        return EResult.ok(ExporterRoot.ARRAY_DYNAMIC);
     }
+
+    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+            var array = MustCast.mustCast(TypeArrayDynamic.class, self);
+            return TypeArrayConst.exportType(xx, loc, array.artifactIdCell, array.elementType, makeBody);
+        }
+
+        @Override
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            return TypeArrayConst.importType(xx, loc, id, data, (elementType, idValue) -> {
+                var out = new TypeArrayDynamic<>(elementType);
+                out.artifactIdCell.set(idValue);
+                return out;
+            });
+        }
+    };
 }

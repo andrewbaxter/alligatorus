@@ -176,10 +176,11 @@ public final class JavaBytecodeBuilder {
     }
 
     public JavaBytecodeReg newObjectArray(TList<JavaBytecodeReg> elements) {
-        return insn(
-                new JavaBytecodeInsnBody.ArrayNew(JvmConstants.INTNAME_OBJECT),
-                new JavaDataDescriptor("[" + JvmConstants.DESC_OBJECT.value),
-                elements);
+        return newArray(JvmConstants.DESC_OBJECT, elements);
+    }
+
+    public JavaBytecodeReg newArray(JavaDataDescriptor element, TList<JavaBytecodeReg> elements) {
+        return insn(new JavaBytecodeInsnBody.ArrayNew(element), element.arrayOf(), elements);
     }
 
     public Opt<JavaBytecodeReg> invoke(

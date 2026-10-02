@@ -1,7 +1,5 @@
 package compilerxyz.main.eval.dynamic;
 
-import static org.objectweb.asm.Opcodes.AASTORE;
-import static org.objectweb.asm.Opcodes.ANEWARRAY;
 import static org.objectweb.asm.Opcodes.ASTORE;
 import static org.objectweb.asm.Opcodes.ATHROW;
 import static org.objectweb.asm.Opcodes.DUP;
@@ -652,13 +650,13 @@ public final class JavaBytecodeSequence implements JavaBytecode {
             }
             case JavaBytecodeInsnBody.ArrayNew an -> {
                 segs.get(0).add(intConst(argc));
-                segs.get(0).add(new TypeInsnNode(ANEWARRAY, an.elementClass().value));
+                segs.get(0).add(an.element().arrayNewInsn());
                 for (int i = 0; i < argc; i++) {
-                    if (i > 0) segs.get(i).add(new InsnNode(AASTORE));
+                    if (i > 0) segs.get(i).add(new InsnNode(an.element().arrayStoreOpcode()));
                     segs.get(i).add(new InsnNode(DUP));
                     segs.get(i).add(intConst(i));
                 }
-                if (argc > 0) segs.get(argc).add(new InsnNode(AASTORE));
+                if (argc > 0) segs.get(argc).add(new InsnNode(an.element().arrayStoreOpcode()));
             }
         }
         cache.put(index, segs);
@@ -745,7 +743,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                                                     "var " + v.opcode() + " #" + v.index();
                                                 case JavaBytecodeInsnBody.New nw -> "new " + nw.klass();
                                                 case JavaBytecodeInsnBody.ArrayNew an ->
-                                                    "newarray " + an.elementClass();
+                                                    "newarray " + an.element().value;
                                                 case JavaBytecodeInsnBody.External e ->
                                                     "external "
                                                             + e.entry()

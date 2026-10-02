@@ -30,8 +30,10 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
+import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectIterable;
+import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -89,6 +91,15 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
         }
         if (key.equals(GenAspectDynamicConst.AspectId)) {
             return Opt.some(new AspectDynamicConstMapDynamic<>(this));
+        }
+        if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
+            return Opt.some(new AspectFieldUseDynamicMapDynamic<>(this));
+        }
+        if (key.equals(GenAspectLift.AspectId)) {
+            var keyLift = GenAspectLift.getMaybe(xx, keyType);
+            var valueLift = GenAspectLift.getMaybe(xx, valueType);
+            if (keyLift.optIsNone() || valueLift.optIsNone()) return Opt.none();
+            return Opt.some(new AspectLiftMapDynamic<>(this, keyLift.optUnwrap(), valueLift.optUnwrap()));
         }
         return Opt.none();
     }

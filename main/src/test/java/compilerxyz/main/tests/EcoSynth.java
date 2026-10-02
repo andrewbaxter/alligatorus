@@ -3,7 +3,6 @@ package compilerxyz.main.tests;
 import compilerxyz.main.syntax.SourceExpr;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.TList;
-import java.nio.charset.StandardCharsets;
 
 public final class EcoSynth {
     private EcoSynth() {}
@@ -44,9 +43,8 @@ public final class EcoSynth {
         cx.fields().add(e.p(name, typeExpr));
     }
 
-    private static void defValue(EcoMb e, Cx cx, String name, SourceExpr value, SourceExpr typeExpr) {
-        defType(e, cx, name + "_t", typeExpr);
-        cx.top().add(e.let(name, e.mb.as(value, Refs.top(e).refsRef(name + "_t"))));
+    private static void defValue(EcoMb e, Cx cx, String name, SourceExpr value) {
+        cx.top().add(e.let(name, value));
     }
 
     private static SourceExpr callFn(EcoMb e, String fn, SourceExpr arg) {
@@ -61,30 +59,12 @@ public final class EcoSynth {
         return e.call(e.lower(ty(e, Refs.top(e), type)), value);
     }
 
-    private static SourceExpr as(EcoMb e, SourceExpr value, String type) {
-        return e.mb.as(value, e.lower(ty(e, Refs.top(e), type)));
-    }
-
     private static SourceExpr set(EcoMb e, SourceExpr base, SourceExpr value) {
         return e.mb.set(base, value);
     }
 
-    private static void cstr(EcoMb e, Cx cx, String bind, String globalName, String content) {
-        var terminated = content + "\0";
-        var length = terminated.getBytes(StandardCharsets.UTF_8).length;
-        var top = Refs.top(e);
-        defType(e, cx, bind + "_arr_t", EcoPipewire.byteArrayType(e, EcoExtern.Llvm.top(e), e.intOf(length)));
-        defValue(
-                e,
-                cx,
-                bind,
-                e.call(
-                        e.mb.as(top.refsRef("ll"), e.fld(top.refsRef("llvm"), "global_const_fn")),
-                        e.rec(
-                                e.p("name", e.s(globalName)),
-                                e.p("ty", top.refsRef(bind + "_arr_t")),
-                                e.p("init", e.s(terminated)))),
-                EcoPipewire.byteArrayConstType(e, EcoExtern.Llvm.top(e), e.intOf(length)));
+    private static void cstr(EcoMb e, Cx cx, String bind, String content) {
+        defValue(e, cx, bind, e.callM(Refs.top(e).refsRef("ll"), "cstr", e.s(content)));
     }
 
     private static void global(EcoMb e, Cx cx, String bind, String name, String type, SourceExpr init) {
@@ -94,43 +74,46 @@ public final class EcoSynth {
                 cx,
                 bind,
                 e.call(
-                        e.mb.as(top.refsRef("ll"), e.fld(top.refsRef("llvm"), "global_fn")),
-                        e.rec(e.p("name", e.s(name)), e.p("ty", ty(e, top, type)), e.p("init", init))),
-                EcoExtern.globalT(e, EcoExtern.Llvm.top(e), ty(e, Refs.setup(e), type), true));
+                        e.fld(Refs.top(e).refsRef("llvm"), "global_fn"),
+                        e.rec(
+                                e.p("mod", top.refsRef("ll")),
+                                e.p("name", e.s(name)),
+                                e.p("ty", ty(e, top, type)),
+                                e.p("init", init))));
     }
 
     private static void func(
             EcoMb e, Cx cx, String name, String[] paramNames, String[] paramTypes, String ret, SourceExpr body) {
         var top = Refs.top(e);
         var setup = Refs.setup(e);
-        var fields = new TList<SourceExpr>();
+        var names = new TList<SourceExpr>();
         var types = new TList<SourceExpr>();
         for (int i = 0; i < paramNames.length; i++) {
-            fields.add(e.callM(
-                    top.refsRef("llvm"),
-                    "field",
-                    e.rec(e.p("name", e.s(paramNames[i])), e.p("ty", ty(e, top, paramTypes[i])))));
+            names.add(e.s(paramNames[i]));
             types.add(ty(e, setup, paramTypes[i]));
         }
-        var fnType = e.callM(
-                e.v("llvm"),
-                "fn",
-                e.rec(
-                        e.p("params", e.listNew(e.mb.evalType(), types.toArray(SourceExpr[]::new))),
-                        e.p("ret", ty(e, setup, ret))));
+        defType(
+                e,
+                cx,
+                name + "_fn_t",
+                e.callM(
+                        e.v("llvm"),
+                        "fn",
+                        e.rec(
+                                e.p("params", e.listNew(e.mb.evalType(), types.toArray(SourceExpr[]::new))),
+                                e.p("ret", ty(e, setup, ret)))));
         defValue(
                 e,
                 cx,
                 name,
-                e.callM(
-                        top.refsRef("ll"),
-                        "func",
+                e.call(
+                        e.fld(Refs.top(e).refsRef("llvm"), "func_fn"),
                         e.rec(
+                                e.p("mod", top.refsRef("ll")),
                                 e.p("name", e.s(name)),
-                                e.p("params", e.listNew(e.mb.evalValue(), fields.toArray(SourceExpr[]::new))),
-                                e.p("ret", ty(e, top, ret)),
-                                e.p("body", e.stage(body)))),
-                EcoExtern.globalT(e, EcoExtern.Llvm.top(e), fnType, false));
+                                e.p("params", e.tup(names.toArray(SourceExpr[]::new))),
+                                e.p("ty", top.refsRef(name + "_fn_t")),
+                                e.p("body", e.stage(body)))));
     }
 
     private static void events(EcoMb e, Cx cx, String bind, String name, String process) {
@@ -157,12 +140,12 @@ public final class EcoSynth {
                 cx,
                 bind,
                 e.call(
-                        e.mb.as(top.refsRef("ll"), e.fld(top.refsRef("llvm"), "global_const_fn")),
+                        e.fld(Refs.top(e).refsRef("llvm"), "global_const_fn"),
                         e.rec(
+                                e.p("mod", top.refsRef("ll")),
                                 e.p("name", e.s(name)),
                                 e.p("ty", top.refsRef("t_events")),
-                                e.p("init", e.rec(fields.toArray(EcoMb.P[]::new))))),
-                EcoExtern.globalT(e, EcoExtern.Llvm.top(e), e.callM(e.v("llvm"), "ptr", e.v("t_events")), false));
+                                e.p("init", e.rec(fields.toArray(EcoMb.P[]::new))))));
     }
 
     private static SourceExpr pwT(EcoMb e, Refs refs, String name) {
@@ -181,27 +164,51 @@ public final class EcoSynth {
         setup.add(e.let("t_events", pwT(e, Refs.setup(e), "pw_stream_events")));
         for (var n : new String[] {"llvm", "ll", "c", "pw", "t_pv", "t_events"})
             cx.fields().add(e.p(n, e.v(n)));
-        defType(e, cx, "t_pu8", e.callM(e.v("llvm"), "ptr", e.fld(e.v("llvm"), "u8")));
-        defType(e, cx, "t_pf32", e.callM(e.v("llvm"), "ptr", e.fld(e.v("llvm"), "f32")));
-        defType(e, cx, "t_pu32", e.callM(e.v("llvm"), "ptr", e.fld(e.v("llvm"), "u32")));
-        defType(e, cx, "t_pseq", e.callM(e.v("llvm"), "ptr", pwT(e, Refs.setup(e), "spa_pod_sequence")));
-        defType(e, cx, "t_pctl", e.callM(e.v("llvm"), "ptr", pwT(e, Refs.setup(e), "spa_pod_control")));
-        defValue(
-                e,
-                cx,
-                "nullp",
-                e.fld(Refs.top(e).refsRef("llvm"), "null"),
-                EcoExtern.globalT(e, EcoExtern.Llvm.top(e), e.v("t_pv"), false));
+        for (var stream : new String[] {"audio", "midi"}) {
+            var payload =
+                    stream.equals("audio") ? e.fld(e.v("llvm"), "f32") : pwT(e, Refs.setup(e), "spa_pod_sequence");
+            setup.add(e.let(
+                    "t_buf_" + stream,
+                    e.callM(e.v("pw"), "buffer_t", e.rec(e.p("name", e.s(stream)), e.p("payload", payload)))));
+            for (var op : new String[] {"dequeue", "queue"}) {
+                defType(
+                        e,
+                        cx,
+                        op + "_" + stream + "_fn_t",
+                        e.callM(e.v("pw"), op + "_buffer_t", e.v("t_buf_" + stream)));
+                defValue(
+                        e,
+                        cx,
+                        op + "_" + stream,
+                        e.call(
+                                e.fld(Refs.top(e).refsRef("llvm"), "extern_fn"),
+                                e.rec(
+                                        e.p("mod", Refs.top(e).refsRef("ll")),
+                                        e.p("name", e.s("pw_stream_" + op + "_buffer")),
+                                        e.p("ty", Refs.top(e).refsRef(op + "_" + stream + "_fn_t")))));
+            }
+        }
+        defType(e, cx, "t_range_u32", e.callM(e.v("llvm"), "range", e.fld(e.v("llvm"), "u32")));
+        defValue(e, cx, "nullp", e.callM(Refs.top(e).refsRef("ll"), "null", e.tup()));
         defValue(
                 e,
                 cx,
                 "range_u32",
-                e.callM(Refs.top(e).refsRef("llvm"), "ref", e.s("range")),
-                e.callM(e.v("llvm"), "range", e.fld(e.v("llvm"), "u32")));
-        defValue(e, cx, "loop", e.callM(Refs.top(e).refsRef("llvm"), "ref", e.s("loop")), e.fld(e.v("llvm"), "loop"));
+                e.call(
+                        e.fld(Refs.top(e).refsRef("llvm"), "ref_fn"),
+                        e.rec(e.p("ref", e.s("range")), e.p("ty", Refs.top(e).refsRef("t_range_u32")))));
+        defValue(
+                e,
+                cx,
+                "loop",
+                e.call(
+                        e.fld(Refs.top(e).refsRef("llvm"), "ref_fn"),
+                        e.rec(
+                                e.p("ref", e.s("loop")),
+                                e.p("ty", e.fld(Refs.top(e).refsRef("llvm"), "loop")))));
 
         for (var fn : new String[] {"sin", "exp2"}) {
-            defValue(e, cx, fn, e.callM(Refs.top(e).refsRef("c"), fn, e.tup()), e.callM(e.v("c"), fn + "_t", e.tup()));
+            defValue(e, cx, fn, e.callM(Refs.top(e).refsRef("c"), fn, e.tup()));
         }
         for (var fn : new String[] {
             "pw_init",
@@ -212,8 +219,6 @@ public final class EcoSynth {
             "pw_main_loop_destroy",
             "pw_stream_new_simple",
             "pw_stream_connect",
-            "pw_stream_dequeue_buffer",
-            "pw_stream_queue_buffer",
             "pw_properties_new",
             "direction_input",
             "direction_output",
@@ -225,7 +230,7 @@ public final class EcoSynth {
             "params_audio",
             "params_midi"
         }) {
-            defValue(e, cx, fn, pwT(e, Refs.top(e), fn), pwT(e, Refs.setup(e), fn + "_t"));
+            defValue(e, cx, fn, pwT(e, Refs.top(e), fn));
         }
 
         global(e, cx, "g_phase", "g_phase", "t_f64", e.n(0));
@@ -235,17 +240,17 @@ public final class EcoSynth {
         global(e, cx, "g_audio_stream", "g_audio_stream", "t_pv", e.v("nullp"));
         global(e, cx, "g_midi_stream", "g_midi_stream", "t_pv", e.v("nullp"));
 
-        cstr(e, cx, "s_media_type", "s.media_type", "media.type");
-        cstr(e, cx, "s_audio", "s.audio", "Audio");
-        cstr(e, cx, "s_media_category", "s.media_category", "media.category");
-        cstr(e, cx, "s_playback", "s.playback", "Playback");
-        cstr(e, cx, "s_media_role", "s.media_role", "media.role");
-        cstr(e, cx, "s_music", "s.music", "Music");
-        cstr(e, cx, "s_midi", "s.midi", "Midi");
-        cstr(e, cx, "s_capture", "s.capture", "Capture");
-        cstr(e, cx, "s_dsp", "s.dsp", "DSP");
-        cstr(e, cx, "s_aname", "s.aname", "atsynth-out");
-        cstr(e, cx, "s_mname", "s.mname", "atsynth-midi-in");
+        cstr(e, cx, "s_media_type", "media.type");
+        cstr(e, cx, "s_audio", "Audio");
+        cstr(e, cx, "s_media_category", "media.category");
+        cstr(e, cx, "s_playback", "Playback");
+        cstr(e, cx, "s_media_role", "media.role");
+        cstr(e, cx, "s_music", "Music");
+        cstr(e, cx, "s_midi", "Midi");
+        cstr(e, cx, "s_capture", "Capture");
+        cstr(e, cx, "s_dsp", "DSP");
+        cstr(e, cx, "s_aname", "atsynth-out");
+        cstr(e, cx, "s_mname", "atsynth-midi-in");
 
         func(
                 e,
@@ -255,14 +260,14 @@ public final class EcoSynth {
                 new String[] {"t_pv"},
                 "t_void",
                 e.seq(
-                        e.let("buf", callFn(e, "pw_stream_dequeue_buffer", lo(e, "g_audio_stream"))),
+                        e.let("buf", callFn(e, "dequeue_audio", lo(e, "g_audio_stream"))),
                         e.ifOnly(
                                 e.mb.operatorNe(e.v("buf"), lo(e, "nullp")),
                                 e.seq(
-                                        e.let("datas", e.fld(e.fld(e.v("buf"), "buffer"), "datas")),
-                                        e.let("dst", e.fld(e.v("datas"), "data")),
+                                        e.let("datas", e.fld(e.v("buf"), "buffer", "datas")),
+                                        e.let("out", e.fld(e.v("datas"), "data")),
                                         e.ifOnly(
-                                                e.mb.operatorNe(e.v("dst"), lo(e, "nullp")),
+                                                e.mb.operatorNe(e.v("out"), lo(e, "nullp")),
                                                 e.seq(
                                                         e.let(
                                                                 "maxframes",
@@ -281,7 +286,6 @@ public final class EcoSynth {
                                                                         e.mb.operatorGt(e.v("n0"), e.v("maxframes")),
                                                                         e.v("maxframes"),
                                                                         e.v("n0"))),
-                                                        e.let("out", as(e, e.v("dst"), "t_pf32")),
                                                         e.foreach(
                                                                 callFn(e, "range_u32", e.v("n")),
                                                                 "i",
@@ -320,8 +324,58 @@ public final class EcoSynth {
                                                                 e.fld(e.v("chunk"), "size"),
                                                                 e.mb.operatorMul(e.v("n"), e.n(4))),
                                                         set(e, e.fld(e.v("chunk"), "stride"), e.n(4)))),
-                                        callFn(e, "pw_stream_queue_buffer", lo(e, "g_audio_stream"), e.v("buf"))))));
+                                        callFn(e, "queue_audio", lo(e, "g_audio_stream"), e.v("buf"))))));
 
+        var midiEvent = e.ifElse(
+                e.eq(e.v("ctype"), lo(e, "control_midi")),
+                e.seq(
+                        e.let("d", e.fld(e.v("c"), "body")),
+                        set(e, e.v("st"), e.mb.operatorAnd(conv(e, "t_u32", e.mb.field(e.v("d"), e.n(0))), e.n(240))),
+                        set(e, e.v("note"), conv(e, "t_u32", e.mb.field(e.v("d"), e.n(1)))),
+                        set(e, e.v("vel"), conv(e, "t_u32", e.mb.field(e.v("d"), e.n(2)))),
+                        set(e, e.v("have"), e.n(1))),
+                e.ifOnly(
+                        e.eq(e.v("ctype"), lo(e, "control_ump")),
+                        e.seq(
+                                e.let("w", e.mb.field(e.fld(e.v("c"), "words"), e.n(0))),
+                                e.ifOnly(
+                                        e.eq(e.mb.operatorShr(e.v("w"), e.n(28)), e.n(2)),
+                                        e.seq(
+                                                set(
+                                                        e,
+                                                        e.v("st"),
+                                                        e.mb.operatorAnd(
+                                                                e.mb.operatorShr(e.v("w"), e.n(16)), e.n(240))),
+                                                set(
+                                                        e,
+                                                        e.v("note"),
+                                                        e.mb.operatorAnd(e.mb.operatorShr(e.v("w"), e.n(8)), e.n(127))),
+                                                set(e, e.v("vel"), e.mb.operatorAnd(e.v("w"), e.n(127))),
+                                                set(e, e.v("have"), e.n(1)))))));
+        var noteEvent = e.ifOnly(
+                e.mb.operatorNe(e.v("have"), e.n(0)),
+                e.ifElse(
+                        e.mb.operatorAnd(e.eq(e.v("st"), e.n(144)), e.mb.operatorNe(e.v("vel"), e.n(0))),
+                        e.seq(
+                                set(
+                                        e,
+                                        lo(e, "g_inc"),
+                                        e.mb.operatorMul(
+                                                callFn(
+                                                        e,
+                                                        "exp2",
+                                                        e.mb.operatorDiv(
+                                                                e.mb.operatorSub(
+                                                                        conv(e, "t_f64", e.v("note")), e.n(69)),
+                                                                e.n(12))),
+                                                e.n(TWO_PI * 440.0 / RATE))),
+                                set(e, lo(e, "g_note"), e.v("note")),
+                                set(e, lo(e, "g_gate"), e.n(AMP))),
+                        e.ifOnly(
+                                e.mb.operatorOr(
+                                        e.eq(e.v("st"), e.n(128)),
+                                        e.mb.operatorAnd(e.eq(e.v("st"), e.n(144)), e.eq(e.v("vel"), e.n(0)))),
+                                e.ifOnly(e.eq(e.v("note"), lo(e, "g_note")), set(e, lo(e, "g_gate"), e.n(0))))));
         func(
                 e,
                 cx,
@@ -330,468 +384,73 @@ public final class EcoSynth {
                 new String[] {"t_pv"},
                 "t_void",
                 e.seq(
-                        e.let("buf", callFn(e, "pw_stream_dequeue_buffer", lo(e, "g_midi_stream"))),
+                        e.let("buf", callFn(e, "dequeue_midi", lo(e, "g_midi_stream"))),
                         e.ifOnly(
                                 e.mb.operatorNe(e.v("buf"), lo(e, "nullp")),
                                 e.seq(
-                                        e.let("pod", e.fld(e.fld(e.fld(e.v("buf"), "buffer"), "datas"), "data")),
+                                        e.let("seqp", e.fld(e.v("buf"), "buffer", "datas", "data")),
                                         e.ifOnly(
-                                                e.mb.operatorNe(e.v("pod"), lo(e, "nullp")),
-                                                e.seq(
-                                                        e.let("seqp", as(e, e.v("pod"), "t_pseq")),
-                                                        e.ifOnly(
-                                                                e.eq(
-                                                                        e.fld(e.fld(e.v("seqp"), "pod"), "type"),
-                                                                        lo(e, "pod_type_sequence")),
-                                                                e.seq(
-                                                                        e.let(
-                                                                                "end",
-                                                                                e.mb.operatorAdd(
-                                                                                        as(e, e.v("pod"), "t_pu8"),
-                                                                                        e.mb.operatorAdd(
-                                                                                                e.fld(
-                                                                                                        e.fld(
-                                                                                                                e.v(
-                                                                                                                        "seqp"),
-                                                                                                                "pod"),
-                                                                                                        "size"),
-                                                                                                e.n(8)))),
-                                                                        e.let(
-                                                                                "c",
-                                                                                as(
-                                                                                        e,
-                                                                                        e.mb.operatorAdd(
-                                                                                                e.v("seqp"), e.n(1)),
-                                                                                        "t_pctl")),
-                                                                        e.mb.labeled(
-                                                                                "scan",
-                                                                                e.foreach(
-                                                                                        lo(e, "loop"),
-                                                                                        "_",
-                                                                                        e.seq(
-                                                                                                e.ifOnly(
-                                                                                                        e.mb.operatorGt(
-                                                                                                                e.mb
-                                                                                                                        .operatorAdd(
-                                                                                                                                as(
-                                                                                                                                        e,
-                                                                                                                                        e
-                                                                                                                                                .v(
-                                                                                                                                                        "c"),
-                                                                                                                                        "t_pu8"),
-                                                                                                                                e
-                                                                                                                                        .n(
-                                                                                                                                                16)),
-                                                                                                                e.v(
-                                                                                                                        "end")),
+                                                e.mb.operatorNe(e.v("seqp"), lo(e, "nullp")),
+                                                e.ifOnly(
+                                                        e.eq(
+                                                                e.fld(e.v("seqp"), "pod", "type"),
+                                                                lo(e, "pod_type_sequence")),
+                                                        e.seq(
+                                                                e.let("end", e.fld(e.v("seqp"), "next")),
+                                                                e.let("c", e.fld(e.v("seqp"), "controls")),
+                                                                e.mb.labeled(
+                                                                        "scan",
+                                                                        e.foreach(
+                                                                                lo(e, "loop"),
+                                                                                "_",
+                                                                                e.seq(
+                                                                                        e.ifOnly(
+                                                                                                e.mb.operatorGt(
                                                                                                         e.mb
-                                                                                                                .returnLabel(
-                                                                                                                        "scan")),
-                                                                                                e.let(
-                                                                                                        "st",
-                                                                                                        conv(
-                                                                                                                e,
-                                                                                                                "t_u32",
-                                                                                                                e.n(
-                                                                                                                        0))),
-                                                                                                e.let(
-                                                                                                        "note",
-                                                                                                        conv(
-                                                                                                                e,
-                                                                                                                "t_u32",
-                                                                                                                e.n(
-                                                                                                                        0))),
-                                                                                                e.let(
-                                                                                                        "vel",
-                                                                                                        conv(
-                                                                                                                e,
-                                                                                                                "t_u32",
-                                                                                                                e.n(
-                                                                                                                        0))),
-                                                                                                e.let(
-                                                                                                        "have",
-                                                                                                        conv(
-                                                                                                                e,
-                                                                                                                "t_u32",
-                                                                                                                e.n(
-                                                                                                                        0))),
-                                                                                                e.let(
-                                                                                                        "ctype",
-                                                                                                        e.fld(
-                                                                                                                e.v(
-                                                                                                                        "c"),
-                                                                                                                "type")),
-                                                                                                e.let(
-                                                                                                        "vsize",
-                                                                                                        e.fld(
-                                                                                                                e.fld(
+                                                                                                                .operatorAdd(
                                                                                                                         e
                                                                                                                                 .v(
                                                                                                                                         "c"),
-                                                                                                                        "value"),
-                                                                                                                "size")),
-                                                                                                e.ifElse(
-                                                                                                        e.eq(
-                                                                                                                e.v(
-                                                                                                                        "ctype"),
-                                                                                                                lo(
-                                                                                                                        e,
-                                                                                                                        "control_midi")),
-                                                                                                        e.seq(
-                                                                                                                e.let(
-                                                                                                                        "d",
-                                                                                                                        e
-                                                                                                                                .mb
-                                                                                                                                .operatorAdd(
-                                                                                                                                        as(
-                                                                                                                                                e,
-                                                                                                                                                e
-                                                                                                                                                        .v(
-                                                                                                                                                                "c"),
-                                                                                                                                                "t_pu8"),
-                                                                                                                                        e
-                                                                                                                                                .n(
-                                                                                                                                                        16))),
-                                                                                                                set(
-                                                                                                                        e,
-                                                                                                                        e
-                                                                                                                                .v(
-                                                                                                                                        "st"),
-                                                                                                                        e
-                                                                                                                                .mb
-                                                                                                                                .operatorAnd(
-                                                                                                                                        conv(
-                                                                                                                                                e,
-                                                                                                                                                "t_u32",
-                                                                                                                                                e
-                                                                                                                                                        .mb
-                                                                                                                                                        .field(
-                                                                                                                                                                e
-                                                                                                                                                                        .v(
-                                                                                                                                                                                "d"),
-                                                                                                                                                                e
-                                                                                                                                                                        .n(
-                                                                                                                                                                                0))),
-                                                                                                                                        e
-                                                                                                                                                .n(
-                                                                                                                                                        240))),
-                                                                                                                set(
-                                                                                                                        e,
-                                                                                                                        e
-                                                                                                                                .v(
-                                                                                                                                        "note"),
-                                                                                                                        conv(
-                                                                                                                                e,
-                                                                                                                                "t_u32",
-                                                                                                                                e
-                                                                                                                                        .mb
-                                                                                                                                        .field(
-                                                                                                                                                e
-                                                                                                                                                        .v(
-                                                                                                                                                                "d"),
-                                                                                                                                                e
-                                                                                                                                                        .n(
-                                                                                                                                                                1)))),
-                                                                                                                set(
-                                                                                                                        e,
-                                                                                                                        e
-                                                                                                                                .v(
-                                                                                                                                        "vel"),
-                                                                                                                        conv(
-                                                                                                                                e,
-                                                                                                                                "t_u32",
-                                                                                                                                e
-                                                                                                                                        .mb
-                                                                                                                                        .field(
-                                                                                                                                                e
-                                                                                                                                                        .v(
-                                                                                                                                                                "d"),
-                                                                                                                                                e
-                                                                                                                                                        .n(
-                                                                                                                                                                2)))),
-                                                                                                                set(
-                                                                                                                        e,
-                                                                                                                        e
-                                                                                                                                .v(
-                                                                                                                                        "have"),
                                                                                                                         e
                                                                                                                                 .n(
-                                                                                                                                        1))),
-                                                                                                        e.ifOnly(
-                                                                                                                e.eq(
-                                                                                                                        e
-                                                                                                                                .v(
-                                                                                                                                        "ctype"),
-                                                                                                                        lo(
-                                                                                                                                e,
-                                                                                                                                "control_ump")),
-                                                                                                                e.seq(
-                                                                                                                        e
-                                                                                                                                .let(
-                                                                                                                                        "w",
-                                                                                                                                        e
-                                                                                                                                                .mb
-                                                                                                                                                .field(
-                                                                                                                                                        as(
-                                                                                                                                                                e,
-                                                                                                                                                                e
-                                                                                                                                                                        .mb
-                                                                                                                                                                        .operatorAdd(
-                                                                                                                                                                                as(
-                                                                                                                                                                                        e,
-                                                                                                                                                                                        e
-                                                                                                                                                                                                .v(
-                                                                                                                                                                                                        "c"),
-                                                                                                                                                                                        "t_pu8"),
-                                                                                                                                                                                e
-                                                                                                                                                                                        .n(
-                                                                                                                                                                                                16)),
-                                                                                                                                                                "t_pu32"),
-                                                                                                                                                        e
-                                                                                                                                                                .n(
-                                                                                                                                                                        0))),
-                                                                                                                        e
-                                                                                                                                .ifOnly(
-                                                                                                                                        e
-                                                                                                                                                .eq(
-                                                                                                                                                        e
-                                                                                                                                                                .mb
-                                                                                                                                                                .operatorShr(
-                                                                                                                                                                        e
-                                                                                                                                                                                .v(
-                                                                                                                                                                                        "w"),
-                                                                                                                                                                        e
-                                                                                                                                                                                .n(
-                                                                                                                                                                                        28)),
-                                                                                                                                                        e
-                                                                                                                                                                .n(
-                                                                                                                                                                        2)),
-                                                                                                                                        e
-                                                                                                                                                .seq(
-                                                                                                                                                        set(
-                                                                                                                                                                e,
-                                                                                                                                                                e
-                                                                                                                                                                        .v(
-                                                                                                                                                                                "st"),
-                                                                                                                                                                e
-                                                                                                                                                                        .mb
-                                                                                                                                                                        .operatorAnd(
-                                                                                                                                                                                e
-                                                                                                                                                                                        .mb
-                                                                                                                                                                                        .operatorShr(
-                                                                                                                                                                                                e
-                                                                                                                                                                                                        .v(
-                                                                                                                                                                                                                "w"),
-                                                                                                                                                                                                e
-                                                                                                                                                                                                        .n(
-                                                                                                                                                                                                                16)),
-                                                                                                                                                                                e
-                                                                                                                                                                                        .n(
-                                                                                                                                                                                                240))),
-                                                                                                                                                        set(
-                                                                                                                                                                e,
-                                                                                                                                                                e
-                                                                                                                                                                        .v(
-                                                                                                                                                                                "note"),
-                                                                                                                                                                e
-                                                                                                                                                                        .mb
-                                                                                                                                                                        .operatorAnd(
-                                                                                                                                                                                e
-                                                                                                                                                                                        .mb
-                                                                                                                                                                                        .operatorShr(
-                                                                                                                                                                                                e
-                                                                                                                                                                                                        .v(
-                                                                                                                                                                                                                "w"),
-                                                                                                                                                                                                e
-                                                                                                                                                                                                        .n(
-                                                                                                                                                                                                                8)),
-                                                                                                                                                                                e
-                                                                                                                                                                                        .n(
-                                                                                                                                                                                                127))),
-                                                                                                                                                        set(
-                                                                                                                                                                e,
-                                                                                                                                                                e
-                                                                                                                                                                        .v(
-                                                                                                                                                                                "vel"),
-                                                                                                                                                                e
-                                                                                                                                                                        .mb
-                                                                                                                                                                        .operatorAnd(
-                                                                                                                                                                                e
-                                                                                                                                                                                        .v(
-                                                                                                                                                                                                "w"),
-                                                                                                                                                                                e
-                                                                                                                                                                                        .n(
-                                                                                                                                                                                                127))),
-                                                                                                                                                        set(
-                                                                                                                                                                e,
-                                                                                                                                                                e
-                                                                                                                                                                        .v(
-                                                                                                                                                                                "have"),
-                                                                                                                                                                e
-                                                                                                                                                                        .n(
-                                                                                                                                                                                1))))))),
-                                                                                                e.ifOnly(
-                                                                                                        e.mb.operatorNe(
-                                                                                                                e.v(
-                                                                                                                        "have"),
-                                                                                                                e.n(0)),
-                                                                                                        e.ifElse(
-                                                                                                                e.mb
-                                                                                                                        .operatorAnd(
-                                                                                                                                e
-                                                                                                                                        .eq(
-                                                                                                                                                e
-                                                                                                                                                        .v(
-                                                                                                                                                                "st"),
-                                                                                                                                                e
-                                                                                                                                                        .n(
-                                                                                                                                                                144)),
-                                                                                                                                e
-                                                                                                                                        .mb
-                                                                                                                                        .operatorNe(
-                                                                                                                                                e
-                                                                                                                                                        .v(
-                                                                                                                                                                "vel"),
-                                                                                                                                                e
-                                                                                                                                                        .n(
-                                                                                                                                                                0))),
-                                                                                                                e.seq(
-                                                                                                                        set(
-                                                                                                                                e,
-                                                                                                                                lo(
-                                                                                                                                        e,
-                                                                                                                                        "g_inc"),
-                                                                                                                                e
-                                                                                                                                        .mb
-                                                                                                                                        .operatorMul(
-                                                                                                                                                callFn(
-                                                                                                                                                        e,
-                                                                                                                                                        "exp2",
-                                                                                                                                                        e
-                                                                                                                                                                .mb
-                                                                                                                                                                .operatorDiv(
-                                                                                                                                                                        e
-                                                                                                                                                                                .mb
-                                                                                                                                                                                .operatorSub(
-                                                                                                                                                                                        conv(
-                                                                                                                                                                                                e,
-                                                                                                                                                                                                "t_f64",
-                                                                                                                                                                                                e
-                                                                                                                                                                                                        .v(
-                                                                                                                                                                                                                "note")),
-                                                                                                                                                                                        e
-                                                                                                                                                                                                .n(
-                                                                                                                                                                                                        69)),
-                                                                                                                                                                        e
-                                                                                                                                                                                .n(
-                                                                                                                                                                                        12))),
-                                                                                                                                                e
-                                                                                                                                                        .n(
-                                                                                                                                                                TWO_PI
-                                                                                                                                                                        * 440.0
-                                                                                                                                                                        / RATE))),
-                                                                                                                        set(
-                                                                                                                                e,
-                                                                                                                                lo(
-                                                                                                                                        e,
-                                                                                                                                        "g_note"),
-                                                                                                                                e
-                                                                                                                                        .v(
-                                                                                                                                                "note")),
-                                                                                                                        set(
-                                                                                                                                e,
-                                                                                                                                lo(
-                                                                                                                                        e,
-                                                                                                                                        "g_gate"),
-                                                                                                                                e
-                                                                                                                                        .n(
-                                                                                                                                                AMP))),
-                                                                                                                e
-                                                                                                                        .ifOnly(
-                                                                                                                                e
-                                                                                                                                        .mb
-                                                                                                                                        .operatorOr(
-                                                                                                                                                e
-                                                                                                                                                        .eq(
-                                                                                                                                                                e
-                                                                                                                                                                        .v(
-                                                                                                                                                                                "st"),
-                                                                                                                                                                e
-                                                                                                                                                                        .n(
-                                                                                                                                                                                128)),
-                                                                                                                                                e
-                                                                                                                                                        .mb
-                                                                                                                                                        .operatorAnd(
-                                                                                                                                                                e
-                                                                                                                                                                        .eq(
-                                                                                                                                                                                e
-                                                                                                                                                                                        .v(
-                                                                                                                                                                                                "st"),
-                                                                                                                                                                                e
-                                                                                                                                                                                        .n(
-                                                                                                                                                                                                144)),
-                                                                                                                                                                e
-                                                                                                                                                                        .eq(
-                                                                                                                                                                                e
-                                                                                                                                                                                        .v(
-                                                                                                                                                                                                "vel"),
-                                                                                                                                                                                e
-                                                                                                                                                                                        .n(
-                                                                                                                                                                                                0)))),
-                                                                                                                                e
-                                                                                                                                        .ifOnly(
-                                                                                                                                                e
-                                                                                                                                                        .eq(
-                                                                                                                                                                e
-                                                                                                                                                                        .v(
-                                                                                                                                                                                "note"),
-                                                                                                                                                                lo(
-                                                                                                                                                                        e,
-                                                                                                                                                                        "g_note")),
-                                                                                                                                                set(
-                                                                                                                                                        e,
-                                                                                                                                                        lo(
-                                                                                                                                                                e,
-                                                                                                                                                                "g_gate"),
-                                                                                                                                                        e
-                                                                                                                                                                .n(
-                                                                                                                                                                        0)))))),
-                                                                                                set(
-                                                                                                        e,
+                                                                                                                                        1)),
+                                                                                                        e.v("end")),
+                                                                                                e.mb.returnLabel(
+                                                                                                        "scan")),
+                                                                                        e.let(
+                                                                                                "st",
+                                                                                                conv(
+                                                                                                        e, "t_u32",
+                                                                                                        e.n(0))),
+                                                                                        e.let(
+                                                                                                "note",
+                                                                                                conv(
+                                                                                                        e, "t_u32",
+                                                                                                        e.n(0))),
+                                                                                        e.let(
+                                                                                                "vel",
+                                                                                                conv(
+                                                                                                        e, "t_u32",
+                                                                                                        e.n(0))),
+                                                                                        e.let(
+                                                                                                "have",
+                                                                                                conv(
+                                                                                                        e, "t_u32",
+                                                                                                        e.n(0))),
+                                                                                        e.let(
+                                                                                                "ctype",
+                                                                                                e.fld(
                                                                                                         e.v("c"),
-                                                                                                        as(
-                                                                                                                e,
-                                                                                                                e.mb
-                                                                                                                        .operatorAdd(
-                                                                                                                                as(
-                                                                                                                                        e,
-                                                                                                                                        e
-                                                                                                                                                .v(
-                                                                                                                                                        "c"),
-                                                                                                                                        "t_pu8"),
-                                                                                                                                e
-                                                                                                                                        .mb
-                                                                                                                                        .operatorAdd(
-                                                                                                                                                e
-                                                                                                                                                        .mb
-                                                                                                                                                        .operatorAnd(
-                                                                                                                                                                e
-                                                                                                                                                                        .mb
-                                                                                                                                                                        .operatorAdd(
-                                                                                                                                                                                e
-                                                                                                                                                                                        .v(
-                                                                                                                                                                                                "vsize"),
-                                                                                                                                                                                e
-                                                                                                                                                                                        .n(
-                                                                                                                                                                                                7)),
-                                                                                                                                                                e
-                                                                                                                                                                        .n(
-                                                                                                                                                                                4294967288.0)),
-                                                                                                                                                e
-                                                                                                                                                        .n(
-                                                                                                                                                                16))),
-                                                                                                                "t_pctl"))))))))),
-                                        callFn(e, "pw_stream_queue_buffer", lo(e, "g_midi_stream"), e.v("buf"))))));
+                                                                                                        "type")),
+                                                                                        midiEvent,
+                                                                                        noteEvent,
+                                                                                        set(
+                                                                                                e,
+                                                                                                e.v("c"),
+                                                                                                e.fld(
+                                                                                                        e.v("c"),
+                                                                                                        "next")))))))),
+                                        callFn(e, "queue_midi", lo(e, "g_midi_stream"), e.v("buf"))))));
 
         events(e, cx, "g_audio_events", "pw.events.audio", "on_process");
         events(e, cx, "g_midi_events", "pw.events.midi", "on_midi");

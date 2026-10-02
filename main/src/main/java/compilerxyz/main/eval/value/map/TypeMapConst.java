@@ -16,9 +16,18 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
+import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.gen.GenAspectArtifact;
+import compilerxyz.main.gen.GenAspectBind;
+import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDynamicConst;
+import compilerxyz.main.gen.GenAspectField;
+import compilerxyz.main.gen.GenAspectIterable;
+import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactMapTypeCodec;
+import compilerxyz.main.gen.codec.ArtifactMapValueCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -49,10 +58,85 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
         if (key.equals(GenTrivialIdentityAspects.TYPE_MAP_CONST_IDENTITY)) {
             return Opt.some(this);
         }
+        if (key.equals(GenAspectField.AspectId)) {
+            return Opt.some(new AspectFieldMapConst<>(this));
+        }
+        if (key.equals(GenAspectIterable.AspectId)) {
+            return Opt.some(new AspectIterableMapConst<>(this));
+        }
+        if (key.equals(GenAspectConsumeDynamic.AspectId)) {
+            return Opt.some(new AspectConsumeDynamicMapConst<>(this));
+        }
+        if (key.equals(GenAspectBind.AspectId)) {
+            return Opt.some(new AspectBindMapConst<>(this));
+        }
+        if (key.equals(GenAspectArtifact.AspectId)) {
+            return Opt.some(AspectArtifactMapConst.INSTANCE);
+        }
+        if (key.equals(GenAspectPostDeserialize.AspectId)) {
+            return Opt.some(PostDeserializeIdentity.INSTANCE);
+        }
         return Opt.none();
     }
 
+    static TList<MapConstEntry> entriesOf(Value value) {
+        return MustCast.mustCast(ValueMapConst.class, value).entries();
+    }
+
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+            var value = MustCast.mustCast(ValueMapConst.class, self);
+            var map = value.type();
+            var erb = new Erb(loc);
+            var keyTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, map.keyType));
+            var valueTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, map.valueType));
+            var entryArts = new TList<ArtifactMapEntry>();
+            for (var entry : entriesOf(value)) {
+                var keyArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, entry.key()));
+                var valueArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, entry.value()));
+                if (keyArt.optIsSome() && valueArt.optIsSome()) {
+                    entryArts.add(new ArtifactMapEntry(keyArt.optUnwrap(), valueArt.optUnwrap()));
+                }
+            }
+            if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+            var body = new ArtifactMapValue(keyTypeArt.optUnwrap(), valueTypeArt.optUnwrap(), entryArts);
+            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactMapValueCodec.toValue(body))));
+        }
+
+        @Override
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            ArtifactMapValue body;
+            try {
+                body = ArtifactMapValueCodec.fromValue(data);
+            } catch (RuntimeException e) {
+                return EResult.err(loc, "TypeMapConst data: failed to parse ArtifactMapValue: " + e.getMessage());
+            }
+            var erb = new Erb(loc);
+            var keyType = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.keyType()));
+            var valueType = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.valueType()));
+            var entries = new TList<MapConstEntry>(body.entries().size());
+            for (var entryArt : body.entries()) {
+                var key = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, entryArt.key()));
+                var value = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, entryArt.value()));
+                if (key.optIsSome() && value.optIsSome()) {
+                    entries.add(new MapConstEntry(
+                            ArtifactSupport.importedAsValue(key.optUnwrap()),
+                            ArtifactSupport.importedAsValue(value.optUnwrap())));
+                }
+            }
+            if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+            return EResult.ok(new ValueMapConst<>(
+                    new TypeMapConst<>(
+                            MustCast.mustCast(Type.class, keyType.optUnwrap()),
+                            MustCast.mustCast(Type.class, valueType.optUnwrap())),
+                    entries));
+        }
+    };
+
+    public static final ExporterRootDelegate TYPE_DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
@@ -134,17 +218,16 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return false;
+        return new TypeMapDynamic<>(keyType, valueType).typeIsEqual(xx, destType);
     }
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-        throw new UnsupportedOperationException(
-                getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+        return new AspectConsumeDynamicMapConst<>(this).aspectConsumeDynamicToDynamic(xx, loc, cv);
     }
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.MAP_CONST);
+        return EResult.ok(ExporterRoot.MAP_CONST_TYPE);
     }
 }

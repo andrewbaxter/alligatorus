@@ -62,7 +62,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 19;
+    private static final int SCHEMA_VERSION = 20;
 
     private final Connection conn;
     private final Object dbLock = new Object();

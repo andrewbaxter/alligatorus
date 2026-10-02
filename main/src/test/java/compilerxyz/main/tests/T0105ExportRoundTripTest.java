@@ -10,6 +10,7 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public final class T0105ExportRoundTripTest {
@@ -320,5 +321,170 @@ public final class T0105ExportRoundTripTest {
                         e.mb.log(),
                         e.callM(e.mb.as(e.fld(e.v("r"), "inst"), e.fld(e.v("r"), "obj_t")), "name", e.tup())));
         assertEquals(TList.of("from-func", "inst-name"), compileLogs(e, lib, main));
+    }
+
+    private static SourceExpr loweredLib(EcoMb e, SourceExpr value) {
+        return e.lower(e.seq(e.let("v", value), e.ret(e.rec(e.p("v", e.v("v"))))));
+    }
+
+    @Test
+    public void test01300LoweredListRoundTrips() {
+        var e = new EcoMb();
+        var lib = loweredLib(e, e.listNew(e.mb.typesString(), e.dstr("a"), e.dstr("b")));
+        var main = e.seq(importLib(e), e.foreach(e.fld(e.v("r"), "v"), "x", e.call(e.mb.log(), e.v("x"))));
+        assertEquals(TList.of("a", "b"), compileLogs(e, lib, main));
+    }
+
+    @Test
+    public void test01400LoweredMapRoundTrips() {
+        var e = new EcoMb();
+        var lib = loweredLib(e, e.mapNew(e.mb.typesString(), e.mb.typesString(), e.p("k", e.dstr("map-value"))));
+        var main = e.seq(importLib(e), e.call(e.mb.log(), e.callM(e.fld(e.v("r"), "v"), "get", e.dstr("k"))));
+        assertEquals(TList.of("map-value"), compileLogs(e, lib, main));
+    }
+
+    private static SourceExpr optionArms(EcoMb e, SourceExpr base) {
+        return e.matchOf(
+                base,
+                "x",
+                Opt.none(),
+                e.p("some", e.call(e.mb.log(), e.v("x"))),
+                e.p("none", e.call(e.mb.log(), e.s("none"))));
+    }
+
+    @Test
+    public void test01500LoweredOptionSomeRoundTrips() {
+        var e = new EcoMb();
+        var lib = loweredLib(e, e.optSome(e.mb.typesString(), e.dstr("opt-value")));
+        var main = e.seq(importLib(e), optionArms(e, e.fld(e.v("r"), "v")));
+        assertEquals(TList.of("opt-value"), compileLogs(e, lib, main));
+    }
+
+    @Test
+    public void test01600LoweredOptionNoneRoundTrips() {
+        var e = new EcoMb();
+        var lib = loweredLib(e, e.optNone(e.mb.typesString()));
+        var main = e.seq(importLib(e), optionArms(e, e.fld(e.v("r"), "v")));
+        assertEquals(TList.of("none"), compileLogs(e, lib, main));
+    }
+
+    @Test
+    public void test01700LoweredSpecializedOptionRoundTrips() {
+        var e = new EcoMb();
+        var lib = loweredLib(e, e.optSome(e.mb.typesInt(), e.intOf(7)));
+        var main = e.seq(
+                importLib(e),
+                e.matchOf(
+                        e.fld(e.v("r"), "v"),
+                        "x",
+                        Opt.none(),
+                        e.p("some", e.call(e.mb.log(), e.toStr(e.v("x")))),
+                        e.p("none", e.call(e.mb.log(), e.s("none")))));
+        assertEquals(TList.of("7"), compileLogs(e, lib, main));
+    }
+
+    @Test
+    public void test01800LoweredEResultRoundTrips() {
+        var e = new EcoMb();
+        var lib = loweredLib(e, e.eresultOk(e.mb.typesString(), e.dstr("ok-value")));
+        var main = e.seq(
+                importLib(e),
+                e.matchOf(
+                        e.fld(e.v("r"), "v"),
+                        "x",
+                        Opt.none(),
+                        e.p("ok", e.call(e.mb.log(), e.v("x"))),
+                        e.p("errs", e.call(e.mb.log(), e.s("errs")))));
+        assertEquals(TList.of("ok-value"), compileLogs(e, lib, main));
+    }
+
+    @Test
+    public void test01850LoweredEResultErrsRoundTrips() {
+        var e = new EcoMb();
+        var lib = loweredLib(
+                e,
+                e.eresultErr(
+                        e.mb.typesString(),
+                        e.call(e.evalBuiltin("expr_loc"), e.stage(e.s("anywhere"))),
+                        e.dstr("lib-error")));
+        var main = e.seq(
+                importLib(e),
+                e.matchOf(
+                        e.fld(e.v("r"), "v"),
+                        "x",
+                        Opt.none(),
+                        e.p("ok", e.call(e.mb.log(), e.v("x"))),
+                        e.p(
+                                "errs",
+                                e.foreach(
+                                        e.v("x"),
+                                        "err",
+                                        e.call(e.mb.log(), e.callM(e.v("err"), "message", e.tup()))))));
+        var logs = compileLogs(e, lib, main);
+        assertEquals(1, logs.size(), () -> "unexpected: " + logs);
+        Assertions.assertTrue(logs.get(0).endsWith("] lib-error"), () -> "unexpected: " + logs);
+    }
+
+    @Test
+    public void test01900LoweredArrayRoundTrips() {
+        var e = new EcoMb();
+        var lib = loweredLib(e, e.call(e.mb.evalStrUtf8(), e.dstr("hé")));
+        var main = e.seq(
+                importLib(e),
+                e.call(e.mb.log(), e.toStr(e.fld(e.v("r"), "v", "len"))),
+                e.foreach(e.fld(e.v("r"), "v"), "b", e.call(e.mb.log(), e.toStr(e.v("b")))));
+        assertEquals(TList.of("3", "104", "-61", "-87"), compileLogs(e, lib, main));
+    }
+
+    @Test
+    public void test02000InstanceWithContainerFieldsRoundTrips() {
+        var e = new EcoMb();
+        var strT = e.mb.typesString();
+        var fields = e.rec(
+                e.p("l", e.listType(strT)),
+                e.p("m", e.mapType(strT, strT)),
+                e.p("o", e.call(e.mb.typesOption(), strT)));
+        var lib = e.seq(
+                e.let(
+                        "k",
+                        e.lower(defsetLib(
+                                e,
+                                e.let("obj", e.defObject(e.v("d"), "holder")),
+                                e.objectImpl(e.v("obj"), fields),
+                                e.methodImpl(
+                                        e.v("obj"),
+                                        "l",
+                                        e.mb.tupleOf(),
+                                        e.retSome(e.listType(strT)),
+                                        e.stage(e.fld(e.v("inner"), "l"))),
+                                e.methodImpl(
+                                        e.v("obj"),
+                                        "m",
+                                        e.mb.tupleOf(),
+                                        e.retSome(e.mapType(strT, strT)),
+                                        e.stage(e.fld(e.v("inner"), "m"))),
+                                e.methodImpl(
+                                        e.v("obj"),
+                                        "o",
+                                        e.mb.tupleOf(),
+                                        e.retSome(e.call(e.mb.typesOption(), strT)),
+                                        e.stage(e.fld(e.v("inner"), "o"))),
+                                e.finish(e.v("d")),
+                                e.ret(e.rec(e.p("obj_new", e.fld(e.v("obj"), "new"))))))),
+                e.ret(e.rec(e.p(
+                        "inst",
+                        e.call(
+                                e.fld(e.v("k"), "obj_new"),
+                                e.rec(
+                                        e.p("l", e.listNew(strT, e.dstr("l0"))),
+                                        e.p("m", e.mapNew(strT, strT, e.p("mk", e.dstr("m0")))),
+                                        e.p("o", e.optSome(strT, e.dstr("o0")))))))));
+        var inst = e.fld(e.v("r"), "inst");
+        var main = e.seq(
+                importLib(e),
+                e.foreach(e.callM(inst, "l", e.tup()), "x", e.call(e.mb.log(), e.v("x"))),
+                e.call(e.mb.log(), e.callM(e.callM(inst, "m", e.tup()), "get", e.dstr("mk"))),
+                optionArms(e, e.callM(inst, "o", e.tup())));
+        assertEquals(TList.of("l0", "m0", "o0"), compileLogs(e, lib, main));
     }
 }

@@ -18,12 +18,14 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -103,6 +105,13 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
         }
         if (key.equals(GenAspectSet.AspectId)) {
             return Opt.some(new AspectSetOptionDynamic(this));
+        }
+        if (key.equals(GenAspectLift.AspectId)) {
+            return switch (GenAspectLift.getMaybe(xx, elementType)) {
+                case Opt.Some<AspectLift> elementLift ->
+                    Opt.some(new AspectLiftOptionSpecializedDynamic<>(this, elementLift.value()));
+                case Opt.None<AspectLift> none -> Opt.none();
+            };
         }
         if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
             return Opt.some(new AspectFieldUseDynamicOptionDynamic(this));

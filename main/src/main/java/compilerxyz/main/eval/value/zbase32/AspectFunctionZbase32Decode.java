@@ -13,6 +13,7 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.value.byte_.TypeByteConst;
 import compilerxyz.main.eval.value.byte_.TypeByteDynamic;
 import compilerxyz.main.eval.value.list.TypeListConst;
+import compilerxyz.main.eval.value.list.ValueListConst;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectStringConst;
@@ -48,11 +49,11 @@ public final class AspectFunctionZbase32Decode implements AspectFunction {
             for (var b : bytes) {
                 elements.add(new ValueObjectConst(new TypeByteConst(), b));
             }
-            var listType = new TypeListConst(new TypeByteDynamic());
+            var listType = new TypeListConst<>(new TypeByteDynamic());
             var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
             if (concatRes.hasErrors()) return concatRes.reerr();
             return EResult.ok(new CodeValue(
-                    concatRes.requireValue("concat"), EvalOutcome.ofValue(new ValueObjectConst(listType, elements))));
+                    concatRes.requireValue("concat"), EvalOutcome.ofValue(new ValueListConst<>(listType, elements))));
         }
         if (GenAspectStringDynamic.getMaybe(xx, argType).optIsSome()) {
             var argRes = DynUtil.materialize(xx, loc, argument);

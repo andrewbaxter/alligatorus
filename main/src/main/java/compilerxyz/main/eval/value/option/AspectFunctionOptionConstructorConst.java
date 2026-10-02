@@ -7,9 +7,11 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectType;
+import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenOptions;
 import compilerxyz.prelude.util.Opt;
 
@@ -24,6 +26,9 @@ public final class AspectFunctionOptionConstructorConst implements AspectFunctio
             return EResult.err(loc, "TypeOptionConstructorConst::call: argument must have a compile-time value");
         }
         var argValue = argument.value().optUnwrap();
+        if (DynUtil.valueIsRuntime(argValue)) {
+            return DynUtil.typeConstructRuntime(xx, loc, self, argument, GenCodegenDescriptors.DYN_RUNTIME_OPTION_TYPE);
+        }
         var argMeta = argValue.valueType();
         var aspectTypeRes = GenAspectType.get(xx, loc, argMeta);
         if (aspectTypeRes.hasErrors()) return aspectTypeRes.reerr();

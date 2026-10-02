@@ -26,6 +26,7 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDynamicBoxed;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
+import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
@@ -270,6 +271,22 @@ public final class DynUtil {
     public static boolean dynamicHasCode(CodeValue cv) {
         if (!cv.code().codeIsNone()) return true;
         return cv.value().optIsSome() && cv.value().optUnwrap() instanceof ValueDynamic;
+    }
+
+    public static EResult<CodeValue> typeConstructRuntime(
+            ExprContext xx, QExprId loc, CodeValue self, CodeValue argument, JavaStaticMethodRef construct) {
+        var argRes = materialize(xx, loc, argument);
+        if (argRes.hasErrors()) return argRes.reerr();
+        var b = new JavaBytecodeBuilder(loc);
+        var carryRes = b.addCode(loc, self.code());
+        if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
+        var element = b.reg(argRes.requireValue("DynUtil::typeConstructRuntime element"));
+        var xxReg = b.getStatic(
+                JavaInternalName.of(xx.vx.evalRootInternalName.optUnwrap()),
+                EvalRootEmitter.EXPR_CONTEXT_FIELD,
+                EvalRootEmitter.DESC_EXPR_CONTEXT);
+        var out = b.invokeStatic(construct, xxReg, element);
+        return EResult.ok(regToValue(b.code(), out, GenType.dynamicType()));
     }
 
     public static boolean valueIsRuntime(Value value) {

@@ -2,6 +2,9 @@ package compilerxyz.main.eval.dynamic;
 
 import compilerxyz.prelude.annotations.BuiltinFull;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.IntInsnNode;
+import org.objectweb.asm.tree.TypeInsnNode;
 
 @BuiltinFull(uniqueId = 6014L)
 public final class JavaDataDescriptor {
@@ -79,6 +82,17 @@ public final class JavaDataDescriptor {
         };
     }
 
+    public boolean isObject() {
+        return sortChar() == 'L';
+    }
+
+    public JavaInternalName internalName() {
+        if (!isObject()) {
+            throw new IllegalStateException("JavaDataDescriptor: not an object descriptor: " + value);
+        }
+        return JavaInternalName.of(value.substring(1, value.length() - 1));
+    }
+
     public int loadOpcode() {
         return switch (sortChar()) {
             case 'D' -> Opcodes.DLOAD;
@@ -116,6 +130,36 @@ public final class JavaDataDescriptor {
             case 'C' -> Opcodes.CALOAD;
             case 'L', '[' -> Opcodes.AALOAD;
             default -> throw new IllegalStateException("JavaDataDescriptor: no array load opcode for (" + value + ")");
+        };
+    }
+
+    public int arrayStoreOpcode() {
+        return switch (sortChar()) {
+            case 'D' -> Opcodes.DASTORE;
+            case 'J' -> Opcodes.LASTORE;
+            case 'F' -> Opcodes.FASTORE;
+            case 'I' -> Opcodes.IASTORE;
+            case 'Z', 'B' -> Opcodes.BASTORE;
+            case 'S' -> Opcodes.SASTORE;
+            case 'C' -> Opcodes.CASTORE;
+            case 'L', '[' -> Opcodes.AASTORE;
+            default -> throw new IllegalStateException("JavaDataDescriptor: no array store opcode for (" + value + ")");
+        };
+    }
+
+    AbstractInsnNode arrayNewInsn() {
+        return switch (sortChar()) {
+            case 'D' -> new IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_DOUBLE);
+            case 'J' -> new IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_LONG);
+            case 'F' -> new IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_FLOAT);
+            case 'I' -> new IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_INT);
+            case 'Z' -> new IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_BOOLEAN);
+            case 'B' -> new IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_BYTE);
+            case 'S' -> new IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_SHORT);
+            case 'C' -> new IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_CHAR);
+            case 'L' -> new TypeInsnNode(Opcodes.ANEWARRAY, value.substring(1, value.length() - 1));
+            case '[' -> new TypeInsnNode(Opcodes.ANEWARRAY, value);
+            default -> throw new IllegalStateException("JavaDataDescriptor: no array creation for (" + value + ")");
         };
     }
 

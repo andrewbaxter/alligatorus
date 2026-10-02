@@ -21,6 +21,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -81,20 +82,29 @@ public final class T0200EcosystemLlvmTest {
         }
     }
 
-    private static SourceExpr fieldList(EcoMb e, SourceExpr... fields) {
-        return e.listNew(e.mb.evalValue(), fields);
+    private static SourceExpr fnType(EcoMb e, String ret, String... params) {
+        var types = new TList<SourceExpr>();
+        for (var p : params) types.add(e.v(p));
+        return e.callM(
+                e.v("llvm"),
+                "fn",
+                e.rec(
+                        e.p("params", e.listNew(e.mb.evalType(), types.toArray(SourceExpr[]::new))),
+                        e.p("ret", e.v(ret))));
     }
 
-    private static SourceExpr func(EcoMb e, String name, SourceExpr params, String ret, SourceExpr body) {
+    private static SourceExpr func(EcoMb e, String name, String fnType, SourceExpr body, String... params) {
+        var names = new TList<SourceExpr>();
+        for (var p : params) names.add(e.s(p));
         return e.let(
                 name,
-                e.callM(
-                        e.v("ll"),
-                        "func",
+                e.call(
+                        e.fld(e.v("llvm"), "func_fn"),
                         e.rec(
+                                e.p("mod", e.v("ll")),
                                 e.p("name", e.s(name)),
-                                e.p("params", params),
-                                e.p("ret", e.v(ret)),
+                                e.p("params", e.tup(names.toArray(SourceExpr[]::new))),
+                                e.p("ty", e.v(fnType)),
                                 e.p("body", e.stage(body)))));
     }
 
@@ -113,16 +123,14 @@ public final class T0200EcosystemLlvmTest {
         setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
         EcoExtern.bindTypes(e, setup, EcoExtern.Llvm.top(e));
         var puts = new EcoExtern("puts", IList.of("pu8"), "i32", false);
-        setup.add(e.let("puts_t", puts.constType(e, EcoExtern.Llvm.top(e))));
-        setup.add(e.let("hello_t", EcoPipewire.byteArrayConstType(e, EcoExtern.Llvm.top(e), e.intOf(15))));
+        setup.add(e.let("puts_fn_t", puts.fnType(e, EcoExtern.Llvm.top(e))));
+        setup.add(e.let("main_fn_t", fnType(e, "t_i32")));
         setup.add(e.let("hello_arr_t", EcoPipewire.byteArrayType(e, EcoExtern.Llvm.top(e), e.intOf(15))));
-        setup.add(e.let("global_const_fn", e.fld(e.v("llvm"), "global_const_fn")));
         var exported = new TList<String>();
         exported.add("ll");
-        exported.add("puts_t");
-        exported.add("hello_t");
+        exported.add("puts_fn_t");
+        exported.add("main_fn_t");
         exported.add("hello_arr_t");
-        exported.add("global_const_fn");
         for (var t : new String[] {"i1", "i8", "i32", "i64", "u8", "u32", "u64", "f32", "f64", "void", "pv", "pu8"}) {
             exported.add("t_" + t);
         }
@@ -133,23 +141,18 @@ public final class T0200EcosystemLlvmTest {
         top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : exported) top.add(e.let(n, e.fld(e.v("k"), n)));
-        top.add(e.let("puts", e.mb.as(puts.declare(e, "ll", EcoExtern.Llvm.top(e)), e.v("puts_t"))));
+        top.add(e.let("puts", puts.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.v("ll"), e.v("puts_fn_t"))));
         top.add(e.let(
                 "hello",
-                e.mb.as(
-                        e.call(
-                                e.mb.as(e.v("ll"), e.v("global_const_fn")),
-                                e.rec(
-                                        e.p("name", e.s("str.hello")),
-                                        e.p("ty", e.v("hello_arr_t")),
-                                        e.p("init", e.tup(helloInit)))),
-                        e.v("hello_t"))));
+                e.call(
+                        e.fld(e.v("llvm"), "global_const_fn"),
+                        e.rec(
+                                e.p("mod", e.v("ll")),
+                                e.p("name", e.s("str.hello")),
+                                e.p("ty", e.v("hello_arr_t")),
+                                e.p("init", e.tup(helloInit))))));
         top.add(func(
-                e,
-                "main",
-                fieldList(e),
-                "t_i32",
-                e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hello"))), e.ret(e.n(0)))));
+                e, "main", "main_fn_t", e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hello"))), e.ret(e.n(0)))));
         top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
         writeModule(src.resolve("main.at"), top);
 
@@ -206,16 +209,14 @@ public final class T0200EcosystemLlvmTest {
         setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
         EcoExtern.bindTypes(e, setup, EcoExtern.Llvm.top(e));
         var puts = new EcoExtern("puts", IList.of("pu8"), "i32", false);
-        setup.add(e.let("puts_t", puts.constType(e, EcoExtern.Llvm.top(e))));
-        setup.add(e.let("hi_t", EcoPipewire.byteArrayConstType(e, EcoExtern.Llvm.top(e), e.intOf(count))));
+        setup.add(e.let("puts_fn_t", puts.fnType(e, EcoExtern.Llvm.top(e))));
+        setup.add(e.let("main_fn_t", fnType(e, "t_i32")));
         setup.add(e.let("hi_arr_t", EcoPipewire.byteArrayType(e, EcoExtern.Llvm.top(e), e.intOf(count))));
-        setup.add(e.let("global_const_fn", e.fld(e.v("llvm"), "global_const_fn")));
         var exported = new TList<String>();
         exported.add("ll");
-        exported.add("puts_t");
-        exported.add("hi_t");
+        exported.add("puts_fn_t");
+        exported.add("main_fn_t");
         exported.add("hi_arr_t");
-        exported.add("global_const_fn");
         for (var t : new String[] {"i1", "i8", "i32", "i64", "u8", "u32", "u64", "f32", "f64", "void", "pv", "pu8"}) {
             exported.add("t_" + t);
         }
@@ -226,21 +227,18 @@ public final class T0200EcosystemLlvmTest {
         top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : exported) top.add(e.let(n, e.fld(e.v("k"), n)));
-        top.add(e.let("puts", e.mb.as(puts.declare(e, "ll", EcoExtern.Llvm.top(e)), e.v("puts_t"))));
+        top.add(e.let("puts", puts.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.v("ll"), e.v("puts_fn_t"))));
         top.addAll(preInit);
         top.add(e.let(
                 "hi",
-                e.mb.as(
-                        e.call(
-                                e.mb.as(e.v("ll"), e.v("global_const_fn")),
-                                e.rec(e.p("name", e.s("str.hi")), e.p("ty", e.v("hi_arr_t")), e.p("init", init))),
-                        e.v("hi_t"))));
-        top.add(func(
-                e,
-                "main",
-                fieldList(e),
-                "t_i32",
-                e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hi"))), e.ret(e.n(0)))));
+                e.call(
+                        e.fld(e.v("llvm"), "global_const_fn"),
+                        e.rec(
+                                e.p("mod", e.v("ll")),
+                                e.p("name", e.s("str.hi")),
+                                e.p("ty", e.v("hi_arr_t")),
+                                e.p("init", init)))));
+        top.add(func(e, "main", "main_fn_t", e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hi"))), e.ret(e.n(0)))));
         top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
         writeModule(src.resolve("main.at"), top);
 
@@ -326,6 +324,52 @@ public final class T0200EcosystemLlvmTest {
         }
     }
 
+    @Test
+    public void test00090Cstr(@TempDir Path tmp) throws IOException {
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
+        writeModule(src.resolve("llvm-ir-22.at"), EcoLlvmIr.module(new EcoMb()));
+        var e = new EcoMb();
+        var setup = new TList<SourceExpr>();
+        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
+        EcoExtern.bindTypes(e, setup, EcoExtern.Llvm.top(e));
+        var puts = new EcoExtern("puts", IList.of("pu8"), "i32", false);
+        setup.add(e.let("puts_fn_t", puts.fnType(e, EcoExtern.Llvm.top(e))));
+        setup.add(e.let("main_fn_t", fnType(e, "t_i32")));
+        setup.add(e.ret(e.rec(
+                e.p("ll", e.v("ll")),
+                e.p("puts_fn_t", e.v("puts_fn_t")),
+                e.p("main_fn_t", e.v("main_fn_t")),
+                e.p("t_i32", e.v("t_i32")),
+                e.p("t_pu8", e.v("t_pu8")))));
+        var top = new TList<SourceExpr>();
+        top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        top.add(e.let("k", e.lower(e.mb.seq(setup))));
+        for (var n : new String[] {"ll", "puts_fn_t", "main_fn_t", "t_i32", "t_pu8"})
+            top.add(e.let(n, e.fld(e.v("k"), n)));
+        top.add(e.let("puts", puts.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.v("ll"), e.v("puts_fn_t"))));
+        top.add(e.let("hi", e.callM(e.v("ll"), "cstr", e.s("hé\n"))));
+        top.add(func(e, "main", "main_fn_t", e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hi"))), e.ret(e.n(0)))));
+        top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
+        writeModule(src.resolve("main.at"), top);
+
+        var ok = compileOk(src.resolve("main.at"), tmp.resolve("cache"));
+        assertEquals(1, ok.logs().size());
+        var ir = ok.logs().get(0).message();
+        assertEquals(
+                """
+                declare i32 @puts(ptr)
+                @str0 = constant [5 x i8] [i8 104, i8 195, i8 169, i8 10, i8 0]
+                define i32 @main() {
+                  %t1 = call i32 @puts(ptr @str0)
+                  ret i32 0
+                }
+                """,
+                ir);
+        assertValidIr(tmp, "cstr", ir);
+    }
+
     private static final String LIBC_DECLS =
             """
             declare double @sin(double)
@@ -346,20 +390,14 @@ public final class T0200EcosystemLlvmTest {
         setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
         setup.add(e.let("c", e.call(e.v("libc"), e.v("ll"))));
         EcoExtern.bindTypes(e, setup, EcoExtern.Llvm.top(e));
-        setup.add(e.let("sin_t", e.callM(e.v("c"), "sin_t", e.tup())));
-        setup.add(e.ret(e.rec(
-                e.p("ll", e.v("ll")), e.p("c", e.v("c")), e.p("t_f64", e.v("t_f64")), e.p("sin_t", e.v("sin_t")))));
+        setup.add(e.let("f_fn_t", fnType(e, "t_f64", "t_f64")));
+        setup.add(e.ret(e.rec(e.p("ll", e.v("ll")), e.p("c", e.v("c")), e.p("f_fn_t", e.v("f_fn_t")))));
         var top = new TList<SourceExpr>();
         top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
-        for (var n : new String[] {"ll", "c", "t_f64", "sin_t"}) top.add(e.let(n, e.fld(e.v("k"), n)));
-        top.add(e.let("sin", e.mb.as(e.callM(e.v("c"), "sin", e.tup()), e.v("sin_t"))));
-        top.add(func(
-                e,
-                name,
-                fieldList(e, e.callM(e.v("llvm"), "field", e.rec(e.p("name", e.s("x")), e.p("ty", e.v("t_f64"))))),
-                "t_f64",
-                body));
+        for (var n : new String[] {"ll", "c", "f_fn_t"}) top.add(e.let(n, e.fld(e.v("k"), n)));
+        top.add(e.let("sin", e.callM(e.v("c"), "sin", e.tup())));
+        top.add(func(e, name, "f_fn_t", body, "x"));
         top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
         writeModule(src.resolve("main.at"), top);
     }
@@ -495,7 +533,9 @@ public final class T0200EcosystemLlvmTest {
         var ir = ok.logs().get(0).message();
         Files.writeString(tmp.resolve("synth.ll"), ir);
         for (var expected : new String[] {
-            "%spa_data = type { i32, i32, i64, i32, i32, ptr, ptr }",
+            "%spa_data.audio = type { i32, i32, i64, i32, i32, ptr, ptr }",
+            "%spa_data.midi = type { i32, i32, i64, i32, i32, ptr, ptr }",
+            "%spa_pod_control = type { i32, i32, %spa_pod }",
             "%pw_stream_events = type { i32, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr }",
             "declare ptr @pw_stream_dequeue_buffer(ptr)",
             "declare double @sin(double)",
@@ -512,11 +552,19 @@ public final class T0200EcosystemLlvmTest {
             "call i32 @pw_stream_connect(",
             " = call ptr @pw_stream_dequeue_buffer(ptr %t",
             "call ptr (ptr, ...) @pw_properties_new(",
-            "getelementptr inbounds %spa_data, ptr %t",
+            "getelementptr inbounds %spa_data.audio, ptr %t",
+            "getelementptr inbounds %spa_pod_control, ptr %t",
+            "= ptrtoint ptr %t",
+            "getelementptr inbounds i8, ptr %t",
             "fptrunc double %t",
             "= icmp ult i32 %t",
         }) {
             Assertions.assertTrue(ir.contains(expected), () -> "missing <" + expected + "> in:\n" + ir);
+        }
+        for (var declared : new String[] {
+            "declare ptr @pw_stream_dequeue_buffer(ptr)", "declare i32 @pw_stream_queue_buffer(ptr, ptr)"
+        }) {
+            assertEquals(2, ir.split(Pattern.quote(declared), -1).length, () -> "not declared once: " + declared);
         }
         assertValidIr(tmp, "synth", ir);
     }

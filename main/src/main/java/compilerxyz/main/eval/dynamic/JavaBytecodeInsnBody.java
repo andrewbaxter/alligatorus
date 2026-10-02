@@ -15,7 +15,7 @@ public sealed interface JavaBytecodeInsnBody {
 
     record New(JavaInternalName klass, JavaMethodDescriptor ctor) implements JavaBytecodeInsnBody {}
 
-    record ArrayNew(JavaInternalName elementClass) implements JavaBytecodeInsnBody {}
+    record ArrayNew(JavaDataDescriptor element) implements JavaBytecodeInsnBody {}
 
     record External(EvalContext.ExternalEntry entry) implements JavaBytecodeInsnBody {}
 }

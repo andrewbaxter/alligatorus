@@ -306,6 +306,10 @@ public final class TestMb {
         return builtin("must_reinterpret");
     }
 
+    public SourceExpr reinterpret() {
+        return builtin("reinterpret");
+    }
+
     public SourceExpr evalValue() {
         return builtin("eval", "value");
     }

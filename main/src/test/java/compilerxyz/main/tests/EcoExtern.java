@@ -11,10 +11,6 @@ public record EcoExtern(String name, IList<String> params, String ret, boolean v
         static Llvm top(EcoMb e) {
             return name -> e.fld(e.v("llvm"), name);
         }
-
-        static Llvm staged(EcoMb e) {
-            return name -> e.lower(e.fld(e.v("llvm"), name));
-        }
     }
 
     public static void bindTypes(EcoMb e, TList<SourceExpr> out, Llvm llvm) {
@@ -36,15 +32,11 @@ public record EcoExtern(String name, IList<String> params, String ret, boolean v
                 e.rec(e.p("params", e.listNew(e.mb.evalType(), ps)), e.p("ret", e.v("t_" + ret))));
     }
 
-    public static SourceExpr globalT(EcoMb e, Llvm llvm, SourceExpr ty, boolean mem) {
-        return e.call(llvm.llvmField("global_t"), e.rec(e.p("ty", ty), e.p("mem", e.b(mem))));
+    public static SourceExpr globalT(EcoMb e, Llvm llvm, SourceExpr ty) {
+        return e.call(llvm.llvmField("global_t"), e.rec(e.p("ty", ty), e.p("mem", e.b(false))));
     }
 
-    public SourceExpr constType(EcoMb e, Llvm llvm) {
-        return globalT(e, llvm, fnType(e, llvm), false);
-    }
-
-    public SourceExpr declare(EcoMb e, String ll, Llvm llvm) {
-        return e.callM(e.v(ll), "extern", e.rec(e.p("name", e.s(name)), e.p("ty", fnType(e, llvm))));
+    public SourceExpr declare(EcoMb e, SourceExpr externFn, SourceExpr ll, SourceExpr constFnType) {
+        return e.call(externFn, e.rec(e.p("mod", ll), e.p("name", e.s(name)), e.p("ty", constFnType)));
     }
 }

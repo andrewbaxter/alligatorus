@@ -23,6 +23,7 @@ import compilerxyz.main.gen.GenAspectDynamicBoxed;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
+import compilerxyz.main.gen.GenAspectOperatorBitNot;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -46,6 +47,9 @@ public record TypeBoolDynamic() implements Aspect, Type {
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_BOOL_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
+        }
+        if (key.equals(GenAspectOperatorBitNot.AspectId)) {
+            return Opt.some(AspectOperatorBitNotBoolDynamic.INSTANCE);
         }
         if (key.equals(GenAspectOperatorEq.AspectId)) {
             return Opt.some(AspectOperatorEqBoolDynamic.INSTANCE);

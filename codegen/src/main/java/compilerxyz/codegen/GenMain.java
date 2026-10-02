@@ -1109,6 +1109,7 @@ public final class GenMain {
                 var optOfBoxed = ParameterizedTypeName.get(OptionsGen.OPT, boxed);
                 var storeClass = TypeSpec.classBuilder(store.simple())
                         .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                        .addSuperinterface(ClassName.get("compilerxyz.main.eval.value.option", "OptionStore"))
                         .addField(FieldSpec.builder(self, "NONE", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                                 .initializer("new $T(false, $L)", self, store.zeroLiteral())
                                 .build())
@@ -1156,6 +1157,13 @@ public final class GenMain {
                         .addMethod(MethodSpec.methodBuilder("toOpt")
                                 .addModifiers(Modifier.PUBLIC)
                                 .returns(optOfBoxed)
+                                .addStatement(
+                                        "return present ? $T.some(value) : $T.none()", OptionsGen.OPT, OptionsGen.OPT)
+                                .build())
+                        .addMethod(MethodSpec.methodBuilder("optionStoreBoxed")
+                                .addAnnotation(Override.class)
+                                .addModifiers(Modifier.PUBLIC)
+                                .returns(ParameterizedTypeName.get(OptionsGen.OPT, ClassName.get(Object.class)))
                                 .addStatement(
                                         "return present ? $T.some(value) : $T.none()", OptionsGen.OPT, OptionsGen.OPT)
                                 .build())

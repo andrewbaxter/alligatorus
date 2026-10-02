@@ -293,7 +293,7 @@ public final class EcoMb {
     }
 
     public SourceExpr not(SourceExpr a) {
-        return ifElse(a, mb.as(b(false), mb.typesBool()), b(true));
+        return mb.operatorBitNot(a);
     }
 
     public SourceExpr eq(SourceExpr a, SourceExpr b) {

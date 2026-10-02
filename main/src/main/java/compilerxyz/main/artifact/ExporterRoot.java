@@ -5,8 +5,11 @@ import static compilerxyz.prelude.util.MustCast.mustCast;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.value.array.TypeArrayConst;
+import compilerxyz.main.eval.value.array.TypeArrayDynamic;
 import compilerxyz.main.eval.value.bool.TypeBoolConst;
 import compilerxyz.main.eval.value.bool.TypeBoolDynamic;
 import compilerxyz.main.eval.value.byte_.TypeByteConst;
@@ -14,6 +17,7 @@ import compilerxyz.main.eval.value.byte_.TypeByteDynamic;
 import compilerxyz.main.eval.value.code.TypeCodeDynamic;
 import compilerxyz.main.eval.value.double_.TypeDoubleConst;
 import compilerxyz.main.eval.value.double_.TypeDoubleDynamic;
+import compilerxyz.main.eval.value.eresult.TypeEResultConst;
 import compilerxyz.main.eval.value.eresult.TypeEResultDynamic;
 import compilerxyz.main.eval.value.expr.TypeExpr;
 import compilerxyz.main.eval.value.float_.TypeFloatConst;
@@ -29,6 +33,7 @@ import compilerxyz.main.eval.value.map.TypeMapConst;
 import compilerxyz.main.eval.value.object.TypeObjectConst;
 import compilerxyz.main.eval.value.object.TypeObjectDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
+import compilerxyz.main.eval.value.option.TypeOptionConst;
 import compilerxyz.main.eval.value.option.TypeOptionDynamic;
 import compilerxyz.main.eval.value.option.TypeOptionVariantConstructorDynamic;
 import compilerxyz.main.eval.value.record.Record;
@@ -81,10 +86,22 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return TypeListConst.DELEGATE;
         }
     },
+    LIST_CONST_TYPE("list_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeListConst.TYPE_DELEGATE;
+        }
+    },
     MAP_CONST("map_const") {
         @Override
         ExporterRootDelegate delegate() {
             return TypeMapConst.DELEGATE;
+        }
+    },
+    MAP_CONST_TYPE("map_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeMapConst.TYPE_DELEGATE;
         }
     },
     BYTE_CONST("byte_const") {
@@ -159,10 +176,58 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return TypeOptionDynamic.DELEGATE;
         }
     },
+    ARRAY_DYNAMIC("array_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeArrayDynamic.DELEGATE;
+        }
+    },
+    ARRAY_CONST("array_const") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeArrayConst.DELEGATE;
+        }
+    },
+    ARRAY_CONST_TYPE("array_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeArrayConst.TYPE_DELEGATE;
+        }
+    },
+    OPTION_CONST("option_const") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeOptionConst.DELEGATE;
+        }
+    },
+    OPTION_CONST_TYPE("option_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeOptionConst.TYPE_DELEGATE;
+        }
+    },
     ERESULT_DYNAMIC("eresult_dynamic") {
         @Override
         ExporterRootDelegate delegate() {
             return TypeEResultDynamic.DELEGATE;
+        }
+    },
+    ERESULT_CONST("eresult_const") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeEResultConst.DELEGATE;
+        }
+    },
+    ERESULT_CONST_TYPE("eresult_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeEResultConst.TYPE_DELEGATE;
+        }
+    },
+    EXPR_ERR("expr_err") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return ExprErr.DELEGATE;
         }
     },
     OPTION_VARIANT_CONSTRUCTOR_DYNAMIC("option_variant_constructor_dynamic") {

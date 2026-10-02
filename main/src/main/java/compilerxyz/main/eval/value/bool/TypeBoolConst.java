@@ -22,6 +22,7 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBoolConst;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectLift;
+import compilerxyz.main.gen.GenAspectOperatorBitNot;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -44,6 +45,9 @@ public record TypeBoolConst() implements Aspect, Type {
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenTrivialIdentityAspects.TYPE_BOOL_CONST_IDENTITY)) {
             return Opt.some(this);
+        }
+        if (key.equals(GenAspectOperatorBitNot.AspectId)) {
+            return Opt.some(AspectOperatorBitNotBoolConst.INSTANCE);
         }
         if (key.equals(GenAspectOperatorEq.AspectId)) {
             return Opt.some(AspectOperatorEqBoolConst.INSTANCE);

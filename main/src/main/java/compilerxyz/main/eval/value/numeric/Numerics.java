@@ -47,6 +47,8 @@ import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import org.objectweb.asm.Opcodes;
 
 public final class Numerics {
@@ -183,6 +185,38 @@ public final class Numerics {
         throw new IllegalStateException("Numerics::constNumber: value is not a numeric constant");
     }
 
+    private static EResult<Operand> constAdopt(ExprContext xx, QExprId loc, Op op, Operand c, NumericKind kind) {
+        var n = constNumber(xx, c.value());
+        var exact =
+                switch (c.kind()) {
+                    case BYTE, SHORT, INT, LONG -> Opt.some(BigInteger.valueOf(n.longValue()));
+                    case UBYTE, USHORT, UINT, ULONG ->
+                        Opt.some(new BigInteger(Long.toUnsignedString(ulongVal(c.kind(), n))));
+                    case FLOAT, DOUBLE -> {
+                        var d = n.doubleValue();
+                        yield Double.isFinite(d) && d == Math.rint(d)
+                                ? Opt.some(new BigDecimal(d).toBigIntegerExact())
+                                : Opt.<BigInteger>none();
+                    }
+                };
+        var w = kind.intWidth();
+        var min = kind.unsigned()
+                ? BigInteger.ZERO
+                : BigInteger.ONE.shiftLeft(w - 1).negate();
+        var max = (kind.unsigned() ? BigInteger.ONE.shiftLeft(w) : BigInteger.ONE.shiftLeft(w - 1))
+                .subtract(BigInteger.ONE);
+        if (exact.optIsNone()
+                || exact.optUnwrap().compareTo(min) < 0
+                || exact.optUnwrap().compareTo(max) > 0) {
+            return EResult.err(
+                    loc,
+                    "Numerics::" + op.symbol() + ": constant " + n + " is not representable as "
+                            + kind.name().toLowerCase());
+        }
+        return EResult.ok(
+                new Operand(kind, true, constValue(kind, exact.optUnwrap().longValue())));
+    }
+
     private static Opt<Value> valueOf(CodeValue cv) {
         if (cv.value().optIsSome()) return cv.value();
         return Opt.none();
@@ -204,6 +238,22 @@ public final class Numerics {
         }
         var b = ((Opt.Some<Operand>) bClassOpt).value();
         var r = ((Opt.Some<Operand>) rClassOpt).value();
+
+        if (op.shift() && r.isConst()) {
+            var adopted = constAdopt(xx, loc, op, r, NumericKind.INT);
+            if (adopted.hasErrors()) return adopted.reerr();
+            r = adopted.requireValue("Numerics::constAdopt shift amount");
+        } else if (op == Op.AND || op == Op.OR || op == Op.XOR) {
+            if (b.isConst() && !r.isConst() && r.kind().integral()) {
+                var adopted = constAdopt(xx, loc, op, b, r.kind());
+                if (adopted.hasErrors()) return adopted.reerr();
+                b = adopted.requireValue("Numerics::constAdopt left");
+            } else if (r.isConst() && !b.isConst() && b.kind().integral()) {
+                var adopted = constAdopt(xx, loc, op, r, b.kind());
+                if (adopted.hasErrors()) return adopted.reerr();
+                r = adopted.requireValue("Numerics::constAdopt right");
+            }
+        }
 
         NumericKind compute;
         if (op.shift()) {

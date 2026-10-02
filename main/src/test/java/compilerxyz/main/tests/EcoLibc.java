@@ -19,48 +19,42 @@ public final class EcoLibc {
     public static TList<SourceExpr> module(EcoMb e) {
         var exprs = new TList<SourceExpr>();
         exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        var llvm = EcoExtern.Llvm.top(e);
+        EcoExtern.bindTypes(e, exprs, llvm);
+        for (var ex : EXTERNS) {
+            exprs.add(e.let(ex.name() + "_fn_t", ex.fnType(e, llvm)));
+            exprs.add(e.let(ex.name() + "_t", EcoExtern.globalT(e, llvm, e.v(ex.name() + "_fn_t"))));
+        }
 
         exprs.add(e.let("d", e.define()));
         exprs.add(e.optionTypeLet());
         exprs.add(e.let("libc_o", e.defObject(e.v("d"), "libc 2.42")));
         var innerFields = new TList<EcoMb.P>();
-        for (var ex : EXTERNS) {
-            innerFields.add(e.p(ex.name(), e.fld(e.v("llvm"), "ref_t")));
-            innerFields.add(e.p(ex.name() + "_t", e.mb.evalType()));
-        }
+        for (var ex : EXTERNS) innerFields.add(e.p(ex.name(), e.v(ex.name() + "_t")));
         exprs.add(e.objectImpl(e.v("libc_o"), e.rec(innerFields.toArray(EcoMb.P[]::new))));
         for (var ex : EXTERNS) {
             exprs.add(e.methodImpl(
                     e.v("libc_o"),
                     ex.name(),
                     e.tup(),
-                    e.optionTypeSome(e.fld(e.v("llvm"), "ref_t")),
+                    e.optionTypeSome(e.v(ex.name() + "_t")),
                     e.stage(e.fld(e.v("inner"), ex.name()))));
-            exprs.add(e.methodImpl(
-                    e.v("libc_o"),
-                    ex.name() + "_t",
-                    e.tup(),
-                    e.optionTypeSome(e.mb.evalType()),
-                    e.stage(e.fld(e.v("inner"), ex.name() + "_t"))));
         }
 
         exprs.add(e.let("libc_builder", e.defFunc(e.v("d"), "libc")));
-        var body = new TList<SourceExpr>();
-        EcoExtern.bindTypes(e, body, EcoExtern.Llvm.staged(e));
         var ctorFields = new TList<EcoMb.P>();
         for (var ex : EXTERNS) {
-            body.add(e.let(ex.name(), ex.declare(e, "arg", EcoExtern.Llvm.staged(e))));
-            body.add(e.let(ex.name() + "_t", ex.constType(e, EcoExtern.Llvm.staged(e))));
-            ctorFields.add(e.p(ex.name(), e.v(ex.name())));
-            ctorFields.add(e.p(ex.name() + "_t", e.v(ex.name() + "_t")));
+            ctorFields.add(e.p(
+                    ex.name(),
+                    ex.declare(
+                            e, e.lower(e.fld(e.v("llvm"), "extern_fn")), e.v("arg"), e.lowerV(ex.name() + "_fn_t"))));
         }
-        body.add(e.ret(e.call(e.lower(e.fld(e.v("libc_o"), "new")), e.rec(ctorFields.toArray(EcoMb.P[]::new)))));
         exprs.add(e.funcImpl(
                 e.v("libc_builder"),
                 e.fld(e.v("llvm"), "mod_t"),
                 e.optionTypeSome(e.fld(e.v("libc_o"), "type")),
                 e.mb.optNoneType(),
-                e.stage(e.mb.seq(body))));
+                e.stage(e.call(e.lower(e.fld(e.v("libc_o"), "new")), e.rec(ctorFields.toArray(EcoMb.P[]::new))))));
 
         exprs.add(e.finish(e.v("d")));
         exprs.add(e.ret(e.fld(e.v("libc_builder"), "func")));

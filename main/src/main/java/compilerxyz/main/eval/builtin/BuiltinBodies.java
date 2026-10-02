@@ -3,6 +3,7 @@ package compilerxyz.main.eval.builtin;
 import com.google.gson.stream.JsonWriter;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.CompileId;
@@ -30,6 +31,7 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
+import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordField;
@@ -221,6 +223,11 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.value_object_const", scopeId = 5038L)
     public static ValueObjectConst valueObjectConst(Type type, Object data) {
         return new ValueObjectConst(type, data);
+    }
+
+    @BuiltinPath(value = "eval.binding_dynamic", scopeId = 5045L)
+    public static Binding bindingDynamic(BindingId dynamicKey, Type type) {
+        return new BindingDynamicBinding(dynamicKey, type);
     }
 
     @BuiltinPath(value = "eval.bind_result", scopeId = 5015L)

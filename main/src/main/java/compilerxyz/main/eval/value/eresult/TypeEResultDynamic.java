@@ -21,8 +21,11 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
+import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectUnion;
+import compilerxyz.main.gen.GenExprErr;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactEResultTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
@@ -79,6 +82,15 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_E_RESULT_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
+        }
+        if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
+            return Opt.some(new AspectFieldUseDynamicEResultDynamic<>(this));
+        }
+        if (key.equals(GenAspectLift.AspectId)) {
+            var elementLift = GenAspectLift.getMaybe(xx, elementType);
+            var errLift = GenAspectLift.getMaybe(xx, GenExprErr.dynamicType());
+            if (elementLift.optIsNone() || errLift.optIsNone()) return Opt.none();
+            return Opt.some(new AspectLiftEResultDynamic<>(this, elementLift.optUnwrap(), errLift.optUnwrap()));
         }
         return Opt.none();
     }

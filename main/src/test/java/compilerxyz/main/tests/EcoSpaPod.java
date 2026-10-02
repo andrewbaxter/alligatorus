@@ -66,7 +66,7 @@ public final class EcoSpaPod {
     }
 
     private static SourceExpr byteOf(EcoMb e, SourceExpr v, int shift) {
-        return e.mb.operatorAnd(shift == 0 ? v : e.mb.operatorUshr(v, e.intOf(shift)), e.intOf(255));
+        return e.mb.operatorAnd(shift == 0 ? v : e.mb.operatorUshr(v, e.n(shift)), e.n(255));
     }
 
     private static void podMethod(
@@ -102,15 +102,15 @@ public final class EcoSpaPod {
                 intT,
                 e.optionTypeNone(),
                 e.seq(
-                        e.push(podBytes(e), e.mb.as(byteOf(e, e.v("arg"), 0), byteT)),
-                        e.push(podBytes(e), e.mb.as(byteOf(e, e.v("arg"), 8), byteT)),
-                        e.push(podBytes(e), e.mb.as(byteOf(e, e.v("arg"), 16), byteT)),
-                        e.push(podBytes(e), e.mb.as(byteOf(e, e.v("arg"), 24), byteT))));
+                        e.push(podBytes(e), byteOf(e, e.v("arg"), 0)),
+                        e.push(podBytes(e), byteOf(e, e.v("arg"), 8)),
+                        e.push(podBytes(e), byteOf(e, e.v("arg"), 16)),
+                        e.push(podBytes(e), byteOf(e, e.v("arg"), 24))));
         var padSteps = new SourceExpr[7];
         for (int i = 0; i < padSteps.length; i++) {
             padSteps[i] = e.ifOnly(
                     e.mb.operatorNe(e.mb.operatorMod(self(e, "len", e.tup()), e.intOf(8)), e.intOf(0)),
-                    e.push(podBytes(e), e.mb.as(e.n(0), e.mb.builtin("types", "ubyte"))));
+                    e.push(podBytes(e), e.n(0)));
         }
         podMethod(e, exprs, "pad", e.tup(), e.optionTypeNone(), e.seq(padSteps));
         podMethod(
@@ -156,17 +156,12 @@ public final class EcoSpaPod {
                 e.optionTypeNone(),
                 e.seq(
                         e.let("b", podNew(e)),
-                        e.callM(e.v("b"), "u32", e.intOf(4)),
+                        e.callM(e.v("b"), "u32", e.n(4)),
                         e.callM(e.v("b"), "u32", spa(e, SPA_TYPE_ID)),
                         e.foreach(e.v("arg"), "v", e.callM(e.v("b"), "u32", e.v("v"))),
                         self(e, "pod", e.rec(e.p("ty", spa(e, SPA_TYPE_ARRAY)), e.p("body", e.v("b"))))));
         podMethod(
-                e,
-                exprs,
-                "prop",
-                intT,
-                e.optionTypeNone(),
-                e.seq(self(e, "u32", e.v("arg")), self(e, "u32", e.intOf(0))));
+                e, exprs, "prop", intT, e.optionTypeNone(), e.seq(self(e, "u32", e.v("arg")), self(e, "u32", e.n(0))));
         podMethod(
                 e,
                 exprs,
