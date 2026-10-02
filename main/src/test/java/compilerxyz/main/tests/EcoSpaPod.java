@@ -81,7 +81,7 @@ public final class EcoSpaPod {
         var podT = e.fld(e.v("pod_b"), "type");
         var intT = e.mb.typesInt();
         var byteT = e.mb.builtin("types", "ubyte");
-        for (var c : SPA_CONSTS) exprs.add(e.let(c.name(), e.intOf(c.value())));
+        for (var c : SPA_CONSTS) exprs.add(e.let(c.name(), e.mb.num(c.value())));
         exprs.add(e.let("pod_b", e.defObject(e.v("d"), "spa pod builder")));
         exprs.add(e.objectImpl(e.v("pod_b"), e.rec(e.p("bytes", e.listType(byteT)))));
         podMethod(e, exprs, "bytes", e.tup(), e.optionTypeSome(e.listType(byteT)), podBytes(e));

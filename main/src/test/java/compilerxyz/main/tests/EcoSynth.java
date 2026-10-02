@@ -1,9 +1,9 @@
 package compilerxyz.main.tests;
 
 import compilerxyz.main.syntax.SourceExpr;
+import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.TList;
 import java.nio.charset.StandardCharsets;
-import java.util.Set;
 
 public final class EcoSynth {
     private EcoSynth() {}
@@ -16,10 +16,10 @@ public final class EcoSynth {
         return e.lower(e.v(name));
     }
 
-    private static final Set<String> LLVM_TYPES = Set.of("i32", "u32", "f32", "f64", "void");
+    private static final IList<String> LLVM_TYPES = IList.of("i32", "u32", "f32", "f64", "void");
 
     private interface Refs {
-        SourceExpr ref(String name);
+        SourceExpr refsRef(String name);
 
         static Refs setup(EcoMb e) {
             return e::v;
@@ -33,9 +33,9 @@ public final class EcoSynth {
     private static SourceExpr ty(EcoMb e, Refs refs, String name) {
         var base = name.substring("t_".length());
         if (LLVM_TYPES.contains(base)) {
-            return e.fld(refs.ref("llvm"), base);
+            return e.fld(refs.refsRef("llvm"), base);
         }
-        return refs.ref(name);
+        return refs.refsRef(name);
     }
 
     private record Cx(TList<SourceExpr> setup, TList<EcoMb.P> fields, TList<SourceExpr> top) {}
@@ -46,7 +46,7 @@ public final class EcoSynth {
 
     private static void defValue(EcoMb e, Cx cx, String name, SourceExpr value, SourceExpr typeExpr) {
         defType(e, cx, name + "_t", typeExpr);
-        cx.top().add(e.let(name, e.mb.as(value, Refs.top(e).ref(name + "_t"))));
+        cx.top().add(e.let(name, e.mb.as(value, Refs.top(e).refsRef(name + "_t"))));
     }
 
     private static SourceExpr callFn(EcoMb e, String fn, SourceExpr arg) {
@@ -79,10 +79,10 @@ public final class EcoSynth {
                 cx,
                 bind,
                 e.call(
-                        e.mb.as(top.ref("ll"), e.fld(top.ref("llvm"), "global_const_fn")),
+                        e.mb.as(top.refsRef("ll"), e.fld(top.refsRef("llvm"), "global_const_fn")),
                         e.rec(
                                 e.p("name", e.s(globalName)),
-                                e.p("ty", top.ref(bind + "_arr_t")),
+                                e.p("ty", top.refsRef(bind + "_arr_t")),
                                 e.p("init", e.s(terminated)))),
                 EcoPipewire.byteArrayConstType(e, EcoExtern.Llvm.top(e), e.intOf(length)));
     }
@@ -94,7 +94,7 @@ public final class EcoSynth {
                 cx,
                 bind,
                 e.call(
-                        e.mb.as(top.ref("ll"), e.fld(top.ref("llvm"), "global_fn")),
+                        e.mb.as(top.refsRef("ll"), e.fld(top.refsRef("llvm"), "global_fn")),
                         e.rec(e.p("name", e.s(name)), e.p("ty", ty(e, top, type)), e.p("init", init))),
                 EcoExtern.globalT(e, EcoExtern.Llvm.top(e), ty(e, Refs.setup(e), type), true));
     }
@@ -107,7 +107,7 @@ public final class EcoSynth {
         var types = new TList<SourceExpr>();
         for (int i = 0; i < paramNames.length; i++) {
             fields.add(e.callM(
-                    top.ref("llvm"),
+                    top.refsRef("llvm"),
                     "field",
                     e.rec(e.p("name", e.s(paramNames[i])), e.p("ty", ty(e, top, paramTypes[i])))));
             types.add(ty(e, setup, paramTypes[i]));
@@ -123,7 +123,7 @@ public final class EcoSynth {
                 cx,
                 name,
                 e.callM(
-                        top.ref("ll"),
+                        top.refsRef("ll"),
                         "func",
                         e.rec(
                                 e.p("name", e.s(name)),
@@ -157,16 +157,16 @@ public final class EcoSynth {
                 cx,
                 bind,
                 e.call(
-                        e.mb.as(top.ref("ll"), e.fld(top.ref("llvm"), "global_const_fn")),
+                        e.mb.as(top.refsRef("ll"), e.fld(top.refsRef("llvm"), "global_const_fn")),
                         e.rec(
                                 e.p("name", e.s(name)),
-                                e.p("ty", top.ref("t_events")),
+                                e.p("ty", top.refsRef("t_events")),
                                 e.p("init", e.rec(fields.toArray(EcoMb.P[]::new))))),
                 EcoExtern.globalT(e, EcoExtern.Llvm.top(e), e.callM(e.v("llvm"), "ptr", e.v("t_events")), false));
     }
 
     private static SourceExpr pwT(EcoMb e, Refs refs, String name) {
-        return e.callM(refs.ref("pw"), name, e.tup());
+        return e.callM(refs.refsRef("pw"), name, e.tup());
     }
 
     public static TList<SourceExpr> module(EcoMb e) {
@@ -190,18 +190,18 @@ public final class EcoSynth {
                 e,
                 cx,
                 "nullp",
-                e.fld(Refs.top(e).ref("llvm"), "null"),
+                e.fld(Refs.top(e).refsRef("llvm"), "null"),
                 EcoExtern.globalT(e, EcoExtern.Llvm.top(e), e.v("t_pv"), false));
         defValue(
                 e,
                 cx,
                 "range_u32",
-                e.callM(Refs.top(e).ref("llvm"), "ref", e.s("range")),
+                e.callM(Refs.top(e).refsRef("llvm"), "ref", e.s("range")),
                 e.callM(e.v("llvm"), "range", e.fld(e.v("llvm"), "u32")));
-        defValue(e, cx, "loop", e.callM(Refs.top(e).ref("llvm"), "ref", e.s("loop")), e.fld(e.v("llvm"), "loop"));
+        defValue(e, cx, "loop", e.callM(Refs.top(e).refsRef("llvm"), "ref", e.s("loop")), e.fld(e.v("llvm"), "loop"));
 
         for (var fn : new String[] {"sin", "exp2"}) {
-            defValue(e, cx, fn, e.callM(Refs.top(e).ref("c"), fn, e.tup()), e.callM(e.v("c"), fn + "_t", e.tup()));
+            defValue(e, cx, fn, e.callM(Refs.top(e).refsRef("c"), fn, e.tup()), e.callM(e.v("c"), fn + "_t", e.tup()));
         }
         for (var fn : new String[] {
             "pw_init",
@@ -876,7 +876,7 @@ public final class EcoSynth {
                         callFn(e, "pw_deinit", e.tup()),
                         e.ret(e.n(0))));
 
-        top.add(e.call(e.mb.log(), e.callM(Refs.top(e).ref("ll"), "render", e.tup())));
+        top.add(e.call(e.mb.log(), e.callM(Refs.top(e).refsRef("ll"), "render", e.tup())));
         setup.add(e.ret(e.rec(cx.fields().toArray(EcoMb.P[]::new))));
         var module = new TList<SourceExpr>();
         module.add(e.let("k", e.lower(e.mb.seq(setup))));

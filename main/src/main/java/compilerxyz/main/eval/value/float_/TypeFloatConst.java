@@ -42,6 +42,7 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInt;
+import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectNumericConst;
 import compilerxyz.main.gen.GenAspectOperatorAdd;
 import compilerxyz.main.gen.GenAspectOperatorAnd;
@@ -161,6 +162,9 @@ public record TypeFloatConst() implements Aspect, Type {
         }
         if (key.equals(GenAspectOperatorNeg.AspectId)) {
             return Opt.some(this);
+        }
+        if (key.equals(GenAspectLift.AspectId)) {
+            return Opt.some(AspectLiftFloatConst.INSTANCE);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);
