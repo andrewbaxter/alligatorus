@@ -334,6 +334,14 @@ public final class TestMb {
         return builtin("eval", "aspect_int");
     }
 
+    public SourceExpr evalAspectStringConst() {
+        return builtin("eval", "aspect_string_const");
+    }
+
+    public SourceExpr evalStrUtf8() {
+        return builtin("eval", "str_utf8");
+    }
+
     public SourceExpr evalTypeLongDynamicIdentity() {
         return builtin("eval", "type_long_dynamic_identity");
     }
@@ -418,6 +426,10 @@ public final class TestMb {
         return builtin("types", "list");
     }
 
+    public SourceExpr typesArray() {
+        return builtin("types", "array");
+    }
+
     public SourceExpr typesMap() {
         return builtin("types", "map");
     }
@@ -464,6 +476,10 @@ public final class TestMb {
 
     public SourceExpr optNoneType() {
         return call(field(call(typesOption(), evalType()), str("none")), tupleOf());
+    }
+
+    public SourceExpr optNoneString() {
+        return call(field(call(typesOption(), typesString()), str("none")), tupleOf());
     }
 
     public SourceExpr typesString() {

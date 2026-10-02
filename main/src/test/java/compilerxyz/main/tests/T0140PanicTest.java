@@ -23,7 +23,9 @@ public final class T0140PanicTest {
                         mb.recordOf(TList.of(
                                 new TestMb.RecordPair("arg", mb.tupleOf()),
                                 new TestMb.RecordPair("ret", mb.optNoneType()),
-                                new TestMb.RecordPair("impl_body", mb.stage(mb.panic(mb.str(message))))))),
+                                new TestMb.RecordPair("impl_body", mb.stage(mb.panic(mb.str(message)))),
+                                new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                                new TestMb.RecordPair("description", mb.optNoneString())))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.return_(mb.scopeUse("f"))));
     }
@@ -35,7 +37,7 @@ public final class T0140PanicTest {
         modules.put(
                 "main",
                 new SourceModule.V1(
-                        mb.seqOf(mb.bind("f", panickyFn(mb, "boom")), mb.call(mb.scopeUse("f"), mb.tupleOf()))));
+                        TList.of(mb.bind("f", panickyFn(mb, "boom")), mb.call(mb.scopeUse("f"), mb.tupleOf()))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -54,7 +56,7 @@ public final class T0140PanicTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("f", panickyFn(mb, "uncatchable")),
                         mb.tryCatchFinally(
                                 mb.seqOf(mb.call(mb.scopeUse("f"), mb.tupleOf())),
@@ -80,7 +82,7 @@ public final class T0140PanicTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "f",
                                 mb.lower(mb.seqOf(
@@ -90,9 +92,6 @@ public final class T0140PanicTest {
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("f"))),
                                         mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
                                         mb.call(
-                                                mb.field(mb.scopeUse("nfr"), mb.str("set_exception_type")),
-                                                mb.typesString()),
-                                        mb.call(
                                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
@@ -100,7 +99,12 @@ public final class T0140PanicTest {
                                                                 new TestMb.RecordPair("ret", mb.optNoneType()),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
-                                                                        mb.stage(mb.panic(mb.str("inner panic"))))))),
+                                                                        mb.stage(mb.panic(mb.str("inner panic")))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type",
+                                                                        mb.optSomeType(mb.typesString())),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.tryCatchFinally(

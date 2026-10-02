@@ -13,10 +13,10 @@ import compilerxyz.prelude.util.TMap;
 import org.junit.jupiter.api.Test;
 
 public final class T0105ExportRoundTripTest {
-    private static TList<String> compileLogs(SourceExpr lib, SourceExpr main) {
+    private static TList<String> compileLogs(EcoMb e, SourceExpr lib, SourceExpr main) {
         var modules = new TMap<String, SourceModule>();
-        modules.put("lib", new SourceModule.V1(lib));
-        modules.put("main", new SourceModule.V1(main));
+        modules.put("lib", new SourceModule.V1(TList.of(e.ret(lib))));
+        modules.put("main", new SourceModule.V1(TList.of(main)));
         var res = Helpers.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, ?> ok;
         switch (res) {
@@ -37,7 +37,7 @@ public final class T0105ExportRoundTripTest {
         var e = new EcoMb();
         var lib = e.rec(e.p("s", e.s("from-field")));
         var main = e.seq(importLib(e), e.call(e.mb.log(), e.fld(e.v("r"), "s")));
-        assertEquals(TList.of("from-field"), compileLogs(lib, main));
+        assertEquals(TList.of("from-field"), compileLogs(e, lib, main));
     }
 
     @Test
@@ -48,7 +48,7 @@ public final class T0105ExportRoundTripTest {
                 e.push(e.v("x"), e.s("more")),
                 e.ret(e.rec(e.p("s", e.s("from-lowered"))))));
         var main = e.seq(importLib(e), e.call(e.mb.log(), e.fld(e.v("r"), "s")));
-        assertEquals(TList.of("from-lowered"), compileLogs(lib, main));
+        assertEquals(TList.of("from-lowered"), compileLogs(e, lib, main));
     }
 
     private static SourceExpr defsetLib(EcoMb e, SourceExpr... extra) {
@@ -64,11 +64,16 @@ public final class T0105ExportRoundTripTest {
         var lib = e.lower(defsetLib(
                 e,
                 e.let("fb", e.defFunc(e.v("d"), "greet")),
-                e.funcImpl(e.v("fb"), e.mb.tupleOf(), e.retSome(e.mb.typesString()), e.stage(e.s("from-func"))),
+                e.funcImpl(
+                        e.v("fb"),
+                        e.mb.tupleOf(),
+                        e.retSome(e.mb.typesString()),
+                        e.mb.optNoneType(),
+                        e.stage(e.s("from-func"))),
                 e.finish(e.v("d")),
                 e.ret(e.rec(e.p("f", e.fld(e.v("fb"), "func"))))));
         var main = e.seq(importLib(e), e.call(e.mb.log(), e.call(e.fld(e.v("r"), "f"), e.tup())));
-        assertEquals(TList.of("from-func"), compileLogs(lib, main));
+        assertEquals(TList.of("from-func"), compileLogs(e, lib, main));
     }
 
     @Test
@@ -77,7 +82,7 @@ public final class T0105ExportRoundTripTest {
         var lib = e.lower(defsetLib(
                 e,
                 e.let("obj", e.defObject(e.v("d"), "thing")),
-                e.callM(e.v("obj"), "set_inner", e.rec(e.p("name", e.mb.typesString()))),
+                e.objectImpl(e.v("obj"), e.rec(e.p("name", e.mb.typesString()))),
                 e.methodImpl(
                         e.v("obj"),
                         "name",
@@ -89,6 +94,7 @@ public final class T0105ExportRoundTripTest {
                         e.v("mk"),
                         e.mb.typesString(),
                         e.retSome(e.fld(e.v("obj"), "type")),
+                        e.mb.optNoneType(),
                         e.stage(e.call(e.lower(e.fld(e.v("obj"), "new")), e.rec(e.p("name", e.v("arg")))))),
                 e.finish(e.v("d")),
                 e.ret(e.rec(e.p("mk", e.fld(e.v("mk"), "func")), e.p("obj_t", e.fld(e.v("obj"), "type"))))));
@@ -96,7 +102,7 @@ public final class T0105ExportRoundTripTest {
                 importLib(e),
                 e.let("inst", e.call(e.fld(e.v("r"), "mk"), e.s("roundtrip"))),
                 e.call(e.mb.log(), e.callM(e.v("inst"), "name", e.tup())));
-        assertEquals(TList.of("roundtrip"), compileLogs(lib, main));
+        assertEquals(TList.of("roundtrip"), compileLogs(e, lib, main));
     }
 
     @Test
@@ -121,7 +127,7 @@ public final class T0105ExportRoundTripTest {
                         e.s("x"),
                         TList.of(new TestMb.Branch(e.s("a"), e.call(e.mb.log(), e.v("x")))),
                         Opt.none()));
-        assertEquals(TList.of("in-union"), compileLogs(lib, main));
+        assertEquals(TList.of("in-union"), compileLogs(e, lib, main));
     }
 
     @Test
@@ -140,7 +146,7 @@ public final class T0105ExportRoundTripTest {
                 e.ret(e.rec(e.p("uni_t", e.fld(e.v("uni"), "type"))))));
         var main = e.seq(
                 importLib(e), e.let("t", e.fld(e.v("r"), "uni_t")), e.call(e.mb.log(), e.s("union-type-imported")));
-        assertEquals(TList.of("union-type-imported"), compileLogs(lib, main));
+        assertEquals(TList.of("union-type-imported"), compileLogs(e, lib, main));
     }
 
     @Test
@@ -149,6 +155,7 @@ public final class T0105ExportRoundTripTest {
         var lib = e.lower(defsetLib(
                 e,
                 e.let("iface", e.callM0(e.v("d"), "interface")),
+                e.interfaceImpl(e.v("iface"), false),
                 e.callM(
                         e.v("iface"),
                         "func",
@@ -160,7 +167,7 @@ public final class T0105ExportRoundTripTest {
                 e.ret(e.rec(e.p("iface_t", e.fld(e.v("iface"), "type"))))));
         var main = e.seq(
                 importLib(e), e.let("t", e.fld(e.v("r"), "iface_t")), e.call(e.mb.log(), e.s("iface-type-imported")));
-        assertEquals(TList.of("iface-type-imported"), compileLogs(lib, main));
+        assertEquals(TList.of("iface-type-imported"), compileLogs(e, lib, main));
     }
 
     @Test
@@ -169,7 +176,7 @@ public final class T0105ExportRoundTripTest {
         var lib = e.lower(defsetLib(
                 e,
                 e.let("obj", e.defObject(e.v("d"), "thing")),
-                e.callM(e.v("obj"), "set_inner", e.rec(e.p("name", e.mb.typesString()))),
+                e.objectImpl(e.v("obj"), e.rec(e.p("name", e.mb.typesString()))),
                 e.methodImpl(
                         e.v("obj"),
                         "name",
@@ -184,6 +191,7 @@ public final class T0105ExportRoundTripTest {
                                 "variant",
                                 e.rec(e.p("tag", e.s("a")), e.p("type_ref", e.mb.typesString())))),
                 e.let("iface", e.callM0(e.v("d"), "interface")),
+                e.interfaceImpl(e.v("iface"), false),
                 e.callM(
                         e.v("iface"),
                         "func",
@@ -196,6 +204,7 @@ public final class T0105ExportRoundTripTest {
                         e.v("mk"),
                         e.mb.typesString(),
                         e.retSome(e.fld(e.v("obj"), "type")),
+                        e.mb.optNoneType(),
                         e.stage(e.call(e.lower(e.fld(e.v("obj"), "new")), e.rec(e.p("name", e.v("arg")))))),
                 e.finish(e.v("d")),
                 e.ret(e.rec(
@@ -214,7 +223,7 @@ public final class T0105ExportRoundTripTest {
                         e.s("x"),
                         TList.of(new TestMb.Branch(e.s("a"), e.call(e.mb.log(), e.v("x")))),
                         Opt.none()));
-        assertEquals(TList.of("roundtrip", "in-union"), compileLogs(lib, main));
+        assertEquals(TList.of("roundtrip", "in-union"), compileLogs(e, lib, main));
     }
 
     @Test
@@ -227,11 +236,12 @@ public final class T0105ExportRoundTripTest {
                         e.v("fb"),
                         e.rec(e.p("c", e.mb.typesCode())),
                         e.retSome(e.mb.typesString()),
+                        e.mb.optNoneType(),
                         e.stage(e.mb.as(e.s("from-code-fn"), e.mb.typesString()))),
                 e.finish(e.v("d")),
                 e.ret(e.rec(e.p("f", e.fld(e.v("fb"), "func"))))));
         var main = e.seq(importLib(e), e.let("f", e.fld(e.v("r"), "f")), e.call(e.mb.log(), e.s("imported-code-fn")));
-        assertEquals(TList.of("imported-code-fn"), compileLogs(lib, main));
+        assertEquals(TList.of("imported-code-fn"), compileLogs(e, lib, main));
     }
 
     @Test
@@ -239,14 +249,14 @@ public final class T0105ExportRoundTripTest {
         var e = new EcoMb();
         var lib = e.rec(e.p("t", e.mb.typesInt()));
         var main = e.seq(importLib(e), e.call(e.mb.log(), e.toStr(e.mb.as(e.n(3.), e.fld(e.v("r"), "t")))));
-        assertEquals(TList.of("3"), compileLogs(lib, main));
+        assertEquals(TList.of("3"), compileLogs(e, lib, main));
     }
 
     private static SourceExpr thingDefs(EcoMb e) {
         return e.lower(defsetLib(
                 e,
                 e.let("obj", e.defObject(e.v("d"), "thing")),
-                e.callM(e.v("obj"), "set_inner", e.rec(e.p("name", e.mb.typesString()))),
+                e.objectImpl(e.v("obj"), e.rec(e.p("name", e.mb.typesString()))),
                 e.methodImpl(
                         e.v("obj"),
                         "name",
@@ -254,7 +264,12 @@ public final class T0105ExportRoundTripTest {
                         e.retSome(e.mb.typesString()),
                         e.stage(e.fld(e.v("inner"), "name"))),
                 e.let("fb", e.defFunc(e.v("d"), "greet")),
-                e.funcImpl(e.v("fb"), e.mb.tupleOf(), e.retSome(e.mb.typesString()), e.stage(e.s("from-func"))),
+                e.funcImpl(
+                        e.v("fb"),
+                        e.mb.tupleOf(),
+                        e.retSome(e.mb.typesString()),
+                        e.mb.optNoneType(),
+                        e.stage(e.s("from-func"))),
                 e.finish(e.v("d")),
                 e.ret(e.rec(
                         e.p("f", e.fld(e.v("fb"), "func")),
@@ -267,7 +282,7 @@ public final class T0105ExportRoundTripTest {
         var e = new EcoMb();
         var lib = e.seq(e.let("k", thingDefs(e)), e.ret(e.rec(e.p("f", e.fld(e.v("k"), "f")))));
         var main = e.seq(importLib(e), e.call(e.mb.log(), e.call(e.fld(e.v("r"), "f"), e.tup())));
-        assertEquals(TList.of("from-func"), compileLogs(lib, main));
+        assertEquals(TList.of("from-func"), compileLogs(e, lib, main));
     }
 
     @Test
@@ -276,7 +291,7 @@ public final class T0105ExportRoundTripTest {
         var lib = e.seq(e.let("k", thingDefs(e)), e.ret(e.rec(e.p("obj_t", e.fld(e.v("k"), "obj_t")))));
         var main =
                 e.seq(importLib(e), e.let("t", e.fld(e.v("r"), "obj_t")), e.call(e.mb.log(), e.s("obj-type-imported")));
-        assertEquals(TList.of("obj-type-imported"), compileLogs(lib, main));
+        assertEquals(TList.of("obj-type-imported"), compileLogs(e, lib, main));
     }
 
     @Test
@@ -286,7 +301,7 @@ public final class T0105ExportRoundTripTest {
                 e.let("k", thingDefs(e)),
                 e.ret(e.rec(e.p("inst", e.call(e.fld(e.v("k"), "obj_new"), e.rec(e.p("name", e.s("inst-name"))))))));
         var main = e.seq(importLib(e), e.call(e.mb.log(), e.callM(e.fld(e.v("r"), "inst"), "name", e.tup())));
-        assertEquals(TList.of("inst-name"), compileLogs(lib, main));
+        assertEquals(TList.of("inst-name"), compileLogs(e, lib, main));
     }
 
     @Test
@@ -304,6 +319,6 @@ public final class T0105ExportRoundTripTest {
                 e.call(
                         e.mb.log(),
                         e.callM(e.mb.as(e.fld(e.v("r"), "inst"), e.fld(e.v("r"), "obj_t")), "name", e.tup())));
-        assertEquals(TList.of("from-func", "inst-name"), compileLogs(lib, main));
+        assertEquals(TList.of("from-func", "inst-name"), compileLogs(e, lib, main));
     }
 }

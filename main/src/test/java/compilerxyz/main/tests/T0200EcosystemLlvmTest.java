@@ -27,18 +27,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 public final class T0200EcosystemLlvmTest {
-    static String serializeModule(SourceExpr expr) throws IOException {
+    static String serializeModule(TList<SourceExpr> exprs) throws IOException {
         var sw = new StringWriter();
         var writer = new JsonWriter(sw);
         writer.setSerializeNulls(true);
         writer.setIndent("  ");
-        SourceModuleCodec.encode(writer, new SourceModule.V1(expr), Json.Style.PRETTY);
+        SourceModuleCodec.encode(writer, new SourceModule.V1(exprs), Json.Style.PRETTY);
         writer.close();
         return sw.toString();
     }
 
-    static void writeModule(Path file, SourceExpr expr) throws IOException {
-        Files.writeString(file, serializeModule(expr));
+    static void writeModule(Path file, TList<SourceExpr> exprs) throws IOException {
+        Files.writeString(file, serializeModule(exprs));
     }
 
     static Compile.CompileResult compileOk(Path entry, Path cacheDir) {
@@ -105,8 +105,9 @@ public final class T0200EcosystemLlvmTest {
         writeModule(src.resolve("llvm-ir-22.at"), EcoLlvmIr.module(new EcoMb()));
         var e = new EcoMb();
         var hello = "hello ecosys!\n".getBytes(StandardCharsets.UTF_8);
-        var ints = new int[hello.length + 1];
-        for (int i = 0; i < hello.length; i++) ints[i] = hello[i] & 0xFF;
+        var helloInit = new SourceExpr[hello.length + 1];
+        for (int i = 0; i < hello.length; i++) helloInit[i] = e.n(hello[i] & 0xFF);
+        helloInit[hello.length] = e.n(0);
         var setup = new TList<SourceExpr>();
         setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
         setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
@@ -141,7 +142,7 @@ public final class T0200EcosystemLlvmTest {
                                 e.rec(
                                         e.p("name", e.s("str.hello")),
                                         e.p("ty", e.v("hello_arr_t")),
-                                        e.p("init", EcoPipewire.byteTuple(e, ints)))),
+                                        e.p("init", e.tup(helloInit)))),
                         e.v("hello_t"))));
         top.add(func(
                 e,
@@ -150,7 +151,7 @@ public final class T0200EcosystemLlvmTest {
                 "t_i32",
                 e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hello"))), e.ret(e.n(0)))));
         top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
-        writeModule(src.resolve("main.at"), e.mb.seq(top));
+        writeModule(src.resolve("main.at"), top);
 
         var ok = compileOk(src.resolve("main.at"), tmp.resolve("cache"));
         assertEquals(1, ok.logs().size());
@@ -177,18 +178,37 @@ public final class T0200EcosystemLlvmTest {
     }
 
     private static Path writeListInitModule(Path tmp, String elementType) throws IOException {
+        var e = new EcoMb();
+        var elemT = e.mb.builtin("types", elementType);
+        return writeArrayInitModule(
+                tmp,
+                e,
+                4,
+                TList.of(
+                        e.let(
+                                "bytes",
+                                e.listNew(
+                                        elemT,
+                                        e.mb.as(e.n('h'), elemT),
+                                        e.mb.as(e.n('i'), elemT),
+                                        e.mb.as(e.n('\n'), elemT))),
+                        e.push(e.v("bytes"), e.mb.as(e.n(0), elemT))),
+                e.v("bytes"));
+    }
+
+    private static Path writeArrayInitModule(Path tmp, EcoMb e, int count, TList<SourceExpr> preInit, SourceExpr init)
+            throws IOException {
         var src = tmp.resolve("src");
         Files.createDirectories(src);
         writeModule(src.resolve("llvm-ir-22.at"), EcoLlvmIr.module(new EcoMb()));
-        var e = new EcoMb();
         var setup = new TList<SourceExpr>();
         setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
         setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
         EcoExtern.bindTypes(e, setup, EcoExtern.Llvm.top(e));
         var puts = new EcoExtern("puts", IList.of("pu8"), "i32", false);
         setup.add(e.let("puts_t", puts.constType(e, EcoExtern.Llvm.top(e))));
-        setup.add(e.let("hi_t", EcoPipewire.byteArrayConstType(e, EcoExtern.Llvm.top(e), e.intOf(4))));
-        setup.add(e.let("hi_arr_t", EcoPipewire.byteArrayType(e, EcoExtern.Llvm.top(e), e.intOf(4))));
+        setup.add(e.let("hi_t", EcoPipewire.byteArrayConstType(e, EcoExtern.Llvm.top(e), e.intOf(count))));
+        setup.add(e.let("hi_arr_t", EcoPipewire.byteArrayType(e, EcoExtern.Llvm.top(e), e.intOf(count))));
         setup.add(e.let("global_const_fn", e.fld(e.v("llvm"), "global_const_fn")));
         var exported = new TList<String>();
         exported.add("ll");
@@ -207,20 +227,13 @@ public final class T0200EcosystemLlvmTest {
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : exported) top.add(e.let(n, e.fld(e.v("k"), n)));
         top.add(e.let("puts", e.mb.as(puts.declare(e, "ll", EcoExtern.Llvm.top(e)), e.v("puts_t"))));
-        var elemT = e.mb.builtin("types", elementType);
-        top.add(e.let(
-                "bytes",
-                e.listNew(elemT, e.mb.as(e.n('h'), elemT), e.mb.as(e.n('i'), elemT), e.mb.as(e.n('\n'), elemT))));
-        top.add(e.push(e.v("bytes"), e.mb.as(e.n(0), elemT)));
+        top.addAll(preInit);
         top.add(e.let(
                 "hi",
                 e.mb.as(
                         e.call(
                                 e.mb.as(e.v("ll"), e.v("global_const_fn")),
-                                e.rec(
-                                        e.p("name", e.s("str.hi")),
-                                        e.p("ty", e.v("hi_arr_t")),
-                                        e.p("init", e.v("bytes")))),
+                                e.rec(e.p("name", e.s("str.hi")), e.p("ty", e.v("hi_arr_t")), e.p("init", init))),
                         e.v("hi_t"))));
         top.add(func(
                 e,
@@ -229,7 +242,7 @@ public final class T0200EcosystemLlvmTest {
                 "t_i32",
                 e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hi"))), e.ret(e.n(0)))));
         top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
-        writeModule(src.resolve("main.at"), e.mb.seq(top));
+        writeModule(src.resolve("main.at"), top);
 
         return src.resolve("main.at");
     }
@@ -272,6 +285,47 @@ public final class T0200EcosystemLlvmTest {
         }
     }
 
+    @Test
+    public void test00070StringArrayInit(@TempDir Path tmp) throws IOException {
+        var e = new EcoMb();
+        var ok = compileOk(writeArrayInitModule(tmp, e, 5, TList.of(), e.s("hé\n\0")), tmp.resolve("cache"));
+        assertEquals(1, ok.logs().size());
+        var ir = ok.logs().get(0).message();
+        assertEquals(
+                """
+                declare i32 @puts(ptr)
+                @str.hi = constant [5 x i8] [i8 104, i8 195, i8 169, i8 10, i8 0]
+                define i32 @main() {
+                  %t0 = call i32 @puts(ptr @str.hi)
+                  ret i32 0
+                }
+                """,
+                ir);
+        assertValidIr(tmp, "hi", ir);
+    }
+
+    @Test
+    public void test00080StringArrayInitWrongLength(@TempDir Path tmp) throws IOException {
+        var e = new EcoMb();
+        var entry = writeArrayInitModule(tmp, e, 5, TList.of(), e.s("hi\n\0"));
+        try (var cache = new CacheReal(tmp.resolve("cache"))) {
+            var res = Helpers.compile(
+                    GlobalContext.newContext(cache, cache, cache), new SourceSpecAbsolute.Local(entry.toString()));
+            switch (res) {
+                case Result.Ok<Compile.CompileResult, ?> o -> throw new AssertionError("expected compile failure");
+                case Result.Err<Compile.CompileResult, ?> err -> {
+                    var errors = (TList<?>) err.error();
+                    assertEquals(1, errors.size(), () -> "unexpected: " + res);
+                    var only = (ExprErr) errors.get(0);
+                    assertEquals(0L, only.loc().source().value(), () -> "error not located in main.at: " + res);
+                    Assertions.assertTrue(
+                            only.message().contains("string initializer has 4 bytes, expected 5"),
+                            () -> "unexpected: " + res);
+                }
+            }
+        }
+    }
+
     private static final String LIBC_DECLS =
             """
             declare double @sin(double)
@@ -307,7 +361,7 @@ public final class T0200EcosystemLlvmTest {
                 "t_f64",
                 body));
         top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
-        writeModule(src.resolve("main.at"), e.mb.seq(top));
+        writeModule(src.resolve("main.at"), top);
     }
 
     @Test

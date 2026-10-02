@@ -581,9 +581,10 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                         var source = (long) ((JsonValueNumber)
                                                         eo.entries().getOpt("s").optUnwrap())
                                                 .value();
-                                        var expr = (long) ((JsonValueNumber)
-                                                        eo.entries().getOpt("e").optUnwrap())
-                                                .value();
+                                        var exprJson = eo.entries().getOpt("e");
+                                        Opt<Long> expr = exprJson.optIsSome()
+                                                ? Opt.some((long) ((JsonValueNumber) exprJson.optUnwrap()).value())
+                                                : Opt.none();
                                         var msgs = new TList<ExprSubErr>();
                                         for (var mv : ((JsonValueArray)
                                                         eo.entries().getOpt("m").optUnwrap())
@@ -672,10 +673,13 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                                         new JsonValueNumber(err2.loc()
                                                                 .source()
                                                                 .value()));
-                                                em.put(
-                                                        "e",
-                                                        new JsonValueNumber(
-                                                                err2.loc().expr()));
+                                                if (err2.loc().expr().optIsSome()) {
+                                                    em.put(
+                                                            "e",
+                                                            new JsonValueNumber(err2.loc()
+                                                                    .expr()
+                                                                    .optUnwrap()));
+                                                }
                                                 var msgs = new TList<JsonValue>();
                                                 for (var sub : err2.errors()) {
                                                     switch (sub) {

@@ -18,7 +18,7 @@ public final class T0030DefineInterfaceTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "defs",
                                 mb.lower(mb.seqOf(
@@ -26,6 +26,13 @@ public final class T0030DefineInterfaceTest {
                                         mb.bind(
                                                 "iface",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("interface")), mb.tupleOf())),
+                                        mb.call(
+                                                mb.field(mb.scopeUse("iface"), mb.str("impl")),
+                                                mb.recordOf(
+                                                        TList.of(
+                                                                new TestMb.RecordPair("is_aspect", mb.bool(false)),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(
                                                 mb.field(mb.scopeUse("iface"), mb.str("func")),
                                                 mb.recordOf(
@@ -37,7 +44,13 @@ public final class T0030DefineInterfaceTest {
                                         mb.bind(
                                                 "ndr",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("upper"))),
-                                        mb.call(mb.field(mb.scopeUse("ndr"), mb.str("set_inner")), mb.typesString()),
+                                        mb.call(
+                                                mb.field(mb.scopeUse("ndr"), mb.str("impl")),
+                                                mb.recordOf(
+                                                        TList.of(
+                                                                new TestMb.RecordPair("inner", mb.typesString()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(
                                                 mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
                                                 mb.recordOf(
@@ -289,7 +302,7 @@ public final class T0030DefineInterfaceTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "defs",
                                 mb.lower(mb.seqOf(
@@ -297,6 +310,13 @@ public final class T0030DefineInterfaceTest {
                                         mb.bind(
                                                 "iface",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("interface")), mb.tupleOf())),
+                                        mb.call(
+                                                mb.field(mb.scopeUse("iface"), mb.str("impl")),
+                                                mb.recordOf(
+                                                        TList.of(
+                                                                new TestMb.RecordPair("is_aspect", mb.bool(false)),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(
                                                 mb.field(mb.scopeUse("iface"), mb.str("func")),
                                                 mb.recordOf(
@@ -308,7 +328,13 @@ public final class T0030DefineInterfaceTest {
                                         mb.bind(
                                                 "ndr",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("upper"))),
-                                        mb.call(mb.field(mb.scopeUse("ndr"), mb.str("set_inner")), mb.typesString()),
+                                        mb.call(
+                                                mb.field(mb.scopeUse("ndr"), mb.str("impl")),
+                                                mb.recordOf(
+                                                        TList.of(
+                                                                new TestMb.RecordPair("inner", mb.typesString()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(
                                                 mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
                                                 mb.recordOf(
@@ -563,8 +589,11 @@ public final class T0030DefineInterfaceTest {
                                                                                                                                                 "type"))),
                                                                                                         mb.str(
                                                                                                                 "to_string")),
-                                                                                                mb.scopeUse(
-                                                                                                        "arg")))))))),
+                                                                                                mb.scopeUse("arg"))))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type", mb.optNoneType()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.recordOf(
                                                 TList.of(
@@ -595,13 +624,19 @@ public final class T0030DefineInterfaceTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(mb.bind(
+                new SourceModule.V1(TList.of(mb.bind(
                         "make_upper",
                         mb.lower(mb.seqOf(
                                 mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                                 mb.bind(
                                         "iface",
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("interface")), mb.tupleOf())),
+                                mb.call(
+                                        mb.field(mb.scopeUse("iface"), mb.str("impl")),
+                                        mb.recordOf(
+                                                TList.of(
+                                                        new TestMb.RecordPair("is_aspect", mb.bool(false)),
+                                                        new TestMb.RecordPair("description", mb.optNoneString())))),
                                 mb.call(
                                         mb.field(mb.scopeUse("iface"), mb.str("func")),
                                         mb.recordOf(
@@ -611,7 +646,12 @@ public final class T0030DefineInterfaceTest {
                                                         new TestMb.RecordPair(
                                                                 "ret", mb.optSomeType(mb.typesString()))))),
                                 mb.bind("ndr", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("upper"))),
-                                mb.call(mb.field(mb.scopeUse("ndr"), mb.str("set_inner")), mb.typesString()),
+                                mb.call(
+                                        mb.field(mb.scopeUse("ndr"), mb.str("impl")),
+                                        mb.recordOf(
+                                                TList.of(
+                                                        new TestMb.RecordPair("inner", mb.typesString()),
+                                                        new TestMb.RecordPair("description", mb.optNoneString())))),
                                 mb.call(
                                         mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
                                         mb.tupleOf(

@@ -18,7 +18,7 @@ public final class T0040ListsTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_list",
                                 mb.call(

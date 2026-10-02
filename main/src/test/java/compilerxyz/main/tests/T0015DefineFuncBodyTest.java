@@ -2,6 +2,7 @@ package compilerxyz.main.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import compilerxyz.prelude.util.TList;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,10 +18,10 @@ public final class T0015DefineFuncBodyTest {
         var le = new EcoMb();
         T0200EcosystemLlvmTest.writeModule(
                 src.resolve("lib.at"),
-                le.lower(le.seq(
+                TList.of(le.ret(le.lower(le.seq(
                         le.let("d", le.define()),
                         le.let("obj", le.defObject(le.v("d"), "poker")),
-                        le.callM(le.v("obj"), "set_inner", le.rec(le.p("out", le.strListType()))),
+                        le.objectImpl(le.v("obj"), le.rec(le.p("out", le.strListType()))),
                         le.methodImpl(
                                 le.v("obj"),
                                 "poke",
@@ -74,15 +75,16 @@ public final class T0015DefineFuncBodyTest {
                                 le.v("mk"),
                                 le.mb.tupleOf(),
                                 le.retSome(le.fld(le.v("obj"), "type")),
+                                le.mb.optNoneType(),
                                 le.stage(le.call(
                                         le.lower(le.fld(le.v("obj"), "new")),
                                         le.rec(le.p("out", le.listNew(le.mb.typesString(), le.s("start"))))))),
                         le.finish(le.v("d")),
-                        le.ret(le.fld(le.v("mk"), "func")))));
+                        le.ret(le.fld(le.v("mk"), "func")))))));
         var e = new EcoMb();
         T0200EcosystemLlvmTest.writeModule(
                 src.resolve("main.at"),
-                e.seq(
+                TList.of(
                         e.let("mk", e.importLocal("lib", "lib.at")),
                         e.let("o", e.call(e.v("mk"), e.tup())),
                         e.callM(e.v("o"), "poke", e.tup()),

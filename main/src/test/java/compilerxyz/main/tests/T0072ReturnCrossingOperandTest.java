@@ -36,6 +36,7 @@ public final class T0072ReturnCrossingOperandTest {
                 e.v("gb"),
                 e.mb.typesBool(),
                 e.retSome(strT),
+                e.mb.optNoneType(),
                 e.stage(e.mb.labeled(
                         "m",
                         e.seq(
@@ -60,7 +61,7 @@ public final class T0072ReturnCrossingOperandTest {
         }
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        T0200EcosystemLlvmTest.writeModule(src.resolve("main.at"), e.mb.seq(top));
+        T0200EcosystemLlvmTest.writeModule(src.resolve("main.at"), top);
         try (var cache = new CacheReal(tmp.resolve("cache"))) {
             var res = Helpers.compile(
                     GlobalContext.newContext(cache, cache, cache),

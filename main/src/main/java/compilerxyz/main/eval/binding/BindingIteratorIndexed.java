@@ -10,7 +10,7 @@ import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.prelude.util.TList;
 
-public record BindingIteratorIndexed(BindingId listSlot, BindingId indexSlot) implements Binding {
+public record BindingIteratorIndexed(BindingId baseSlot, BindingId indexSlot) implements Binding {
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         throw new IllegalStateException(

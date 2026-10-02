@@ -20,7 +20,7 @@ public final class T0050IntsTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("x", mb.as(mb.num(4.0), mb.typesInt())),
                         mb.ifOf(
                                 TList.of(new TestMb.Branch(
@@ -49,7 +49,7 @@ public final class T0050IntsTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "maybe_add",
                                 mb.lower(mb.seqOf(
@@ -96,8 +96,11 @@ public final class T0050IntsTest {
                                                                                                                                                         7.0))))),
                                                                                                 Opt.none()),
                                                                                         mb.return_(
-                                                                                                mb.scopeUse(
-                                                                                                        "arg")))))))),
+                                                                                                mb.scopeUse("arg"))))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type", mb.optNoneType()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.field(mb.scopeUse("builder"), mb.str("func")))))),
                         mb.call(

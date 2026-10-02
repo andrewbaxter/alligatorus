@@ -13,11 +13,11 @@ public record ExprErr(QExprId loc, TList<ExprSubErr> errors) {
 
     public String message() {
         var sb = new StringBuilder();
-        sb.append("[")
-                .append(loc.source().value())
-                .append(":")
-                .append(loc.expr())
-                .append("] ");
+        sb.append("[").append(loc.source().value());
+        if (loc.expr().optIsSome()) {
+            sb.append(":").append(loc.expr().optUnwrap());
+        }
+        sb.append("] ");
         for (var sub : errors) {
             if (!sb.toString().endsWith("] ")) sb.append("; ");
             switch (sub) {

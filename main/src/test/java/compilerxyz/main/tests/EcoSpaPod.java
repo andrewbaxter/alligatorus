@@ -74,7 +74,7 @@ public final class EcoSpaPod {
         out.add(e.methodImpl(e.v("pod_b"), name, arg, ret, e.stage(body)));
     }
 
-    public static SourceExpr module(EcoMb e) {
+    public static TList<SourceExpr> module(EcoMb e) {
         var exprs = new TList<SourceExpr>();
         exprs.add(e.let("d", e.define()));
         exprs.add(e.optionTypeLet());
@@ -83,7 +83,7 @@ public final class EcoSpaPod {
         var byteT = e.mb.builtin("types", "ubyte");
         for (var c : SPA_CONSTS) exprs.add(e.let(c.name(), e.intOf(c.value())));
         exprs.add(e.let("pod_b", e.defObject(e.v("d"), "spa pod builder")));
-        exprs.add(e.callM(e.v("pod_b"), "set_inner", e.rec(e.p("bytes", e.listType(byteT)))));
+        exprs.add(e.objectImpl(e.v("pod_b"), e.rec(e.p("bytes", e.listType(byteT)))));
         podMethod(e, exprs, "bytes", e.tup(), e.optionTypeSome(e.listType(byteT)), podBytes(e));
         podMethod(
                 e,
@@ -180,13 +180,14 @@ public final class EcoSpaPod {
                         e.callM(e.v("b"), "append", e.fld(e.v("arg"), "props")),
                         self(e, "pod", e.rec(e.p("ty", spa(e, SPA_TYPE_OBJECT)), e.p("body", e.v("b"))))));
         exprs.add(e.let("new_pod_b", e.defFunc(e.v("d"), "new_pod")));
-        exprs.add(e.funcImpl(e.v("new_pod_b"), e.tup(), e.optionTypeSome(podT), e.stage(podNew(e))));
+        exprs.add(
+                e.funcImpl(e.v("new_pod_b"), e.tup(), e.optionTypeSome(podT), e.mb.optNoneType(), e.stage(podNew(e))));
         exprs.add(e.finish(e.v("d")));
         var exports = new TList<EcoMb.P>();
         exports.add(e.p("new_pod", e.fld(e.v("new_pod_b"), "func")));
         exports.add(e.p("pod_t", podT));
         for (var c : SPA_CONSTS) exports.add(e.p(c.name(), e.v(c.name())));
         exprs.add(e.ret(e.rec(exports.toArray(EcoMb.P[]::new))));
-        return e.mb.seq(exprs);
+        return exprs;
     }
 }

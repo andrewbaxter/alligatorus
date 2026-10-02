@@ -36,7 +36,7 @@ public final class T0190CarryCodeTest {
         exprs.add(mb.call(mb.log(), mb.call(mb.field(mb.scopeUse("l"), mb.str("join")), mb.str("_"))));
 
         var modules = new TMap<String, SourceModule>();
-        modules.put("main", new SourceModule.V1(mb.seq(exprs)));
+        modules.put("main", new SourceModule.V1(exprs));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes;
@@ -372,7 +372,9 @@ public final class T0190CarryCodeTest {
                                                 mb.stage(
                                                         mb.call(
                                                                 mb.field(mb.scopeUse("arg"), mb.str("toUpperCase")),
-                                                                mb.tupleOf())))))),
+                                                                mb.tupleOf()))),
+                                        new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                                        new TestMb.RecordPair("description", mb.optNoneString())))),
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                         mb.return_(mb.scopeUse("f")))));
     }

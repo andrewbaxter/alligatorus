@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import compilerxyz.main.syntax.SourceExpr;
+import compilerxyz.prelude.util.TList;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,6 +25,7 @@ public final class T0016ReturnScopeTest {
                         e.v("fb"),
                         e.mb.typesInt(),
                         e.retSome(e.mb.typesString()),
+                        e.mb.optNoneType(),
                         e.stage(e.seq(
                                 e.ifOnly(
                                         e.mb.operatorLt(e.v("arg"), e.mb.as(e.n(5.), e.mb.typesInt())),
@@ -37,10 +39,10 @@ public final class T0016ReturnScopeTest {
         var e = new EcoMb();
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        T0200EcosystemLlvmTest.writeModule(src.resolve("lib.at"), lib);
+        T0200EcosystemLlvmTest.writeModule(src.resolve("lib.at"), TList.of(e.ret(lib)));
         T0200EcosystemLlvmTest.writeModule(
                 src.resolve("main.at"),
-                e.seq(
+                TList.of(
                         e.let("f", e.importLocal("lib", "lib.at")),
                         e.call(e.mb.log(), e.call(e.v("f"), e.mb.as(e.n(3.), e.mb.typesInt())))));
         var ok = T0200EcosystemLlvmTest.compileOk(src.resolve("main.at"), tmp.resolve("cache"));

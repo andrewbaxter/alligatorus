@@ -10,10 +10,12 @@ import com.github.javaparser.ast.expr.NormalAnnotationExpr;
 import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr;
 import com.github.javaparser.ast.expr.StringLiteralExpr;
 import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
+import com.github.javaparser.ast.type.ArrayType;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.ast.type.VoidType;
+import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ParameterizedTypeName;
@@ -215,15 +217,38 @@ public final class BuiltinPathScanner {
     private static final ClassName TYPE_DOUBLE_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.double_", "TypeDoubleDynamic");
 
+    private static final ClassName TYPE_INT_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.int_", "TypeIntDynamic");
+
+    private static final ClassName TYPE_SHORT_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.short_", "TypeShortDynamic");
+
+    private static final ClassName TYPE_BYTE_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.byte_", "TypeByteDynamic");
+
+    private static final ClassName TYPE_FLOAT_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.float_", "TypeFloatDynamic");
+
     private static final ClassName TYPE_JVM_OBJECT_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.jvm_object", "TypeJvmObjectDynamic");
 
     private static TypeRef typeRefOf(
             Type t, TMap<String, String> imports, String sourcePkg, TMap<ClassName, CodeBlock> scannedLeaves) {
-        var tn = typeNameOf(t, imports, sourcePkg);
+        return typeRefOfName(typeNameOf(t, imports, sourcePkg), scannedLeaves);
+    }
+
+    private static TypeRef typeRefOfName(TypeName tn, TMap<ClassName, CodeBlock> scannedLeaves) {
         if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC, scannedLeaves);
         if (tn.equals(TypeName.LONG)) return TypeRef.leaf(TYPE_LONG_DYNAMIC, scannedLeaves);
         if (tn.equals(TypeName.DOUBLE)) return TypeRef.leaf(TYPE_DOUBLE_DYNAMIC, scannedLeaves);
+        if (tn.equals(TypeName.INT)) return TypeRef.leaf(TYPE_INT_DYNAMIC, scannedLeaves);
+        if (tn.equals(TypeName.SHORT)) return TypeRef.leaf(TYPE_SHORT_DYNAMIC, scannedLeaves);
+        if (tn.equals(TypeName.BYTE)) return TypeRef.leaf(TYPE_BYTE_DYNAMIC, scannedLeaves);
+        if (tn.equals(TypeName.FLOAT)) return TypeRef.leaf(TYPE_FLOAT_DYNAMIC, scannedLeaves);
+        if (tn instanceof ArrayTypeName at) {
+            var elementRef = typeRefOfName(at.componentType, scannedLeaves);
+            return new TypeRef(ArrayTypeName.of(elementRef.path()), DynamicTypes.array(elementRef.dynamicType()));
+        }
         if (tn instanceof ClassName cn && cn.canonicalName().equals("java.lang.Object")) {
             return TypeRef.leaf(TYPE_JVM_OBJECT_DYNAMIC, scannedLeaves);
         }
@@ -273,6 +298,9 @@ public final class BuiltinPathScanner {
                 case BYTE -> TypeName.BYTE;
                 case SHORT -> TypeName.SHORT;
             };
+        }
+        if (t instanceof ArrayType a) {
+            return ArrayTypeName.of(typeNameOf(a.getComponentType(), imports, sourcePkg));
         }
         if (t instanceof ClassOrInterfaceType c) {
             ClassName raw;

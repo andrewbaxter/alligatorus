@@ -16,15 +16,14 @@ public final class SourceFuncResult {
         this.func = func;
     }
 
-    public void setDescription(String description) {
-        if (this.func.data().description.optIsSome()) {
-            throw new IllegalStateException("Function already has a description");
-        }
-        this.func.data().description = Opt.some(description);
-    }
-
     @BuiltinEvalContext
-    public void impl(EvalContext vx, Type arg, Opt<Type> ret, StagedExprCell implBody) {
+    public void impl(
+            EvalContext vx,
+            Type arg,
+            Opt<Type> ret,
+            StagedExprCell implBody,
+            Opt<Type> exceptionType,
+            Opt<String> description) {
         var data = this.func.data();
         DefinitionSetBuilder.requireArgBindable(
                 DefinitionSetBuilder.builderContext(vx), arg, "Function '" + data.name.optUnwrapOr("(unnamed)") + "'");
@@ -40,12 +39,7 @@ public final class SourceFuncResult {
             throw new IllegalStateException("Function already has an implementation");
         }
         data.implExpr = Opt.some((Value) implBody.value());
-    }
-
-    public void setExceptionType(Type exceptionType) {
-        if (this.func.data().exceptionType.optIsSome()) {
-            throw new IllegalStateException("Function already has an exception type");
-        }
-        this.func.data().exceptionType = Opt.some(exceptionType);
+        data.exceptionType = exceptionType;
+        data.description = description;
     }
 }

@@ -19,7 +19,7 @@ public final class T0020DefineObjectTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "make_upper",
                                 mb.lower(mb.seqOf(
@@ -27,7 +27,13 @@ public final class T0020DefineObjectTest {
                                         mb.bind(
                                                 "ndr",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("upper"))),
-                                        mb.call(mb.field(mb.scopeUse("ndr"), mb.str("set_inner")), mb.typesString()),
+                                        mb.call(
+                                                mb.field(mb.scopeUse("ndr"), mb.str("impl")),
+                                                mb.recordOf(
+                                                        TList.of(
+                                                                new TestMb.RecordPair("inner", mb.typesString()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(
                                                 mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
                                                 mb.recordOf(

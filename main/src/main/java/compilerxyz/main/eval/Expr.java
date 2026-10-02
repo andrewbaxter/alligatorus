@@ -94,7 +94,7 @@ public record Expr(QExprId loc, Variant variant) implements Value {
     }
 
     public sealed interface Module {
-        record V1(Expr expr) implements Module {}
+        record V1(SourceId source, TList<Expr> exprs) implements Module {}
     }
 
     @Override

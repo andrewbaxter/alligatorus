@@ -33,12 +33,15 @@ public final class T0142ThrowLocationTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("z", mb.as(mb.num(0.0), mb.typesInt())),
                         mb.set(mb.scopeUse("z"), mb.operatorSub(mb.scopeUse("z"), mb.num(0.0))),
                         mb.call(mb.log(), mb.call(mb.field(div, mb.str("to_string")), mb.tupleOf())))));
         var err = singleErr(modules);
-        assertEquals(div.id().value(), err.loc().expr(), () -> "error should point at the division; got: " + err);
+        assertEquals(
+                div.id().value(),
+                err.loc().expr().optUnwrap(),
+                () -> "error should point at the division; got: " + err);
         assertTrue(
                 err.message().contains("java.lang.ArithmeticException"),
                 () -> "expected the JVM exception to surface; got: " + err.message());
@@ -52,7 +55,7 @@ public final class T0142ThrowLocationTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "f",
                                 mb.lower(mb.seqOf(
@@ -67,13 +70,19 @@ public final class T0142ThrowLocationTest {
                                                         TList.of(
                                                                 new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair("ret", mb.optNoneType()),
-                                                                new TestMb.RecordPair("impl_body", mb.stage(panic))))),
+                                                                new TestMb.RecordPair("impl_body", mb.stage(panic)),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type", mb.optNoneType()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         callF)));
         var err = singleErr(modules);
         assertEquals(
-                panic.id().value(), err.loc().expr(), () -> "panic should point inside the function body; got: " + err);
+                panic.id().value(),
+                err.loc().expr().optUnwrap(),
+                () -> "panic should point inside the function body; got: " + err);
         assertTrue(err.message().contains("panic: inside"), () -> "expected panic message; got: " + err.message());
     }
 
@@ -84,7 +93,7 @@ public final class T0142ThrowLocationTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "lib",
-                new SourceModule.V1(mb.lower(mb.seqOf(
+                new SourceModule.V1(TList.of(mb.return_(mb.lower(mb.seqOf(
                         mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                         mb.bind("nfr", mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("f"))),
                         mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
@@ -93,13 +102,17 @@ public final class T0142ThrowLocationTest {
                                 mb.recordOf(TList.of(
                                         new TestMb.RecordPair("arg", mb.tupleOf()),
                                         new TestMb.RecordPair("ret", mb.optNoneType()),
-                                        new TestMb.RecordPair("impl_body", mb.stage(panic))))),
+                                        new TestMb.RecordPair("impl_body", mb.stage(panic)),
+                                        new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                                        new TestMb.RecordPair("description", mb.optNoneString())))),
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                        mb.return_(mb.scopeUse("f"))))));
-        modules.put("main", new SourceModule.V1(mb.call(mb.importExpr(mb.str("lib")), mb.tupleOf())));
+                        mb.return_(mb.scopeUse("f"))))))));
+        modules.put("main", new SourceModule.V1(TList.of(mb.call(mb.importExpr(mb.str("lib")), mb.tupleOf()))));
         var err = singleErr(modules);
         assertEquals(
-                panic.id().value(), err.loc().expr(), () -> "panic should point into the imported body; got: " + err);
+                panic.id().value(),
+                err.loc().expr().optUnwrap(),
+                () -> "panic should point into the imported body; got: " + err);
         assertTrue(err.message().contains("panic: imported"), () -> "expected panic message; got: " + err.message());
     }
 
@@ -110,15 +123,15 @@ public final class T0142ThrowLocationTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.lower(mb.seqOf(
+                new SourceModule.V1(TList.of(mb.return_(mb.lower(mb.seqOf(
                         mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                         mb.bind("nfr", mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("f"))),
                         finishCall,
-                        mb.return_(mb.field(mb.scopeUse("nfr"), mb.str("func")))))));
+                        mb.return_(mb.field(mb.scopeUse("nfr"), mb.str("func")))))))));
         var err = singleErr(modules);
         assertEquals(
                 finishCall.id().value(),
-                err.loc().expr(),
+                err.loc().expr().optUnwrap(),
                 () -> "finish error should point at d.finish(); got: " + err);
         assertTrue(
                 err.message().contains("has no implementation"),
@@ -136,11 +149,13 @@ public final class T0142ThrowLocationTest {
                         mb.recordOf(TList.of(
                                 new TestMb.RecordPair("arg", mb.tupleOf()),
                                 new TestMb.RecordPair("ret", mb.optNoneType()),
-                                new TestMb.RecordPair("impl_body", mb.stage(mb.tupleOf()))))),
+                                new TestMb.RecordPair("impl_body", mb.stage(mb.tupleOf())),
+                                new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                                new TestMb.RecordPair("description", mb.optNoneString())))),
                 mb.return_(mb.field(mb.scopeUse("nfr"), mb.str("func")))));
         var modules = new TMap<String, SourceModule>();
-        modules.put("lib", new SourceModule.V1(module));
-        modules.put("main", new SourceModule.V1(mb.importExpr(mb.str("lib"))));
+        modules.put("lib", new SourceModule.V1(TList.of(mb.return_(module))));
+        modules.put("main", new SourceModule.V1(TList.of(mb.importExpr(mb.str("lib")))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         var combined = res.toString();

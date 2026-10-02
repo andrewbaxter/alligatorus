@@ -28,7 +28,11 @@ public final class T0120ImplTypeTest {
                 mb.lower(mb.seqOf(
                         mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                         mb.bind("u", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("upper"))),
-                        mb.call(mb.field(mb.scopeUse("u"), mb.str("set_inner")), mb.tupleOf()),
+                        mb.call(
+                                mb.field(mb.scopeUse("u"), mb.str("impl")),
+                                mb.recordOf(TList.of(
+                                        new TestMb.RecordPair("inner", mb.tupleOf()),
+                                        new TestMb.RecordPair("description", mb.optNoneString())))),
                         mb.call(
                                 mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                                 mb.recordOf(TList.of(
@@ -233,7 +237,7 @@ public final class T0120ImplTypeTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("upper", mb.lower(buildUpperType(mb))),
                         mb.call(mb.log(), mb.as(mb.as(mb.str("hello"), mb.typesString()), mb.scopeUse("upper"))))));
         var gx = Helpers.newGx(modules);
@@ -253,10 +257,10 @@ public final class T0120ImplTypeTest {
     public void test00200ImplTypeImport() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        modules.put("other", new SourceModule.V1(buildUpperType(mb)));
+        modules.put("other", new SourceModule.V1(TList.of(mb.return_(buildUpperType(mb)))));
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("upper", mb.importExpr(mb.str("other"))),
                         mb.call(mb.log(), mb.as(mb.as(mb.str("hello"), mb.typesString()), mb.scopeUse("upper"))))));
         var gx = Helpers.newGx(modules);

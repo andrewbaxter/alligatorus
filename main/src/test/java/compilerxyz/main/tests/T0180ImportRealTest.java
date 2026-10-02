@@ -35,22 +35,22 @@ import org.junit.jupiter.api.io.TempDir;
 
 public final class T0180ImportRealTest {
 
-    private static String serializeModule(SourceExpr expr) throws IOException {
+    private static String serializeModule(TList<SourceExpr> exprs) throws IOException {
         var sw = new StringWriter();
         var writer = new JsonWriter(sw);
         writer.setSerializeNulls(true);
         writer.setIndent("");
-        SourceModuleCodec.encode(writer, new SourceModule.V1(expr), Json.Style.COMPACT);
+        SourceModuleCodec.encode(writer, new SourceModule.V1(exprs), Json.Style.COMPACT);
         writer.close();
         return sw.toString();
     }
 
-    private static void writeModule(Path file, SourceExpr expr) throws IOException {
-        Files.writeString(file, serializeModule(expr));
+    private static void writeModule(Path file, TList<SourceExpr> exprs) throws IOException {
+        Files.writeString(file, serializeModule(exprs));
     }
 
-    private static byte[] moduleBytes(SourceExpr expr) throws IOException {
-        return serializeModule(expr).getBytes(StandardCharsets.UTF_8);
+    private static byte[] moduleBytes(TList<SourceExpr> exprs) throws IOException {
+        return serializeModule(exprs).getBytes(StandardCharsets.UTF_8);
     }
 
     private static byte[] sha256(byte[] data) throws Exception {
@@ -87,9 +87,10 @@ public final class T0180ImportRealTest {
         var mb = new TestMb();
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        writeModule(src.resolve("other.at"), mb.str("from-other"));
+        writeModule(src.resolve("other.at"), TList.of(mb.return_(mb.str("from-other"))));
         writeModule(
-                src.resolve("main.at"), mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("other.at")))));
+                src.resolve("main.at"),
+                TList.of(mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("other.at"))))));
 
         try (var cache = new CacheReal(tmp.resolve("cache"))) {
             var res = Helpers.compile(
@@ -106,14 +107,15 @@ public final class T0180ImportRealTest {
         var mb = new TestMb();
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        writeModule(src.resolve("a.at"), mb.str("AA"));
-        writeModule(src.resolve("b.at"), mb.str("BB"));
+        writeModule(src.resolve("a.at"), TList.of(mb.return_(mb.str("AA"))));
+        writeModule(src.resolve("b.at"), TList.of(mb.return_(mb.str("BB"))));
         var both = new SourceExpr.RecordEntry(mb.str("a"), mb.sourceLocal(mb.str("a.at")));
         var second = new SourceExpr.RecordEntry(mb.str("b"), mb.sourceLocal(mb.str("b.at")));
         var rec = mb.importRecord(TList.of(both, second));
         writeModule(
                 src.resolve("main.at"),
-                mb.seqOf(mb.call(mb.log(), mb.field(rec, mb.str("a"))), mb.call(mb.log(), mb.field(rec, mb.str("b")))));
+                TList.of(mb.seqOf(
+                        mb.call(mb.log(), mb.field(rec, mb.str("a"))), mb.call(mb.log(), mb.field(rec, mb.str("b"))))));
 
         try (var cache = new CacheReal(tmp.resolve("cache"))) {
             var ok = expectOk(Helpers.compile(
@@ -133,8 +135,8 @@ public final class T0180ImportRealTest {
         Files.createDirectories(src);
         var otherFile = src.resolve("other.at");
         var mainFile = src.resolve("main.at");
-        writeModule(otherFile, mb.str("v1"));
-        writeModule(mainFile, mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("other.at")))));
+        writeModule(otherFile, TList.of(mb.return_(mb.str("v1"))));
+        writeModule(mainFile, TList.of(mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("other.at"))))));
         var entry = new SourceSpecAbsolute.Local(mainFile.toString());
 
         try (var cache = new CacheReal(cacheDir)) {
@@ -142,7 +144,7 @@ public final class T0180ImportRealTest {
             assertEquals("v1", ok.logs().get(0).message());
         }
 
-        writeModule(otherFile, mb.str("v2"));
+        writeModule(otherFile, TList.of(mb.return_(mb.str("v2"))));
         Files.setLastModifiedTime(
                 otherFile,
                 FileTime.fromMillis(Files.getLastModifiedTime(otherFile).toMillis() + 100000));
@@ -160,13 +162,15 @@ public final class T0180ImportRealTest {
         Files.createDirectories(src);
         var cacheDir = tmp.resolve("cache");
 
-        writeModule(src.resolve("one.at"), mb.str("cached-one"));
+        writeModule(src.resolve("one.at"), TList.of(mb.return_(mb.str("cached-one"))));
         var oneEntry = new SourceSpecAbsolute.Local(src.resolve("one.at").toString());
         try (var cache1 = new CacheReal(cacheDir)) {
             expectOk(Helpers.compile(gxFor(cache1), oneEntry));
         }
 
-        writeModule(src.resolve("two.at"), mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("one.at")))));
+        writeModule(
+                src.resolve("two.at"),
+                TList.of(mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("one.at"))))));
         var twoEntry = new SourceSpecAbsolute.Local(src.resolve("two.at").toString());
         try (var cache2 = new CacheReal(cacheDir)) {
             var ok = expectOk(Helpers.compile(gxFor(cache2), twoEntry));
@@ -183,16 +187,16 @@ public final class T0180ImportRealTest {
         var cacheDir = tmp.resolve("cache");
         var oneFile = src.resolve("one.at");
 
-        writeModule(oneFile, mb.str("v1"));
+        writeModule(oneFile, TList.of(mb.return_(mb.str("v1"))));
         try (var cache = new CacheReal(cacheDir)) {
             expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(oneFile.toString())));
         }
-        writeModule(oneFile, mb.str("v2"));
+        writeModule(oneFile, TList.of(mb.return_(mb.str("v2"))));
         Files.setLastModifiedTime(
                 oneFile, FileTime.fromMillis(Files.getLastModifiedTime(oneFile).toMillis() + 100000));
 
         var twoFile = src.resolve("two.at");
-        writeModule(twoFile, mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("one.at")))));
+        writeModule(twoFile, TList.of(mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("one.at"))))));
 
         try (var cache = new CacheReal(cacheDir)) {
             var ok = expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(twoFile.toString())));
@@ -223,7 +227,7 @@ public final class T0180ImportRealTest {
         Files.createDirectories(src);
         var cacheDir = tmp.resolve("cache");
         var mainFile = src.resolve("main.at");
-        writeModule(mainFile, mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("missing.at")))));
+        writeModule(mainFile, TList.of(mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("missing.at"))))));
         try (var cache = new CacheReal(cacheDir)) {
             var res = Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
             assertTrue(
@@ -242,7 +246,7 @@ public final class T0180ImportRealTest {
                     },
                     () -> "expected cached failure, got " + res);
         }
-        writeModule(mainFile, mb.call(mb.log(), mb.str("fixed")));
+        writeModule(mainFile, TList.of(mb.call(mb.log(), mb.str("fixed"))));
         Files.setLastModifiedTime(
                 mainFile,
                 FileTime.fromMillis(Files.getLastModifiedTime(mainFile).toMillis() + 100000));
@@ -259,7 +263,7 @@ public final class T0180ImportRealTest {
         Files.createDirectories(src);
         var cacheDir = tmp.resolve("cache");
         var mainFile = src.resolve("main.at");
-        writeModule(mainFile, mb.call(mb.log(), mb.str("hello")));
+        writeModule(mainFile, TList.of(mb.call(mb.log(), mb.str("hello"))));
         var entry = new SourceSpecAbsolute.Local(mainFile.toString());
 
         try (var cache = new CacheReal(cacheDir)) {
@@ -281,9 +285,9 @@ public final class T0180ImportRealTest {
     public void test00400RemoteAndBundle(@TempDir Path tmp) throws Exception {
         var mb = new TestMb();
 
-        var singleBytes = moduleBytes(mb.str("from-remote"));
+        var singleBytes = moduleBytes(TList.of(mb.return_(mb.str("from-remote"))));
 
-        var modBytes = moduleBytes(mb.str("from-bundle-mod"));
+        var modBytes = moduleBytes(TList.of(mb.return_(mb.str("from-bundle-mod"))));
         var zipOut = new ByteArrayOutputStream();
         try (var zip = new ZipOutputStream(zipOut)) {
             zip.putNextEntry(new ZipEntry("mod.at"));
@@ -330,7 +334,7 @@ public final class T0180ImportRealTest {
             var src = tmp.resolve("src");
             Files.createDirectories(src);
             var mainFile = src.resolve("main.at");
-            writeModule(mainFile, mainExpr);
+            writeModule(mainFile, TList.of(mainExpr));
 
             try (var cache = new CacheReal(tmp.resolve("cache"))) {
                 var ok = expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString())));
@@ -343,9 +347,9 @@ public final class T0180ImportRealTest {
             var badFile = src.resolve("bad.at");
             writeModule(
                     badFile,
-                    mb.call(
+                    TList.of(mb.call(
                             mb.log(),
-                            importField(mb, "v", mb.sourceRemote(mb.str(singleUrl), hashSpec(mb, wrongDigest)))));
+                            importField(mb, "v", mb.sourceRemote(mb.str(singleUrl), hashSpec(mb, wrongDigest))))));
             try (var cache = new CacheReal(tmp.resolve("cache"))) {
                 var res = Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(badFile.toString()));
                 assertTrue(

@@ -24,7 +24,7 @@ public final class T0125RecordCastTest {
                 new TestMb.RecordPair("b", mb.as(mb.num(2.0), mb.typesInt()))));
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("r", mb.as(sourceRecord, reorderedType)),
                         mb.call(
                                 mb.log(),
@@ -62,7 +62,7 @@ public final class T0125RecordCastTest {
                 new TestMb.RecordPair("b", mb.as(mb.num(2.0), mb.typesInt()))));
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("src", sourceRecord),
                         mb.bind("r", mb.as(mb.scopeUse("src"), reorderedType)),
                         mb.call(

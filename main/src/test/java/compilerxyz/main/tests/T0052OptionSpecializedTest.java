@@ -29,7 +29,7 @@ public final class T0052OptionSpecializedTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "o",
                                 mb.call(mb.field(optionInt(mb), mb.str("some")), mb.as(mb.num(3.0), mb.typesInt()))),

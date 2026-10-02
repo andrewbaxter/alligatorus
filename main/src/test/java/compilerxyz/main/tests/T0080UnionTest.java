@@ -20,7 +20,7 @@ public final class T0080UnionTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "strnum",
                                 mb.lower(mb.seqOf(
@@ -91,7 +91,7 @@ public final class T0080UnionTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "strnum",
                                 mb.lower(mb.seqOf(
@@ -150,7 +150,7 @@ public final class T0080UnionTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "strnum",
                                 mb.lower(mb.seqOf(
@@ -211,7 +211,7 @@ public final class T0080UnionTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "strnum",
                                 mb.lower(mb.seqOf(

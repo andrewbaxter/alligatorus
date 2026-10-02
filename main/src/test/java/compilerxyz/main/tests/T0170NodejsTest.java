@@ -50,7 +50,11 @@ public final class T0170NodejsTest {
                 mb.bind("code_tu_builder", mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
                 mb.bind("code_tu", mb.field(mb.scopeUse("code_tu_builder"), mb.str("type"))),
                 mb.bind("code_data", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs code"))),
-                mb.call(mb.field(mb.scopeUse("code_data"), mb.str("set_inner")), mb.scopeUse("code_tu")),
+                mb.call(
+                        mb.field(mb.scopeUse("code_data"), mb.str("impl")),
+                        mb.recordOf(TList.of(
+                                new TestMb.RecordPair("inner", mb.scopeUse("code_tu")),
+                                new TestMb.RecordPair("description", mb.optNoneString())))),
                 mb.bind("code", mb.field(mb.scopeUse("code_data"), mb.str("type"))),
                 mb.bind(
                         "code_tu_call",
@@ -113,9 +117,9 @@ public final class T0170NodejsTest {
                                         "impl_body",
                                         mb.stage(mb.call(
                                                 mb.lower(mb.field(mb.scopeUse("code_data"), mb.str("new"))),
-                                                mb.call(
-                                                        mb.lower(mb.scopeUse("code_tu_call")),
-                                                        mb.scopeUse("arg")))))))),
+                                                mb.call(mb.lower(mb.scopeUse("code_tu_call")), mb.scopeUse("arg"))))),
+                                new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                                new TestMb.RecordPair("description", mb.optNoneString())))),
                 mb.bind(
                         "code_lit_str_builder",
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("code.lit_str"))),
@@ -131,7 +135,9 @@ public final class T0170NodejsTest {
                                                 mb.lower(mb.field(mb.scopeUse("code_data"), mb.str("new"))),
                                                 mb.call(
                                                         mb.lower(mb.scopeUse("code_tu_lit_str")),
-                                                        mb.scopeUse("arg")))))))),
+                                                        mb.scopeUse("arg"))))),
+                                new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                                new TestMb.RecordPair("description", mb.optNoneString())))),
                 mb.bind(
                         "code_field_builder",
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("code.field"))),
@@ -148,9 +154,9 @@ public final class T0170NodejsTest {
                                         "impl_body",
                                         mb.stage(mb.call(
                                                 mb.lower(mb.field(mb.scopeUse("code_data"), mb.str("new"))),
-                                                mb.call(
-                                                        mb.lower(mb.scopeUse("code_tu_field")),
-                                                        mb.scopeUse("arg")))))))),
+                                                mb.call(mb.lower(mb.scopeUse("code_tu_field")), mb.scopeUse("arg"))))),
+                                new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                                new TestMb.RecordPair("description", mb.optNoneString())))),
                 mb.bind(
                         "code_scope_use_builder",
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("code.scope_use"))),
@@ -166,7 +172,9 @@ public final class T0170NodejsTest {
                                                 mb.lower(mb.field(mb.scopeUse("code_data"), mb.str("new"))),
                                                 mb.call(
                                                         mb.lower(mb.scopeUse("code_tu_scope_use")),
-                                                        mb.scopeUse("arg")))))))),
+                                                        mb.scopeUse("arg"))))),
+                                new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                                new TestMb.RecordPair("description", mb.optNoneString())))),
                 mb.bind(
                         "render_inner_builder",
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("Render Node.js code (inner)"))),
@@ -314,7 +322,9 @@ public final class T0170NodejsTest {
                                                                 mb.field(mb.scopeUse("value"), mb.str("join")),
                                                                 mb.str(""))),
                                                 mb.call(mb.field(mb.scopeUse("out"), mb.str("push")), mb.str(";\n}\n")),
-                                                mb.return_(mb.scopeUse("key")))))))),
+                                                mb.return_(mb.scopeUse("key"))))),
+                                new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                                new TestMb.RecordPair("description", mb.optNoneString())))),
                 mb.bind(
                         "render_builder",
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("Render Node.js code"))),
@@ -359,7 +369,9 @@ public final class T0170NodejsTest {
                                                                 mb.field(
                                                                         mb.field(mb.scopeUse("context"), mb.str("out")),
                                                                         mb.str("join")),
-                                                                mb.str(""))))))))),
+                                                                mb.str("")))))),
+                                new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                                new TestMb.RecordPair("description", mb.optNoneString())))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.return_(mb.recordOf(TList.of(
                         rp("type", mb.scopeUse("code")),
@@ -380,7 +392,7 @@ public final class T0170NodejsTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("code", mb.lower(buildNodejsCode(mb))),
                         mb.call(
                                 mb.log(),
@@ -542,7 +554,7 @@ public final class T0170NodejsTest {
         var dynStr = (java.util.function.Function<String, SourceExpr>) v -> mb.as(mb.str(v), mb.typesString());
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("code", mb.lower(buildNodejsCode(mb))),
                         mb.bind(
                                 "other_t",
@@ -554,8 +566,15 @@ public final class T0170NodejsTest {
                                                         mb.field(mb.scopeUse("d2"), mb.str("object")),
                                                         mb.str("other code"))),
                                         mb.call(
-                                                mb.field(mb.scopeUse("other"), mb.str("set_inner")),
-                                                mb.recordOf(TList.of(rp("tag", mb.typesString())))),
+                                                mb.field(mb.scopeUse("other"), mb.str("impl")),
+                                                mb.recordOf(
+                                                        TList.of(
+                                                                new TestMb.RecordPair(
+                                                                        "inner",
+                                                                        mb.recordOf(
+                                                                                TList.of(rp("tag", mb.typesString())))),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(
                                                 mb.field(mb.scopeUse("other"), mb.str("impl_interface")),
                                                 mb.recordOf(
@@ -622,14 +641,23 @@ public final class T0170NodejsTest {
         exprs.add(mb.bind("nvalue_base_t", mb.field(mb.scopeUse("nvalue_base"), mb.str("type"))));
         exprs.add(mb.bind("nvalue", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs value"))));
         exprs.add(mb.call(
-                mb.field(mb.scopeUse("nvalue"), mb.str("set_inner")),
-                mb.recordOf(TList.of(rp("base", mb.scopeUse("nvalue_base_t")), rp("type", mb.evalType())))));
+                mb.field(mb.scopeUse("nvalue"), mb.str("impl")),
+                mb.recordOf(TList.of(
+                        new TestMb.RecordPair(
+                                "inner",
+                                mb.recordOf(
+                                        TList.of(rp("base", mb.scopeUse("nvalue_base_t")), rp("type", mb.evalType())))),
+                        new TestMb.RecordPair("description", mb.optNoneString())))));
 
         exprs.add(implInterface(
                 mb, "nvalue", mb.evalValue(), TList.of(rp("type", mb.field(mb.scopeUse("inner"), mb.str("type"))))));
         exprs.add(mb.bind(
                 "aspect_consume_nodejs", mb.call(mb.field(mb.scopeUse("d"), mb.str("interface")), mb.tupleOf())));
-        exprs.add(mb.call(mb.field(mb.scopeUse("aspect_consume_nodejs"), mb.str("set_is_aspect")), mb.bool(true)));
+        exprs.add(mb.call(
+                mb.field(mb.scopeUse("aspect_consume_nodejs"), mb.str("impl")),
+                mb.recordOf(TList.of(
+                        new TestMb.RecordPair("is_aspect", mb.bool(true)),
+                        new TestMb.RecordPair("description", mb.optNoneString())))));
         exprs.add(mb.call(
                 mb.field(mb.scopeUse("aspect_consume_nodejs"), mb.str("func")),
                 mb.recordOf(TList.of(
@@ -637,7 +665,11 @@ public final class T0170NodejsTest {
                         rp("arg", mb.typesCve()),
                         rp("ret", mb.optSomeType(mb.field(mb.scopeUse("code"), mb.str("type"))))))));
         exprs.add(mb.bind("ntype_str", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs string"))));
-        exprs.add(mb.call(mb.field(mb.scopeUse("ntype_str"), mb.str("set_inner")), mb.tupleOf()));
+        exprs.add(mb.call(
+                mb.field(mb.scopeUse("ntype_str"), mb.str("impl")),
+                mb.recordOf(TList.of(
+                        new TestMb.RecordPair("inner", mb.tupleOf()),
+                        new TestMb.RecordPair("description", mb.optNoneString())))));
 
         exprs.addAll(implAsSelfType(mb, "ntype_str", "nodejs string", optionAspectNone(mb)));
         exprs.add(implInterface(
@@ -648,8 +680,11 @@ public final class T0170NodejsTest {
         exprs.add(mb.bind(
                 "ntype_func", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs function"))));
         exprs.add(mb.call(
-                mb.field(mb.scopeUse("ntype_func"), mb.str("set_inner")),
-                mb.recordOf(TList.of(rp("arg", mb.evalType()), rp("ret", mb.evalType())))));
+                mb.field(mb.scopeUse("ntype_func"), mb.str("impl")),
+                mb.recordOf(TList.of(
+                        new TestMb.RecordPair(
+                                "inner", mb.recordOf(TList.of(rp("arg", mb.evalType()), rp("ret", mb.evalType())))),
+                        new TestMb.RecordPair("description", mb.optNoneString())))));
 
         exprs.addAll(implAsSelfType(
                 mb, "ntype_func", "nodejs function", aspectDispatch(mb, mb.builtin("eval", "aspect_function_id"))));
@@ -818,8 +853,11 @@ public final class T0170NodejsTest {
         exprs.add(mb.bind(
                 "ntype_object", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs object"))));
         exprs.add(mb.call(
-                mb.field(mb.scopeUse("ntype_object"), mb.str("set_inner")),
-                mb.call(mb.typesMap(), mb.tupleOf(mb.typesString(), mb.evalType()))));
+                mb.field(mb.scopeUse("ntype_object"), mb.str("impl")),
+                mb.recordOf(TList.of(
+                        new TestMb.RecordPair(
+                                "inner", mb.call(mb.typesMap(), mb.tupleOf(mb.typesString(), mb.evalType()))),
+                        new TestMb.RecordPair("description", mb.optNoneString())))));
 
         exprs.addAll(implAsSelfType(
                 mb, "ntype_object", "nodejs object", aspectDispatch(mb, mb.builtin("eval", "aspect_field_id"))));
@@ -949,8 +987,12 @@ public final class T0170NodejsTest {
                                         mb.tupleOf())))))));
         exprs.add(mb.bind("nbinding", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs binding"))));
         exprs.add(mb.call(
-                mb.field(mb.scopeUse("nbinding"), mb.str("set_inner")),
-                mb.recordOf(TList.of(rp("name", mb.typesString()), rp("type", mb.evalType())))));
+                mb.field(mb.scopeUse("nbinding"), mb.str("impl")),
+                mb.recordOf(TList.of(
+                        new TestMb.RecordPair(
+                                "inner",
+                                mb.recordOf(TList.of(rp("name", mb.typesString()), rp("type", mb.evalType())))),
+                        new TestMb.RecordPair("description", mb.optNoneString())))));
 
         exprs.add(implInterface(
                 mb,
@@ -1023,8 +1065,10 @@ public final class T0170NodejsTest {
                         rp("merge", mb.panic(mb.str("nbinding.merge not implemented"))))));
         exprs.add(mb.bind("ntarget", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs target"))));
         exprs.add(mb.call(
-                mb.field(mb.scopeUse("ntarget"), mb.str("set_inner")),
-                mb.recordOf(TList.of(rp("count", mb.typesInt())))));
+                mb.field(mb.scopeUse("ntarget"), mb.str("impl")),
+                mb.recordOf(TList.of(
+                        new TestMb.RecordPair("inner", mb.recordOf(TList.of(rp("count", mb.typesInt())))),
+                        new TestMb.RecordPair("description", mb.optNoneString())))));
         exprs.add(implInterface(
                 mb,
                 "ntarget",
@@ -1056,8 +1100,10 @@ public final class T0170NodejsTest {
 
         exprs.add(mb.bind("napp", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs app"))));
         exprs.add(mb.call(
-                mb.field(mb.scopeUse("napp"), mb.str("set_inner")),
-                mb.recordOf(TList.of(rp("root", mb.scopeUse("root_t"))))));
+                mb.field(mb.scopeUse("napp"), mb.str("impl")),
+                mb.recordOf(TList.of(
+                        new TestMb.RecordPair("inner", mb.recordOf(TList.of(rp("root", mb.scopeUse("root_t"))))),
+                        new TestMb.RecordPair("description", mb.optNoneString())))));
 
         exprs.add(mb.bind("napp_root", mb.call(mb.field(mb.scopeUse("napp"), mb.str("func")), mb.str("root"))));
         exprs.add(mb.call(
@@ -1336,13 +1382,15 @@ public final class T0170NodejsTest {
                                                                         mb.field(
                                                                                 mb.lower(mb.scopeUse("root_t")),
                                                                                 mb.str("none")),
-                                                                        mb.tupleOf())))))))))));
+                                                                        mb.tupleOf()))))))),
+                        new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                        new TestMb.RecordPair("description", mb.optNoneString())))));
         exprs.add(mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()));
         exprs.add(mb.return_(mb.field(mb.scopeUse("nodejs"), mb.str("func"))));
-        modules.put("nodejs", new SourceModule.V1(mb.lower(mb.seq(exprs))));
+        modules.put("nodejs", new SourceModule.V1(TList.of(mb.return_(mb.lower(mb.seq(exprs))))));
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("nodejs", mb.importExpr(mb.str("nodejs"))),
                         mb.bind("app", mb.call(mb.scopeUse("nodejs"), mb.tupleOf())),
                         mb.call(

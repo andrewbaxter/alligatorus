@@ -56,7 +56,7 @@ public final class T0057FieldUseMatrixTest {
         expected.add("7");
 
         var modules = new TMap<String, SourceModule>();
-        modules.put("main", new SourceModule.V1(e.mb.seq(exprs)));
+        modules.put("main", new SourceModule.V1(exprs));
         var res = Helpers.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, ?> ok;
         switch (res) {

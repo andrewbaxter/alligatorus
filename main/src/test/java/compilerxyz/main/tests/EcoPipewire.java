@@ -157,14 +157,6 @@ public final class EcoPipewire {
                         e.p("props", e.v(props)))));
     }
 
-    static SourceExpr byteTuple(EcoMb e, int[] bytes) {
-        var parts = new SourceExpr[bytes.length];
-        for (int i = 0; i < bytes.length; i++) {
-            parts[i] = e.n(bytes[i]);
-        }
-        return e.tup(parts);
-    }
-
     static SourceExpr byteArrayType(EcoMb e, EcoExtern.Llvm llvm, SourceExpr count) {
         return e.call(llvm.llvmField("array"), e.rec(e.p("elem", llvm.llvmField("u8")), e.p("count", count)));
     }
@@ -209,7 +201,7 @@ public final class EcoPipewire {
                         e.p("init", e.tup(e.v(pod)))));
     }
 
-    public static SourceExpr module(EcoMb e) {
+    public static TList<SourceExpr> module(EcoMb e) {
         var exprs = new TList<SourceExpr>();
         exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
         exprs.add(e.let("spa", e.importLocal("spa", "spa-pod-1.6.at")));
@@ -234,7 +226,7 @@ public final class EcoPipewire {
             innerFields.add(e.p(s.name(), e.mb.evalType()));
             members.add(s.name());
         }
-        exprs.add(e.callM(e.v("pw_o"), "set_inner", e.rec(innerFields.toArray(EcoMb.P[]::new))));
+        exprs.add(e.objectImpl(e.v("pw_o"), e.rec(innerFields.toArray(EcoMb.P[]::new))));
         for (var m : refMembers) {
             exprs.add(e.methodImpl(
                     e.v("pw_o"),
@@ -311,10 +303,11 @@ public final class EcoPipewire {
                 e.v("pw_builder"),
                 e.fld(e.v("llvm"), "mod_t"),
                 e.optionTypeSome(e.fld(e.v("pw_o"), "type")),
+                e.mb.optNoneType(),
                 e.stage(e.mb.seq(body))));
 
         exprs.add(e.finish(e.v("d")));
         exprs.add(e.ret(e.fld(e.v("pw_builder"), "func")));
-        return e.mb.seq(exprs);
+        return exprs;
     }
 }

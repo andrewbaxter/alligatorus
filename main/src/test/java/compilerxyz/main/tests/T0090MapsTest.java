@@ -20,7 +20,7 @@ public final class T0090MapsTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_map",
                                 mb.call(
@@ -64,7 +64,7 @@ public final class T0090MapsTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_map",
                                 mb.call(
@@ -101,7 +101,7 @@ public final class T0090MapsTest {
     }
 
     private static SourceModule mapGetModule(TestMb mb, SourceExpr getCall) {
-        return new SourceModule.V1(mb.seqOf(
+        return new SourceModule.V1(TList.of(
                 mb.bind(
                         "my_map",
                         mb.call(
@@ -151,7 +151,10 @@ public final class T0090MapsTest {
                 };
         assertEquals(1, errs.size(), () -> "expected one error; got: " + errs);
         var err = errs.get(0);
-        assertEquals(getCall.id().value(), err.loc().expr(), () -> "panic should point at the get call; got: " + err);
+        assertEquals(
+                getCall.id().value(),
+                err.loc().expr().optUnwrap(),
+                () -> "panic should point at the get call; got: " + err);
         assertTrue(
                 err.message().contains("panic: map.get: missing key zzz"),
                 () -> "expected missing-key panic; got: " + err.message());

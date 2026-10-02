@@ -489,7 +489,7 @@ public final class EcoLlvmIr {
 
     private static void defIface(EcoMb e, TList<SourceExpr> out, String name, EcoMb.P... methods) {
         out.add(e.let(name, e.callM0(e.v("d"), "interface")));
-        out.add(e.callM(e.v(name), "set_is_aspect", e.b(true)));
+        out.add(e.interfaceImpl(e.v(name), true));
         out.add(e.let(name + "_id", e.callM0(e.v(name), "aspect_id")));
         for (var m : methods) {
             out.add(e.callM(
@@ -501,7 +501,7 @@ public final class EcoLlvmIr {
 
     private static void defObj(EcoMb e, TList<SourceExpr> out, String name, String desc, SourceExpr innerType) {
         out.add(e.let(name, e.defObject(e.v("d"), desc)));
-        out.add(e.callM(e.v(name), "set_inner", innerType));
+        out.add(e.objectImpl(e.v(name), innerType));
     }
 
     private static void defVariant(EcoMb e, TList<SourceExpr> out, String tag, SourceExpr typeRef) {
@@ -575,7 +575,7 @@ public final class EcoLlvmIr {
                 yield false;
             }
             case SourceExpr.Return v ->
-                (v.label() instanceof Opt.Some<String> l && l.value().equals(label)) || returnsToOpt(v.value(), label);
+                (v.label().optIsSome() && v.label().optUnwrap().equals(label)) || returnsToOpt(v.value(), label);
             case SourceExpr.ScopeUse v -> returnsTo(v.key(), label);
             case SourceExpr.Seq v -> returnsToAny(v.exprs(), label);
             case SourceExpr.Set v -> returnsTo(v.base(), label) || returnsTo(v.value(), label);
@@ -584,17 +584,18 @@ public final class EcoLlvmIr {
                 if (returnsTo(v.body(), label) || returnsToOpt(v.finallyBlock(), label)) {
                     yield true;
                 }
-                yield v.catchClause() instanceof Opt.Some<SourceExpr.TryCatch> c
-                        && (returnsTo(c.value().bindingName(), label)
-                                || returnsTo(c.value().exceptionType(), label)
-                                || returnsTo(c.value().body(), label));
+                if (v.catchClause().optIsNone()) yield false;
+                var c = v.catchClause().optUnwrap();
+                yield returnsTo(c.bindingName(), label)
+                        || returnsTo(c.exceptionType(), label)
+                        || returnsTo(c.body(), label);
             }
             case SourceExpr.Tuple v -> returnsToAny(v.exprs(), label);
         };
     }
 
     private static boolean returnsToOpt(Opt<SourceExpr> expr, String label) {
-        return expr instanceof Opt.Some<SourceExpr> s && returnsTo(s.value(), label);
+        return expr.optIsSome() && returnsTo(expr.optUnwrap(), label);
     }
 
     private static boolean returnsToAny(TList<SourceExpr> exprs, String label) {
@@ -666,14 +667,18 @@ public final class EcoLlvmIr {
     private static SourceExpr fnDef(EcoMb e, TList<SourceExpr> out, String name, SourceExpr argType, SourceExpr ret) {
         out.add(e.let(name + "_b", e.defFunc(e.v("d"), "llvm." + name)));
         out.add(e.let(name, e.fld(e.v(name + "_b"), "func")));
-        e.fnSigs.put(name, new SourceExpr[] {argType, e.optionTypeSome(ret)});
+        e.fnSigs.put(name, new SourceExpr[] {argType, e.optionTypeSome(ret), e.optionTypeNone()});
         return e.v(name);
     }
 
     private static void fnImpl(EcoMb e, TList<SourceExpr> out, String name, SourceExpr bodyExpr) {
         var sig = e.fnSigs.getOpt(name).optUnwrap();
         e.fnSigs.remove(name);
-        out.add(e.funcImpl(e.v(name + "_b"), sig[0], sig[1], e.stage(bodyExpr)));
+        out.add(e.funcImpl(e.v(name + "_b"), sig[0], sig[1], sig[2], e.stage(bodyExpr)));
+    }
+
+    private static void fnThrows(EcoMb e, String name, SourceExpr exceptionType) {
+        e.fnSigs.getOpt(name).optUnwrap()[2] = e.optionTypeSome(exceptionType);
     }
 
     private static void accessor(EcoMb e, TList<SourceExpr> x, String obj, String field, SourceExpr typ) {
@@ -1111,7 +1116,7 @@ public final class EcoLlvmIr {
         rtBindImpl(e, x, obj, under);
     }
 
-    public static SourceExpr module(EcoMb e) {
+    public static TList<SourceExpr> module(EcoMb e) {
         var x = new TList<SourceExpr>();
         x.add(e.let("d", e.define()));
         x.add(e.optionTypeLet());
@@ -1214,7 +1219,7 @@ public final class EcoLlvmIr {
             defObj(e, x, "ltarget", "llvm target", e.rec(e.p("mod", lmodT(e))));
             defObj(e, x, "lirctx", "llvm ir rendering context", e.rec(e.p("xx", xxT(e)), e.p("mod", lmodOptT(e))));
             x.add(e.let("ltype", e.callM0(e.v("d"), "interface")));
-            x.add(e.callM(e.v("ltype"), "set_is_aspect", e.b(true)));
+            x.add(e.interfaceImpl(e.v("ltype"), true));
             x.add(e.let("ltype_id", e.callM0(e.v("ltype"), "aspect_id")));
             x.add(e.callM(
                     e.v("ltype"),
@@ -1308,9 +1313,9 @@ public final class EcoLlvmIr {
             fnDef(e, x, "h_code", instsT(e), codeT(e));
             x.add(e.let("h_append_b", e.defFunc(e.v("d"), "llvm.h_append")));
             x.add(e.let("h_append", e.fld(e.v("h_append_b"), "func")));
-            e.fnSigs.put(
-                    "h_append",
-                    new SourceExpr[] {e.rec(e.p("out", instsT(e)), e.p("code", codeT(e))), e.optionTypeNone()});
+            e.fnSigs.put("h_append", new SourceExpr[] {
+                e.rec(e.p("out", instsT(e)), e.p("code", codeT(e))), e.optionTypeNone(), e.optionTypeNone()
+            });
             fnDef(e, x, "h_is_llvm", e.rec(e.p("xx", xxT(e)), e.p("cv", cveT(e))), e.mb.typesBool());
             fnDef(
                     e,
@@ -1318,7 +1323,7 @@ public final class EcoLlvmIr {
                     "h_ssa",
                     e.rec(e.p("xx", xxT(e)), e.p("loc", locT(e)), e.p("mod", lmodT(e)), e.p("cv", cveT(e))),
                     cveT(e));
-            x.add(e.callM(e.v("h_ssa_b"), "set_exception_type", errsT(e)));
+            fnThrows(e, "h_ssa", errsT(e));
             fnDef(e, x, "h_mat", e.rec(e.p("mod", lmodT(e)), e.p("cv", cveT(e))), cveT(e));
             fnDef(
                     e,
@@ -1331,7 +1336,7 @@ public final class EcoLlvmIr {
                             e.p("ty", ty(e)),
                             e.p("cv", cveT(e))),
                     cveT(e));
-            x.add(e.callM(e.v("h_operand_b"), "set_exception_type", errsT(e)));
+            fnThrows(e, "h_operand", errsT(e));
             fnDef(e, x, "h_is_unit", e.rec(e.p("xx", xxT(e)), e.p("cv", cveT(e))), e.mb.typesBool());
             fnDef(
                     e,
@@ -1345,7 +1350,7 @@ public final class EcoLlvmIr {
                             e.p("self", cveT(e)),
                             e.p("value", cveT(e))),
                     cveT(e));
-            x.add(e.callM(e.v("h_set_b"), "set_exception_type", errsT(e)));
+            fnThrows(e, "h_set", errsT(e));
             fnDef(
                     e,
                     x,
@@ -1360,7 +1365,7 @@ public final class EcoLlvmIr {
                             e.p("b", cveT(e)),
                             e.p("res", ty(e))),
                     cveT(e));
-            x.add(e.callM(e.v("h_binop_b"), "set_exception_type", errsT(e)));
+            fnThrows(e, "h_binop", errsT(e));
             fnDef(
                     e,
                     x,
@@ -1374,7 +1379,7 @@ public final class EcoLlvmIr {
                             e.p("a", cveT(e)),
                             e.p("b", cveT(e))),
                     cveT(e));
-            x.add(e.callM(e.v("h_cmp_b"), "set_exception_type", errsT(e)));
+            fnThrows(e, "h_cmp", errsT(e));
             fnDef(
                     e,
                     x,
@@ -1387,14 +1392,14 @@ public final class EcoLlvmIr {
                             e.p("op", str(e)),
                             e.p("a", cveT(e))),
                     cveT(e));
-            x.add(e.callM(e.v("h_unop_b"), "set_exception_type", errsT(e)));
+            fnThrows(e, "h_unop", errsT(e));
             fnDef(
                     e,
                     x,
                     "h_store_new",
                     e.rec(e.p("xx", xxT(e)), e.p("loc", locT(e)), e.p("mod", lmodT(e)), e.p("cv", cveT(e))),
                     cveT(e));
-            x.add(e.callM(e.v("h_store_new_b"), "set_exception_type", errsT(e)));
+            fnThrows(e, "h_store_new", errsT(e));
             fnDef(
                     e,
                     x,
@@ -1426,7 +1431,7 @@ public final class EcoLlvmIr {
                             e.p("ptr", str(e)),
                             e.p("name", str(e))),
                     cveT(e));
-            x.add(e.callM(e.v("h_gep_field_b"), "set_exception_type", errsT(e)));
+            fnThrows(e, "h_gep_field", errsT(e));
             fnDef(
                     e,
                     x,
@@ -1439,7 +1444,7 @@ public final class EcoLlvmIr {
                             e.p("ptr", str(e)),
                             e.p("key", cveT(e))),
                     cveT(e));
-            x.add(e.callM(e.v("h_gep_index_b"), "set_exception_type", errsT(e)));
+            fnThrows(e, "h_gep_index", errsT(e));
             fnDef(e, x, "h_gref", cveT(e), str(e));
             fnDef(e, x, "h_gval", e.rec(e.p("cv", cveT(e)), e.p("base", ty(e)), e.p("mem", boolT(e))), cveT(e));
             fnImpl(
@@ -1898,7 +1903,7 @@ public final class EcoLlvmIr {
                         name,
                         e.rec(e.p("xx", xxT(e)), e.p("loc", locT(e)), e.p("ty", ty(e)), e.p("cv", cveT(e))),
                         cveT(e));
-                x.add(e.callM(e.v(name + "_b"), "set_exception_type", errsT(e)));
+                fnThrows(e, name, errsT(e));
             }
             fnImpl(
                     e,
@@ -2046,6 +2051,62 @@ public final class EcoLlvmIr {
                             e.let("count", acc(e, xx(e), a(e, "ty"), "larr", "count")),
                             e.let("eir", irFn(e, xx(e), e.optNone(e.mb.evalValue()), e.v("elem"))),
                             e.let("st", cveType(e, a(e, "cv"))),
+                            e.let("sk", lookup(e, xx(e), e.v("st"), e.mb.evalAspectStringConst())),
+                            e.ifOnly(
+                                    e.fld(e.v("sk"), "is_some"),
+                                    e.seq(
+                                            e.ifOnly(
+                                                    e.not(
+                                                            andB(
+                                                                    e,
+                                                                    has(e, xx(e), e.v("elem"), "lint"),
+                                                                    e.eq(
+                                                                            acc(e, xx(e), e.v("elem"), "lint", "bits"),
+                                                                            num(e, 8)))),
+                                                    throwErr(
+                                                            e,
+                                                            loc(e),
+                                                            e.cat(
+                                                                    e.s(
+                                                                            "string initializer needs an 8-bit integer"
+                                                                                    + " element type, not "),
+                                                                    tyDesc(e, e.v("elem"))))),
+                                            e.let(
+                                                    "bytes",
+                                                    e.call(
+                                                            e.mb.evalStrUtf8(),
+                                                            bim(
+                                                                    e,
+                                                                    e.mb.evalAspectStringConst(),
+                                                                    "get",
+                                                                    e.fld(e.v("sk"), "value"),
+                                                                    cveValue(e, a(e, "cv"))))),
+                                            e.ifOnly(
+                                                    e.not(e.eq(e.fld(e.v("bytes"), "len"), e.v("count"))),
+                                                    throwErr(
+                                                            e,
+                                                            loc(e),
+                                                            e.cat(
+                                                                    e.s("string initializer has "),
+                                                                    toStr(e, e.fld(e.v("bytes"), "len")),
+                                                                    e.s(" bytes, expected "),
+                                                                    toStr(e, e.v("count"))))),
+                                            e.let("parts", e.listNew(str(e))),
+                                            e.foreach(
+                                                    e.v("bytes"),
+                                                    "b",
+                                                    push(
+                                                            e,
+                                                            e.v("parts"),
+                                                            e.cat(
+                                                                    e.v("eir"),
+                                                                    e.s(" "),
+                                                                    toStr(
+                                                                            e,
+                                                                            e.mb.operatorAnd(
+                                                                                    e.mb.as(e.v("b"), e.mb.typesInt()),
+                                                                                    num(e, 255)))))),
+                                            retM(e, strCve(e, e.cat(e.s("["), e.join(e.v("parts"), ", "), e.s("]")))))),
                             e.let("tk", lookup(e, xx(e), e.v("st"), aspIface(e, "tuple"))),
                             e.ifOnly(
                                     e.fld(e.v("tk"), "is_some"),
@@ -4941,6 +5002,7 @@ public final class EcoLlvmIr {
                 e.v("llvm_b"),
                 e.tup(),
                 e.optionTypeSome(t(e, "lmod")),
+                e.mb.optNoneType(),
                 e.stage(e.seq(
                         e.let(
                                 "m",
@@ -5030,6 +5092,6 @@ public final class EcoLlvmIr {
             exports.add(e.p(gfnKinds[kind], lty(e, "lgfn_t", e.rec(e.p("kind", num(e, kind))))));
         }
         top.add(e.ret(e.rec(exports.toArray(EcoMb.P[]::new))));
-        return e.mb.seq(top);
+        return top;
     }
 }

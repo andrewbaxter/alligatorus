@@ -19,7 +19,7 @@ public final class T0060ScopeTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("x", mb.str("zebra")),
                         mb.seqOf(mb.bind("x", mb.str("apple")), mb.call(mb.log(), mb.scopeUse("x"))),
                         mb.call(mb.log(), mb.scopeUse("x")))));
@@ -44,7 +44,7 @@ public final class T0060ScopeTest {
         modules.put(
                 "main",
                 new SourceModule.V1(
-                        mb.seqOf(mb.seqOf(mb.bind("x", mb.str("apple"))), mb.call(mb.log(), mb.scopeUse("x")))));
+                        TList.of(mb.seqOf(mb.bind("x", mb.str("apple"))), mb.call(mb.log(), mb.scopeUse("x")))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(

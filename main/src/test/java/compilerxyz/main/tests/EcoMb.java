@@ -188,13 +188,36 @@ public final class EcoMb {
         return callM0(definer, "finish");
     }
 
-    public SourceExpr funcImpl(SourceExpr funcBuilder, SourceExpr arg, SourceExpr ret, SourceExpr stagedBody) {
-        return callM(funcBuilder, "impl", rec(p("arg", arg), p("ret", ret), p("impl_body", stagedBody)));
+    public SourceExpr funcImpl(
+            SourceExpr funcBuilder, SourceExpr arg, SourceExpr ret, SourceExpr exceptionType, SourceExpr stagedBody) {
+        return callM(
+                funcBuilder,
+                "impl",
+                rec(
+                        p("arg", arg),
+                        p("ret", ret),
+                        p("impl_body", stagedBody),
+                        p("exception_type", exceptionType),
+                        p("description", optNone(mb.typesString()))));
     }
 
     public SourceExpr methodImpl(
             SourceExpr objectBuilder, String name, SourceExpr arg, SourceExpr ret, SourceExpr stagedBody) {
-        return funcImpl(callM(objectBuilder, "func", mb.str(name)), arg, ret, stagedBody);
+        return callM(
+                callM(objectBuilder, "func", mb.str(name)),
+                "impl",
+                rec(p("arg", arg), p("ret", ret), p("impl_body", stagedBody)));
+    }
+
+    public SourceExpr objectImpl(SourceExpr objectBuilder, SourceExpr inner) {
+        return callM(objectBuilder, "impl", rec(p("inner", inner), p("description", optNone(mb.typesString()))));
+    }
+
+    public SourceExpr interfaceImpl(SourceExpr interfaceBuilder, boolean isAspect) {
+        return callM(
+                interfaceBuilder,
+                "impl",
+                rec(p("is_aspect", b(isAspect)), p("description", optNone(mb.typesString()))));
     }
 
     public SourceExpr importLocal(String key, String path) {

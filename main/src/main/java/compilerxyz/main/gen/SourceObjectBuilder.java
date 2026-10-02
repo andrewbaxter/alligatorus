@@ -27,18 +27,12 @@ public final class SourceObjectBuilder {
         this.new_ = new TypeSourceObjectNewDynamic(type);
     }
 
-    public void setDescription(String description) {
-        if (this.type.description.optIsSome()) {
-            throw new IllegalStateException("Object already has a description");
-        }
-        this.type.description = Opt.some(description);
-    }
-
-    public void setInner(Type typeRef) {
+    public void impl(Type inner, Opt<String> description) {
         if (this.type.underlyingType.optIsSome()) {
-            throw new IllegalStateException("Object already has an inner type");
+            throw new IllegalStateException("Object already has an impl");
         }
-        this.type.underlyingType = Opt.some(typeRef);
+        this.type.underlyingType = Opt.some(inner);
+        this.type.description = description;
     }
 
     public SourceObjectMethodResult func(String name) {

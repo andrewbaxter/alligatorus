@@ -31,20 +31,25 @@ public final class CompileModule {
             Expr.Module source,
             TList<CompileId> compilePath,
             SourceSpecAbsolute currentSpec) {
+        var sourceId =
+                switch (source) {
+                    case Expr.Module.V1 v1 -> v1.source();
+                };
+        var rootLoc = new QExprId(sourceId, Opt.none());
         Expr rootExpr =
                 switch (source) {
-                    case Expr.Module.V1 v1 -> v1.expr();
+                    case Expr.Module.V1 v1 -> new Expr(rootLoc, new Expr.Seq(v1.exprs()));
                 };
-        var rootLoc = rootExpr.loc();
-        var sourceId = rootLoc.source();
         var extendedPath = new TList<CompileId>(compilePath.size() + 1);
         extendedPath.addAll(compilePath);
         extendedPath.add(new CompileId(importState, sourceId));
         var cix = new CompileImportContext(gx, importState, sourceId, extendedPath, currentSpec);
 
-        var excess = maxLowerExcess(rootExpr, 0, 0);
-        for (var i = 0; i < excess; i++) {
-            rootExpr = new Expr(rootLoc, new Expr.Stage(rootExpr));
+        var excess = lowerExcess(rootExpr, 0, 0);
+        if (excess.optIsSome()) {
+            for (var i = 0; i < excess.optUnwrap().excess(); i++) {
+                rootExpr = new Expr(excess.optUnwrap().loc(), new Expr.Stage(rootExpr));
+            }
         }
 
         var allLogs = new TList<LogEntry>();
@@ -106,37 +111,32 @@ public final class CompileModule {
                 Opt<CodeDynamicReg> stage1Code;
                 Opt<Value> fallbackValue;
                 Opt<Type> valueType;
-                if (cv.value().optIsNone()) {
+                if (cv.value().optIsNone() || !DynUtil.valueIsRuntime(cv.value().optUnwrap())) {
                     var codeDynCast = CodeDynamic.castOpt(evalRootLoc, cv.code());
                     if (codeDynCast.hasErrors()) {
                         evalResult = new EvalOutcome.Err(codeDynCast.errorsOpt().optUnwrap());
                         break evalBlock;
                     }
-                    if (codeDynCast.requireValue("codeDyn").optIsNone()) {
+                    var codeDyn = codeDynCast.requireValue("codeDyn");
+                    if (codeDyn.optIsNone()) {
                         stage1Code = Opt.none();
                     } else {
                         var nb = new JavaBytecodeBuilder(evalRootLoc);
-                        nb.add(codeDynCast.requireValue("codeDyn").optUnwrap());
+                        nb.add(codeDyn.optUnwrap());
                         stage1Code = Opt.some(nb.code(nb.constNull()));
                     }
-                    fallbackValue = Opt.none();
-                    valueType = Opt.none();
+                    fallbackValue = cv.value();
+                    valueType = cv.value().optMap(Value::valueType);
                 } else {
                     var cvValue = cv.value().optUnwrap();
                     valueType = Opt.some(cvValue.valueType());
-                    if (!DynUtil.dynamicHasCode(cv)) {
-                        stage1Code = Opt.none();
-                        fallbackValue = Opt.some(cvValue);
-                    } else {
-                        var dynamicRes = DynUtil.materialize(evalXx, evalRootLoc, cv);
-                        if (dynamicRes.hasErrors()) {
-                            evalResult =
-                                    new EvalOutcome.Err(dynamicRes.errorsOpt().optUnwrap());
-                            break evalBlock;
-                        }
-                        stage1Code = Opt.some(dynamicRes.requireValue("Eval::eval materialize"));
-                        fallbackValue = Opt.none();
+                    var dynamicRes = DynUtil.materialize(evalXx, evalRootLoc, cv);
+                    if (dynamicRes.hasErrors()) {
+                        evalResult = new EvalOutcome.Err(dynamicRes.errorsOpt().optUnwrap());
+                        break evalBlock;
                     }
+                    stage1Code = Opt.some(dynamicRes.requireValue("Eval::eval materialize"));
+                    fallbackValue = Opt.none();
                 }
                 if (stage1Code.optIsNone() && evalVx.definitionSets.isEmpty()) {
                     evalResult = new EvalOutcome.Ok(fallbackValue, new TList<>(), false);
@@ -181,7 +181,7 @@ public final class CompileModule {
                     }
                     finalValue = Opt.some(liftedRes.requireValue("Eval::eval lift result"));
                 }
-                evalResult = new EvalOutcome.Ok(finalValue, evalVx.logs, true);
+                evalResult = new EvalOutcome.Ok(finalValue, evalVx.logs, fallbackValue.optIsNone());
             }
             switch (evalResult) {
                 case EvalOutcome.Err err -> {
@@ -201,14 +201,12 @@ public final class CompileModule {
                         var rootScope = new Scope(vx);
                         var target = new TargetDynamic();
                         var xx = new ExprContext(rootScope, target, vx, importState, Opt.some(new TypeStringDynamic()));
-                        var exportErrors = new TList<ExprErr>();
                         if (ok.value().optIsNone()) {
-                            exportErrors.add(new ExprErr(
-                                    rootLoc, TList.of(new ExprSubErr.Opaque("Module yields no value to export"))));
                             return new CompileModuleResult(
-                                    new CompileRes(allLogs, new CompileResResult.Err(exportErrors)),
+                                    new CompileRes(allLogs, new CompileResResult.Ok(Opt.none())),
                                     cix.localDependencies);
                         }
+                        var exportErrors = new TList<ExprErr>();
                         var exportArt = Artifactable.exportArtifact(
                                 xx, rootLoc, ok.value().optUnwrap());
                         if (exportArt.hasErrors()) {
@@ -237,93 +235,101 @@ public final class CompileModule {
         }
     }
 
-    private static int maxLowerExcess(Expr expr, int sd, int ld) {
+    private record LowerExcess(int excess, QExprId loc) {}
+
+    private static Opt<LowerExcess> maxExcess(Opt<LowerExcess> a, Opt<LowerExcess> b) {
+        if (a.optIsNone()) return b;
+        if (b.optIsNone()) return a;
+        return a.optUnwrap().excess() >= b.optUnwrap().excess() ? a : b;
+    }
+
+    private static Opt<LowerExcess> lowerExcess(Expr expr, int sd, int ld) {
         return switch (expr.variant()) {
             case Expr.Lower l -> {
                 var newLd = ld + 1;
-                var excess = Math.max(0, newLd - sd);
-                yield Math.max(excess, maxLowerExcess(l.expr(), sd, newLd));
+                Opt<LowerExcess> own = newLd > sd ? Opt.some(new LowerExcess(newLd - sd, expr.loc())) : Opt.none();
+                yield maxExcess(own, lowerExcess(l.expr(), sd, newLd));
             }
-            case Expr.Stage s -> maxLowerExcess(s.expr(), sd + 1, ld);
+            case Expr.Stage s -> lowerExcess(s.expr(), sd + 1, ld);
             case Expr.Graft g ->
                 switch (g) {
-                    case Expr.Graft.Pending p -> maxLowerExcess(p.expr(), sd, ld);
-                    case Expr.Graft.Evaluated e -> 0;
+                    case Expr.Graft.Pending p -> lowerExcess(p.expr(), sd, ld);
+                    case Expr.Graft.Evaluated e -> Opt.none();
                 };
-            case Expr.Literal lit -> 0;
-            case Expr.ScopeUse u -> 0;
-            case Expr.Labeled lb -> maxLowerExcess(lb.inner(), sd, ld);
+            case Expr.Literal lit -> Opt.none();
+            case Expr.ScopeUse u -> Opt.none();
+            case Expr.Labeled lb -> lowerExcess(lb.inner(), sd, ld);
             case Expr.Return rt ->
-                rt.value().optIsSome() ? maxLowerExcess(rt.value().optUnwrap(), sd, ld) : 0;
-            case Expr.As a -> Math.max(maxLowerExcess(a.base(), sd, ld), maxLowerExcess(a.target(), sd, ld));
-            case Expr.Call c -> Math.max(maxLowerExcess(c.func(), sd, ld), maxLowerExcess(c.arg(), sd, ld));
-            case Expr.Bind b -> Math.max(maxLowerExcess(b.base(), sd, ld), maxLowerExcess(b.value(), sd, ld));
-            case Expr.Set s -> Math.max(maxLowerExcess(s.base(), sd, ld), maxLowerExcess(s.value(), sd, ld));
-            case Expr.Field f -> Math.max(maxLowerExcess(f.base(), sd, ld), maxLowerExcess(f.key(), sd, ld));
+                rt.value().optIsSome() ? lowerExcess(rt.value().optUnwrap(), sd, ld) : Opt.none();
+            case Expr.As a -> maxExcess(lowerExcess(a.base(), sd, ld), lowerExcess(a.target(), sd, ld));
+            case Expr.Call c -> maxExcess(lowerExcess(c.func(), sd, ld), lowerExcess(c.arg(), sd, ld));
+            case Expr.Bind b -> maxExcess(lowerExcess(b.base(), sd, ld), lowerExcess(b.value(), sd, ld));
+            case Expr.Set s -> maxExcess(lowerExcess(s.base(), sd, ld), lowerExcess(s.value(), sd, ld));
+            case Expr.Field f -> maxExcess(lowerExcess(f.base(), sd, ld), lowerExcess(f.key(), sd, ld));
             case Expr.Seq s -> {
-                var m = 0;
-                for (var sub : s.exprs()) m = Math.max(m, maxLowerExcess(sub, sd, ld));
+                Opt<LowerExcess> m = Opt.none();
+                for (var sub : s.exprs()) m = maxExcess(m, lowerExcess(sub, sd, ld));
                 yield m;
             }
             case Expr.Tuple t -> {
-                var m = 0;
-                for (var sub : t.elements()) m = Math.max(m, maxLowerExcess(sub, sd, ld));
+                Opt<LowerExcess> m = Opt.none();
+                for (var sub : t.elements()) m = maxExcess(m, lowerExcess(sub, sd, ld));
                 yield m;
             }
             case Expr.Record r -> {
-                var m = 0;
+                Opt<LowerExcess> m = Opt.none();
                 for (var entry : r.entries()) {
-                    m = Math.max(m, maxLowerExcess(entry.key(), sd, ld));
-                    m = Math.max(m, maxLowerExcess(entry.value(), sd, ld));
+                    m = maxExcess(m, lowerExcess(entry.key(), sd, ld));
+                    m = maxExcess(m, lowerExcess(entry.value(), sd, ld));
                 }
                 yield m;
             }
             case Expr.If i -> {
-                var m = 0;
+                Opt<LowerExcess> m = Opt.none();
                 for (var branch : i.conditions()) {
-                    m = Math.max(m, maxLowerExcess(branch.condition(), sd, ld));
-                    m = Math.max(m, maxLowerExcess(branch.body(), sd, ld));
+                    m = maxExcess(m, lowerExcess(branch.condition(), sd, ld));
+                    m = maxExcess(m, lowerExcess(branch.body(), sd, ld));
                 }
                 var el = i.else_();
                 if (el.optIsSome()) {
-                    m = Math.max(m, maxLowerExcess(el.optUnwrap(), sd, ld));
+                    m = maxExcess(m, lowerExcess(el.optUnwrap(), sd, ld));
                 }
                 yield m;
             }
             case Expr.OperatorBinary op ->
-                Math.max(maxLowerExcess(op.base(), sd, ld), maxLowerExcess(op.reference(), sd, ld));
-            case Expr.OperatorUnary op -> maxLowerExcess(op.base(), sd, ld);
+                maxExcess(lowerExcess(op.base(), sd, ld), lowerExcess(op.reference(), sd, ld));
+            case Expr.OperatorUnary op -> lowerExcess(op.base(), sd, ld);
             case Expr.Foreach f -> {
-                var m = maxLowerExcess(f.base(), sd, ld);
-                m = Math.max(m, maxLowerExcess(f.elementKey(), sd, ld));
-                m = Math.max(m, maxLowerExcess(f.body(), sd, ld));
+                var m = lowerExcess(f.base(), sd, ld);
+                m = maxExcess(m, lowerExcess(f.elementKey(), sd, ld));
+                m = maxExcess(m, lowerExcess(f.body(), sd, ld));
                 yield m;
             }
             case Expr.Match m -> {
-                var x = maxLowerExcess(m.base(), sd, ld);
-                x = Math.max(x, maxLowerExcess(m.elementKey(), sd, ld));
+                var x = lowerExcess(m.base(), sd, ld);
+                x = maxExcess(x, lowerExcess(m.elementKey(), sd, ld));
                 for (var c : m.cases()) {
-                    x = Math.max(x, maxLowerExcess(c.condition(), sd, ld));
-                    x = Math.max(x, maxLowerExcess(c.body(), sd, ld));
+                    x = maxExcess(x, lowerExcess(c.condition(), sd, ld));
+                    x = maxExcess(x, lowerExcess(c.body(), sd, ld));
                 }
                 var fb = m.fallback();
                 if (fb.optIsSome()) {
-                    x = Math.max(x, maxLowerExcess(fb.optUnwrap(), sd, ld));
+                    x = maxExcess(x, lowerExcess(fb.optUnwrap(), sd, ld));
                 }
                 yield x;
             }
             case Expr.Try t -> {
-                var m = maxLowerExcess(t.body(), sd, ld);
+                var m = lowerExcess(t.body(), sd, ld);
                 var cc = t.catchClause();
                 if (cc.optIsSome()) {
                     var c = cc.optUnwrap();
-                    m = Math.max(m, maxLowerExcess(c.bindingName(), sd, ld));
-                    m = Math.max(m, maxLowerExcess(c.exceptionType(), sd, ld));
-                    m = Math.max(m, maxLowerExcess(c.body(), sd, ld));
+                    m = maxExcess(m, lowerExcess(c.bindingName(), sd, ld));
+                    m = maxExcess(m, lowerExcess(c.exceptionType(), sd, ld));
+                    m = maxExcess(m, lowerExcess(c.body(), sd, ld));
                 }
                 var fb = t.finallyBlock();
                 if (fb.optIsSome()) {
-                    m = Math.max(m, maxLowerExcess(fb.optUnwrap(), sd, ld));
+                    m = maxExcess(m, lowerExcess(fb.optUnwrap(), sd, ld));
                 }
                 yield m;
             }

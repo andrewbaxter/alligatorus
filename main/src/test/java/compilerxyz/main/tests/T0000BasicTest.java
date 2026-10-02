@@ -17,7 +17,7 @@ public final class T0000BasicTest {
     public void test00100CallLit() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        modules.put("main", new SourceModule.V1(mb.call(mb.log(), mb.str("Hello world (mortar)"))));
+        modules.put("main", new SourceModule.V1(TList.of(mb.call(mb.log(), mb.str("Hello world (mortar)")))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -35,7 +35,7 @@ public final class T0000BasicTest {
     public void test00101TypeError() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        modules.put("main", new SourceModule.V1(mb.call(mb.log(), mb.tupleOf())));
+        modules.put("main", new SourceModule.V1(TList.of(mb.call(mb.log(), mb.tupleOf()))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -52,7 +52,7 @@ public final class T0000BasicTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("hello", mb.str("Hello world (mortar)")), mb.call(mb.log(), mb.scopeUse("hello")))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
@@ -71,7 +71,7 @@ public final class T0000BasicTest {
     public void test00300StageLower() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        modules.put("main", new SourceModule.V1(mb.call(mb.log(), mb.lower(mb.str("Hello world (mortar)")))));
+        modules.put("main", new SourceModule.V1(TList.of(mb.call(mb.log(), mb.lower(mb.str("Hello world (mortar)"))))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -89,7 +89,7 @@ public final class T0000BasicTest {
     public void test00400LowerNostage() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        modules.put("main", new SourceModule.V1(mb.call(mb.log(), mb.lower(mb.str("Hello world (mortar)")))));
+        modules.put("main", new SourceModule.V1(TList.of(mb.call(mb.log(), mb.lower(mb.str("Hello world (mortar)"))))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -109,8 +109,8 @@ public final class T0000BasicTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.call(
-                        mb.log(), mb.call(mb.field(mb.str("HELLO WORLD"), mb.str("toLowerCase")), mb.tupleOf()))));
+                new SourceModule.V1(TList.of(mb.call(
+                        mb.log(), mb.call(mb.field(mb.str("HELLO WORLD"), mb.str("toLowerCase")), mb.tupleOf())))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(

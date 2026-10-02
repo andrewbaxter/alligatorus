@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 public final class T0107CompositeRuntimeTest {
     private static TList<String> compileLogs(SourceExpr main) {
         var modules = new TMap<String, SourceModule>();
-        modules.put("main", new SourceModule.V1(main));
+        modules.put("main", new SourceModule.V1(TList.of(main)));
         var res = Helpers.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, ?> ok;
         switch (res) {
@@ -37,7 +37,12 @@ public final class T0107CompositeRuntimeTest {
                 e.lower(e.seq(
                         e.let("d", e.define()),
                         e.let("fb", e.defFunc(e.v("d"), "g")),
-                        e.funcImpl(e.v("fb"), argType, e.retSome(e.mb.typesString()), e.stage(e.cat(first, second))),
+                        e.funcImpl(
+                                e.v("fb"),
+                                argType,
+                                e.retSome(e.mb.typesString()),
+                                e.mb.optNoneType(),
+                                e.stage(e.cat(first, second))),
                         e.finish(e.v("d")),
                         e.ret(e.fld(e.v("fb"), "func")))));
     }

@@ -14,7 +14,10 @@ import compilerxyz.main.eval.binding.BindingValue;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.main.eval.value.record.Record;
+import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.eval.value.tuple.Tuple;
+import compilerxyz.main.eval.value.tuple.TupleElement;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectDynamicBoxed;
 import compilerxyz.main.gen.Binding;
@@ -267,6 +270,42 @@ public final class DynUtil {
     public static boolean dynamicHasCode(CodeValue cv) {
         if (!cv.code().codeIsNone()) return true;
         return cv.value().optIsSome() && cv.value().optUnwrap() instanceof ValueDynamic;
+    }
+
+    public static boolean valueIsRuntime(Value value) {
+        return switch (value) {
+            case ValueDynamic vd -> true;
+            case Record r -> {
+                for (var entry : r.fields()) {
+                    switch (entry.getValue()) {
+                        case RecordField.Dynamic d -> {}
+                        case RecordField.EvalRes er -> {
+                            if (codeValueIsRuntime(er.result())) yield true;
+                        }
+                    }
+                }
+                yield false;
+            }
+            case Tuple t -> {
+                for (var element : t.elements()) {
+                    switch (element) {
+                        case TupleElement.Dynamic d -> {}
+                        case TupleElement.EvalRes er -> {
+                            if (codeValueIsRuntime(er.result())) yield true;
+                        }
+                    }
+                }
+                yield false;
+            }
+            default -> false;
+        };
+    }
+
+    private static boolean codeValueIsRuntime(EResult<CodeValue> result) {
+        var cvOpt = result.valueOpt();
+        if (cvOpt.optIsNone()) return false;
+        var valueOpt = cvOpt.optUnwrap().value();
+        return valueOpt.optIsSome() && valueIsRuntime(valueOpt.optUnwrap());
     }
 
     public static EResult<Type> requireBoxedTypeArgument(ExprContext xx, QExprId loc, String what, Type type) {

@@ -7,6 +7,7 @@ import compilerxyz.main.syntax.SourceExpr;
 import compilerxyz.main.syntax.SourceModule;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Result;
+import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,6 +20,7 @@ public final class T0031InterfaceCrossSetTest {
         return e.lower(e.seq(
                 e.let("da", e.define()),
                 e.let("iface", e.callM0(e.v("da"), "interface")),
+                e.interfaceImpl(e.v("iface"), false),
                 e.callM(
                         e.v("iface"),
                         "func",
@@ -29,7 +31,7 @@ public final class T0031InterfaceCrossSetTest {
                 e.finish(e.v("da")),
                 e.let("db", e.define()),
                 e.let("upper", e.defObject(e.v("db"), "upper")),
-                e.callM(e.v("upper"), "set_inner", e.mb.typesString()),
+                e.objectImpl(e.v("upper"), e.mb.typesString()),
                 e.implInterface(
                         e.v("upper"),
                         e.fld(e.v("iface"), "type"),
@@ -39,6 +41,7 @@ public final class T0031InterfaceCrossSetTest {
                         e.v("mk"),
                         e.mb.typesString(),
                         e.retSome(e.fld(e.v("upper"), "type")),
+                        e.mb.optNoneType(),
                         e.stage(e.call(e.lower(e.fld(e.v("upper"), "new")), e.v("arg")))),
                 e.finish(e.v("db")),
                 e.ret(e.rec(
@@ -55,7 +58,7 @@ public final class T0031InterfaceCrossSetTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(e.seq(
+                new SourceModule.V1(TList.of(
                         e.let("lib", twoSets(e)),
                         e.let("u", e.call(e.fld(e.v("lib"), "make_upper"), e.s("hello"))),
                         e.call(e.mb.log(), callViaInterface(e, e.v("lib"), e.v("u"))))));
@@ -74,10 +77,10 @@ public final class T0031InterfaceCrossSetTest {
         var e = new EcoMb();
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        T0200EcosystemLlvmTest.writeModule(src.resolve("lib.at"), twoSets(e));
+        T0200EcosystemLlvmTest.writeModule(src.resolve("lib.at"), TList.of(e.ret(twoSets(e))));
         T0200EcosystemLlvmTest.writeModule(
                 src.resolve("main.at"),
-                e.seq(
+                TList.of(
                         e.let("lib", e.importLocal("lib", "lib.at")),
                         e.let("u", e.call(e.fld(e.v("lib"), "make_upper"), e.s("hello"))),
                         e.call(e.mb.log(), callViaInterface(e, e.v("lib"), e.v("u")))));

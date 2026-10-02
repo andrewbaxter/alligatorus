@@ -179,8 +179,18 @@ public final class T0160EvenOddTest {
                                                 "u",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str(name))),
                                         mb.call(
-                                                mb.field(mb.scopeUse("u"), mb.str("set_inner")),
-                                                mb.recordOf(TList.of(new TestMb.RecordPair("parity", mb.typesLong())))),
+                                                mb.field(mb.scopeUse("u"), mb.str("impl")),
+                                                mb.recordOf(
+                                                        TList.of(
+                                                                new TestMb.RecordPair(
+                                                                        "inner",
+                                                                        mb.recordOf(
+                                                                                TList.of(
+                                                                                        new TestMb.RecordPair(
+                                                                                                "parity",
+                                                                                                mb.typesLong())))),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.bind(
                                                 "u_gp_method",
                                                 mb.call(
@@ -224,16 +234,32 @@ public final class T0160EvenOddTest {
                                                         mb.field(mb.scopeUse("d"), mb.str("object")),
                                                         mb.str("EvenOddValue"))),
                                         mb.call(
-                                                mb.field(mb.scopeUse("vb"), mb.str("set_inner")),
+                                                mb.field(mb.scopeUse("vb"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
                                                                 new TestMb.RecordPair(
-                                                                        "type",
-                                                                        mb.field(mb.scopeUse("u"), mb.str("type"))),
+                                                                        "inner",
+                                                                        mb.recordOf(
+                                                                                TList.of(
+                                                                                        new TestMb.RecordPair(
+                                                                                                "type",
+                                                                                                mb.field(
+                                                                                                        mb.scopeUse(
+                                                                                                                "u"),
+                                                                                                        mb.str(
+                                                                                                                "type"))),
+                                                                                        new TestMb.RecordPair(
+                                                                                                "source",
+                                                                                                mb.field(
+                                                                                                        mb.scopeUse(
+                                                                                                                "vs"),
+                                                                                                        mb.str(
+                                                                                                                "type"))),
+                                                                                        new TestMb.RecordPair(
+                                                                                                "wrapped",
+                                                                                                mb.evalValue())))),
                                                                 new TestMb.RecordPair(
-                                                                        "source",
-                                                                        mb.field(mb.scopeUse("vs"), mb.str("type"))),
-                                                                new TestMb.RecordPair("wrapped", mb.evalValue())))),
+                                                                        "description", mb.optNoneString())))),
                                         mb.bind(
                                                 "vb_gw_method",
                                                 mb.call(
@@ -337,25 +363,38 @@ public final class T0160EvenOddTest {
                                                         mb.field(mb.scopeUse("d"), mb.str("object")),
                                                         mb.str("EvenOddBinding"))),
                                         mb.call(
-                                                mb.field(mb.scopeUse("bb"), mb.str("set_inner")),
+                                                mb.field(mb.scopeUse("bb"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
-                                                                new TestMb.RecordPair("int", mb.evalBinding()),
                                                                 new TestMb.RecordPair(
-                                                                        "state",
+                                                                        "inner",
                                                                         mb.recordOf(
                                                                                 TList.of(
                                                                                         new TestMb.RecordPair(
-                                                                                                "parity",
-                                                                                                mb.typesLong()),
+                                                                                                "int",
+                                                                                                mb.evalBinding()),
                                                                                         new TestMb.RecordPair(
-                                                                                                "setter",
-                                                                                                mb.call(
-                                                                                                        mb
-                                                                                                                .typesOption(),
-                                                                                                        mb.builtin(
-                                                                                                                "eval",
-                                                                                                                "binding_setter"))))))))),
+                                                                                                "state",
+                                                                                                mb.recordOf(
+                                                                                                        TList.of(
+                                                                                                                new TestMb
+                                                                                                                        .RecordPair(
+                                                                                                                        "parity",
+                                                                                                                        mb
+                                                                                                                                .typesLong()),
+                                                                                                                new TestMb
+                                                                                                                        .RecordPair(
+                                                                                                                        "setter",
+                                                                                                                        mb
+                                                                                                                                .call(
+                                                                                                                                        mb
+                                                                                                                                                .typesOption(),
+                                                                                                                                        mb
+                                                                                                                                                .builtin(
+                                                                                                                                                        "eval",
+                                                                                                                                                        "binding_setter"))))))))),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.bind(
                                                 "gp_method",
                                                 mb.call(
@@ -431,12 +470,23 @@ public final class T0160EvenOddTest {
                                                         mb.field(mb.scopeUse("d"), mb.str("object")),
                                                         mb.str("EvenOddIntSetter"))),
                                         mb.call(
-                                                mb.field(mb.scopeUse("iset"), mb.str("set_inner")),
+                                                mb.field(mb.scopeUse("iset"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
                                                                 new TestMb.RecordPair(
-                                                                        "outer", mb.builtin("eval", "binding_setter")),
-                                                                new TestMb.RecordPair("parity", mb.typesLong())))),
+                                                                        "inner",
+                                                                        mb.recordOf(
+                                                                                TList.of(
+                                                                                        new TestMb.RecordPair(
+                                                                                                "outer",
+                                                                                                mb.builtin(
+                                                                                                        "eval",
+                                                                                                        "binding_setter")),
+                                                                                        new TestMb.RecordPair(
+                                                                                                "parity",
+                                                                                                mb.typesLong())))),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(
                                                 mb.field(mb.scopeUse("iset"), mb.str("impl_interface")),
                                                 mb.recordOf(
@@ -3191,11 +3241,11 @@ public final class T0160EvenOddTest {
                                 mb.recordOf(TList.of(new TestMb.RecordPair("parity", mb.num(0.0))))))))));
     }
 
-    private static SourceExpr moduleSeq(TestMb mb, TList<SourceExpr> prefix, SourceExpr... rest) {
+    private static TList<SourceExpr> moduleSeq(TList<SourceExpr> prefix, SourceExpr... rest) {
         var all = new TList<SourceExpr>(prefix.size() + rest.length);
         for (var e : prefix) all.add(e);
         for (var e : rest) all.add(e);
-        return mb.seq(all);
+        return all;
     }
 
     private static Compile.CompileResult compileOk(TMap<String, SourceModule> modules) {
@@ -3218,7 +3268,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd", mb.throw_(mb.str("drop boom"))),
                         mb.call(mb.log(), mb.str("defined")))));
         var gx = Helpers.newGx(modules);
@@ -3241,7 +3290,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(
                                 mb,
                                 "EvenOdd",
@@ -3275,8 +3323,7 @@ public final class T0160EvenOddTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        moduleSeq(mb, bindEvenOddType(mb, "EvenOdd"), mb.call(mb.log(), mb.str("defined")))));
+                new SourceModule.V1(moduleSeq(bindEvenOddType(mb, "EvenOdd"), mb.call(mb.log(), mb.str("defined")))));
         var res = compileOk(modules);
         assertTrue(res.logs().size() >= 1, () -> "expected at least one log entry, got " + res.logs());
     }
@@ -3288,7 +3335,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.call(mb.log(), mb.str("bound")))));
@@ -3303,7 +3349,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.set(mb.scopeUse("a"), mb.as(mb.num(4.0), mb.scopeUse("even_type"))),
@@ -3318,7 +3363,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.bind("b", mb.scopeUse("a")),
@@ -3334,7 +3378,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.call(mb.log(), mb.str("cast-const")))));
@@ -3349,7 +3392,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.bind("b", mb.operatorAdd(mb.scopeUse("a"), mb.num(3.0))),
@@ -3365,7 +3407,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.bind("b", mb.as(mb.num(4.0), mb.scopeUse("even_type"))),
@@ -3382,7 +3423,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.set(mb.scopeUse("a"), mb.num(4.0)),
@@ -3398,7 +3438,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.set(mb.scopeUse("a"), mb.as(mb.num(4.0), mb.typesLong())),
@@ -3470,7 +3509,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.ifOf(TList.of(new TestMb.Branch(dynTrue(mb), thenSet)), Opt.some(elseSet)),
@@ -3530,7 +3568,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.bind("b", evenCast(mb, 4.0)),
@@ -3550,7 +3587,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.bind("b", evenCast(mb, 4.0)),
@@ -3571,7 +3607,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.ifOf(
@@ -3588,7 +3623,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.ifOf(
@@ -3605,7 +3639,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.bind(
@@ -3625,7 +3658,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.bind(
@@ -3645,7 +3677,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.tryCatchFinally(
@@ -3664,7 +3695,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.tryCatchFinally(
@@ -3683,7 +3713,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         bindStrNum(mb),
                         mb.bind("a", evenCast(mb, 2.0)),
@@ -3710,7 +3739,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         bindStrNum(mb),
                         mb.bind("a", evenCast(mb, 2.0)),
@@ -3737,7 +3765,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", mb.as(mb.as(mb.num(2.0), mb.typesLong()), mb.scopeUse("even_type"))),
                         mb.call(mb.log(), mb.str("unreachable")))));
@@ -3761,7 +3788,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         bindStrNum(mb),
                         mb.bind("a", evenCast(mb, 2.0)),
@@ -3786,7 +3812,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         bindStrNum(mb),
                         mb.bind("a", evenCast(mb, 2.0)),
@@ -3811,7 +3836,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.bind(
@@ -3836,7 +3860,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.bind(
@@ -3861,7 +3884,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.ifOf(
@@ -3884,7 +3906,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.ifOf(
@@ -3907,7 +3928,6 @@ public final class T0160EvenOddTest {
         modules.put(
                 "main",
                 new SourceModule.V1(moduleSeq(
-                        mb,
                         bindEvenOddType(mb, "EvenOdd"),
                         mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.bind("c", mb.operatorAdd(mb.scopeUse("a"), mb.as(mb.num(3.0), mb.typesLong()))),

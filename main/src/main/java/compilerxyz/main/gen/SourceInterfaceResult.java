@@ -18,12 +18,18 @@ public final class SourceInterfaceResult {
         this.type = type;
     }
 
-    public void setDescription(String description) {
+    @BuiltinEvalContext
+    public void impl(EvalContext vx, boolean isAspect, Opt<String> description) {
         var building = this.type.cell().building();
-        if (building.description.optIsSome()) {
-            throw new IllegalStateException("Interface already has a description");
+        if (building.implProvided) {
+            throw new IllegalStateException("Interface already has an impl");
         }
-        building.description = Opt.some(description);
+        building.implProvided = true;
+        building.isAspect = isAspect;
+        if (isAspect) {
+            building.aspectId = Opt.some(DynRuntime.freshUnique(vx));
+        }
+        building.description = description;
     }
 
     @BuiltinEvalContext
@@ -41,17 +47,8 @@ public final class SourceInterfaceResult {
     public Unique aspectId() {
         var aspectId = this.type.cell().aspectId();
         if (aspectId.optIsNone()) {
-            throw new IllegalStateException("Interface is not an aspect (set_is_aspect was not called)");
+            throw new IllegalStateException("Interface is not an aspect (impl was called with is_aspect false)");
         }
         return aspectId.optUnwrap();
-    }
-
-    @BuiltinEvalContext
-    public void setIsAspect(EvalContext vx, boolean isAspect) {
-        var building = this.type.cell().building();
-        building.isAspect = isAspect;
-        if (isAspect && building.aspectId.optIsNone()) {
-            building.aspectId = Opt.some(DynRuntime.freshUnique(vx));
-        }
     }
 }

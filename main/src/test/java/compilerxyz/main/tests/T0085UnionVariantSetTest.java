@@ -89,7 +89,7 @@ public final class T0085UnionVariantSetTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         bindStrNum(mb),
                         mb.bind("x", newNum(mb, 7.)),
                         mb.matchOf(
@@ -108,7 +108,7 @@ public final class T0085UnionVariantSetTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         bindStrNum(mb),
                         mb.bind("x", newNum(mb, 7.)),
                         mb.matchOf(
@@ -127,7 +127,7 @@ public final class T0085UnionVariantSetTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         bindStrNum(mb),
                         mb.bind("x", widened(mb, newNum(mb, 7.))),
                         mb.matchOf(
@@ -152,7 +152,7 @@ public final class T0085UnionVariantSetTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         bindStrNum(mb),
                         mb.bind("x", widened(mb, newNum(mb, 7.))),
                         mb.matchOf(
@@ -177,7 +177,7 @@ public final class T0085UnionVariantSetTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         bindStrNum(mb),
                         mb.bind("x", newNum(mb, 7.)),
                         mb.set(mb.scopeUse("x"), newStr(mb, "s")),
@@ -197,7 +197,7 @@ public final class T0085UnionVariantSetTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         bindStrNum(mb),
                         mb.bind("x", newNum(mb, 7.)),
                         mb.set(mb.scopeUse("x"), newStr(mb, "s")),
@@ -235,7 +235,7 @@ public final class T0085UnionVariantSetTest {
                         new TestMb.Branch(mb.str("strtag"), mb.call(mb.log(), mb.scopeUse("y"))),
                         new TestMb.Branch(mb.str("numtag"), logToString(mb, "y"))),
                 Opt.none()));
-        modules.put("main", new SourceModule.V1(mb.seqOf(exprs.toArray(SourceExpr[]::new))));
+        modules.put("main", new SourceModule.V1(TList.of(exprs.toArray(SourceExpr[]::new))));
         var ok = compileOk(modules);
         assertEquals(1, ok.logs().size());
         assertEquals("s", ok.logs().get(0).message());
@@ -252,7 +252,7 @@ public final class T0085UnionVariantSetTest {
                 mb.str("y"),
                 TList.of(new TestMb.Branch(mb.str("numtag"), logToString(mb, "y"))),
                 Opt.none()));
-        modules.put("main", new SourceModule.V1(mb.seqOf(exprs.toArray(SourceExpr[]::new))));
+        modules.put("main", new SourceModule.V1(TList.of(exprs.toArray(SourceExpr[]::new))));
         compileErrContaining(modules, "Non-exhaustive match");
     }
 
@@ -270,7 +270,7 @@ public final class T0085UnionVariantSetTest {
                         new TestMb.Branch(mb.str("numtag"), logToString(mb, "y")),
                         new TestMb.Branch(mb.str("othertag"), logToString(mb, "y"))),
                 Opt.none()));
-        modules.put("main", new SourceModule.V1(mb.seqOf(exprs.toArray(SourceExpr[]::new))));
+        modules.put("main", new SourceModule.V1(TList.of(exprs.toArray(SourceExpr[]::new))));
         compileErrContaining(modules, "not an active variant");
     }
 
@@ -280,7 +280,7 @@ public final class T0085UnionVariantSetTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         bindStrNum(mb),
                         mb.bind("x", widened(mb, newNum(mb, 7.))),
                         mb.matchOf(
@@ -306,19 +306,20 @@ public final class T0085UnionVariantSetTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.lower(mb.seqOf(
+                new SourceModule.V1(TList.of(mb.lower(mb.seqOf(
                         mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                         mb.bind("builder", mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
                         mb.bind(
                                 "new_a",
                                 mb.call(
                                         mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                        mb.recordOf(TList.of(
-                                                new TestMb.RecordPair("tag", mb.str("a")),
-                                                new TestMb.RecordPair("type_ref", mb.typesInt()))))),
+                                        mb.recordOf(
+                                                TList.of(
+                                                        new TestMb.RecordPair("tag", mb.str("a")),
+                                                        new TestMb.RecordPair("type_ref", mb.typesInt()))))),
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                         mb.bind("late", lateVariant),
-                        mb.return_(mb.as(mb.str("unreached"), mb.typesString()))))));
+                        mb.return_(mb.as(mb.str("unreached"), mb.typesString())))))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         var errs =
@@ -331,7 +332,7 @@ public final class T0085UnionVariantSetTest {
         var err = errs.get(0);
         assertEquals(
                 lateVariant.id().value(),
-                err.loc().expr(),
+                err.loc().expr().optUnwrap(),
                 () -> "error should point at the late variant call; got: " + err);
         assertTrue(
                 err.message().contains("Cannot add a union variant after its definition set is finished"),

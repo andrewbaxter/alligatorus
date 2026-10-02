@@ -19,7 +19,7 @@ public final class T0010DefineFuncTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "act",
                                 mb.lower(mb.seqOf(
@@ -44,8 +44,11 @@ public final class T0010DefineFuncTest {
                                                                                 mb.tupleOf())),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
-                                                                        mb.stage(
-                                                                                mb.call(mb.log(), mb.str("acted"))))))),
+                                                                        mb.stage(mb.call(mb.log(), mb.str("acted")))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type", mb.optNoneType()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.call(mb.scopeUse("act"), mb.tupleOf()))));
@@ -70,7 +73,7 @@ public final class T0010DefineFuncTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "hello",
                                 mb.lower(mb.seqOf(
@@ -95,8 +98,11 @@ public final class T0010DefineFuncTest {
                                                                                 mb.tupleOf())),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
-                                                                        mb.stage(
-                                                                                mb.call(mb.log(), mb.str("hello"))))))),
+                                                                        mb.stage(mb.call(mb.log(), mb.str("hello")))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type", mb.optNoneType()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.call(mb.scopeUse("hello"), mb.tupleOf()))));
@@ -121,7 +127,7 @@ public final class T0010DefineFuncTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_func",
                                 mb.lower(mb.seqOf(
@@ -144,7 +150,11 @@ public final class T0010DefineFuncTest {
                                                                                         mb.field(
                                                                                                 mb.scopeUse("arg"),
                                                                                                 mb.str("toUpperCase")),
-                                                                                        mb.tupleOf())))))),
+                                                                                        mb.tupleOf()))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type", mb.optNoneType()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.call(mb.log(), mb.call(mb.scopeUse("my_func"), mb.str("hello world"))))));
@@ -169,7 +179,7 @@ public final class T0010DefineFuncTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_func",
                                 mb.lower(mb.seqOf(
@@ -192,7 +202,11 @@ public final class T0010DefineFuncTest {
                                                                                         mb.field(
                                                                                                 mb.scopeUse("arg"),
                                                                                                 mb.str("toUpperCase")),
-                                                                                        mb.tupleOf())))))),
+                                                                                        mb.tupleOf()))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type", mb.optNoneType()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.call(mb.log(), mb.call(mb.scopeUse("my_func"), mb.str("hello world"))))));
@@ -217,7 +231,7 @@ public final class T0010DefineFuncTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "inc",
                                 mb.lower(mb.seqOf(
@@ -240,7 +254,11 @@ public final class T0010DefineFuncTest {
                                                                                         mb.scopeUse("arg"),
                                                                                         mb.as(
                                                                                                 mb.num(1.),
-                                                                                                mb.typesInt()))))))),
+                                                                                                mb.typesInt())))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type", mb.optNoneType()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.bind("y", mb.call(mb.scopeUse("inc"), mb.as(mb.num(2.), mb.typesInt()))),
@@ -308,7 +326,7 @@ public final class T0010DefineFuncTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_func",
                                 mb.lower(mb.seqOf(
@@ -336,7 +354,11 @@ public final class T0010DefineFuncTest {
                                                                                                                 "arg"),
                                                                                                         mb.num(1.0)),
                                                                                                 mb.str("toUpperCase")),
-                                                                                        mb.tupleOf())))))),
+                                                                                        mb.tupleOf()))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type", mb.optNoneType()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.call(
@@ -353,7 +375,7 @@ public final class T0010DefineFuncTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_func",
                                 mb.lower(mb.seqOf(
@@ -370,7 +392,11 @@ public final class T0010DefineFuncTest {
                                                                 new TestMb.RecordPair(
                                                                         "ret", mb.optSomeType(mb.typesString())),
                                                                 new TestMb.RecordPair(
-                                                                        "impl_body", mb.stage(mb.str("no args")))))),
+                                                                        "impl_body", mb.stage(mb.str("no args"))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type", mb.optNoneType()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.call(mb.log(), mb.call(mb.scopeUse("my_func"), mb.tupleOf())))));
@@ -399,7 +425,7 @@ public final class T0010DefineFuncTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "f",
                                 mb.lower(mb.seqOf(
@@ -423,8 +449,11 @@ public final class T0010DefineFuncTest {
                                                                                                 "v",
                                                                                                 mb.scopeUse("arg")),
                                                                                         mb.scopeUse("v"),
-                                                                                        mb.return_(
-                                                                                                mb.scopeUse("v")))))))),
+                                                                                        mb.return_(mb.scopeUse("v"))))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type", mb.optNoneType()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("g"))))),
                         mb.bind("y", mb.call(mb.scopeUse("f"), mb.as(mb.num(4.), mb.typesInt()))),

@@ -30,9 +30,17 @@ public final class T0130DropThrowTest {
                 mb.lower(mb.seqOf(
                         mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                         mb.bind("u", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str(name))),
-                        mb.call(mb.field(mb.scopeUse("u"), mb.str("set_inner")), mb.tupleOf()),
+                        mb.call(
+                                mb.field(mb.scopeUse("u"), mb.str("impl")),
+                                mb.recordOf(TList.of(
+                                        new TestMb.RecordPair("inner", mb.tupleOf()),
+                                        new TestMb.RecordPair("description", mb.optNoneString())))),
                         mb.bind("mk", mb.call(mb.field(mb.scopeUse("d"), mb.str("interface")), mb.tupleOf())),
-                        mb.call(mb.field(mb.scopeUse("mk"), mb.str("set_is_aspect")), mb.bool(true)),
+                        mb.call(
+                                mb.field(mb.scopeUse("mk"), mb.str("impl")),
+                                mb.recordOf(TList.of(
+                                        new TestMb.RecordPair("is_aspect", mb.bool(true)),
+                                        new TestMb.RecordPair("description", mb.optNoneString())))),
                         mb.bind("mk_id", mb.call(mb.field(mb.scopeUse("mk"), mb.str("aspect_id")), mb.tupleOf())),
                         mb.call(
                                 mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
@@ -883,7 +891,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.tryCatchFinally(
                                 mb.throw_(mb.str("boom")),
                                 Opt.some(new TestMb.Catch(
@@ -900,10 +908,10 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.tryCatchFinally(
+                new SourceModule.V1(TList.of(mb.tryCatchFinally(
                         mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.tupleOf()),
                         Opt.none(),
-                        Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("finally")), mb.tupleOf())))));
+                        Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("finally")), mb.tupleOf()))))));
         var res = compileOk(modules);
         assertEquals(TList.of("body", "finally"), messages(res));
     }
@@ -914,7 +922,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.tryCatchFinally(
                                 mb.throw_(mb.str("boom")),
                                 Opt.some(new TestMb.Catch(
@@ -931,7 +939,8 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.tryCatchFinally(mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.none())));
+                new SourceModule.V1(
+                        TList.of(mb.tryCatchFinally(mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.none()))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -948,8 +957,8 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.tryCatchFinally(
-                        mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(mb.throw_(mb.str("boom"))))));
+                new SourceModule.V1(TList.of(mb.tryCatchFinally(
+                        mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(mb.throw_(mb.str("boom")))))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -966,10 +975,10 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.labeled(
+                new SourceModule.V1(TList.of(mb.labeled(
                         "outer",
                         mb.tryCatchFinally(
-                                mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(mb.returnLabel("outer"))))));
+                                mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(mb.returnLabel("outer")))))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -986,11 +995,11 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.tryCatchFinally(
+                new SourceModule.V1(TList.of(mb.tryCatchFinally(
                         mb.throw_(mb.str("boom")),
                         Opt.some(new TestMb.Catch(
                                 "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e")))),
-                        Opt.none())));
+                        Opt.none()))));
         var res = compileOk(modules);
         assertEquals(TList.of("boom"), messages(res));
     }
@@ -1001,7 +1010,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_func",
                                 mb.lower(mb.seqOf(
@@ -1017,8 +1026,11 @@ public final class T0130DropThrowTest {
                                                                 new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair("ret", mb.optNoneType()),
                                                                 new TestMb.RecordPair(
-                                                                        "impl_body",
-                                                                        mb.stage(mb.throw_(mb.str("x"))))))),
+                                                                        "impl_body", mb.stage(mb.throw_(mb.str("x")))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type", mb.optNoneType()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.call(mb.scopeUse("my_func"), mb.tupleOf()))));
@@ -1038,7 +1050,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_func",
                                 mb.lower(mb.seqOf(
@@ -1048,17 +1060,18 @@ public final class T0130DropThrowTest {
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("f"))),
                                         mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
                                         mb.call(
-                                                mb.field(mb.scopeUse("nfr"), mb.str("set_exception_type")),
-                                                mb.typesString()),
-                                        mb.call(
                                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
                                                                 new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair("ret", mb.optNoneType()),
                                                                 new TestMb.RecordPair(
-                                                                        "impl_body",
-                                                                        mb.stage(mb.throw_(mb.str("x"))))))),
+                                                                        "impl_body", mb.stage(mb.throw_(mb.str("x")))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type",
+                                                                        mb.optSomeType(mb.typesString())),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.tryCatchFinally(
@@ -1078,13 +1091,13 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.tryCatchFinally(
+                new SourceModule.V1(TList.of(mb.tryCatchFinally(
                         mb.throw_(mb.str("boom")),
                         Opt.some(new TestMb.Catch(
                                 "e",
                                 mb.builtin("types", "string"),
                                 mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf()))),
-                        Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("always")), mb.tupleOf())))));
+                        Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("always")), mb.tupleOf()))))));
         var res = compileOk(modules);
         assertEquals(TList.of("caught", "always"), messages(res));
     }
@@ -1104,13 +1117,13 @@ public final class T0130DropThrowTest {
                 Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("always")), mb.tupleOf())));
         modules.put(
                 "main",
-                new SourceModule.V1(mb.tryExpr(
+                new SourceModule.V1(TList.of(mb.tryExpr(
                         inner,
                         Opt.some(new SourceExpr.TryCatch(
                                 mb.str("e2"),
                                 mb.builtin("types", "string"),
                                 mb.seqOf(mb.call(mb.log(), mb.str("outer")), mb.tupleOf()))),
-                        Opt.none())));
+                        Opt.none()))));
         var res = compileOk(modules);
         assertEquals(TList.of("caught", "always", "outer"), messages(res));
     }
@@ -1121,7 +1134,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
                         mb.bind("cnry", mb.as(mb.as(mb.str("X"), mb.typesString()), mb.scopeUse("canary"))),
                         mb.call(mb.log(), mb.str("after")))));
@@ -1139,7 +1152,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
                         mb.as(mb.as(mb.str("Y"), mb.typesString()), mb.scopeUse("canary")),
                         mb.call(mb.log(), mb.str("after")))));
@@ -1157,7 +1170,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("canary_a", mb.lower(makeCanaryInstance(mb, "CanaryA", "dropped_a"))),
                         mb.bind("canary_b", mb.lower(makeCanaryInstance(mb, "CanaryB", "dropped_b"))),
                         mb.bind(
@@ -1190,14 +1203,14 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.tryCatchFinally(
+                new SourceModule.V1(TList.of(mb.tryCatchFinally(
                         mb.seqOf(
                                 mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
                                 mb.bind("cnry", mb.as(mb.as(mb.str("Z"), mb.typesString()), mb.scopeUse("canary"))),
                                 mb.throw_(mb.str("boom"))),
                         Opt.some(new TestMb.Catch(
                                 "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught")))),
-                        Opt.none())));
+                        Opt.none()))));
         var res = compileOk(modules);
         var messages = messages(res);
         int dropIdx = messages.indexOf("dropped");
@@ -1217,7 +1230,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "arm_dropped"))),
                         mb.ifOf(
                                 TList.of(new TestMb.Branch(
@@ -1246,7 +1259,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.tryCatchFinally(
+                new SourceModule.V1(TList.of(mb.tryCatchFinally(
                         mb.seqOf(
                                 mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
                                 mb.bind("cnry", mb.as(mb.as(mb.str("Z"), mb.typesString()), mb.scopeUse("canary"))),
@@ -1257,7 +1270,7 @@ public final class T0130DropThrowTest {
                                 "e",
                                 mb.builtin("types", "string"),
                                 mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf()))),
-                        Opt.none())));
+                        Opt.none()))));
         var res = compileOk(modules);
         var messages = messages(res);
         int dropIdx = messages.indexOf("dropped");
@@ -1275,7 +1288,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.tryCatchFinally(
                                 mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.tupleOf()),
                                 Opt.some(new TestMb.Catch(
@@ -1294,10 +1307,10 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.tryCatchFinally(
+                new SourceModule.V1(TList.of(mb.tryCatchFinally(
                         mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.tupleOf()),
                         Opt.some(new TestMb.Catch("e", mb.builtin("types", "string"), mb.scopeUse("e"))),
-                        Opt.none())));
+                        Opt.none()))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -1314,7 +1327,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
                         mb.tryCatchFinally(
                                 mb.call(mb.log(), mb.str("body")),
@@ -1336,7 +1349,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_func",
                                 mb.lower(mb.seqOf(
@@ -1345,9 +1358,6 @@ public final class T0130DropThrowTest {
                                                 "nfr",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("f"))),
                                         mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
-                                        mb.call(
-                                                mb.field(mb.scopeUse("nfr"), mb.str("set_exception_type")),
-                                                mb.typesString()),
                                         mb.call(
                                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
                                                 mb.recordOf(
@@ -1363,7 +1373,12 @@ public final class T0130DropThrowTest {
                                                                                                 mb.throw_(
                                                                                                         mb.str(
                                                                                                                 "boom"))),
-                                                                                        mb.returnEmpty())))))),
+                                                                                        mb.returnEmpty()))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type",
+                                                                        mb.optSomeType(mb.typesString())),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.tryCatchFinally(
@@ -1391,7 +1406,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_func",
                                 mb.lower(mb.seqOf(
@@ -1400,9 +1415,6 @@ public final class T0130DropThrowTest {
                                                 "nfr",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("f"))),
                                         mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
-                                        mb.call(
-                                                mb.field(mb.scopeUse("nfr"), mb.str("set_exception_type")),
-                                                mb.typesString()),
                                         mb.call(
                                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
                                                 mb.recordOf(
@@ -1417,7 +1429,12 @@ public final class T0130DropThrowTest {
                                                                                         mb.call(
                                                                                                 mb.log(),
                                                                                                 mb.str(
-                                                                                                        "unreachable")))))))),
+                                                                                                        "unreachable"))))),
+                                                                new TestMb.RecordPair(
+                                                                        "exception_type",
+                                                                        mb.optSomeType(mb.typesString())),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.tryCatchFinally(
@@ -1447,7 +1464,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
                         mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
                         mb.tupleOf(canaryInstance(mb, "cA", "a"), mb.str("const_b"), canaryInstance(mb, "cC", "c")),
@@ -1465,7 +1482,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
                         mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
                         mb.bind(
@@ -1488,7 +1505,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
                         mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
                         mb.recordOf(TList.of(
@@ -1510,7 +1527,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
                         mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
                         mb.bind(
@@ -1538,7 +1555,7 @@ public final class T0130DropThrowTest {
                 TList.of(new TestMb.RecordPair("b", mb.scopeUse("cB")), new TestMb.RecordPair("a", mb.scopeUse("cA"))));
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
                         mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
                         mb.as(sourceRecord, reorderedType),
@@ -1562,7 +1579,7 @@ public final class T0130DropThrowTest {
                 TList.of(new TestMb.RecordPair("b", mb.scopeUse("cB")), new TestMb.RecordPair("a", mb.scopeUse("cA"))));
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
                         mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
                         mb.bind("src", sourceRecord),
@@ -1583,7 +1600,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
                         mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
                         mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
@@ -1617,7 +1634,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
                         mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
                         mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
@@ -1648,7 +1665,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
                         mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
                         mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
@@ -1679,7 +1696,7 @@ public final class T0130DropThrowTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
                         mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
                         mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),

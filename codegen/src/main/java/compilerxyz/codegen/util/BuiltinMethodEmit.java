@@ -1,5 +1,6 @@
 package compilerxyz.codegen.util;
 
+import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ParameterizedTypeName;
@@ -107,6 +108,9 @@ public final class BuiltinMethodEmit {
             }
             return leafDescriptors.getOpt(cn);
         }
+        if (tn instanceof ArrayTypeName at) {
+            return resolveDescriptor(at.componentType, leafDescriptors).optMap(DynamicTypes::array);
+        }
         if (tn instanceof ParameterizedTypeName pt) {
             if (pt.rawType.equals(ClassName.get(java.util.Iterator.class))) {
                 return Opt.some(CodeBlock.of("new $T()", TYPE_JVM_OBJECT_DYNAMIC));
@@ -141,6 +145,7 @@ public final class BuiltinMethodEmit {
         if (tn.equals(TypeName.VOID)) return Opt.some(TypeName.VOID);
         if (tn instanceof ClassName cn) return Opt.some(cn);
         if (tn instanceof ParameterizedTypeName pt) return Opt.some(pt.rawType);
+        if (tn instanceof ArrayTypeName at) return rawClass(at.componentType).optMap(ArrayTypeName::of);
         return Opt.none();
     }
 }

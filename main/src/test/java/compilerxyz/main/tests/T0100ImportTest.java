@@ -26,8 +26,8 @@ public final class T0100ImportTest {
     public void test00100ImportLiteral() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        modules.put("other", new SourceModule.V1(mb.str("Hello world (mortar)")));
-        modules.put("main", new SourceModule.V1(mb.call(mb.log(), mb.importExpr(mb.str("other")))));
+        modules.put("other", new SourceModule.V1(TList.of(mb.return_(mb.str("Hello world (mortar)")))));
+        modules.put("main", new SourceModule.V1(TList.of(mb.call(mb.log(), mb.importExpr(mb.str("other"))))));
         var gxa = Helpers.newGxWithArtifacts(modules);
         var res = Helpers.compile(gxa.gx(), new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -49,7 +49,7 @@ public final class T0100ImportTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "other",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "ctor",
                                 mb.lower(mb.seqOf(
@@ -57,7 +57,13 @@ public final class T0100ImportTest {
                                         mb.bind(
                                                 "ndr",
                                                 mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("upper"))),
-                                        mb.call(mb.field(mb.scopeUse("ndr"), mb.str("set_inner")), mb.typesString()),
+                                        mb.call(
+                                                mb.field(mb.scopeUse("ndr"), mb.str("impl")),
+                                                mb.recordOf(
+                                                        TList.of(
+                                                                new TestMb.RecordPair("inner", mb.typesString()),
+                                                                new TestMb.RecordPair(
+                                                                        "description", mb.optNoneString())))),
                                         mb.call(
                                                 mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
                                                 mb.recordOf(
@@ -265,7 +271,7 @@ public final class T0100ImportTest {
                         mb.return_(mb.call(mb.scopeUse("ctor"), mb.str("hello"))))));
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("val", mb.importExpr(mb.str("other"))),
                         mb.call(mb.log(), mb.call(mb.field(mb.scopeUse("val"), mb.str("to_string")), mb.tupleOf())))));
         var gxa = Helpers.newGxWithArtifacts(modules);
@@ -485,7 +491,7 @@ public final class T0100ImportTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "module_b",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                         mb.bind("nfr", mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("func_b"))),
                         mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
@@ -494,12 +500,14 @@ public final class T0100ImportTest {
                                 mb.recordOf(TList.of(
                                         new TestMb.RecordPair("arg", mb.tupleOf()),
                                         new TestMb.RecordPair("ret", mb.optSomeType(mb.typesString())),
-                                        new TestMb.RecordPair("impl_body", mb.stage(mb.str("hello")))))),
+                                        new TestMb.RecordPair("impl_body", mb.stage(mb.str("hello"))),
+                                        new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                                        new TestMb.RecordPair("description", mb.optNoneString())))),
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                         mb.return_(mb.scopeUse("f")))));
         modules.put(
                 "module_a",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("func_b", mb.importExpr(mb.str("module_b"))),
                         mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                         mb.bind("nfr", mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("func_a"))),
@@ -511,12 +519,14 @@ public final class T0100ImportTest {
                                         new TestMb.RecordPair("ret", mb.optSomeType(mb.typesString())),
                                         new TestMb.RecordPair(
                                                 "impl_body",
-                                                mb.stage(mb.call(mb.lower(mb.scopeUse("func_b")), mb.tupleOf())))))),
+                                                mb.stage(mb.call(mb.lower(mb.scopeUse("func_b")), mb.tupleOf()))),
+                                        new TestMb.RecordPair("exception_type", mb.optNoneType()),
+                                        new TestMb.RecordPair("description", mb.optNoneString())))),
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                         mb.return_(mb.scopeUse("f")))));
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("func_a", mb.importExpr(mb.str("module_a"))),
                         mb.call(mb.log(), mb.call(mb.scopeUse("func_a"), mb.tupleOf())))));
         var gx = Helpers.newGx(modules);
@@ -537,9 +547,9 @@ public final class T0100ImportTest {
     public void test00400ImportCycle() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        modules.put("module_a", new SourceModule.V1(mb.importExpr(mb.str("module_b"))));
-        modules.put("module_b", new SourceModule.V1(mb.importExpr(mb.str("module_a"))));
-        modules.put("main", new SourceModule.V1(mb.importExpr(mb.str("module_a"))));
+        modules.put("module_a", new SourceModule.V1(TList.of(mb.return_(mb.importExpr(mb.str("module_b"))))));
+        modules.put("module_b", new SourceModule.V1(TList.of(mb.return_(mb.importExpr(mb.str("module_a"))))));
+        modules.put("main", new SourceModule.V1(TList.of(mb.return_(mb.importExpr(mb.str("module_a"))))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(

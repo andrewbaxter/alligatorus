@@ -225,11 +225,17 @@ public final class DefinitionSet implements Artifactable {
         for (var obj : objects) {
             var objName = obj.name.optUnwrapOr("(unnamed)");
             if (obj.underlyingType.optIsNone()) {
-                return Opt.some("Object '" + objName + "' has no inner type (set_inner was not called)");
+                return Opt.some("Object '" + objName + "' has no inner type (impl was not called)");
             }
             for (var method : obj.methods) {
                 var r = method.incomplete(objName);
                 if (r.optIsSome()) return r;
+            }
+        }
+        for (var iface : interfaces) {
+            if (!iface.building().implProvided) {
+                return Opt.some("Interface '" + iface.description().optUnwrapOr("(unnamed)")
+                        + "' has no impl (impl was not called)");
             }
         }
         for (var dep : dependencies.values()) {

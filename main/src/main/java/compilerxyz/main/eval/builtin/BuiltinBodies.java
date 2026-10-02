@@ -31,6 +31,10 @@ import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
+import compilerxyz.main.eval.value.record.Record;
+import compilerxyz.main.eval.value.record.RecordField;
+import compilerxyz.main.eval.value.tuple.Tuple;
+import compilerxyz.main.eval.value.tuple.TupleElement;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
@@ -40,12 +44,16 @@ import compilerxyz.main.gen.Target;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinEvalContext;
 import compilerxyz.prelude.annotations.BuiltinPath;
+import compilerxyz.prelude.util.IList;
+import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
+import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 
 public final class BuiltinBodies {
     private BuiltinBodies() {}
@@ -88,6 +96,24 @@ public final class BuiltinBodies {
         return new DefinitionSetBuilder(inner);
     }
 
+    @BuiltinPath(value = "types.record", scopeId = 5042L)
+    public static Type record(TOrderedMap<ConstKey, Type> fields) {
+        var out = new TOrderedMap<ConstKey, RecordField>();
+        for (var entry : fields.entrySet()) {
+            out.put(entry.getKey(), new RecordField.Dynamic(entry.getValue()));
+        }
+        return new Record(IOrderedMap.from(out));
+    }
+
+    @BuiltinPath(value = "types.tuple", scopeId = 5043L)
+    public static Type tuple(TList<Type> elements) {
+        var out = new TList<TupleElement>(elements.size());
+        for (var element : elements) {
+            out.add(new TupleElement.Dynamic(element));
+        }
+        return new Tuple(IList.from(out));
+    }
+
     @BuiltinPath(value = "eval.scope", scopeId = 5006L)
     public static Scope scope(EvalContext vx, TOrderedMap<ConstKey, Binding> entries) {
         var scope = new Scope(vx);
@@ -122,6 +148,11 @@ public final class BuiltinBodies {
         } catch (IOException e) {
             throw new AssertionError("In-memory IO failed", e);
         }
+    }
+
+    @BuiltinPath(value = "eval.str_utf8", scopeId = 5044L)
+    public static byte[] strUtf8(String s) {
+        return s.getBytes(StandardCharsets.UTF_8);
     }
 
     @BuiltinPath(value = "eval.constkey_to_str", scopeId = 5004L)

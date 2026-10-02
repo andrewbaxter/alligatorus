@@ -16,7 +16,7 @@ public final class EcoLibc {
             new EcoExtern("exit", IList.of("i32"), "void", false),
             new EcoExtern("printf", IList.of("pu8"), "i32", true));
 
-    public static SourceExpr module(EcoMb e) {
+    public static TList<SourceExpr> module(EcoMb e) {
         var exprs = new TList<SourceExpr>();
         exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
 
@@ -28,7 +28,7 @@ public final class EcoLibc {
             innerFields.add(e.p(ex.name(), e.fld(e.v("llvm"), "ref_t")));
             innerFields.add(e.p(ex.name() + "_t", e.mb.evalType()));
         }
-        exprs.add(e.callM(e.v("libc_o"), "set_inner", e.rec(innerFields.toArray(EcoMb.P[]::new))));
+        exprs.add(e.objectImpl(e.v("libc_o"), e.rec(innerFields.toArray(EcoMb.P[]::new))));
         for (var ex : EXTERNS) {
             exprs.add(e.methodImpl(
                     e.v("libc_o"),
@@ -59,10 +59,11 @@ public final class EcoLibc {
                 e.v("libc_builder"),
                 e.fld(e.v("llvm"), "mod_t"),
                 e.optionTypeSome(e.fld(e.v("libc_o"), "type")),
+                e.mb.optNoneType(),
                 e.stage(e.mb.seq(body))));
 
         exprs.add(e.finish(e.v("d")));
         exprs.add(e.ret(e.fld(e.v("libc_builder"), "func")));
-        return e.mb.seq(exprs);
+        return exprs;
     }
 }

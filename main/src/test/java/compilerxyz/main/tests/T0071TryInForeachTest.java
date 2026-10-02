@@ -34,17 +34,18 @@ public final class T0071TryInForeachTest {
         var errsT = e.listType(e.mb.builtin("types", "expr_err"));
         var intT = e.mb.typesInt();
         var boxT = e.mb.typesIntBox();
+        var locExpr = e.tup();
         var erInt = e.call(e.mb.typesEresult(), e.mb.typesIntBox());
         var defs = new TList<SourceExpr>();
         defs.add(e.let("d", e.define()));
         defs.add(e.let("fb", e.defFunc(e.v("d"), "f")));
-        defs.add(e.callM(e.v("fb"), "set_exception_type", errsT));
         defs.add(e.funcImpl(
                 e.v("fb"),
                 e.mb.typesBool(),
                 e.retSome(intT),
+                e.mb.optSomeType(errsT),
                 e.stage(e.seq(
-                        e.let("loc", e.call(e.evalBuiltin("expr_loc"), e.stage(e.tup()))),
+                        e.let("loc", e.call(e.evalBuiltin("expr_loc"), e.stage(locExpr))),
                         e.ifOnly(
                                 e.v("arg"),
                                 e.matchOf(
@@ -65,6 +66,7 @@ public final class T0071TryInForeachTest {
                 e.v("gb"),
                 e.mb.typesBool(),
                 e.retSome(erInt),
+                e.mb.optNoneType(),
                 e.stage(e.mb.labeled(
                         "m",
                         e.seq(
@@ -90,7 +92,7 @@ public final class T0071TryInForeachTest {
         }
         var src = tmp.resolve("src_" + label);
         Files.createDirectories(src);
-        T0200EcosystemLlvmTest.writeModule(src.resolve("main.at"), e.mb.seq(top));
+        T0200EcosystemLlvmTest.writeModule(src.resolve("main.at"), top);
         try (var cache = new CacheReal(tmp.resolve("cache_" + label))) {
             var res = Helpers.compile(
                     GlobalContext.newContext(cache, cache, cache),
@@ -102,7 +104,7 @@ public final class T0071TryInForeachTest {
             }
             var messages = new TList<String>();
             for (var entry : ok.value().logs()) messages.add(entry.message());
-            assertEquals(TList.of("ok 1", "[0:87] boom"), messages);
+            assertEquals(TList.of("ok 1", "[0:" + locExpr.id().value() + "] boom"), messages);
         }
     }
 

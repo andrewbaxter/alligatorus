@@ -20,7 +20,7 @@ public final class T0110ConstFoldingTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("x", mb.num(7.0)),
                         mb.ifOf(
                                 TList.of(new TestMb.Branch(
@@ -48,7 +48,7 @@ public final class T0110ConstFoldingTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("x", mb.as(mb.num(7.0), mb.typesInt())),
                         mb.ifOf(
                                 TList.of(new TestMb.Branch(
@@ -76,7 +76,7 @@ public final class T0110ConstFoldingTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("x", mb.as(mb.operatorAdd(mb.num(1.), mb.num(2.)), mb.typesInt())),
                         mb.seqOf(
                                 mb.call(

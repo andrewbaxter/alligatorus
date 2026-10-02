@@ -9,7 +9,7 @@ import compilerxyz.prelude.util.TList;
 
 public record ArtifactExpr(ArtifactQExprId loc, Variant variant) implements SafeJsonSerializable {
 
-    public record ArtifactQExprId(long source, long expr) {}
+    public record ArtifactQExprId(long source, Opt<Long> expr) {}
 
     public record CondBranch(ArtifactExpr condition, ArtifactExpr body) {}
 

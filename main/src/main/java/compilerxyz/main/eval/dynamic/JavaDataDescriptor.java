@@ -101,6 +101,24 @@ public final class JavaDataDescriptor {
         };
     }
 
+    public JavaDataDescriptor arrayOf() {
+        return new JavaDataDescriptor("[" + value);
+    }
+
+    public int arrayLoadOpcode() {
+        return switch (sortChar()) {
+            case 'D' -> Opcodes.DALOAD;
+            case 'J' -> Opcodes.LALOAD;
+            case 'F' -> Opcodes.FALOAD;
+            case 'I' -> Opcodes.IALOAD;
+            case 'Z', 'B' -> Opcodes.BALOAD;
+            case 'S' -> Opcodes.SALOAD;
+            case 'C' -> Opcodes.CALOAD;
+            case 'L', '[' -> Opcodes.AALOAD;
+            default -> throw new IllegalStateException("JavaDataDescriptor: no array load opcode for (" + value + ")");
+        };
+    }
+
     public int returnOpcode() {
         return switch (sortChar()) {
             case 'V' -> Opcodes.RETURN;

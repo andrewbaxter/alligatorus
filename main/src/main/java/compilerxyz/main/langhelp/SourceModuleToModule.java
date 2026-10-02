@@ -18,12 +18,16 @@ public final class SourceModuleToModule {
 
     public static Expr.Module sourceModuleToModule(SourceId sourceId, SourceModule module) {
         return switch (module) {
-            case SourceModule.V1 v1 -> new Expr.Module.V1(sourceExprToExpr(sourceId, v1.expr()));
+            case SourceModule.V1 v1 -> {
+                var exprs = new TList<Expr>(v1.exprs().size());
+                for (var sub : v1.exprs()) exprs.add(sourceExprToExpr(sourceId, sub));
+                yield new Expr.Module.V1(sourceId, exprs);
+            }
         };
     }
 
     private static Expr sourceExprToExpr(SourceId sourceId, SourceExpr e) {
-        var loc = new QExprId(sourceId, e.id().value());
+        var loc = new QExprId(sourceId, Opt.some(e.id().value()));
         var variant =
                 switch (e.variant()) {
                     case SourceExpr.Literal lit ->

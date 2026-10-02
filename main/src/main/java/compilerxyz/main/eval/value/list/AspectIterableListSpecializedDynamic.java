@@ -30,7 +30,7 @@ public record AspectIterableListSpecializedDynamic<T extends Type>(TypeListSpeci
         var slots = mustCast(BindingIteratorIndexed.class, loop);
         var getDesc = JavaMethodDescriptor.fromParts(type.elementDescriptor(xx), TList.of(JavaDataDescriptor.DESC_INT));
         var b = new JavaBytecodeBuilder(loc);
-        var list = b.load(slots.listSlot(), type.storeDescriptor());
+        var list = b.load(slots.baseSlot(), type.storeDescriptor());
         var index = b.load(slots.indexSlot(), JavaDataDescriptor.DESC_INT);
         var out = b.invokeVirtual(type.storeName, "get", getDesc, list, index);
         return EResult.ok(DynUtil.regToValue(b.code(), out, type.elementType));
@@ -54,7 +54,7 @@ public record AspectIterableListSpecializedDynamic<T extends Type>(TypeListSpeci
         var elementBindDyn = elementBindCast.requireValue("foreach element bind");
         var sizeDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_INT, TList.of());
         var slots = mustCast(BindingIteratorIndexed.class, loop);
-        var listSlot = slots.listSlot();
+        var listSlot = slots.baseSlot();
         var indexSlot = slots.indexSlot();
         var loopKey = new JumpKey();
         var doneKey = new JumpKey();

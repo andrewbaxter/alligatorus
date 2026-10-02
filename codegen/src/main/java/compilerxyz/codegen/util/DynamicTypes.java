@@ -12,6 +12,9 @@ public final class DynamicTypes {
 
     private record CompositeEntry(int arity, TypeName valueClass) {}
 
+    private static final ClassName TYPE_ARRAY_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.array", "TypeArrayDynamic");
+
     public static final IMap<ClassName, TypeName> NULLARY;
     private static final IMap<ClassName, CompositeEntry> COMPOSITES;
 
@@ -86,6 +89,7 @@ public final class DynamicTypes {
         nullary(nullary, "compilerxyz.main.eval.value.function", "TypeFunctionAspectConst");
         nullary(nullary, "compilerxyz.main.eval.value.function", "TypeFunctionMustReinterpretConst");
         nullary(nullary, "compilerxyz.main.eval.value.list", "TypeListConstructorConst");
+        nullary(nullary, "compilerxyz.main.eval.value.array", "TypeArrayConstructorConst");
         nullary(nullary, "compilerxyz.main.eval.value.map", "TypeMapConstructorConst");
         nullary(nullary, "compilerxyz.main.eval.value.option", "TypeOptionConstructorConst");
         nullary(nullary, "compilerxyz.main.eval.value.eresult", "TypeEResultConstructorConst");
@@ -151,6 +155,10 @@ public final class DynamicTypes {
             joined.add(params[i]);
         }
         return CodeBlock.of("new $T($L)", wrapper, joined.build());
+    }
+
+    public static CodeBlock array(CodeBlock element) {
+        return CodeBlock.of("new $T<>($L)", TYPE_ARRAY_DYNAMIC, element);
     }
 
     public static TypeName compositeValueClass(ClassName wrapper, TypeName... params) {

@@ -20,7 +20,7 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.call(mb.log(), mb.str("before")), mb.returnEmpty(), mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
@@ -38,7 +38,7 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.call(mb.log(), mb.str("before")),
                         mb.labeled("outer", mb.seqOf(mb.call(mb.log(), mb.str("inside")), mb.returnLabel("outer"))),
                         mb.call(mb.log(), mb.str("after")))));
@@ -63,7 +63,7 @@ public final class T0150ReturnTest {
     public void test01615ReturnInOperandRejected() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        modules.put("main", new SourceModule.V1(mb.seqOf(mb.operatorAdd(mb.num(1.0), mb.return_(mb.num(5.0))))));
+        modules.put("main", new SourceModule.V1(TList.of(mb.operatorAdd(mb.num(1.0), mb.return_(mb.num(5.0))))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -78,7 +78,7 @@ public final class T0150ReturnTest {
     public void test01620ReturnUnknownLabelErrors() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        modules.put("main", new SourceModule.V1(mb.returnLabel("nowhere")));
+        modules.put("main", new SourceModule.V1(TList.of(mb.returnLabel("nowhere"))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -95,7 +95,7 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.labeled("other", mb.call(mb.log(), mb.str("in-other"))),
                         mb.labeled("outer", mb.seqOf(mb.returnLabel("other"))),
                         mb.call(mb.log(), mb.str("after")))));
@@ -115,7 +115,7 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_list",
                                 mb.call(
@@ -144,8 +144,8 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.call(mb.log(), mb.labeled("out", mb.seqOf(mb.return_("out", mb.str("returned-value")))))));
+                new SourceModule.V1(TList.of(
+                        mb.call(mb.log(), mb.labeled("out", mb.seqOf(mb.return_("out", mb.str("returned-value"))))))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes144;
@@ -167,7 +167,7 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.labeled(
+                new SourceModule.V1(TList.of(mb.labeled(
                         "out",
                         mb.seqOf(
                                 mb.call(mb.log(), mb.str("before")),
@@ -179,7 +179,7 @@ public final class T0150ReturnTest {
                                                         mb.returnLabel("out"),
                                                         mb.call(mb.log(), mb.str("SHOULD NOT LOG"))))),
                                         Opt.some(mb.call(mb.log(), mb.str("else")))),
-                                mb.call(mb.log(), mb.str("SHOULD NOT LOG AFTER"))))));
+                                mb.call(mb.log(), mb.str("SHOULD NOT LOG AFTER")))))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -196,7 +196,7 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "my_list",
                                 mb.call(
@@ -231,7 +231,7 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.labeled(
                                 "outer",
                                 mb.ifOf(
@@ -262,7 +262,7 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind(
                                 "strnum",
                                 mb.lower(mb.seqOf(
@@ -321,14 +321,14 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.labeled(
+                new SourceModule.V1(TList.of(mb.labeled(
                         "out",
                         mb.seqOf(
                                 mb.call(mb.log(), mb.str("before")),
                                 mb.ifOf(
                                         TList.of(new TestMb.Branch(mb.bool(false), mb.returnLabel("out"))),
                                         Opt.some(mb.call(mb.log(), mb.str("else")))),
-                                mb.call(mb.log(), mb.str("after"))))));
+                                mb.call(mb.log(), mb.str("after")))))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes319;
@@ -352,7 +352,7 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.labeled(
                                 "outer",
                                 mb.tryCatchFinally(
@@ -388,7 +388,7 @@ public final class T0150ReturnTest {
         var dynTrue = mb.operatorEq(mb.as(mb.num(1.0), mb.typesLong()), mb.as(mb.num(1.0), mb.typesLong()));
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.labeled(
                                 "outer",
                                 mb.tryCatchFinally(
@@ -434,7 +434,7 @@ public final class T0150ReturnTest {
         modules.put(
                 "main",
                 new SourceModule.V1(
-                        mb.seqOf(mb.labeled("out", mb.seqOf(mb.returnEmpty())), mb.call(mb.log(), mb.str("done")))));
+                        TList.of(mb.labeled("out", mb.seqOf(mb.returnEmpty())), mb.call(mb.log(), mb.str("done")))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes414;
@@ -456,7 +456,7 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
+                new SourceModule.V1(TList.of(
                         mb.bind("t", mb.labeled("out", mb.seqOf(mb.returnEmpty()))),
                         mb.call(mb.log(), mb.str("done")))));
         var gx = Helpers.newGx(modules);
