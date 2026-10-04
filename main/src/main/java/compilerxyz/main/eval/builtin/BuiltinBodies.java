@@ -17,6 +17,7 @@ import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.ImportRun;
 import compilerxyz.main.eval.LogEntry;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Scope;
@@ -24,6 +25,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.binding.BindingSetterConsumed;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynPanic;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
@@ -44,6 +46,8 @@ import compilerxyz.main.gen.DefinitionSetBuilder;
 import compilerxyz.main.gen.GenAspectNumericConst;
 import compilerxyz.main.gen.Target;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.langhelp.Sources;
+import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.annotations.BuiltinEvalContext;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.IList;
@@ -150,6 +154,24 @@ public final class BuiltinBodies {
         } catch (IOException e) {
             throw new AssertionError("In-memory IO failed", e);
         }
+    }
+
+    @BuiltinPath(value = "file.open", scopeId = 5046L)
+    @BuiltinEvalContext
+    public static FileHandle fileOpen(EvalContext vx, String path) {
+        var ix = vx.ix;
+        SourceSpecAbsolute abs;
+        switch (ImportRun.resolveRelative(ix, path)) {
+            case Result.Ok<SourceSpecAbsolute, String> ok -> abs = ok.value();
+            case Result.Err<SourceSpecAbsolute, String> err -> throw new DynPanic("file.open: " + err.error());
+        }
+        Sources.SourceData data;
+        switch (ix.gx.sources.sourcesGetData(abs)) {
+            case Result.Ok<Sources.SourceData, String> ok -> data = ok.value();
+            case Result.Err<Sources.SourceData, String> err -> throw new DynPanic("file.open: " + err.error());
+        }
+        if (data.local().optIsSome()) ix.localData.add(data.local().optUnwrap());
+        return new FileHandle(data.bytes());
     }
 
     @BuiltinPath(value = "eval.str_utf8", scopeId = 5044L)

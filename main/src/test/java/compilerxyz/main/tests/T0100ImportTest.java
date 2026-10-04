@@ -13,6 +13,7 @@ import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.safejson.JsonValue;
+import compilerxyz.main.safejson.JsonValueBoolean;
 import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.syntax.SourceModule;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
@@ -430,7 +431,11 @@ public final class T0100ImportTest {
     }
 
     private static JsonValue externalType() {
-        return jsonObj(jsonField("type", jsonObj(jsonField("type_artifact", typeArtifact("string_dynamic")))));
+        return jsonObj(jsonField(
+                "exported",
+                jsonObj(
+                        jsonField("artifact", typeArtifact("string_dynamic")),
+                        jsonField("lowered", new JsonValueBoolean(false)))));
     }
 
     private static JsonValue externalUnique(long builtinId) {

@@ -14,6 +14,7 @@ import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenBuiltinTree;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.GlobalContext;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Opt;
@@ -23,7 +24,8 @@ import compilerxyz.prelude.util.TMap;
 public final class CompileModule {
     private CompileModule() {}
 
-    public record CompileModuleResult(CompileRes res, TList<CompileId> localDeps) {}
+    public record CompileModuleResult(
+            CompileRes res, TList<CompileId> localDeps, TList<Compiles.LocalMeta> localData) {}
 
     public static CompileModuleResult compileModuleId(
             GlobalContext gx,
@@ -186,7 +188,9 @@ public final class CompileModule {
             switch (evalResult) {
                 case EvalOutcome.Err err -> {
                     return new CompileModuleResult(
-                            new CompileRes(allLogs, new CompileResResult.Err(err.errors())), cix.localDependencies);
+                            new CompileRes(allLogs, new CompileResResult.Err(err.errors())),
+                            cix.localDependencies,
+                            cix.localData);
                 }
                 case EvalOutcome.Ok ok -> {
                     allLogs.addAll(ok.logs());
@@ -195,7 +199,8 @@ public final class CompileModule {
                                 && (ok.producedDynamicRoot() || ok.value().optIsNone())) {
                             return new CompileModuleResult(
                                     new CompileRes(allLogs, new CompileResResult.Ok(Opt.none())),
-                                    cix.localDependencies);
+                                    cix.localDependencies,
+                                    cix.localData);
                         }
                         var vx = new EvalContext(cix);
                         var rootScope = new Scope(vx);
@@ -204,7 +209,8 @@ public final class CompileModule {
                         if (ok.value().optIsNone()) {
                             return new CompileModuleResult(
                                     new CompileRes(allLogs, new CompileResResult.Ok(Opt.none())),
-                                    cix.localDependencies);
+                                    cix.localDependencies,
+                                    cix.localData);
                         }
                         var exportErrors = new TList<ExprErr>();
                         var exportArt = Artifactable.exportArtifact(
@@ -213,12 +219,14 @@ public final class CompileModule {
                             exportArt.drainInto(exportErrors);
                             return new CompileModuleResult(
                                     new CompileRes(allLogs, new CompileResResult.Err(exportErrors)),
-                                    cix.localDependencies);
+                                    cix.localDependencies,
+                                    cix.localData);
                         }
                         var artifact = exportArt.requireValue("ArtifactSupport::exportArtifact artifact");
                         return new CompileModuleResult(
                                 new CompileRes(allLogs, new CompileResResult.Ok(Opt.some(artifact))),
-                                cix.localDependencies);
+                                cix.localDependencies,
+                                cix.localData);
                     }
                     if (ok.value().optIsNone()) {
                         return new CompileModuleResult(
@@ -227,7 +235,8 @@ public final class CompileModule {
                                         new CompileResResult.Err(TList.of(new ExprErr(
                                                 rootLoc,
                                                 TList.of(new ExprSubErr.Opaque("Stage yields no expression")))))),
-                                cix.localDependencies);
+                                cix.localDependencies,
+                                cix.localData);
                     }
                     rootExpr = mustCast(Expr.class, ok.value().optUnwrap());
                 }

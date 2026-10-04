@@ -21,6 +21,7 @@ import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.expr.TypeExpr;
 import compilerxyz.main.eval.value.unique.TypeUniqueDynamic;
 import compilerxyz.main.gen.GenQExprId;
+import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.TList;
 
 public final class ExternalCodec {
@@ -32,14 +33,7 @@ public final class ExternalCodec {
         var out = new TList<ArtifactExternal>(entries.size());
         for (var entry : entries) {
             var host = entry.external().hostValue();
-            if (host instanceof StagedExprCell cell) {
-                var stored = cell.value();
-                if (!(stored instanceof Expr expr)) {
-                    return EResult.err(
-                            loc,
-                            "ExternalCodec: captured StagedExprCell holds non-Expr: "
-                                    + stored.getClass().getSimpleName());
-                }
+            if (host instanceof StagedExprCell cell && cell.value() instanceof Expr expr) {
                 var exprArtRes = ExprArtifacts.exprToArtifact(xx, expr);
                 if (exprArtRes.hasErrors()) {
                     exprArtRes.drainInto(errors);
@@ -47,6 +41,19 @@ public final class ExternalCodec {
                 }
                 var exprArt = exprArtRes.requireValue("ExternalCodec::export StagedExpr artifact");
                 out.add(new ArtifactExternal.StagedExpr(exprArt));
+            } else if (host instanceof StagedExprCell cell && cell.value() instanceof Artifactable lowered) {
+                var artRes = Artifactable.exportArtifact(xx, loc, lowered);
+                if (artRes.hasErrors()) {
+                    artRes.drainInto(errors);
+                    return EResult.errs(errors);
+                }
+                out.add(new ArtifactExternal.Exported(
+                        artRes.requireValue("ExternalCodec::export lowered artifact"), true));
+            } else if (host instanceof StagedExprCell cell) {
+                return EResult.err(
+                        loc,
+                        "ExternalCodec: lowered value is not exportable: "
+                                + cell.value().getClass().getSimpleName());
             } else if (host instanceof StageLiftCell liftCell) {
                 var srcTypeArtRes = Artifactable.exportArtifact(xx, loc, liftCell.sourceType());
                 if (srcTypeArtRes.hasErrors()) {
@@ -55,14 +62,14 @@ public final class ExternalCodec {
                 }
                 var srcTypeArt = srcTypeArtRes.requireValue("ExternalCodec::export StageLift source type artifact");
                 out.add(new ArtifactExternal.StageLift(srcTypeArt));
-            } else if (host instanceof Type wrappedType) {
-                var typeArtRes = Artifactable.exportArtifact(xx, loc, wrappedType);
-                if (typeArtRes.hasErrors()) {
-                    typeArtRes.drainInto(errors);
+            } else if (host instanceof Artifactable artifactable) {
+                var artRes = Artifactable.exportArtifact(xx, loc, artifactable);
+                if (artRes.hasErrors()) {
+                    artRes.drainInto(errors);
                     return EResult.errs(errors);
                 }
-                var typeArt = typeArtRes.requireValue("ExternalCodec::export Type artifact");
-                out.add(new ArtifactExternal.Type(typeArt));
+                out.add(new ArtifactExternal.Exported(
+                        artRes.requireValue("ExternalCodec::export host artifact"), false));
             } else if (host instanceof Unique u) {
                 out.add(new ArtifactExternal.UniqueRef(u));
             } else if (host instanceof QExprId q) {
@@ -108,14 +115,29 @@ public final class ExternalCodec {
                     out.add(new EvalContext.ExternalEntry(
                             new BindingId(), sourceType, new External(StageLiftCell.class, liftCell)));
                 }
-                case ArtifactExternal.Type te -> {
-                    var typeRes = ArtifactSupport.independentFinalizeImportTypeArtifact(xx, loc, te.typeArtifact());
-                    if (typeRes.hasErrors()) {
-                        typeRes.drainInto(errors);
+                case ArtifactExternal.Exported ex -> {
+                    var importedRes = ArtifactSupport.independentFinalizeImportArtifact(xx, loc, ex.artifact());
+                    if (importedRes.hasErrors()) {
+                        importedRes.drainInto(errors);
                         return EResult.errs(errors);
                     }
-                    var type = typeRes.requireValue("ExternalCodec::import Type external");
-                    out.add(new EvalContext.ExternalEntry(new BindingId(), type, new External(Type.class, type)));
+                    var imported = importedRes.requireValue("ExternalCodec::import exported external");
+                    if (ex.lowered()) {
+                        var cell = new StagedExprCell(imported);
+                        out.add(new EvalContext.ExternalEntry(
+                                new BindingId(), new TypeExpr(), new External(StagedExprCell.class, cell)));
+                    } else {
+                        var entryType =
+                                switch (imported) {
+                                    case Type t -> t;
+                                    case Value v -> v.valueType();
+                                    default ->
+                                        throw new IllegalStateException(
+                                                "exported external is neither Type nor Value: " + imported.getClass());
+                                };
+                        out.add(new EvalContext.ExternalEntry(
+                                new BindingId(), entryType, new External(imported.getClass(), imported)));
+                    }
                 }
                 case ArtifactExternal.UniqueRef uq -> {
                     out.add(new EvalContext.ExternalEntry(

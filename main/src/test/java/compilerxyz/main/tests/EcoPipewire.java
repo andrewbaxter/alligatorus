@@ -128,6 +128,19 @@ public final class EcoPipewire {
                             EcoSpaPod.SPA_FORMAT_AUDIO_POSITION,
                             new PodIdArray(IList.of(EcoSpaPod.SPA_AUDIO_CHANNEL_UNKNOWN)))));
 
+    private static final PodObject POD_AUDIO_F32_STEREO_44K1 = new PodObject(
+            EcoSpaPod.SPA_TYPE_OBJECT_FORMAT,
+            EcoSpaPod.SPA_PARAM_ENUM_FORMAT,
+            IList.of(
+                    new PodProp(EcoSpaPod.SPA_FORMAT_MEDIA_TYPE, new PodId(EcoSpaPod.SPA_MEDIA_TYPE_AUDIO)),
+                    new PodProp(EcoSpaPod.SPA_FORMAT_MEDIA_SUBTYPE, new PodId(EcoSpaPod.SPA_MEDIA_SUBTYPE_RAW)),
+                    new PodProp(EcoSpaPod.SPA_FORMAT_AUDIO_FORMAT, new PodId(EcoSpaPod.SPA_AUDIO_FORMAT_F32)),
+                    new PodProp(EcoSpaPod.SPA_FORMAT_AUDIO_RATE, new PodInt(44100)),
+                    new PodProp(EcoSpaPod.SPA_FORMAT_AUDIO_CHANNELS, new PodInt(2)),
+                    new PodProp(
+                            EcoSpaPod.SPA_FORMAT_AUDIO_POSITION,
+                            new PodIdArray(IList.of(EcoSpaPod.SPA_AUDIO_CHANNEL_FL, EcoSpaPod.SPA_AUDIO_CHANNEL_FR)))));
+
     private static final PodObject POD_MIDI_CONTROL = new PodObject(
             EcoSpaPod.SPA_TYPE_OBJECT_FORMAT,
             EcoSpaPod.SPA_PARAM_ENUM_FORMAT,
@@ -176,10 +189,12 @@ public final class EcoPipewire {
 
     private static final IList<Global> POD_GLOBALS = IList.of(
             new Global("pod_audio_f32_mono_48k", "pw.pod.audio_f32_mono_48k", "audio"),
+            new Global("pod_audio_f32_stereo_44k1", "pw.pod.audio_f32_stereo_44k1", "audio_stereo_44k1"),
             new Global("pod_midi_control", "pw.pod.midi_control", "midi"));
 
     private static final IList<Global> PARAMS_GLOBALS = IList.of(
             new Global("params_audio", "pw.params.audio", "pod_audio_f32_mono_48k"),
+            new Global("params_audio_stereo_44k1", "pw.params.audio_stereo_44k1", "pod_audio_f32_stereo_44k1"),
             new Global("params_midi", "pw.params.midi", "pod_midi_control"));
 
     public static TList<SourceExpr> module(EcoMb e) {
@@ -234,6 +249,7 @@ public final class EcoPipewire {
             exprs.add(e.let(k.name() + "_t", e.v("konst_t")));
         }
         podBuild(e, exprs, "audio", POD_AUDIO_F32_MONO_48K);
+        podBuild(e, exprs, "audio_stereo_44k1", POD_AUDIO_F32_STEREO_44K1);
         podBuild(e, exprs, "midi", POD_MIDI_CONTROL);
         for (var g : POD_GLOBALS) {
             members.add(g.name());

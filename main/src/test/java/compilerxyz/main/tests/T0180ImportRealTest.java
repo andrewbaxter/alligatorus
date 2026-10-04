@@ -288,10 +288,21 @@ public final class T0180ImportRealTest {
         var singleBytes = moduleBytes(TList.of(mb.return_(mb.str("from-remote"))));
 
         var modBytes = moduleBytes(TList.of(mb.return_(mb.str("from-bundle-mod"))));
+        var dataModBytes = moduleBytes(TList.of(mb.return_(mb.call(
+                mb.field(
+                        mb.field(mb.call(mb.builtin("file", "open"), mb.str("data/blob.bin")), mb.str("len")),
+                        mb.str("to_string")),
+                mb.tupleOf()))));
         var zipOut = new ByteArrayOutputStream();
         try (var zip = new ZipOutputStream(zipOut)) {
             zip.putNextEntry(new ZipEntry("mod.at"));
             zip.write(modBytes);
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("data_mod.at"));
+            zip.write(dataModBytes);
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("data/blob.bin"));
+            zip.write(new byte[] {9, 8, 7, 6, 5, 4, 3});
             zip.closeEntry();
         }
         var bundleBytes = zipOut.toByteArray();
@@ -329,8 +340,10 @@ public final class T0180ImportRealTest {
             var bundleRecord = mb.importRecord(
                     TList.of(new SourceExpr.RecordEntry(mb.str("b"), mb.sourceRemote(mb.str(bundleUrl), bundleHash))));
             var bundleMod = mb.field(mb.field(bundleRecord, mb.str("b")), mb.str("mod"));
+            var bundleDataMod = mb.field(mb.field(bundleRecord, mb.str("b")), mb.str("data_mod"));
 
-            var mainExpr = mb.seqOf(mb.call(mb.log(), remoteSingle), mb.call(mb.log(), bundleMod));
+            var mainExpr = mb.seqOf(
+                    mb.call(mb.log(), remoteSingle), mb.call(mb.log(), bundleMod), mb.call(mb.log(), bundleDataMod));
             var src = tmp.resolve("src");
             Files.createDirectories(src);
             var mainFile = src.resolve("main.at");
@@ -338,9 +351,10 @@ public final class T0180ImportRealTest {
 
             try (var cache = new CacheReal(tmp.resolve("cache"))) {
                 var ok = expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString())));
-                assertEquals(2, ok.logs().size());
+                assertEquals(3, ok.logs().size());
                 assertEquals("from-remote", ok.logs().get(0).message());
                 assertEquals("from-bundle-mod", ok.logs().get(1).message());
+                assertEquals("7", ok.logs().get(2).message());
             }
             var wrongDigest = sha256(singleBytes);
             wrongDigest[0] ^= 0x01;

@@ -27,6 +27,8 @@ public final class EcoSpaPod {
     static final SpaConst SPA_MEDIA_SUBTYPE_CONTROL = new SpaConst("media_subtype_control", 0x60001);
     static final SpaConst SPA_AUDIO_FORMAT_F32 = new SpaConst("audio_format_f32", 0x11b);
     static final SpaConst SPA_AUDIO_CHANNEL_UNKNOWN = new SpaConst("audio_channel_unknown", 0);
+    static final SpaConst SPA_AUDIO_CHANNEL_FL = new SpaConst("audio_channel_fl", 3);
+    static final SpaConst SPA_AUDIO_CHANNEL_FR = new SpaConst("audio_channel_fr", 4);
 
     private static final IList<SpaConst> SPA_CONSTS = IList.of(
             SPA_TYPE_ID,
@@ -46,7 +48,9 @@ public final class EcoSpaPod {
             SPA_MEDIA_SUBTYPE_RAW,
             SPA_MEDIA_SUBTYPE_CONTROL,
             SPA_AUDIO_FORMAT_F32,
-            SPA_AUDIO_CHANNEL_UNKNOWN);
+            SPA_AUDIO_CHANNEL_UNKNOWN,
+            SPA_AUDIO_CHANNEL_FL,
+            SPA_AUDIO_CHANNEL_FR);
 
     private static SourceExpr spa(EcoMb e, SpaConst c) {
         return e.lower(e.v(c.name()));

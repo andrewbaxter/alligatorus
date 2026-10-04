@@ -22,7 +22,7 @@ public final class Compile {
         var res = gx.compiles.compilesGetOrCompute(rootCompileId, () -> {
             var module = SourceModuleToModule.sourceModuleToModule(lookup.id(), lookup.module());
             var cir = CompileModule.compileModuleId(gx, rootImportState, module, new TList<>(), entry);
-            return new Compiles.CompileProduct(cir.res(), lookup.local(), cir.localDeps());
+            return new Compiles.CompileProduct(cir.res(), lookup.local(), cir.localDeps(), cir.localData());
         });
 
         var allErrors = new TList<ExprErr>();

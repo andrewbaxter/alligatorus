@@ -16,11 +16,14 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.expr.StagedExprCell;
+import compilerxyz.main.eval.value.array.ValueArrayConst;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenLists;
 import compilerxyz.main.gen.GenOptions;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
@@ -107,6 +110,55 @@ public final class DynRuntime {
         var graftIter = grafts.iterator();
         var newTree = cloneWithLowerSubstitutions(tree, 0, 0, valueIter, graftIter);
         return new StagedExprCell(newTree);
+    }
+
+    @CodegenDescriptor
+    public static Object arrayConst(StagedExprCell cell, String elementDescriptor) {
+        var elements = MustCast.mustCast(ValueArrayConst.class, cell.value()).elements();
+        var n = elements.size();
+        switch (elementDescriptor) {
+            case "B" -> {
+                var out = new byte[n];
+                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Byte.class, constData(elements.get(i)));
+                return out;
+            }
+            case "S" -> {
+                var out = new short[n];
+                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Short.class, constData(elements.get(i)));
+                return out;
+            }
+            case "I" -> {
+                var out = new int[n];
+                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Integer.class, constData(elements.get(i)));
+                return out;
+            }
+            case "J" -> {
+                var out = new long[n];
+                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Long.class, constData(elements.get(i)));
+                return out;
+            }
+            case "F" -> {
+                var out = new float[n];
+                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Float.class, constData(elements.get(i)));
+                return out;
+            }
+            case "D" -> {
+                var out = new double[n];
+                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Double.class, constData(elements.get(i)));
+                return out;
+            }
+            case "Z" -> {
+                var out = new boolean[n];
+                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Boolean.class, constData(elements.get(i)));
+                return out;
+            }
+            default ->
+                throw new IllegalStateException("DynRuntime.arrayConst: not a primitive element: " + elementDescriptor);
+        }
+    }
+
+    private static Object constData(Object element) {
+        return MustCast.mustCast(ValueObjectConst.class, element).data();
     }
 
     @CodegenDescriptor

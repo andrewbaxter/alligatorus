@@ -8,7 +8,7 @@ public sealed interface ArtifactExternal extends SafeJsonSerializable {
 
     record StageLift(Artifact sourceTypeArtifact) implements ArtifactExternal {}
 
-    record Type(Artifact typeArtifact) implements ArtifactExternal {}
+    record Exported(Artifact artifact, boolean lowered) implements ArtifactExternal {}
 
     record UniqueRef(Unique unique) implements ArtifactExternal {}
 

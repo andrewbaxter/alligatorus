@@ -1,10 +1,13 @@
 package compilerxyz.main.eval.value.array;
 
+import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.External;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
@@ -12,7 +15,10 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmSort;
+import compilerxyz.main.eval.expr.StagedExprCell;
+import compilerxyz.main.eval.value.expr.TypeExpr;
 import compilerxyz.main.gen.AspectConsumeDynamic;
+import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.prelude.util.TList;
 
 public record AspectConsumeDynamicArrayConst<T extends Type>(TypeArrayConst<T> type) implements AspectConsumeDynamic {
@@ -31,6 +37,18 @@ public record AspectConsumeDynamicArrayConst<T extends Type>(TypeArrayConst<T> t
         var carryRes = b.addCode(loc, cv.code());
         if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
         var elements = TypeArrayConst.elementsOf(cv.value().optUnwrap());
+        var elementDesc = JvmSort.descriptor(xx, type.elementType);
+        if (!elementDesc.isReference()) {
+            var cell = new StagedExprCell(cv.value().optUnwrap());
+            var entry = new EvalContext.ExternalEntry(
+                    new BindingId(), new TypeExpr(), new External(StagedExprCell.class, cell));
+            xx.vx.externals.add(entry);
+            var loaded = b.external(entry);
+            var desc = b.constString(elementDesc.value());
+            var converted = b.invokeStatic(GenCodegenDescriptors.DYN_RUNTIME_ARRAY_CONST, loaded, desc);
+            var array = b.checkcast(elementDesc.arrayOf(), converted);
+            return EResult.ok(DynUtil.regToValue(b.code(), array, new TypeArrayDynamic<>(type.elementType)));
+        }
         var regs = new TList<JavaBytecodeReg>(elements.size());
         for (var element : elements) {
             var elementRes = DynUtil.materialize(

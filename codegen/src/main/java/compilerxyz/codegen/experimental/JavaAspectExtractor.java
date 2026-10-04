@@ -13,10 +13,12 @@ import com.github.javaparser.ast.expr.NormalAnnotationExpr;
 import com.github.javaparser.ast.expr.StringLiteralExpr;
 import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
 import com.github.javaparser.ast.nodeTypes.NodeWithTypeParameters;
+import com.github.javaparser.ast.type.ArrayType;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.ast.type.VoidType;
+import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
@@ -268,6 +270,9 @@ public final class JavaAspectExtractor {
                 case BYTE -> TypeName.BYTE;
                 case SHORT -> TypeName.SHORT;
             };
+        }
+        if (t instanceof ArrayType a) {
+            return ArrayTypeName.of(typeNameOf(a.getComponentType(), imports, sourcePkg));
         }
         if (t instanceof ClassOrInterfaceType c) {
             String simple = c.getNameAsString();

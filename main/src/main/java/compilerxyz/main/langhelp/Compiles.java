@@ -13,7 +13,8 @@ public interface Compiles {
 
     TList<CompileRes> compilesResults();
 
-    record CompileProduct(CompileRes res, Opt<LocalMeta> local, TList<CompileId> localDeps) {}
+    record CompileProduct(
+            CompileRes res, Opt<LocalMeta> local, TList<CompileId> localDeps, TList<LocalMeta> localData) {}
 
     record LocalMeta(String path, long timestampMs) {}
 }

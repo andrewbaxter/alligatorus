@@ -62,7 +62,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 20;
+    private static final int SCHEMA_VERSION = 22;
 
     private final Connection conn;
     private final Object dbLock = new Object();
@@ -180,7 +180,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                         + " body TEXT NOT NULL, PRIMARY KEY (import_state, source, idx))");
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS compiles ("
                         + "import_state INTEGER NOT NULL, source INTEGER NOT NULL, result TEXT NOT NULL,"
-                        + " local_path TEXT, local_mtime INTEGER, local_deps TEXT,"
+                        + " local_path TEXT, local_mtime INTEGER, local_deps TEXT, local_data TEXT,"
                         + " PRIMARY KEY (import_state, source))");
             }
             if (readSchemaVersion().optIsNone()) {
@@ -278,67 +278,14 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                         new SourceResolved.Module(id, module, Opt.some(new Compiles.LocalMeta(l.path(), mtime))));
             }
             case SourceSpecAbsolute.Remote r -> {
-                var url = r.baseUrl();
-                var hash = r.hash();
-                byte[] cached;
-                synchronized (dbLock) {
-                    try (var ps = conn.prepareStatement("SELECT bytes FROM remote_bytes WHERE url = ?")) {
-                        ps.setString(1, url);
-                        try (var rs = ps.executeQuery()) {
-                            cached = rs.next() ? rs.getBytes(1) : null;
-                        }
-                    } catch (SQLException e) {
-                        throw new RuntimeException("CacheReal.loadRemoteBytes", e);
-                    }
-                }
-                Result<byte[], String> bytesRes;
-                if (cached != null) {
-                    bytesRes = verifyHash(url, cached, hash);
-                } else {
-                    byte[] fetched = null;
-                    Result<byte[], String> fetchResult;
-                    try {
-                        var response = http.send(
-                                HttpRequest.newBuilder(URI.create(url)).GET().build(),
-                                HttpResponse.BodyHandlers.ofByteArray());
-                        if (response.statusCode() != 200) {
-                            fetchResult = Result.err("remote fetch failed (" + response.statusCode() + "): " + url);
-                        } else {
-                            fetched = response.body();
-                            fetchResult = verifyHash(url, fetched, hash);
-                        }
-                    } catch (IOException e) {
-                        fetchResult = Result.err("remote fetch failed: " + url + ": " + e.getMessage());
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        fetchResult = Result.err("remote fetch interrupted: " + url);
-                    }
-                    if (fetched != null
-                            && switch (fetchResult) {
-                                case Result.Ok<byte[], String> ok -> true;
-                                case Result.Err<byte[], String> err -> false;
-                            }) {
-                        synchronized (dbLock) {
-                            try (var ps = conn.prepareStatement(
-                                    "INSERT OR REPLACE INTO remote_bytes (url, bytes) VALUES (?, ?)")) {
-                                ps.setString(1, url);
-                                ps.setBytes(2, fetched);
-                                ps.executeUpdate();
-                            } catch (SQLException e) {
-                                throw new RuntimeException("CacheReal.storeRemoteBytes", e);
-                            }
-                        }
-                    }
-                    bytesRes = fetchResult;
-                }
                 byte[] bytes;
-                switch (bytesRes) {
+                switch (remoteBytes(r.baseUrl(), r.hash())) {
                     case Result.Ok<byte[], String> ok -> bytes = ok.value();
                     case Result.Err<byte[], String> err -> {
                         return Result.err(err.error());
                     }
                 }
-                var isZip = bytes.length >= 4 && bytes[0] == 'P' && bytes[1] == 'K' && bytes[2] == 3 && bytes[3] == 4;
+                var isZip = isZip(bytes);
                 if (r.subpath().isEmpty()) {
                     if (isZip) return Result.ok(new SourceResolved.Bundle(r));
                     SourceModule module;
@@ -354,21 +301,11 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                     return Result.err("remote source is not a bundle but a subpath was requested: " + r.subpath());
                 }
                 byte[] entryBytes;
-                try (var zin = new ZipInputStream(new ByteArrayInputStream(bytes))) {
-                    ZipEntry entry;
-                    byte[] found = null;
-                    while ((entry = zin.getNextEntry()) != null) {
-                        if (entry.getName().equals(r.subpath())) {
-                            found = zin.readAllBytes();
-                            break;
-                        }
+                switch (zipEntryBytes(bytes, r.subpath())) {
+                    case Result.Ok<byte[], String> ok -> entryBytes = ok.value();
+                    case Result.Err<byte[], String> err -> {
+                        return Result.err(err.error());
                     }
-                    entryBytes = found;
-                } catch (IOException e) {
-                    throw new RuntimeException("CacheReal.extractZipEntry", e);
-                }
-                if (entryBytes == null) {
-                    return Result.err("bundle entry not found: " + r.subpath());
                 }
                 SourceModule module;
                 try {
@@ -378,6 +315,119 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 }
                 var id = sourceIdFor(r.sourceSpecAbsoluteSpecKey());
                 return Result.ok(new SourceResolved.Module(id, module, Opt.none()));
+            }
+        }
+    }
+
+    private Result<byte[], String> remoteBytes(String url, HashValue hash) {
+        byte[] cached;
+        synchronized (dbLock) {
+            try (var ps = conn.prepareStatement("SELECT bytes FROM remote_bytes WHERE url = ?")) {
+                ps.setString(1, url);
+                try (var rs = ps.executeQuery()) {
+                    cached = rs.next() ? rs.getBytes(1) : null;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.loadRemoteBytes", e);
+            }
+        }
+        Result<byte[], String> bytesRes;
+        if (cached != null) {
+            bytesRes = verifyHash(url, cached, hash);
+        } else {
+            byte[] fetched = null;
+            Result<byte[], String> fetchResult;
+            try {
+                var response = http.send(
+                        HttpRequest.newBuilder(URI.create(url)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
+                if (response.statusCode() != 200) {
+                    fetchResult = Result.err("remote fetch failed (" + response.statusCode() + "): " + url);
+                } else {
+                    fetched = response.body();
+                    fetchResult = verifyHash(url, fetched, hash);
+                }
+            } catch (IOException e) {
+                fetchResult = Result.err("remote fetch failed: " + url + ": " + e.getMessage());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                fetchResult = Result.err("remote fetch interrupted: " + url);
+            }
+            if (fetched != null
+                    && switch (fetchResult) {
+                        case Result.Ok<byte[], String> ok -> true;
+                        case Result.Err<byte[], String> err -> false;
+                    }) {
+                synchronized (dbLock) {
+                    try (var ps =
+                            conn.prepareStatement("INSERT OR REPLACE INTO remote_bytes (url, bytes) VALUES (?, ?)")) {
+                        ps.setString(1, url);
+                        ps.setBytes(2, fetched);
+                        ps.executeUpdate();
+                    } catch (SQLException e) {
+                        throw new RuntimeException("CacheReal.storeRemoteBytes", e);
+                    }
+                }
+            }
+            bytesRes = fetchResult;
+        }
+        return bytesRes;
+    }
+
+    private static Result<byte[], String> zipEntryBytes(byte[] bundle, String subpath) {
+        try (var zin = new ZipInputStream(new ByteArrayInputStream(bundle))) {
+            ZipEntry entry;
+            while ((entry = zin.getNextEntry()) != null) {
+                if (entry.getName().equals(subpath)) {
+                    return Result.ok(zin.readAllBytes());
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("CacheReal.extractZipEntry", e);
+        }
+        return Result.err("bundle entry not found: " + subpath);
+    }
+
+    private static boolean isZip(byte[] bytes) {
+        return bytes.length >= 4 && bytes[0] == 'P' && bytes[1] == 'K' && bytes[2] == 3 && bytes[3] == 4;
+    }
+
+    @Override
+    public Result<SourceData, String> sourcesGetData(SourceSpecAbsolute spec) {
+        switch (spec) {
+            case SourceSpecAbsolute.Virtual v -> {
+                return Result.err("virtual sources are not supported by the real cache: " + v.name());
+            }
+            case SourceSpecAbsolute.Local l -> {
+                var file = Path.of(l.path());
+                if (!Files.isRegularFile(file)) {
+                    return Result.err("local file not found: " + l.path());
+                }
+                try {
+                    var bytes = Files.readAllBytes(file);
+                    var mtime = Files.getLastModifiedTime(file).toMillis();
+                    return Result.ok(new SourceData(bytes, Opt.some(new Compiles.LocalMeta(l.path(), mtime))));
+                } catch (IOException e) {
+                    return Result.err("failed to read local file " + l.path() + ": " + e.getMessage());
+                }
+            }
+            case SourceSpecAbsolute.Remote r -> {
+                byte[] bytes;
+                switch (remoteBytes(r.baseUrl(), r.hash())) {
+                    case Result.Ok<byte[], String> ok -> bytes = ok.value();
+                    case Result.Err<byte[], String> err -> {
+                        return Result.err(err.error());
+                    }
+                }
+                if (r.subpath().isEmpty()) {
+                    return Result.ok(new SourceData(bytes, Opt.none()));
+                }
+                if (!isZip(bytes)) {
+                    return Result.err("remote source is not a bundle but a subpath was requested: " + r.subpath());
+                }
+                return switch (zipEntryBytes(bytes, r.subpath())) {
+                    case Result.Ok<byte[], String> ok -> Result.ok(new SourceData(ok.value(), Opt.none()));
+                    case Result.Err<byte[], String> err -> Result.err(err.error());
+                };
             }
         }
     }
@@ -453,7 +503,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         if (!visiting.add(id)) return false;
         CompileRow row;
         try (var ps = conn.prepareStatement(
-                "SELECT local_path, local_mtime, local_deps FROM compiles WHERE import_state = ? AND source = ?")) {
+                "SELECT local_path, local_mtime, local_deps, local_data FROM compiles WHERE import_state = ? AND source = ?")) {
             ps.setLong(1, id.importState().value());
             ps.setLong(2, id.source().value());
             try (var rs = ps.executeQuery()) {
@@ -480,7 +530,24 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                             }
                         }
                     }
-                    row = new CompileRow(localPath, localMtime, deps);
+                    var data = new TList<Compiles.LocalMeta>();
+                    {
+                        var s = rs.getString(4);
+                        if (s != null && !s.isEmpty()) {
+                            var arr = (JsonValueArray) parseJson(s);
+                            for (var e : arr.elements()) {
+                                var o = (JsonValueObject) e;
+                                var path = ((JsonValueString)
+                                                o.entries().getOpt("p").optUnwrap())
+                                        .value();
+                                var t = (long) ((JsonValueNumber)
+                                                o.entries().getOpt("t").optUnwrap())
+                                        .value();
+                                data.add(new Compiles.LocalMeta(path, t));
+                            }
+                        }
+                    }
+                    row = new CompileRow(localPath, localMtime, deps, data);
                 }
             }
         } catch (SQLException e) {
@@ -492,21 +559,9 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             return false;
         }
         var stale = false;
-        if (row.localPath != null) {
-            Long current;
-            {
-                var file = Path.of(row.localPath);
-                if (!Files.isRegularFile(file)) {
-                    current = null;
-                } else {
-                    try {
-                        current = Files.getLastModifiedTime(file).toMillis();
-                    } catch (IOException e) {
-                        current = null;
-                    }
-                }
-            }
-            if (current == null || current != row.localMtime) stale = true;
+        if (row.localPath != null && mtimeChanged(row.localPath, row.localMtime)) stale = true;
+        for (var data : row.localData) {
+            if (mtimeChanged(data.path(), data.timestampMs())) stale = true;
         }
         for (var dep : row.localDeps) {
             if (staleWalk(dep, memo, visiting)) stale = true;
@@ -531,7 +586,18 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         return stale;
     }
 
-    private record CompileRow(String localPath, long localMtime, TList<CompileId> localDeps) {}
+    private static boolean mtimeChanged(String path, long recorded) {
+        var file = Path.of(path);
+        if (!Files.isRegularFile(file)) return true;
+        try {
+            return Files.getLastModifiedTime(file).toMillis() != recorded;
+        } catch (IOException e) {
+            return true;
+        }
+    }
+
+    private record CompileRow(
+            String localPath, long localMtime, TList<CompileId> localDeps, TList<Compiles.LocalMeta> localData) {}
 
     @Override
     public CompileRes compilesGetOrCompute(CompileId id, Supplier<CompileProduct> compute) {
@@ -640,8 +706,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                 ps.executeBatch();
                             }
                             try (var ps = conn.prepareStatement("INSERT OR REPLACE INTO compiles"
-                                    + " (import_state, source, result, local_path, local_mtime, local_deps)"
-                                    + " VALUES (?, ?, ?, ?, ?, ?)")) {
+                                    + " (import_state, source, result, local_path, local_mtime, local_deps, local_data)"
+                                    + " VALUES (?, ?, ?, ?, ?, ?, ?)")) {
                                 ps.setLong(1, id.importState().value());
                                 ps.setLong(2, id.source().value());
                                 {
@@ -718,6 +784,16 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                         arr.add(new JsonValueObject(mv));
                                     }
                                     ps.setString(6, JsonValues.serialize(new JsonValueArray(arr)));
+                                }
+                                {
+                                    var arr = new TList<JsonValue>();
+                                    for (var data : product.localData()) {
+                                        var mv = new TOrderedMap<String, JsonValue>();
+                                        mv.put("p", new JsonValueString(data.path()));
+                                        mv.put("t", new JsonValueNumber(data.timestampMs()));
+                                        arr.add(new JsonValueObject(mv));
+                                    }
+                                    ps.setString(7, JsonValues.serialize(new JsonValueArray(arr)));
                                 }
                                 ps.executeUpdate();
                             }

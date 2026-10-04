@@ -21,6 +21,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -302,6 +303,50 @@ public final class T0200EcosystemLlvmTest {
         assertValidIr(tmp, "hi", ir);
     }
 
+    private static SourceExpr fileRead(EcoMb e, String path, int offset, int len) {
+        return e.callM(
+                e.call(e.mb.builtin("file", "open"), e.s(path)),
+                "read",
+                e.rec(e.p("offset", e.intOf(offset)), e.p("len", e.intOf(len))));
+    }
+
+    @Test
+    public void test00075FileArrayInit(@TempDir Path tmp) throws IOException {
+        var e = new EcoMb();
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
+        Files.write(src.resolve("data.bin"), new byte[] {7, 104, 105, 10, 0, (byte) 200, 9});
+        var ok = compileOk(
+                writeArrayInitModule(tmp, e, 5, TList.of(), fileRead(e, "data.bin", 1, 5)), tmp.resolve("cache"));
+        assertEquals(1, ok.logs().size());
+        var ir = ok.logs().get(0).message();
+        assertEquals(
+                """
+                declare i32 @puts(ptr)
+                @str.hi = constant [5 x i8] [i8 104, i8 105, i8 10, i8 0, i8 200]
+                define i32 @main() {
+                  %t0 = call i32 @puts(ptr @str.hi)
+                  ret i32 0
+                }
+                """,
+                ir);
+        assertValidIr(tmp, "hi", ir);
+    }
+
+    @Test
+    public void test00076FileArrayInitBig(@TempDir Path tmp) throws IOException {
+        var e = new EcoMb();
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
+        var data = new byte[500000];
+        for (int i = 0; i < data.length; i++) data[i] = (byte) (i * 31);
+        Files.write(src.resolve("data.bin"), data);
+        var ok = compileOk(
+                writeArrayInitModule(tmp, e, data.length, TList.of(), fileRead(e, "data.bin", 0, data.length)),
+                tmp.resolve("cache"));
+        Assertions.assertTrue(ok.logs().get(0).message().contains("[500000 x i8]"));
+    }
+
     @Test
     public void test00080StringArrayInitWrongLength(@TempDir Path tmp) throws IOException {
         var e = new EcoMb();
@@ -375,6 +420,25 @@ public final class T0200EcosystemLlvmTest {
             declare double @sin(double)
             declare double @exp2(double)
             declare double @fmod(double, double)
+            declare float @sinf(float)
+            declare float @cosf(float)
+            declare float @tanf(float)
+            declare float @expf(float)
+            declare float @exp2f(float)
+            declare float @logf(float)
+            declare float @powf(float, float)
+            declare float @sqrtf(float)
+            declare float @floorf(float)
+            declare float @fabsf(float)
+            declare float @fmodf(float, float)
+            declare double @pow(double, double)
+            declare double @exp(double)
+            declare double @log(double)
+            declare double @cos(double)
+            declare double @tan(double)
+            declare double @sqrt(double)
+            declare double @floor(double)
+            declare double @fabs(double)
             declare ptr @memset(ptr, i32, i64)
             declare i32 @puts(ptr)
             declare void @exit(i32)
@@ -577,6 +641,64 @@ public final class T0200EcosystemLlvmTest {
     }
 
     @Test
+    public void test00250BuzzSong(@TempDir Path tmp) throws IOException {
+        var repoRoot = Path.of("").toAbsolutePath().getParent();
+        if (repoRoot == null) throw new IllegalStateException("test working directory has no parent");
+        Assumptions.assumeTrue(Files.isDirectory(repoRoot.resolve("wine-audio").resolve("music")));
+        var src = repoRoot.resolve("tmp-buzz-test");
+        Files.createDirectories(src);
+        try {
+            writeModule(src.resolve("llvm-ir-22.at"), EcoLlvmIr.module(new EcoMb()));
+            writeModule(src.resolve("libc-2.42.at"), EcoLibc.module(new EcoMb()));
+            writeModule(src.resolve("spa-pod-1.6.at"), EcoSpaPod.module(new EcoMb()));
+            writeModule(src.resolve("pipewire-1.6.at"), EcoPipewire.module(new EcoMb()));
+            writeModule(src.resolve("buzz-dsp.at"), EcoBuzzDsp.module(new EcoMb()));
+            writeModule(src.resolve("buzz-samplegrid.at"), EcoBuzzSampleGrid.module(new EcoMb()));
+            writeModule(src.resolve("buzz-unwieldytracker.at"), EcoBuzzUnwieldyTracker.module(new EcoMb()));
+            writeModule(src.resolve("buzz-m4.at"), EcoBuzzM4.module(new EcoMb()));
+            writeModule(src.resolve("buzz-infector.at"), EcoBuzzInfector.module(new EcoMb()));
+            writeModule(src.resolve("buzz-tunaman.at"), EcoBuzzTunaMan.module(new EcoMb()));
+            writeModule(src.resolve("buzz-ninja.at"), EcoBuzzNinja.module(new EcoMb()));
+            writeModule(src.resolve("buzz-m4wii.at"), EcoBuzzM4wII.module(new EcoMb()));
+            writeModule(src.resolve("buzz-classiceq.at"), EcoBuzzClassicEq.module(new EcoMb()));
+            writeModule(src.resolve("buzz-karmafilter.at"), EcoBuzzKarmaFilter.module(new EcoMb()));
+            writeModule(src.resolve("buzz-kaway.at"), EcoBuzzKAway.module(new EcoMb()));
+            Files.copy(
+                    repoRoot.resolve("ecosystem").resolve("buzz-m4wii-waves.raw"),
+                    src.resolve("buzz-m4wii-waves.raw"),
+                    StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(
+                    repoRoot.resolve("ecosystem").resolve("buzz-m4-waves.raw"),
+                    src.resolve("buzz-m4-waves.raw"),
+                    StandardCopyOption.REPLACE_EXISTING);
+            writeModule(src.resolve("buzz-gunpowder-valentine.at"), EcoBuzzGunpowder.module(new EcoMb()));
+            var ok = compileOk(src.resolve("buzz-gunpowder-valentine.at"), tmp.resolve("cache"));
+            assertEquals(1, ok.logs().size());
+            var ir = ok.logs().get(0).message();
+            Files.writeString(tmp.resolve("buzz.ll"), ir);
+            for (var expected : new String[] {
+                "define float @bz_wave_read(",
+                "define void @sg_tick(",
+                "define void @ut_work(",
+                "define void @song_render(",
+                "define i32 @main() {",
+                "@wavetable = constant %bz_wave_table",
+                "@pw.params.audio_stereo_44k1 = constant [1 x ptr] [ptr @pw.pod.audio_f32_stereo_44k1]"
+            }) {
+                Assertions.assertTrue(ir.contains(expected), () -> "missing in IR: " + expected);
+            }
+            assertValidIr(tmp, "buzz", ir);
+        } finally {
+            if (System.getProperty("buzz.keep") == null) {
+                try (var files = Files.list(src)) {
+                    for (var f : files.toList()) Files.delete(f);
+                }
+                Files.delete(src);
+            }
+        }
+    }
+
+    @Test
     public void test00300WriteEcosystem() throws IOException {
         var repoRoot = Path.of("").toAbsolutePath().getParent();
         if (repoRoot == null) throw new IllegalStateException("test working directory has no parent");
@@ -587,5 +709,22 @@ public final class T0200EcosystemLlvmTest {
         writeIfChanged(ecosystem.resolve("spa-pod-1.6.at"), serializeModule(EcoSpaPod.module(new EcoMb())));
         writeIfChanged(ecosystem.resolve("pipewire-1.6.at"), serializeModule(EcoPipewire.module(new EcoMb())));
         writeIfChanged(ecosystem.resolve("synth-midi-sine.at"), serializeModule(EcoSynth.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-dsp.at"), serializeModule(EcoBuzzDsp.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-samplegrid.at"), serializeModule(EcoBuzzSampleGrid.module(new EcoMb())));
+        writeIfChanged(
+                ecosystem.resolve("buzz-unwieldytracker.at"),
+                serializeModule(EcoBuzzUnwieldyTracker.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-m4.at"), serializeModule(EcoBuzzM4.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-infector.at"), serializeModule(EcoBuzzInfector.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-tunaman.at"), serializeModule(EcoBuzzTunaMan.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-ninja.at"), serializeModule(EcoBuzzNinja.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-m4wii.at"), serializeModule(EcoBuzzM4wII.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-classiceq.at"), serializeModule(EcoBuzzClassicEq.module(new EcoMb())));
+        writeIfChanged(
+                ecosystem.resolve("buzz-karmafilter.at"), serializeModule(EcoBuzzKarmaFilter.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-kaway.at"), serializeModule(EcoBuzzKAway.module(new EcoMb())));
+        writeIfChanged(
+                ecosystem.resolve("buzz-gunpowder-valentine.at"),
+                serializeModule(EcoBuzzGunpowder.module(new EcoMb())));
     }
 }

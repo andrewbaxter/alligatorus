@@ -385,7 +385,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                             for (var ce : m.capturedExternals()) {
                                 switch (ce) {
                                     case ArtifactExternal.StageLift sl -> deps.add(sl.sourceTypeArtifact());
-                                    case ArtifactExternal.Type te -> deps.add(te.typeArtifact());
+                                    case ArtifactExternal.Exported ex -> deps.add(ex.artifact());
                                     case ArtifactExternal.StagedExpr ignored -> {}
                                     case ArtifactExternal.UniqueRef ignored -> {}
                                     case ArtifactExternal.Loc ignored -> {}
@@ -399,7 +399,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                                 for (var ce : mi.capturedExternals()) {
                                     switch (ce) {
                                         case ArtifactExternal.StageLift sl -> deps.add(sl.sourceTypeArtifact());
-                                        case ArtifactExternal.Type te -> deps.add(te.typeArtifact());
+                                        case ArtifactExternal.Exported ex -> deps.add(ex.artifact());
                                         case ArtifactExternal.StagedExpr ignored -> {}
                                         case ArtifactExternal.UniqueRef ignored -> {}
                                         case ArtifactExternal.Loc ignored -> {}

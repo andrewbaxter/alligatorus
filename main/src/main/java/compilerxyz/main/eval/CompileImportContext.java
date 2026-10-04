@@ -3,6 +3,7 @@ package compilerxyz.main.eval;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.gen.Binding;
+import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.GlobalContext;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Opt;
@@ -27,6 +28,7 @@ public final class CompileImportContext {
     public final SourceId sourceId;
     public final SourceSpecAbsolute currentSpec;
     public final TList<CompileId> localDependencies = new TList<>();
+    public final TList<Compiles.LocalMeta> localData = new TList<>();
 
     public Opt<DefinitionSetClassLoader> classLoader = Opt.none();
 

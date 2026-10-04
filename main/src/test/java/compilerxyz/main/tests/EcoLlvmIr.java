@@ -1090,8 +1090,15 @@ public final class EcoLlvmIr {
                                                                 "data")))))));
     }
 
-    private static final IList<String> LGFN_KINDS =
-            IList.of("global_fn", "global_const_fn", "constant_fn", "extern_fn", "func_fn", "ref_fn", "cstr_fn");
+    private static final IList<String> LGFN_KINDS = IList.of(
+            "global_fn",
+            "global_const_fn",
+            "constant_fn",
+            "extern_fn",
+            "func_fn",
+            "ref_fn",
+            "cstr_fn",
+            "global_zero_fn");
 
     private static int lgfnKind(String kind) {
         for (int i = 0; i < LGFN_KINDS.size(); i++) {
@@ -1702,6 +1709,7 @@ public final class EcoLlvmIr {
                     "h_operand",
                     body(
                             e,
+                            e.ifOnly(e.not(cveHas(e, a(e, "cv"))), throwErr(e, loc(e), "operand has no value")),
                             e.let("c", unwrapCveT(e, castValue(e, xx(e), loc(e), a(e, "ty"), a(e, "cv")))),
                             e.ret(hf(e, "h_mat", e.p("mod", a(e, "mod")), e.p("cv", e.v("c"))))));
             fnImpl(
@@ -2404,6 +2412,23 @@ public final class EcoLlvmIr {
                                             e.let("s", toStr(e, e.v("l"))),
                                             retM(e, strCve(e, e.v("s"))))),
                             e.ifOnly(e.not(anyHostInt), initMismatch(e, e.v("st"))),
+                            e.ifOnly(
+                                    andB(
+                                            e,
+                                            isEqual(e, xx(e), e.mb.builtin("types", "byte"), e.v("st")),
+                                            e.eq(acc(e, xx(e), a(e, "ty"), "lint", "bits"), num(e, 8))),
+                                    retM(
+                                            e,
+                                            hostCve(
+                                                    e,
+                                                    e.stage(
+                                                            toStr(
+                                                                    e,
+                                                                    e.mb.operatorAnd(
+                                                                            e.mb.as(
+                                                                                    graft(e, a(e, "cv")),
+                                                                                    e.mb.typesInt()),
+                                                                            num(e, 255))))))),
                             e.seq(hostIntFits.toArray(SourceExpr[]::new)),
                             e.ret(hostCve(e, e.stage(toStr(e, graft(e, a(e, "cv"))))))));
             fnImpl(
@@ -5054,12 +5079,19 @@ public final class EcoLlvmIr {
                                                                                             e.s("params"),
                                                                                             e.s("ty"),
                                                                                             e.s("body")),
-                                                                                    e.listNew(
-                                                                                            str(e),
-                                                                                            e.s("mod"),
-                                                                                            e.s("name"),
-                                                                                            e.s("ty"),
-                                                                                            e.s("init")))))))),
+                                                                                    e.ifElse(
+                                                                                            lgfnIs(e, "global_zero_fn"),
+                                                                                            e.listNew(
+                                                                                                    str(e),
+                                                                                                    e.s("mod"),
+                                                                                                    e.s("name"),
+                                                                                                    e.s("ty")),
+                                                                                            e.listNew(
+                                                                                                    str(e),
+                                                                                                    e.s("mod"),
+                                                                                                    e.s("name"),
+                                                                                                    e.s("ty"),
+                                                                                                    e.s("init"))))))))),
                                     e.let("kc", e.rec(e.p("n", e.intOf(0)), e.p("bad", e.dstr("")))),
                                     e.foreach(
                                             bim0(e, aspIface(e, "record"), "field_types", e.fld(e.v("rk"), "value")),
@@ -5379,17 +5411,30 @@ public final class EcoLlvmIr {
                                                                             e.v("refcv"),
                                                                             lgfnGlobalT(e, e.v("tyv"), false)))))),
                                     e.let(
-                                            "initcv",
-                                            unwrapCveM(
-                                                    e,
-                                                    e.callM(
-                                                            e.v("fields"),
-                                                            "get",
-                                                            e.ifElse(
-                                                                    lgfnIs(e, "constant_fn"),
-                                                                    e.dstr("value"),
-                                                                    e.dstr("init"))))),
-                                    e.let("ir", unwrapCveM(e, tryEr(e, initFn(e, e.v("tyv"), e.v("initcv")), cveT(e)))),
+                                            "ir",
+                                            e.ifElse(
+                                                    lgfnIs(e, "global_zero_fn"),
+                                                    unwrapCveM(
+                                                            e, constEvalIn(e, xx(e), e.stage(e.s("zeroinitializer")))),
+                                                    unwrapCveM(
+                                                            e,
+                                                            tryEr(
+                                                                    e,
+                                                                    initFn(
+                                                                            e,
+                                                                            e.v("tyv"),
+                                                                            unwrapCveM(
+                                                                                    e,
+                                                                                    e.callM(
+                                                                                            e.v("fields"),
+                                                                                            "get",
+                                                                                            e.ifElse(
+                                                                                                    lgfnIs(
+                                                                                                            e,
+                                                                                                            "constant_fn"),
+                                                                                                    e.dstr("value"),
+                                                                                                    e.dstr("init"))))),
+                                                                    cveT(e))))),
                                     e.ifOnly(
                                             lgfnIs(e, "constant_fn"),
                                             e.seq(retM(e, tagValue(e, e.v("ir"), lgfnGlobalT(e, e.v("tyv"), false))))),

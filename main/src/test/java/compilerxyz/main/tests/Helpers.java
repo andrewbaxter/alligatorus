@@ -295,5 +295,10 @@ public final class Helpers {
                     Result.err("test sources do not support remote imports: " + r.baseUrl());
             };
         }
+
+        @Override
+        public Result<SourceData, String> sourcesGetData(SourceSpecAbsolute spec) {
+            return Result.err("test sources do not support data files: " + spec);
+        }
     }
 }
