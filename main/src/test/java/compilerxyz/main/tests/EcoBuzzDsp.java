@@ -111,6 +111,7 @@ final class EcoBuzzDsp {
         exprs.add(e.let("dsp_b", e.defFunc(e.v("d"), "buzz dsp")));
         var body = new TList<SourceExpr>();
         body.add(e.let("ll", e.fld(e.v("arg"), "m")));
+        body.add(e.callM(e.v("ll"), "lib", e.s("m")));
         var typeInit = new TList<EcoMb.P>();
         for (var name : EcoBuzz.TYPE_NAMES) typeInit.add(e.p(name, e.lowerV(name)));
         EcoBuzz.rebindTypes(

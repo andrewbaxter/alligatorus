@@ -1,6 +1,6 @@
 # Builds the alligatorus compiler as a nix package.
 #
-#   nix-build -E 'with import <nixpkgs> {}; callPackage ./package.nix {}'
+#   nix-build build.nix
 #   result/bin/alligatorus build <path.at>
 #   result/bin/at run <path.at> [args...]
 #
