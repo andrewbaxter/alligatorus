@@ -1109,7 +1109,23 @@ final class EcoBuzzGunpowderData {
     static final IList<VstParam> VST_PARAMS = IList.of(
             new VstParam("KarmaFX Filter", 0, 0.0),
             new VstParam("KarmaFX Filter2", 0, 0.0),
-            new VstParam("KarmaFX Filter3", 0, 0.22));
+            new VstParam("KarmaFX Filter3", 0, 0.22),
+            new VstParam("BloodOverdrive", 0, 0.85),
+            new VstParam("BloodOverdrive", 1, 0.5),
+            new VstParam("BloodOverdrive", 2, 1.0),
+            new VstParam("BloodOverdrive", 3, 0.33),
+            new VstParam("BloodOverdrive", 4, 0.5),
+            new VstParam("BloodOverdrive", 5, 0.5),
+            new VstParam("Blue Cat Phaser VST(", 0, 0.0),
+            new VstParam("Blue Cat Phaser VST(", 1, 0.425),
+            new VstParam("Blue Cat Phaser VST(", 2, 0.28),
+            new VstParam("Blue Cat Phaser VST(", 3, 0.08),
+            new VstParam("Blue Cat Phaser VST(", 4, 0.265),
+            new VstParam("Blue Cat Phaser VST(", 5, 0.875),
+            new VstParam("Blue Cat Phaser VST(", 6, 0.82),
+            new VstParam("Blue Cat Phaser VST(", 7, 0.005),
+            new VstParam("Blue Cat Phaser VST(", 8, 0.0),
+            new VstParam("Blue Cat Phaser VST(", 9, 0.0));
 
     record Conn(String src, String dst, int amp, int pan) {}
 

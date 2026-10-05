@@ -52,7 +52,9 @@ final class EcoBuzzGunpowder {
             new Pair<>("Classic EQ", new Port("ceq", "buzz-classiceq.at", EcoBuzzVst.NG, true)),
             new Pair<>("KarmaFX Filter", new Port("kfx", "buzz-karmafilter.at", EcoBuzzVst.NG, true)),
             new Pair<>("KarmaFX Filter2", new Port("kfx", "buzz-karmafilter.at", EcoBuzzVst.NG, true)),
-            new Pair<>("KarmaFX Filter3", new Port("kfx", "buzz-karmafilter.at", EcoBuzzVst.NG, true)));
+            new Pair<>("KarmaFX Filter3", new Port("kfx", "buzz-karmafilter.at", EcoBuzzVst.NG, true)),
+            new Pair<>("BloodOverdrive", new Port("bod", "buzz-bloodoverdrive.at", EcoBuzzVst.NG, true)),
+            new Pair<>("Blue Cat Phaser VST(", new Port("bcp", "buzz-bluecatphaser.at", EcoBuzzVst.NG, true)));
 
     private record Inst(String id, EcoBuzzGunpowderData.Machine data, Opt<Port> port, boolean generatorType) {}
 

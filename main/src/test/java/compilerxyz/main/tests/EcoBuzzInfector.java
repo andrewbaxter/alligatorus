@@ -45,6 +45,7 @@ final class EcoBuzzInfector {
     static final int ATTR_THEVIDERNESS = 20;
     static final int ATTR_TUNING = 0;
     private static final double RATE = 44100.0;
+    private static final int HOLD_LENGTH_SECONDS = 32768;
     private static final double PI = Math.PI;
 
     private record Table(String name, double factor, double maxScan) {}
@@ -155,7 +156,9 @@ final class EcoBuzzInfector {
             new Pair<>("floorf", "f1_fn_t"),
             new Pair<>("powf", "f2_fn_t"),
             new Pair<>("fmodf", "f2_fn_t"),
-            new Pair<>("pow", "d2_fn_t"));
+            new Pair<>("pow", "d2_fn_t"),
+            new Pair<>("sin", "d1_fn_t"),
+            new Pair<>("rint", "d1_fn_t"));
     private static final IMap<String, String> GLOBAL_TYPES = IMap.ofEntries(
             new Pair<>("pool", "pool_t"),
             new Pair<>("levmax", "levmax_t"),
@@ -390,6 +393,7 @@ final class EcoBuzzInfector {
         defs.add(e.let("f1_fn_t", EcoBuzz.fnType(e, e.v("t_f32"), e.v("t_f32"))));
         defs.add(e.let("f2_fn_t", EcoBuzz.fnType(e, e.v("t_f32"), e.v("t_f32"), e.v("t_f32"))));
         defs.add(e.let("d2_fn_t", EcoBuzz.fnType(e, e.v("t_f64"), e.v("t_f64"), e.v("t_f64"))));
+        defs.add(e.let("d1_fn_t", EcoBuzz.fnType(e, e.v("t_f64"), e.v("t_f64"))));
 
         var main = new TList<SourceExpr>();
         main.add(e.let("zero", e.callM0(e.v("arg"), "zero")));
@@ -411,6 +415,9 @@ final class EcoBuzzInfector {
             body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("f2_fn_t"))));
         }
         body.add(e.let("pow", EcoBuzz.externDef(e, e.v("ll"), "pow", e.lowerV("d2_fn_t"))));
+        for (var fn : new String[] {"sin", "rint"}) {
+            body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("d1_fn_t"))));
+        }
         for (var g : new String[][] {
             {"pool", "pool_t"},
             {"levmax", "levmax_t"},
@@ -1611,17 +1618,18 @@ final class EcoBuzzInfector {
         {
             var phase = e.v("phase");
             var phs = e.v("phs");
+            lfoOut.add(e.let("phd", f64(e, phase)));
             lfoOut.add(e.let(
                     "phs",
-                    sub(
+                    f32(
                             e,
-                            phase,
-                            mul(
+                            sub(
                                     e,
-                                    call(e, "floorf", add(e, mul(e, phase, e.n(1.0 / (2 * PI))), e.n(0.5))),
-                                    e.n(2 * PI)))));
-            var saw = mul(e, sub(e, mul(e, sub(e, phs, e.n(PI)), e.n(1.0 / PI)), e.n(0.5)), e.n(2));
-            var steps = call(e, "floorf", add(e, mul(e, saw, e.n(4)), e.n(0.5)));
+                                    e.v("phd"),
+                                    mul(e, f64(e, f2iD(e, mul(e, e.v("phd"), e.n(1.0 / (2 * PI))))), e.n(2 * PI))))));
+            lfoOut.add(e.let("sawd", mul(e, sub(e, div(e, sub(e, f64(e, phs), e.n(PI)), e.n(PI)), e.n(0.5)), e.n(2))));
+            var saw = f32(e, e.v("sawd"));
+            var steps = f32(e, f2iD(e, mul(e, e.v("sawd"), e.n(4))));
             var quarter = PI / 4;
             var shapes = new TList<SourceExpr>();
             shapes.add(call(e, "sinf", phs));
@@ -1655,23 +1663,18 @@ final class EcoBuzzInfector {
             shapes.add(add(e, mul(e, steps, e.n(-0.125)), fm));
             shapes.add(add(e, mul(e, steps, e.n(0.125)), fmInv));
             shapes.add(add(e, mul(e, steps, e.n(-0.125)), fmInv));
-            var q8 = call(e, "floorf", add(e, mul(e, phase, e.n(8 / PI)), e.n(0.5)));
-            shapes.add(mul(
+            Function<Integer, SourceExpr> lfoStepIndex = k -> f2iD(e, div(e, mul(e, e.v("phd"), e.n(k)), e.n(PI)));
+            lfoOut.add(e.let("q8", lfoStepIndex.apply(8)));
+            lfoOut.add(e.let("q4", lfoStepIndex.apply(4)));
+            lfoOut.add(e.let("q16", lfoStepIndex.apply(16)));
+            BiFunction<SourceExpr, SourceExpr, SourceExpr> noiseStep = (outer, inner) -> f32(
                     e,
-                    call(
+                    mul(
                             e,
-                            "sinf",
-                            add(e, mul(e, q8, e.n(19123)), mul(e, call(e, "sinf", mul(e, q8, e.n(12))), e.n(40)))),
-                    e.n(0.5)));
-            var q4 = call(e, "floorf", add(e, mul(e, phase, e.n(4 / PI)), e.n(0.5)));
-            var q16 = call(e, "floorf", add(e, mul(e, phase, e.n(16 / PI)), e.n(0.5)));
-            shapes.add(mul(
-                    e,
-                    call(
-                            e,
-                            "sinf",
-                            add(e, mul(e, q4, e.n(1239543)), mul(e, call(e, "sinf", mul(e, q16, e.n(15))), e.n(40)))),
-                    e.n(0.5)));
+                            call(e, "sin", add(e, f64(e, outer), mul(e, call(e, "sin", f64(e, inner)), e.n(40)))),
+                            e.n(0.5)));
+            shapes.add(noiseStep.apply(mul(e, e.v("q8"), e.n(19123)), mul(e, e.v("q8"), e.n(12))));
+            shapes.add(noiseStep.apply(mul(e, e.v("q4"), e.n(1239543)), mul(e, e.v("q16"), e.n(15))));
             var arms = new TList<SourceExpr>();
             for (int k = 0; k < shapes.size(); k++) {
                 arms.add(ifOnly(e, eq(e, e.v("shape"), e.n(k)), e.mb.return_("lfo", shapes.get(k))));
@@ -1839,7 +1842,7 @@ final class EcoBuzzInfector {
                                                 "sust",
                                                 e.ifElse(
                                                         eq(e, e.v("length"), e.n(240)),
-                                                        EcoBuzz.i32(e, e.n(1)),
+                                                        EcoBuzz.i32(e, e.n(HOLD_LENGTH_SECONDS * RATE)),
                                                         maxi(
                                                                 e,
                                                                 i32(
@@ -2547,6 +2550,10 @@ final class EcoBuzzInfector {
 
     private static SourceExpr f64(EcoMb e, SourceExpr v) {
         return EcoBuzz.conv(e, "t_f64", v);
+    }
+
+    private static SourceExpr f2iD(EcoMb e, SourceExpr x) {
+        return i32(e, call(e, "rint", sub(e, x, e.n(0.5))));
     }
 
     private static SourceExpr maxi(EcoMb e, SourceExpr v, int floor) {

@@ -91,6 +91,8 @@ final class EcoBuzzNinja {
         fields.add(EcoBuzz.field(e, "f_i", EcoBuzz.array(e, e.v("t_f32"), e.intOf(4 * TRACKS))));
         fields.add(EcoBuzz.field(e, "f_o", EcoBuzz.array(e, e.v("t_f32"), e.intOf(4 * TRACKS))));
         fields.add(EcoBuzz.field(e, "buf", EcoBuzz.array(e, e.v("t_f32"), e.intOf(2 * TRACKS * MAX_DELAY))));
+        fields.add(EcoBuzz.field(e, "dc_x1", EcoBuzz.array(e, e.v("t_f32"), e.intOf(2))));
+        fields.add(EcoBuzz.field(e, "dc_y1", EcoBuzz.array(e, e.v("t_f32"), e.intOf(2))));
         for (var f : T_I32_FIELDS) fields.add(EcoBuzz.field(e, f, e.v("i32xt")));
         for (var f : T_F32_FIELDS) fields.add(EcoBuzz.field(e, f, e.v("f32xt")));
         defs.add(e.let("state_t", EcoBuzz.struct(e, "nj_state", fields.toArray(SourceExpr[]::new))));
@@ -185,6 +187,12 @@ final class EcoBuzzNinja {
                 forRange(e, "i", e.n(2 * TRACKS * MAX_DELAY), set(e, idx(e, p(e, "buf"), e.v("i")), e.n(0))),
                 forRange(e, "i", e.n(4 * TRACKS), set(e, idx(e, p(e, "f_i"), e.v("i")), e.n(0))),
                 forRange(e, "i", e.n(4 * TRACKS), set(e, idx(e, p(e, "f_o"), e.v("i")), e.n(0))),
+                forRange(
+                        e,
+                        "c",
+                        e.n(2),
+                        set(e, idx(e, p(e, "dc_x1"), e.v("c")), e.n(0)),
+                        set(e, idx(e, p(e, "dc_y1"), e.v("c")), e.n(0))),
                 forRange(
                         e,
                         "t",
@@ -355,7 +363,8 @@ final class EcoBuzzNinja {
                                 ifOnly(
                                         e,
                                         ge(e, pt(e, "t_pos", t), pt(e, "t_length", t)),
-                                        set(e, pt(e, "t_pos", t), e.n(0))))));
+                                        set(e, pt(e, "t_pos", t), e.n(0))))),
+                EcoBuzz.mdkDcBlock(e, e.v("out"), e.v("n")));
         body.add(e.let(
                 "work",
                 EcoBuzz.funcDef(e, e.v("ll"), "nj_work", new String[] {"p", "out", "n"}, e.lowerV("work_fn_t"), work)));

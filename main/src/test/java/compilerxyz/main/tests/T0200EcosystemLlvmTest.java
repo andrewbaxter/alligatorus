@@ -663,6 +663,8 @@ public final class T0200EcosystemLlvmTest {
             writeModule(src.resolve("buzz-classiceq.at"), EcoBuzzClassicEq.module(new EcoMb()));
             writeModule(src.resolve("buzz-karmafilter.at"), EcoBuzzKarmaFilter.module(new EcoMb()));
             writeModule(src.resolve("buzz-kaway.at"), EcoBuzzKAway.module(new EcoMb()));
+            writeModule(src.resolve("buzz-bloodoverdrive.at"), EcoBuzzBloodOverdrive.module(new EcoMb()));
+            writeModule(src.resolve("buzz-bluecatphaser.at"), EcoBuzzBlueCatPhaser.module(new EcoMb()));
             Files.copy(
                     repoRoot.resolve("ecosystem").resolve("buzz-m4wii-waves.raw"),
                     src.resolve("buzz-m4wii-waves.raw"),
@@ -699,6 +701,34 @@ public final class T0200EcosystemLlvmTest {
     }
 
     @Test
+    public void test00400BuzzOracleSweeps(@TempDir Path tmp) throws IOException, InterruptedException {
+        var repoRoot = Path.of("").toAbsolutePath().getParent();
+        if (repoRoot == null) throw new IllegalStateException("test working directory has no parent");
+        Assumptions.assumeTrue(System.getProperty("buzz.oracle") != null);
+        Assumptions.assumeTrue(Files.isDirectory(
+                repoRoot.resolve("wine-audio").resolve("music").resolve("Jeskola Buzz")));
+        var dirs = System.getenv("PATH").split(File.pathSeparator);
+        for (var tool :
+                new String[] {"wine", "python3", "clang", "llvm-as", "llc", "llvm-objcopy", "i686-w64-mingw32-gcc"}) {
+            var found = false;
+            for (var dir : dirs) found |= Files.isExecutable(Path.of(dir).resolve(tool));
+            Assumptions.assumeTrue(found, () -> tool + " not on PATH");
+        }
+        var proc = new ProcessBuilder(
+                        "sh",
+                        repoRoot.resolve("ecosystem/harness/verify-buzz-params.sh")
+                                .toString(),
+                        System.getProperty("java.class.path"),
+                        tmp.toString())
+                .directory(repoRoot.toFile())
+                .redirectErrorStream(true)
+                .start();
+        var output = new String(proc.getInputStream().readAllBytes());
+        var code = proc.waitFor();
+        Assertions.assertEquals(0, code, () -> output);
+    }
+
+    @Test
     public void test00300WriteEcosystem() throws IOException {
         var repoRoot = Path.of("").toAbsolutePath().getParent();
         if (repoRoot == null) throw new IllegalStateException("test working directory has no parent");
@@ -723,6 +753,11 @@ public final class T0200EcosystemLlvmTest {
         writeIfChanged(
                 ecosystem.resolve("buzz-karmafilter.at"), serializeModule(EcoBuzzKarmaFilter.module(new EcoMb())));
         writeIfChanged(ecosystem.resolve("buzz-kaway.at"), serializeModule(EcoBuzzKAway.module(new EcoMb())));
+        writeIfChanged(
+                ecosystem.resolve("buzz-bloodoverdrive.at"),
+                serializeModule(EcoBuzzBloodOverdrive.module(new EcoMb())));
+        writeIfChanged(
+                ecosystem.resolve("buzz-bluecatphaser.at"), serializeModule(EcoBuzzBlueCatPhaser.module(new EcoMb())));
         writeIfChanged(
                 ecosystem.resolve("buzz-gunpowder-valentine.at"),
                 serializeModule(EcoBuzzGunpowder.module(new EcoMb())));

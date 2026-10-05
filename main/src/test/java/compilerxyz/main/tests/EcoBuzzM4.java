@@ -41,10 +41,10 @@ final class EcoBuzzM4 {
     private static final double RATE = 44100.0;
     private static final double TSDSF = 2048.0 / RATE;
     private static final double PHASE_ONE = 0x8000000;
-    private static final int LFO_MASK_A = 0b1000011101100010;
-    private static final int LFO_MASK_B = 0b0101101100110100;
-    private static final int LFO_MASK_C = 0b0110110011001000;
-    private static final int LFO_MASK_D = 0b0111011010110000;
+    private static final int LFO_MASK_A = 0b1011100011100010;
+    private static final int LFO_MASK_B = 0b1101101100100100;
+    private static final int LFO_MASK_C = 0b1110110101001000;
+    private static final int LFO_MASK_D = 0b1111011010010000;
 
     private static final IList<String> I32_FIELDS = IList.of(
             "spt",
@@ -188,9 +188,9 @@ final class EcoBuzzM4 {
     }
 
     private static SourceExpr envSamples(EcoMb e, SourceExpr v) {
-        var ms = mul(
-                e, call(e, "powf", div(e, f32(e, add(e, v, e.n(2))), f32(e, e.n(129))), f32(e, e.n(3))), e.n(10000));
-        return add(e, i32(e, mul(e, ms, e.n(RATE / 1000.0))), e.n(1));
+        var ms =
+                f32(e, mul(e, call(e, "pow", div(e, f64(e, add(e, v, e.n(2))), e.n(129)), f64(e, e.n(3))), e.n(10000)));
+        return add(e, i32(e, mul(e, mul(e, f64(e, ms), e.n(RATE)), e.n(1.0 / 1000.0))), e.n(1));
     }
 
     private static SourceExpr onGval(EcoMb e, int k, SourceExpr... then) {
@@ -201,13 +201,15 @@ final class EcoBuzzM4 {
     }
 
     private static SourceExpr scalLfoFreq(EcoMb e, SourceExpr v) {
-        return mul(
+        return f32(
                 e,
-                sub(
+                mul(
                         e,
-                        call(e, "powf", div(e, f32(e, add(e, v, e.n(8))), f32(e, e.n(124))), f32(e, e.n(4))),
-                        e.n(0.000017324998565270)),
-                e.n(40.00072));
+                        sub(
+                                e,
+                                call(e, "pow", div(e, f64(e, add(e, v, e.n(8))), e.n(124)), f64(e, e.n(4))),
+                                e.n(0.000017324998565270)),
+                        e.n(40.00072)));
     }
 
     private static SourceExpr lfoPhaseAdd(EcoMb e, String synced, String noise, String freq) {
@@ -267,6 +269,10 @@ final class EcoBuzzM4 {
         return e.ifElse(lt(e, x, e.n(0)), e.mb.operatorNeg(x), x);
     }
 
+    private static SourceExpr f64(EcoMb e, SourceExpr v) {
+        return EcoBuzz.conv(e, "t_f64", v);
+    }
+
     private static SourceExpr biquad(EcoMb e, String x1, String x2, String y1, String y2, SourceExpr x, String out) {
         var c = lw(e, "coefs");
         var ofs = e.v("ofs");
@@ -274,7 +280,7 @@ final class EcoBuzzM4 {
                 set(
                         e,
                         e.v(out),
-                        add(
+                        f32(
                                 e,
                                 add(
                                         e,
@@ -282,11 +288,19 @@ final class EcoBuzzM4 {
                                                 e,
                                                 add(
                                                         e,
-                                                        mul(e, idx(e, c, ofs), x),
-                                                        mul(e, idx(e, c, add(e, ofs, e.n(1))), pt(e, x1))),
-                                                mul(e, idx(e, c, add(e, ofs, e.n(2))), pt(e, x2))),
-                                        mul(e, idx(e, c, add(e, ofs, e.n(3))), pt(e, y1))),
-                                mul(e, idx(e, c, add(e, ofs, e.n(4))), pt(e, y2)))),
+                                                        add(
+                                                                e,
+                                                                mul(e, f64(e, idx(e, c, ofs)), f64(e, x)),
+                                                                mul(
+                                                                        e,
+                                                                        f64(e, idx(e, c, add(e, ofs, e.n(1)))),
+                                                                        f64(e, pt(e, x1)))),
+                                                        mul(
+                                                                e,
+                                                                f64(e, idx(e, c, add(e, ofs, e.n(2)))),
+                                                                f64(e, pt(e, x2)))),
+                                                mul(e, f64(e, idx(e, c, add(e, ofs, e.n(3)))), f64(e, pt(e, y1)))),
+                                        mul(e, f64(e, idx(e, c, add(e, ofs, e.n(4)))), f64(e, pt(e, y2)))))),
                 set(e, pt(e, y2), pt(e, y1)),
                 set(e, pt(e, y1), e.v(out)),
                 set(e, pt(e, x2), pt(e, x1)),
@@ -385,6 +399,19 @@ final class EcoBuzzM4 {
         var f = e.v("f");
         var r = e.v("r");
         var tt = e.v("tt");
+        var fd = f64(e, f);
+        var resD = add(
+                e,
+                mul(
+                        e,
+                        call(
+                                e,
+                                "pow",
+                                div(e, div(e, mul(e, f64(e, r), add(e, fd, e.n(70))), e.n(197)), e.n(127)),
+                                f64(e, e.n(4))),
+                        e.n(150)),
+                e.n(0.1));
+        var bwD = add(e, mul(e, call(e, "pow", div(e, f64(e, r), e.n(127)), f64(e, e.n(4))), e.n(4)), e.n(0.1));
         return forRange(
                 e,
                 "tt",
@@ -399,86 +426,42 @@ final class EcoBuzzM4 {
                                 e.n(128),
                                 e.let(
                                         "cut",
-                                        add(
+                                        f32(
                                                 e,
-                                                mul(
+                                                add(
                                                         e,
-                                                        call(
+                                                        mul(
                                                                 e,
-                                                                "powf",
-                                                                div(e, f32(e, add(e, f, e.n(5))), f32(e, e.n(132))),
-                                                                f32(e, e.n(1.7))),
-                                                        e.n(13000)),
-                                                e.n(30))),
-                                e.let("omega", mul(e, e.v("cut"), e.n(2 * Math.PI / RATE))),
+                                                                call(
+                                                                        e,
+                                                                        "pow",
+                                                                        div(e, add(e, fd, e.n(5)), e.n(132)),
+                                                                        f64(e, e.n(1.7))),
+                                                                e.n(13000)),
+                                                        e.n(30)))),
+                                e.let("omega", f32(e, mul(e, f64(e, e.v("cut")), e.n(2 * Math.PI / RATE)))),
                                 e.let("sn", call(e, "sinf", e.v("omega"))),
                                 e.let("cs", call(e, "cosf", e.v("omega"))),
                                 e.let(
                                         "alpha",
                                         e.ifElse(
                                                 lt(e, tt, e.n(2)),
-                                                div(
+                                                f32(e, div(e, f64(e, e.v("sn")), f64(e, f32(e, resD)))),
+                                                f32(
                                                         e,
-                                                        e.v("sn"),
-                                                        add(
+                                                        mul(
                                                                 e,
-                                                                mul(
+                                                                f64(e, e.v("sn")),
+                                                                call(
                                                                         e,
-                                                                        call(
+                                                                        "sinh",
+                                                                        div(
                                                                                 e,
-                                                                                "powf",
-                                                                                div(
+                                                                                mul(
                                                                                         e,
-                                                                                        div(
-                                                                                                e,
-                                                                                                mul(
-                                                                                                        e,
-                                                                                                        f32(e, r),
-                                                                                                        f32(
-                                                                                                                e,
-                                                                                                                add(
-                                                                                                                        e,
-                                                                                                                        f,
-                                                                                                                        e
-                                                                                                                                .n(
-                                                                                                                                        70)))),
-                                                                                                f32(e, e.n(197))),
-                                                                                        f32(e, e.n(127))),
-                                                                                f32(e, e.n(4))),
-                                                                        e.n(150)),
-                                                                e.n(0.1))),
-                                                mul(
-                                                        e,
-                                                        e.v("sn"),
-                                                        call(
-                                                                e,
-                                                                "sinhf",
-                                                                div(
-                                                                        e,
-                                                                        mul(
-                                                                                e,
-                                                                                add(
-                                                                                        e,
-                                                                                        mul(
-                                                                                                e,
-                                                                                                call(
-                                                                                                        e,
-                                                                                                        "powf",
-                                                                                                        div(
-                                                                                                                e,
-                                                                                                                f32(
-                                                                                                                        e,
-                                                                                                                        r),
-                                                                                                                f32(
-                                                                                                                        e,
-                                                                                                                        e
-                                                                                                                                .n(
-                                                                                                                                        127))),
-                                                                                                        f32(e, e.n(4))),
-                                                                                                e.n(4)),
-                                                                                        e.n(0.1)),
-                                                                                e.v("omega")),
-                                                                        e.v("sn")))))),
+                                                                                        f64(e, f32(e, bwD)),
+                                                                                        f64(e, e.v("omega"))),
+                                                                                f64(e, e.v("sn")))))))),
                                 e.let("a0", add(e, f32(e, e.n(1)), e.v("alpha"))),
                                 e.let("a1", mul(e, e.v("cs"), e.n(-2))),
                                 e.let("a2", sub(e, f32(e, e.n(1)), e.v("alpha"))),
@@ -579,6 +562,8 @@ final class EcoBuzzM4 {
         defs.add(e.let("tables_fn_t", EcoBuzz.fnType(e, e.v("t_void"))));
         defs.add(e.let("f1_fn_t", EcoBuzz.fnType(e, e.v("t_f32"), e.v("t_f32"))));
         defs.add(e.let("f2_fn_t", EcoBuzz.fnType(e, e.v("t_f32"), e.v("t_f32"), e.v("t_f32"))));
+        defs.add(e.let("d1_fn_t", EcoBuzz.fnType(e, e.v("t_f64"), e.v("t_f64"))));
+        defs.add(e.let("d2_fn_t", EcoBuzz.fnType(e, e.v("t_f64"), e.v("t_f64"), e.v("t_f64"))));
 
         var body = new TList<SourceExpr>();
         body.add(e.let("osc_at", e.callM0(e.v("arg"), "osc_at")));
@@ -587,6 +572,8 @@ final class EcoBuzzM4 {
             body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("f1_fn_t"))));
         }
         body.add(e.let("powf", EcoBuzz.externDef(e, e.v("ll"), "powf", e.lowerV("f2_fn_t"))));
+        body.add(e.let("pow", EcoBuzz.externDef(e, e.v("ll"), "pow", e.lowerV("d2_fn_t"))));
+        body.add(e.let("sinh", EcoBuzz.externDef(e, e.v("ll"), "sinh", e.lowerV("d1_fn_t"))));
         body.add(e.let(
                 "m4_waves",
                 e.call(
@@ -629,11 +616,13 @@ final class EcoBuzzM4 {
                         set(
                                 e,
                                 idx(e, lw(e, "lfoosc"), e.v("pp")),
-                                call(
+                                f32(
                                         e,
-                                        "powf",
-                                        f32(e, e.n(1.00004230724139582)),
-                                        f32(e, sub(e, e.v("pp"), e.n(0x8000))))))));
+                                        call(
+                                                e,
+                                                "pow",
+                                                f64(e, e.n(1.00004230724139582)),
+                                                f64(e, sub(e, e.v("pp"), e.n(0x8000)))))))));
         body.add(e.let(
                 "tables",
                 EcoBuzz.funcDef(e, e.v("ll"), "m4_tables", new String[] {}, e.lowerV("tables_fn_t"), (coefsBody))));
@@ -788,32 +777,40 @@ final class EcoBuzzM4 {
                                         set(
                                                 e,
                                                 pt(e, "t_freq"),
-                                                mul(
+                                                f32(
                                                         e,
-                                                        call(
+                                                        mul(
                                                                 e,
-                                                                "exp2f",
-                                                                div(
+                                                                call(
                                                                         e,
-                                                                        f32(
+                                                                        "pow",
+                                                                        f64(e, e.n(2)),
+                                                                        div(
                                                                                 e,
-                                                                                sub(
+                                                                                f64(
                                                                                         e,
-                                                                                        add(
+                                                                                        sub(
                                                                                                 e,
-                                                                                                mul(
+                                                                                                add(
                                                                                                         e,
-                                                                                                        e.mb
-                                                                                                                .operatorShr(
-                                                                                                                        note,
-                                                                                                                        e
-                                                                                                                                .n(
-                                                                                                                                        4)),
-                                                                                                        e.n(12)),
-                                                                                                and(e, note, e.n(15))),
-                                                                                        e.n(1))),
-                                                                        f32(e, e.n(12)))),
-                                                        e.n(16.3516))),
+                                                                                                        mul(
+                                                                                                                e,
+                                                                                                                e.mb
+                                                                                                                        .operatorShr(
+                                                                                                                                note,
+                                                                                                                                e
+                                                                                                                                        .n(
+                                                                                                                                                4)),
+                                                                                                                e.n(
+                                                                                                                        12)),
+                                                                                                        and(
+                                                                                                                e,
+                                                                                                                note,
+                                                                                                                e.n(
+                                                                                                                        15))),
+                                                                                                e.n(1))),
+                                                                                e.n(12))),
+                                                                e.n(16.3516)))),
                                         e.ifElse(
                                                 ne(e, p(e, "glide"), e.n(0)),
                                                 e.seq(
@@ -821,27 +818,29 @@ final class EcoBuzzM4 {
                                                         set(
                                                                 e,
                                                                 pt(e, "t_glide_mul"),
-                                                                call(
+                                                                f32(
                                                                         e,
-                                                                        "powf",
-                                                                        e.ifElse(
-                                                                                gt(
-                                                                                        e,
-                                                                                        pt(e, "t_freq"),
-                                                                                        pt(e, "t_freq_from")),
-                                                                                f32(e, e.n(2)),
-                                                                                f32(e, e.n(0.5))),
-                                                                        div(
+                                                                        call(
                                                                                 e,
-                                                                                f32(e, e.n(1)),
-                                                                                f32(e, p(e, "glide_time"))))),
+                                                                                "pow",
+                                                                                e.ifElse(
+                                                                                        gt(
+                                                                                                e,
+                                                                                                pt(e, "t_freq"),
+                                                                                                pt(e, "t_freq_from")),
+                                                                                        f64(e, e.n(2)),
+                                                                                        f64(e, e.n(0.5))),
+                                                                                div(
+                                                                                        e,
+                                                                                        f64(e, e.n(1)),
+                                                                                        f64(e, p(e, "glide_time")))))),
                                                         set(e, pt(e, "t_glide_fac"), e.n(1)),
                                                         set(
                                                                 e,
                                                                 pt(e, "t_glide_cnt"),
                                                                 e.ifElse(
                                                                         le(e, pt(e, "t_freq_from"), e.n(0)),
-                                                                        EcoBuzz.i32(e, e.n(-2147483648.0)),
+                                                                        EcoBuzz.i32(e, e.n(0)),
                                                                         i32(
                                                                                 e,
                                                                                 div(
@@ -875,18 +874,20 @@ final class EcoBuzzM4 {
                                                         set(
                                                                 e,
                                                                 pt(e, "t_pitch_mul"),
-                                                                call(
+                                                                f32(
                                                                         e,
-                                                                        "powf",
                                                                         call(
                                                                                 e,
-                                                                                "powf",
-                                                                                f32(e, e.n(1.01)),
-                                                                                f32(e, p(e, "penv_mod"))),
-                                                                        div(
-                                                                                e,
-                                                                                f32(e, e.n(1)),
-                                                                                f32(e, p(e, "peg_att"))))),
+                                                                                "pow",
+                                                                                call(
+                                                                                        e,
+                                                                                        "pow",
+                                                                                        f64(e, e.n(1.01)),
+                                                                                        f64(e, p(e, "penv_mod"))),
+                                                                                div(
+                                                                                        e,
+                                                                                        f64(e, e.n(1)),
+                                                                                        f64(e, p(e, "peg_att")))))),
                                                         set(e, pt(e, "t_pitch_fac"), e.n(1))),
                                                 set(e, pt(e, "t_pm_act"), e.n(0))),
                                         set(e, pt(e, "t_feg_state"), e.n(1)),
@@ -974,14 +975,14 @@ final class EcoBuzzM4 {
                 set(
                         e,
                         p(e, "detune_semi"),
-                        call(e, "powf", f32(e, e.n(1.05946309435929526)), f32(e, sub(e, e.v("v"), e.n(64)))))));
+                        f32(e, call(e, "pow", f64(e, e.n(1.05946309435929526)), f64(e, sub(e, e.v("v"), e.n(64))))))));
         tick.add(onGval(
                 e,
                 5,
                 set(
                         e,
                         p(e, "detune_fine"),
-                        call(e, "powf", f32(e, e.n(1.00091728179580156)), f32(e, sub(e, e.v("v"), e.n(64)))))));
+                        f32(e, call(e, "pow", f64(e, e.n(1.00091728179580156)), f64(e, sub(e, e.v("v"), e.n(64))))))));
         tick.add(onGval(e, 6, set(e, p(e, "sync"), e.v("v"))));
         tick.add(onGval(e, 7, set(e, p(e, "mix_type"), e.v("v"))));
         tick.add(onGval(
@@ -1320,18 +1321,20 @@ final class EcoBuzzM4 {
                                                         set(
                                                                 e,
                                                                 pt(e, "t_pitch_mul"),
-                                                                call(
+                                                                f32(
                                                                         e,
-                                                                        "powf",
                                                                         call(
                                                                                 e,
-                                                                                "powf",
-                                                                                f32(e, e.n(1 / 1.01)),
-                                                                                f32(e, p(e, "penv_mod"))),
-                                                                        div(
-                                                                                e,
-                                                                                f32(e, e.n(1)),
-                                                                                f32(e, p(e, "peg_dec")))))),
+                                                                                "pow",
+                                                                                call(
+                                                                                        e,
+                                                                                        "pow",
+                                                                                        f64(e, e.n(1 / 1.01)),
+                                                                                        f64(e, p(e, "penv_mod"))),
+                                                                                div(
+                                                                                        e,
+                                                                                        f64(e, e.n(1)),
+                                                                                        f64(e, p(e, "peg_dec"))))))),
                                                 set(e, pt(e, "t_pm_act"), e.n(0))))),
                         e.ifElse(
                                 ne(e, pt(e, "t_glide_act"), e.n(0)),

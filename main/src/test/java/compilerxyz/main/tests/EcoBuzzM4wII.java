@@ -298,7 +298,9 @@ final class EcoBuzzM4wII {
             new Pair<>("floorf", "f1_fn_t"),
             new Pair<>("powf", "f2_fn_t"),
             new Pair<>("pow", "d2_fn_t"),
-            new Pair<>("tan", "d1_fn_t"));
+            new Pair<>("tan", "d1_fn_t"),
+            new Pair<>("rint", "d1_fn_t"),
+            new Pair<>("sinh", "d1_fn_t"));
     private static final IMap<String, String> GLOBAL_TYPES = IMap.ofEntries(
             new Pair<>("coefs", "coefs_t"),
             new Pair<>("lfoosc", "lfoosc_t"),
@@ -350,9 +352,9 @@ final class EcoBuzzM4wII {
     }
 
     private static SourceExpr envSamples(EcoMb e, SourceExpr v) {
-        var ms = mul(
-                e, call(e, "powf", div(e, f32(e, add(e, v, e.n(2))), f32(e, e.n(129))), f32(e, e.n(3))), e.n(10000));
-        return add(e, i32(e, mul(e, ms, e.n(RATE / 1000.0))), e.n(1));
+        var ms =
+                f32(e, mul(e, call(e, "pow", div(e, f64(e, add(e, v, e.n(2))), e.n(129)), f64(e, e.n(3))), e.n(10000)));
+        return add(e, i32(e, mul(e, mul(e, f64(e, ms), e.n(RATE)), e.n(1.0 / 1000.0))), e.n(1));
     }
 
     private static SourceExpr sustainSamples(EcoMb e, SourceExpr v) {
@@ -360,13 +362,15 @@ final class EcoBuzzM4wII {
     }
 
     private static SourceExpr scalLfoFreq(EcoMb e, SourceExpr v) {
-        return mul(
+        return f32(
                 e,
-                sub(
+                mul(
                         e,
-                        call(e, "powf", div(e, f32(e, add(e, v, e.n(8))), f32(e, e.n(124))), f32(e, e.n(4))),
-                        e.n(0.000017324998565270)),
-                e.n(40.00072));
+                        sub(
+                                e,
+                                call(e, "pow", div(e, f64(e, add(e, v, e.n(8))), e.n(124)), f64(e, e.n(4))),
+                                e.n(0.000017324998565270)),
+                        e.n(40.00072)));
     }
 
     private static SourceExpr lfoPhaseAdd(EcoMb e, String synced, String noise, String freq) {
@@ -385,7 +389,24 @@ final class EcoBuzzM4wII {
     }
 
     private static SourceExpr f2i(EcoMb e, SourceExpr x) {
-        return i32(e, call(e, "floorf", add(e, x, e.n(0.5))));
+        return f2iD(e, f64(e, x));
+    }
+
+    private static SourceExpr f2iD(EcoMb e, SourceExpr x) {
+        return i32(e, call(e, "rint", sub(e, x, e.n(0.5))));
+    }
+
+    private static SourceExpr f64(EcoMb e, SourceExpr v) {
+        return EcoBuzz.conv(e, "t_f64", v);
+    }
+
+    private static SourceExpr biquadSum(
+            EcoMb e, SourceExpr c0, Function<Integer, SourceExpr> ck, SourceExpr x, IList<String> taps) {
+        var acc = mul(e, f64(e, c0), f64(e, x));
+        for (int k = 0; k < taps.size(); k++) {
+            acc = add(e, acc, mul(e, f64(e, ck.apply(k + 1)), f64(e, pt(e, taps.get(k)))));
+        }
+        return f32(e, acc);
     }
 
     private static SourceExpr lfoRead(EcoMb e, String tab, SourceExpr phase) {
@@ -436,7 +457,7 @@ final class EcoBuzzM4wII {
                 and(e, phase, sub(e, shl(e, EcoBuzz.i32(e, e.n(1)), sh), e.n(1))), sub(e, sh, e.n(12)));
         var x1 = call(e, "wave_at", e.v("p"), p(e, host), e.n(-1), add(e, index, offset));
         var x2 = call(e, "wave_at", e.v("p"), p(e, host), e.n(-1), add(e, index2, offset));
-        var banded = add(e, x1, f2i(e, mul(e, f32(e, sub(e, x2, x1)), mul(e, f32(e, frac), e.n(0.000244140625)))));
+        var banded = add(e, x1, f2iD(e, mul(e, f64(e, sub(e, x2, x1)), mul(e, f64(e, frac), e.n(0.000244140625)))));
         var plain = call(
                 e,
                 "wave_at",
@@ -573,6 +594,8 @@ final class EcoBuzzM4wII {
         body.add(e.let("powf", EcoBuzz.externDef(e, e.v("ll"), "powf", e.lowerV("f2_fn_t"))));
         body.add(e.let("pow", EcoBuzz.externDef(e, e.v("ll"), "pow", e.lowerV("d2_fn_t"))));
         body.add(e.let("tan", EcoBuzz.externDef(e, e.v("ll"), "tan", e.lowerV("d1_fn_t"))));
+        body.add(e.let("rint", EcoBuzz.externDef(e, e.v("ll"), "rint", e.lowerV("d1_fn_t"))));
+        body.add(e.let("sinh", EcoBuzz.externDef(e, e.v("ll"), "sinh", e.lowerV("d1_fn_t"))));
         for (var g : new String[][] {
             {"coefs", "coefs_t"}, {"lfoosc", "lfoosc_t"}, {"lfovib", "lfoosc_t"}, {"nonlin", "nonlin_t"}
         }) {
@@ -609,12 +632,12 @@ final class EcoBuzzM4wII {
                         e,
                         call(
                                 e,
-                                "powf",
-                                mul(e, call(e, "fabsf", f32(e, sub(e, pp, e.n(127)))), e.n(128)),
-                                f32(e, e.n(1.5))),
+                                "pow",
+                                mul(e, f64(e, call(e, "fabsf", f32(e, sub(e, pp, e.n(127))))), e.n(128)),
+                                f64(e, e.n(1.5))),
                         e.n(150)));
-        var nlHi = i32(
-                e, div(e, call(e, "powf", mul(e, f32(e, sub(e, pp, e.n(127))), e.n(128)), f32(e, e.n(1.5))), e.n(80)));
+        var nlHi =
+                i32(e, div(e, call(e, "pow", mul(e, f64(e, add(e, pp, e.n(1))), e.n(128)), f64(e, e.n(1.5))), e.n(80)));
         body.add(e.let(
                 "tables",
                 EcoBuzz.funcDef(
@@ -635,19 +658,23 @@ final class EcoBuzzM4wII {
                                         set(
                                                 e,
                                                 idx(e, lw(e, "lfoosc"), pp),
-                                                call(
+                                                f32(
                                                         e,
-                                                        "powf",
-                                                        f32(e, e.n(Math.pow(NOTECONST, 1.0 / 512))),
-                                                        f32(e, sub(e, pp, e.n(0x8000))))),
+                                                        call(
+                                                                e,
+                                                                "pow",
+                                                                f64(e, e.n(NOTECONST)),
+                                                                div(e, f64(e, sub(e, pp, e.n(0x8000))), e.n(512))))),
                                         set(
                                                 e,
                                                 idx(e, lw(e, "lfovib"), pp),
-                                                call(
+                                                f32(
                                                         e,
-                                                        "powf",
-                                                        f32(e, e.n(Math.pow(NOTECONST, 1.0 / 16384))),
-                                                        f32(e, sub(e, pp, e.n(0x8000)))))),
+                                                        call(
+                                                                e,
+                                                                "pow",
+                                                                f64(e, e.n(NOTECONST)),
+                                                                div(e, f64(e, sub(e, pp, e.n(0x8000))), e.n(16384)))))),
                                 forRange(
                                         e,
                                         "pp",
@@ -665,15 +692,15 @@ final class EcoBuzzM4wII {
                                                                         e,
                                                                         call(
                                                                                 e,
-                                                                                "powf",
-                                                                                f32(
+                                                                                "pow",
+                                                                                f64(
                                                                                         e,
                                                                                         add(
                                                                                                 e,
                                                                                                 e.mb.operatorNeg(
                                                                                                         e.v("nl")),
                                                                                                 e.n(30000))),
-                                                                                f32(e, e.n(0.82))))),
+                                                                                f64(e, e.n(0.82))))),
                                                         e.v("nl")))),
                                 forRange(
                                         e,
@@ -693,9 +720,9 @@ final class EcoBuzzM4wII {
                                                                         e,
                                                                         call(
                                                                                 e,
-                                                                                "powf",
-                                                                                f32(e, sub(e, e.v("nh"), e.n(30000))),
-                                                                                f32(e, e.n(0.82))))),
+                                                                                "pow",
+                                                                                f64(e, sub(e, e.v("nh"), e.n(30000))),
+                                                                                f64(e, e.n(0.82))))),
                                                         e.v("nh"))))))));
         body = partVoice.body;
         body.add(e.let("osc_at", e.callM0(e.fld(e.v("arg"), "dsp"), "osc_at")));
@@ -750,29 +777,32 @@ final class EcoBuzzM4wII {
                 set(
                         e,
                         pt(e, "t_freq"),
-                        mul(
+                        f32(
                                 e,
-                                call(
+                                mul(
                                         e,
-                                        "powf",
-                                        f32(e, e.n(2)),
-                                        div(
+                                        call(
                                                 e,
-                                                f32(
+                                                "pow",
+                                                f64(e, e.n(2)),
+                                                div(
                                                         e,
-                                                        sub(
+                                                        f64(
                                                                 e,
-                                                                add(
+                                                                sub(
                                                                         e,
-                                                                        mul(
+                                                                        add(
                                                                                 e,
-                                                                                e.mb.operatorShr(
-                                                                                        pt(e, "t_note"), e.n(4)),
-                                                                                e.n(12)),
-                                                                        and(e, pt(e, "t_note"), e.n(15))),
-                                                                e.n(1))),
-                                                f32(e, e.n(12)))),
-                                e.n(16.3516))),
+                                                                                mul(
+                                                                                        e,
+                                                                                        e.mb.operatorShr(
+                                                                                                pt(e, "t_note"),
+                                                                                                e.n(4)),
+                                                                                        e.n(12)),
+                                                                                and(e, pt(e, "t_note"), e.n(15))),
+                                                                        e.n(1))),
+                                                        e.n(12))),
+                                        e.n(16.3516)))),
                 e.ifElse(
                         and(e, ne(e, p(e, "glide"), e.n(0)), ne(e, pt(e, "t_aegstate"), e.n(0))),
                         e.seq(
@@ -780,14 +810,16 @@ final class EcoBuzzM4wII {
                                 set(
                                         e,
                                         pt(e, "t_glidemul"),
-                                        call(
+                                        f32(
                                                 e,
-                                                "powf",
-                                                e.ifElse(
-                                                        gt(e, pt(e, "t_freq"), pt(e, "t_freqfrom")),
-                                                        f32(e, e.n(2)),
-                                                        f32(e, e.n(0.5))),
-                                                div(e, f32(e, e.n(1)), f32(e, p(e, "glidetime"))))),
+                                                call(
+                                                        e,
+                                                        "pow",
+                                                        e.ifElse(
+                                                                gt(e, pt(e, "t_freq"), pt(e, "t_freqfrom")),
+                                                                f64(e, e.n(2)),
+                                                                f64(e, e.n(0.5))),
+                                                        div(e, f64(e, e.n(1)), f64(e, p(e, "glidetime")))))),
                                 set(e, pt(e, "t_glidefactor"), e.n(1)),
                                 set(
                                         e,
@@ -1515,7 +1547,7 @@ final class EcoBuzzM4wII {
                                         pt(e, "t_oldoldout"),
                                         mul(e, sub(e, pt(e, "t_oldout"), pt(e, "t_oldoldout")), e.v("vcfk")))),
                         e.mb.return_("lct", mul(e, f2i(e, pt(e, "t_oldoldout")), pt(e, "t_l1cut")))),
-                mul(e, lfoRead(e, "lfo1tab", pt(e, "t_phlfo1")), pt(e, "t_l1cut")));
+                mul(e, f2i(e, f32(e, lfoRead(e, "lfo1tab", pt(e, "t_phlfo1")))), pt(e, "t_l1cut")));
         var filterBody = e.seq(
                 fegStep,
                 e.let(
@@ -1616,18 +1648,7 @@ final class EcoBuzzM4wII {
                                                 e,
                                                 shl(e, add(e, shl(e, e.v("c"), e.n(7)), e.v("r")), e.n(3)),
                                                 p(e, "ftype_base"))),
-                                e.let(
-                                        "y",
-                                        add(
-                                                e,
-                                                add(
-                                                        e,
-                                                        add(e, mul(e, cf, x), mul(e, cfk.apply(1), pt(e, "t_x1"))),
-                                                        add(
-                                                                e,
-                                                                mul(e, cfk.apply(2), pt(e, "t_x2")),
-                                                                mul(e, cfk.apply(3), pt(e, "t_y1")))),
-                                                mul(e, cfk.apply(4), pt(e, "t_y2")))),
+                                e.let("y", biquadSum(e, cf, cfk, x, IList.of("t_x1", "t_x2", "t_y1", "t_y2"))),
                                 set(e, pt(e, "t_y2"), pt(e, "t_y1")),
                                 set(e, pt(e, "t_y1"), e.v("y")),
                                 set(e, pt(e, "t_x2"), pt(e, "t_x1")),
@@ -1640,19 +1661,12 @@ final class EcoBuzzM4wII {
                                                 e.ifElse(ne(e, p(e, "peak"), e.n(0)), add(e, e.v("y"), x), e.v("y")))),
                                 e.let(
                                         "y24",
-                                        add(
+                                        biquadSum(
                                                 e,
-                                                add(
-                                                        e,
-                                                        add(
-                                                                e,
-                                                                mul(e, cf, e.v("y")),
-                                                                mul(e, cfk.apply(1), pt(e, "t_x241"))),
-                                                        add(
-                                                                e,
-                                                                mul(e, cfk.apply(2), pt(e, "t_x242")),
-                                                                mul(e, cfk.apply(3), pt(e, "t_y241")))),
-                                                mul(e, cfk.apply(4), pt(e, "t_y242")))),
+                                                cf,
+                                                cfk,
+                                                e.v("y"),
+                                                IList.of("t_x241", "t_x242", "t_y241", "t_y242"))),
                                 set(e, pt(e, "t_y242"), pt(e, "t_y241")),
                                 set(e, pt(e, "t_y241"), e.v("y24")),
                                 set(e, pt(e, "t_x242"), pt(e, "t_x241")),
@@ -1774,7 +1788,7 @@ final class EcoBuzzM4wII {
                 "pa1",
                 e.ifElse(
                         ne(e, e.v("pm1"), e.n(1)),
-                        f2i(e, mul(e, f32(e, pt(e, "t_padd1")), e.v("pm1"))),
+                        f2iD(e, mul(e, f64(e, pt(e, "t_padd1")), f64(e, e.v("pm1")))),
                         pt(e, "t_padd1"))));
         newPhases.add(set(e, pt(e, "t_phase1"), add(e, pt(e, "t_phase1"), e.v("pa1"))));
         newPhases.add(set(e, pt(e, "t_phasesub"), add(e, pt(e, "t_phasesub"), e.mb.operatorShr(e.v("pa1"), e.n(1)))));
@@ -1786,7 +1800,7 @@ final class EcoBuzzM4wII {
                         pt(e, "t_phase2"),
                         e.ifElse(
                                 ne(e, e.v("pm2"), e.n(1)),
-                                f2i(e, mul(e, f32(e, pt(e, "t_padd2")), e.v("pm2"))),
+                                f2iD(e, mul(e, f64(e, pt(e, "t_padd2")), f64(e, e.v("pm2")))),
                                 pt(e, "t_padd2")))));
         Function<String[], SourceExpr> centerUpdate = names -> {
             var centerT = names[0];
@@ -1869,24 +1883,30 @@ final class EcoBuzzM4wII {
                 pt(e, "t_ph1"),
                 e.ifElse(
                         lt(e, pt(e, "t_phase1"), pt(e, "t_c1")),
-                        f2i(e, mul(e, f32(e, pt(e, "t_phase1")), pt(e, "t_ps1a"))),
-                        f2i(
+                        f2iD(e, mul(e, f64(e, pt(e, "t_phase1")), f64(e, pt(e, "t_ps1a")))),
+                        f2iD(
                                 e,
                                 add(
                                         e,
-                                        mul(e, f32(e, sub(e, pt(e, "t_phase1"), pt(e, "t_c1"))), pt(e, "t_ps1b")),
+                                        mul(
+                                                e,
+                                                f64(e, sub(e, pt(e, "t_phase1"), pt(e, "t_c1"))),
+                                                f64(e, pt(e, "t_ps1b"))),
                                         e.n(0x4000000))))));
         newPhases.add(set(
                 e,
                 pt(e, "t_ph2"),
                 e.ifElse(
                         lt(e, pt(e, "t_phase2"), pt(e, "t_c2")),
-                        f2i(e, mul(e, f32(e, pt(e, "t_phase2")), pt(e, "t_ps2a"))),
-                        f2i(
+                        f2iD(e, mul(e, f64(e, pt(e, "t_phase2")), f64(e, pt(e, "t_ps2a")))),
+                        f2iD(
                                 e,
                                 add(
                                         e,
-                                        mul(e, f32(e, sub(e, pt(e, "t_phase2"), pt(e, "t_c2"))), pt(e, "t_ps2b")),
+                                        mul(
+                                                e,
+                                                f64(e, sub(e, pt(e, "t_phase2"), pt(e, "t_c2"))),
+                                                f64(e, pt(e, "t_ps2b"))),
                                         e.n(0x4000000))))));
         newPhases.add(set(e, pt(e, "t_ph2"), add(e, add(e, pt(e, "t_ph2"), p(e, "phdiff2")), pt(e, "t_uegphase"))));
         newPhases.add(ifOnly(
@@ -1895,7 +1915,13 @@ final class EcoBuzzM4wII {
                 set(
                         e,
                         pt(e, "t_ph2"),
-                        add(e, pt(e, "t_ph2"), mul(e, lfoRead(e, "lfo2tab", pt(e, "t_phlfo2")), p(e, "lfo2amount"))))));
+                        add(
+                                e,
+                                pt(e, "t_ph2"),
+                                mul(
+                                        e,
+                                        f2i(e, f32(e, lfoRead(e, "lfo2tab", pt(e, "t_phlfo2")))),
+                                        p(e, "lfo2amount"))))));
         newPhases.add(set(e, pt(e, "t_ph2"), and(e, pt(e, "t_ph2"), e.n(0x7ffffff))));
         newPhases.add(e.ifElse(
                 ne(e, p(e, "l_1lock2"), e.n(0)),
@@ -2352,7 +2378,9 @@ final class EcoBuzzM4wII {
                 set(e, p(e, "ueg_level"), f2i(e, mul(e, f32(e, p(e, "uenvmod")), p(e, "ueg_susfrac"))))));
         tick.add(onGvalCtl(e, 50, set(e, p(e, "uegdest"), e.v("v"))));
         tick.add(onGvalCtl(e, 3, set(e, p(e, "bendamt"), e.v("v"))));
-        var bendTarget = call(e, "powf", f32(e, e.n(NOTECONST)), mul(e, f32(e, p(e, "bendamt")), p(e, "pitchmod")));
+        var bendTargetD =
+                call(e, "pow", f64(e, e.n(NOTECONST)), f64(e, mul(e, f32(e, p(e, "bendamt")), p(e, "pitchmod"))));
+        var bendTarget = f32(e, bendTargetD);
         tick.add(onGvalCtl(
                 e,
                 2,
@@ -2364,11 +2392,13 @@ final class EcoBuzzM4wII {
                                 set(
                                         e,
                                         p(e, "bendglide"),
-                                        call(
+                                        f32(
                                                 e,
-                                                "powf",
-                                                div(e, bendTarget, p(e, "bendfactor")),
-                                                div(e, f32(e, e.n(32)), f32(e, p(e, "glidetime")))))),
+                                                call(
+                                                        e,
+                                                        "pow",
+                                                        div(e, bendTargetD, f64(e, p(e, "bendfactor"))),
+                                                        div(e, f64(e, e.n(32)), f64(e, p(e, "glidetime"))))))),
                         e.seq(
                                 set(e, p(e, "bendtime"), e.n(0)),
                                 set(
@@ -2418,7 +2448,7 @@ final class EcoBuzzM4wII {
                 set(
                         e,
                         p(e, "detune_semi"),
-                        call(e, "powf", f32(e, e.n(1.05946309435929526)), f32(e, sub(e, e.v("v"), e.n(64)))))));
+                        f32(e, call(e, "pow", f64(e, e.n(1.05946309435929526)), f64(e, sub(e, e.v("v"), e.n(64))))))));
         tick.add(onGvalMod(
                 e,
                 13,
@@ -2427,7 +2457,7 @@ final class EcoBuzzM4wII {
                 set(
                         e,
                         p(e, "detune_fine"),
-                        call(e, "powf", f32(e, e.n(1.00091728179580156)), f32(e, sub(e, e.v("v"), e.n(64)))))));
+                        f32(e, call(e, "pow", f64(e, e.n(1.00091728179580156)), f64(e, sub(e, e.v("v"), e.n(64))))))));
         tick.add(onGvalCtl(e, 14, set(e, p(e, "sync"), e.v("v"))));
         tick.add(onGvalMod(e, 51, "moddest2", 3, set(e, p(e, "phdiff2"), shl(e, e.v("v"), e.n(20)))));
         tick.add(onGvalCtl(e, 0, set(e, p(e, "playmode"), e.v("v"))));

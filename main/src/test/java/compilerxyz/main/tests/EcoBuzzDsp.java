@@ -24,7 +24,10 @@ import compilerxyz.prelude.util.TList;
 final class EcoBuzzDsp {
     private EcoBuzzDsp() {}
 
-    static final IList<String> FNS = IList.of("wave_read", "zero", "mix_add", "note_rate", "osc_init", "osc_at");
+    private static final int SPLINE_TAPS = 6;
+    private static final int HERMITE_TAPS = 4;
+    static final IList<String> FNS =
+            IList.of("wave_read", "wave_spline", "wave_hermite", "zero", "mix_add", "note_rate", "osc_init", "osc_at");
     static final int MAX_WAVES = 32;
     static final int OSC_WAVES = 6;
     static final int OSC_BASE = 2048;
@@ -66,6 +69,12 @@ final class EcoBuzzDsp {
         exprs.add(e.let("p_wave_table_t", EcoBuzz.ptr(e, e.v("wave_table_t"))));
         exprs.add(e.let(
                 "wave_read_fn_t",
+                EcoBuzz.fnType(e, e.v("t_f32"), e.v("p_wave_table_t"), e.v("t_i32"), e.v("t_f32"), e.v("t_i32"))));
+        exprs.add(e.let(
+                "wave_spline_fn_t",
+                EcoBuzz.fnType(e, e.v("t_f32"), e.v("p_wave_table_t"), e.v("t_i32"), e.v("t_f32"), e.v("t_i32"))));
+        exprs.add(e.let(
+                "wave_hermite_fn_t",
                 EcoBuzz.fnType(e, e.v("t_f32"), e.v("p_wave_table_t"), e.v("t_i32"), e.v("t_f32"), e.v("t_i32"))));
         exprs.add(e.let("zero_fn_t", EcoBuzz.fnType(e, e.v("t_void"), e.v("t_pf32"), e.v("t_i32"))));
         exprs.add(e.let(
@@ -140,6 +149,101 @@ final class EcoBuzzDsp {
                         new String[] {"waves", "wi", "pos", "ch"},
                         e.lowerV("wave_read_fn_t"),
                         waveRead)));
+        var taps = new TList<SourceExpr>();
+        taps.add(e.let("i", i32(e, e.v("pos"))));
+        taps.add(e.let("x", sub(e, e.v("pos"), f32(e, e.v("i")))));
+        taps.add(e.let("chn", fld(e, w, "channels")));
+        taps.add(e.let("frames", fld(e, w, "frames")));
+        taps.add(e.let("data", fld(e, w, "data")));
+        for (int k = 0; k < SPLINE_TAPS; k++) {
+            var at = add(e, e.v("i"), e.n(k - 2));
+            taps.add(e.let(
+                    "p" + k,
+                    e.ifElse(
+                            EcoBuzz.and(e, EcoBuzz.ge(e, at, e.n(0)), lt(e, at, e.v("frames"))),
+                            sample16(e, e.v("data"), mul(e, add(e, mul(e, at, e.v("chn")), e.v("ch")), e.n(2))),
+                            f32(e, e.n(0)))));
+        }
+        var p0 = e.v("p0");
+        var p1 = e.v("p1");
+        var p2 = e.v("p2");
+        var p3 = e.v("p3");
+        var p4 = e.v("p4");
+        var p5 = e.v("p5");
+        var x = e.v("x");
+        var c5 = add(
+                e,
+                add(e, mul(e, sub(e, p3, p2), e.n(50)), mul(e, sub(e, p1, p4), e.n(25))),
+                mul(e, sub(e, p5, p0), e.n(5)));
+        var c4 = add(
+                e,
+                sub(
+                        e,
+                        add(e, sub(e, mul(e, p2, e.n(126)), mul(e, p3, e.n(124))), mul(e, p4, e.n(61))),
+                        mul(e, p1, e.n(64))),
+                add(e, sub(e, mul(e, p0, e.n(13)), mul(e, p5, e.n(12))), mul(e, x, c5)));
+        var c3 = add(
+                e,
+                sub(
+                        e,
+                        add(
+                                e,
+                                sub(e, sub(e, mul(e, p3, e.n(66)), mul(e, p2, e.n(70))), mul(e, p4, e.n(33))),
+                                mul(e, p1, e.n(39))),
+                        mul(e, p0, e.n(9))),
+                add(e, mul(e, p5, e.n(7)), mul(e, x, c4)));
+        var c2 = add(
+                e, sub(e, sub(e, sub(e, mul(e, add(e, p3, p1), e.n(16)), p0), mul(e, p2, e.n(30))), p4), mul(e, x, c3));
+        var c1 = add(e, add(e, mul(e, sub(e, p3, p1), e.n(16)), mul(e, sub(e, p0, p4), e.n(2))), mul(e, x, c2));
+        taps.add(e.ret(add(e, p2, mul(e, mul(e, x, c1), e.n(1.0 / 24)))));
+        body.add(e.let(
+                "wave_spline",
+                EcoBuzz.funcDef(
+                        e,
+                        e.v("ll"),
+                        "bz_wave_spline",
+                        new String[] {"waves", "wi", "pos", "ch"},
+                        e.lowerV("wave_spline_fn_t"),
+                        e.seq(taps.toArray(SourceExpr[]::new)))));
+        var hermite = new TList<SourceExpr>();
+        hermite.add(e.let("i", i32(e, e.v("pos"))));
+        hermite.add(e.let("frac", sub(e, e.v("pos"), f32(e, e.v("i")))));
+        hermite.add(e.let("chn", fld(e, w, "channels")));
+        hermite.add(e.let("frames", fld(e, w, "frames")));
+        hermite.add(e.let("data", fld(e, w, "data")));
+        hermite.add(e.let("last", sub(e, e.v("frames"), e.n(1))));
+        for (int k = 0; k < HERMITE_TAPS; k++) {
+            var at = add(e, e.v("i"), e.n(k - 1));
+            hermite.add(e.let(
+                    "h" + k,
+                    e.ifElse(
+                            EcoBuzz.and(e, EcoBuzz.ge(e, at, e.n(0)), lt(e, at, e.v("frames"))),
+                            sample16(e, e.v("data"), mul(e, add(e, mul(e, at, e.v("chn")), e.v("ch")), e.n(2))),
+                            f32(e, e.n(0)))));
+        }
+        var hm1 = e.v("h0");
+        var h0 = e.v("h1");
+        var h1 = e.v("h2");
+        var h2 = e.v("h3");
+        var hf = e.v("frac");
+        hermite.add(e.let("hc", mul(e, sub(e, h1, hm1), e.n(0.5))));
+        hermite.add(e.let("hv", sub(e, h0, h1)));
+        hermite.add(e.let("hw", add(e, e.v("hc"), e.v("hv"))));
+        hermite.add(e.let("ha", add(e, add(e, e.v("hw"), e.v("hv")), mul(e, sub(e, h2, h0), e.n(0.5)))));
+        hermite.add(e.let("hb", add(e, e.v("hw"), e.v("ha"))));
+        hermite.add(e.ret(e.ifElse(
+                EcoBuzz.and(e, EcoBuzz.ge(e, e.v("i"), e.n(0)), lt(e, e.v("i"), e.v("frames"))),
+                add(e, mul(e, add(e, mul(e, sub(e, mul(e, e.v("ha"), hf), e.v("hb")), hf), e.v("hc")), hf), h0),
+                f32(e, e.n(0)))));
+        body.add(e.let(
+                "wave_hermite",
+                EcoBuzz.funcDef(
+                        e,
+                        e.v("ll"),
+                        "bz_wave_hermite",
+                        new String[] {"waves", "wi", "pos", "ch"},
+                        e.lowerV("wave_hermite_fn_t"),
+                        e.seq(hermite.toArray(SourceExpr[]::new)))));
         body.add(e.let(
                 "zero",
                 EcoBuzz.funcDef(

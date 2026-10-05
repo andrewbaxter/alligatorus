@@ -13,6 +13,7 @@ final class EcoBuzz {
     static final int MAX_BLOCK = 256;
     static final int NO_VALUE = -1;
     static final int NOTE_OFF = 255;
+    static final double MDK_DC_POLE = 0.99;
 
     static final IList<String> TYPE_NAMES = IList.of(
             "t_i1", "t_i8", "t_i16", "t_i32", "t_i64", "t_u8", "t_u16", "t_u32", "t_u64", "t_f32", "t_f64", "t_void",
@@ -295,6 +296,26 @@ final class EcoBuzz {
 
     static SourceExpr externDef(EcoMb e, SourceExpr mod, String name, SourceExpr fnType) {
         return e.call(llvmL(e, "extern_fn"), e.rec(e.p("mod", mod), e.p("name", e.s(name)), e.p("ty", fnType)));
+    }
+
+    static SourceExpr mdkDcBlock(EcoMb e, SourceExpr out, SourceExpr n) {
+        var i = e.v("i");
+        var c = e.v("c");
+        var x1 = idx(e, fld(e, e.v("p"), "dc_x1"), c);
+        var y1 = idx(e, fld(e, e.v("p"), "dc_y1"), c);
+        var s = idx(e, out, add(e, mul(e, i, e.n(2)), c));
+        return forRange(
+                e,
+                "i",
+                n,
+                forRange(
+                        e,
+                        "c",
+                        e.n(2),
+                        e.let("x", s),
+                        set(e, y1, add(e, sub(e, e.v("x"), x1), mul(e, y1, e.n(MDK_DC_POLE)))),
+                        set(e, x1, e.v("x")),
+                        set(e, s, y1)));
     }
 
     static TList<SourceExpr> machineModule(

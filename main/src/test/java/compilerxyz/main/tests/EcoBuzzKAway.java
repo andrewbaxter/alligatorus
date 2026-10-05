@@ -38,7 +38,7 @@ final class EcoBuzzKAway {
     private static final double TABLE_STEP = 0.0122718;
     private static final double TWO_PI = 2 * Math.PI;
     private static final int RAND_SEED = 1;
-    private static final int[] OCTAVE_BREAKS = {12, 28, 44, 60, 76, 92, 108, 124, 140};
+    private static final IList<Integer> OCTAVE_BREAKS = IList.of(12, 28, 44, 60, 76, 92, 108, 124, 140);
     private static final IList<String> H_F32_FIELDS = IList.of("h_detune", "h_trans", "h_vol");
     private static final IList<String> F32_FIELDS = IList.of(
             "cutoff_target",
@@ -74,10 +74,6 @@ final class EcoBuzzKAway {
         return idx(e, fld(e, e.v("p"), field), e.n(h));
     }
 
-    private static SourceExpr gval(EcoMb e, int k) {
-        return idx(e, p(e, "gval"), e.n(k));
-    }
-
     private static SourceExpr tval(EcoMb e, SourceExpr t, int k) {
         return idx(e, idx(e, p(e, "tval"), t), e.n(k));
     }
@@ -102,7 +98,7 @@ final class EcoBuzzKAway {
 
     private static SourceExpr onGval(EcoMb e, int k, SourceExpr... apply) {
         var body = new TList<SourceExpr>();
-        body.add(e.let("v", gval(e, k)));
+        body.add(e.let("v", idx(e, p(e, "gval"), e.n(k))));
         body.add(ifOnly(e, ne(e, e.v("v"), e.n(EcoBuzz.NO_VALUE)), apply));
         return e.seq(body.toArray(SourceExpr[]::new));
     }
@@ -115,164 +111,6 @@ final class EcoBuzzKAway {
                 set(e, p(e, "f_b2"), div(e, b2, a0)),
                 set(e, p(e, "f_a1"), e.mb.operatorNeg(div(e, a1, a0))),
                 set(e, p(e, "f_a2"), e.mb.operatorNeg(div(e, a2, a0))));
-    }
-
-    private static SourceExpr tableGen(EcoMb e) {
-        var i = e.v("i");
-        var fi = e.v("fi");
-        var lo = lt(e, i, e.n(256));
-        return e.seq(
-                forRange(e, "i", e.n(WAVES * WAVE_STRIDE), set(e, idx(e, p(e, "table"), i), e.n(0))),
-                e.let("seed", EcoBuzz.i32(e, e.n(RAND_SEED))),
-                e.let("prev", f32(e, e.n(0))),
-                forRange(
-                        e,
-                        "i",
-                        e.n(WAVE_LEN),
-                        e.let("fi", f32(e, i)),
-                        e.let("s", call(e, "sinf", mul(e, fi, e.n(TABLE_STEP)))),
-                        e.let("saw", sub(e, mul(e, fi, e.n(126)), e.n(32768))),
-                        set(e, tab(e, 0, i), mul(e, e.v("s"), e.n(32000))),
-                        set(e, tab(e, 4, i), mul(e, e.v("s"), e.n(-32000))),
-                        set(e, tab(e, 1, i), e.v("saw")),
-                        set(e, tab(e, 5, i), e.mb.operatorNeg(e.v("saw"))),
-                        set(e, tab(e, 2, i), e.ifElse(lo, f32(e, e.n(-32000)), f32(e, e.n(32000)))),
-                        set(e, tab(e, 6, i), e.ifElse(lo, f32(e, e.n(32000)), f32(e, e.n(-32000)))),
-                        e.let(
-                                "tri",
-                                e.ifElse(
-                                        lo,
-                                        sub(e, mul(e, fi, e.n(256)), e.n(32768)),
-                                        sub(e, f32(e, e.n(98304)), mul(e, fi, e.n(256))))),
-                        set(e, tab(e, 3, i), e.v("tri")),
-                        set(e, tab(e, 7, i), e.mb.operatorNeg(e.v("tri"))),
-                        set(e, e.v("seed"), add(e, mul(e, e.v("seed"), e.n(214013)), e.n(2531011))),
-                        e.let("r", f32(e, and(e, e.mb.operatorShr(e.v("seed"), e.n(16)), e.n(0x7fff)))),
-                        set(e, e.v("prev"), add(e, e.v("prev"), mul(e, sub(e, e.v("r"), e.v("prev")), e.n(0.25)))),
-                        set(e, tab(e, 8, i), e.v("prev")),
-                        e.let("fk", f32(e, e.mb.operatorShr(i, e.n(3)))),
-                        e.let("s2", call(e, "sinf", mul(e, mul(e, e.v("fk"), e.v("fk")), e.n(TABLE_STEP)))),
-                        set(e, tab(e, 9, i), mul(e, e.v("s2"), e.n(32000))),
-                        set(e, tab(e, 10, i), mul(e, e.v("s2"), e.n(-32000))),
-                        e.let("para", mul(e, mul(e, fi, fi), e.n(0.5))),
-                        set(e, tab(e, 11, i), e.v("para")),
-                        set(e, tab(e, 12, i), e.mb.operatorNeg(e.v("para"))),
-                        e.let("pulse16", e.ifElse(lt(e, i, e.n(16)), f32(e, e.n(32000)), f32(e, e.n(0)))),
-                        set(e, tab(e, 13, i), e.v("pulse16")),
-                        set(e, tab(e, 14, i), e.mb.operatorNeg(e.v("pulse16"))),
-                        e.let("pulse4", e.ifElse(lt(e, i, e.n(4)), f32(e, e.n(32000)), f32(e, e.n(0)))),
-                        set(e, tab(e, 15, i), e.v("pulse4")),
-                        set(e, tab(e, 16, i), e.mb.operatorNeg(e.v("pulse4")))));
-    }
-
-    private static SourceExpr coefs(EcoMb e) {
-        var cut = e.v("cut");
-        var res1 = e.v("res1");
-        var ftype = e.v("ftype");
-        var one = f32(e, e.n(1));
-        var zero = f32(e, e.n(0));
-        var sw = e.v("sw");
-        var cw = e.v("cw");
-        var alpha = e.v("alpha");
-        var a0 = add(e, alpha, e.n(1));
-        var a1 = mul(e, cw, e.n(-2));
-        var a2 = sub(e, one, alpha);
-        return e.seq(
-                e.let(
-                        "f",
-                        add(
-                                e,
-                                mul(
-                                        e,
-                                        call(
-                                                e,
-                                                "powf",
-                                                mul(e, f32(e, add(e, cut, e.n(5))), e.n(1.0 / 132)),
-                                                f32(e, e.n(1.7))),
-                                        e.n(13000)),
-                                e.n(30))),
-                e.let("w", mul(e, e.v("f"), e.n(TWO_PI / RATE))),
-                e.let("sw", call(e, "sinf", e.v("w"))),
-                e.let("cw", call(e, "cosf", e.v("w"))),
-                e.let("alpha", f32(e, e.n(0))),
-                ifOnly(
-                        e,
-                        lt(e, ftype, e.n(2)),
-                        e.let("ra", mul(e, f32(e, mul(e, add(e, cut, e.n(70)), res1)), e.n(1.0 / 197))),
-                        e.let(
-                                "rq",
-                                add(
-                                        e,
-                                        mul(
-                                                e,
-                                                call(e, "powf", mul(e, e.v("ra"), e.n(1.0 / 127)), f32(e, e.n(4))),
-                                                e.n(150)),
-                                        e.n(0.1))),
-                        set(e, alpha, div(e, sw, e.v("rq")))),
-                ifOnly(
-                        e,
-                        ge(e, ftype, e.n(2)),
-                        e.let(
-                                "bq",
-                                add(
-                                        e,
-                                        mul(
-                                                e,
-                                                call(e, "powf", mul(e, f32(e, res1), e.n(1.0 / 127)), f32(e, e.n(4))),
-                                                e.n(4)),
-                                        e.n(0.1))),
-                        set(e, alpha, mul(e, sw, call(e, "sinhf", div(e, mul(e, e.v("bq"), e.v("w")), sw))))),
-                ifOnly(
-                        e,
-                        eq(e, ftype, e.n(0)),
-                        e.let("lp", sub(e, one, cw)),
-                        biquad(e, mul(e, e.v("lp"), e.n(0.5)), e.v("lp"), mul(e, e.v("lp"), e.n(0.5)), a0, a1, a2)),
-                ifOnly(
-                        e,
-                        eq(e, ftype, e.n(1)),
-                        e.let("hp", add(e, cw, e.n(1))),
-                        biquad(
-                                e,
-                                mul(e, e.v("hp"), e.n(0.5)),
-                                e.mb.operatorNeg(e.v("hp")),
-                                mul(e, e.v("hp"), e.n(0.5)),
-                                a0,
-                                a1,
-                                a2)),
-                ifOnly(e, eq(e, ftype, e.n(2)), biquad(e, alpha, zero, e.mb.operatorNeg(alpha), a0, a1, a2)),
-                ifOnly(e, eq(e, ftype, e.n(3)), biquad(e, one, mul(e, cw, e.n(-2)), one, a0, a1, a2)),
-                ifOnly(e, gt(e, ftype, e.n(3)), biquad(e, one, zero, zero, one, zero, zero)));
-    }
-
-    private static SourceExpr noteOn(EcoMb e, SourceExpr t) {
-        var body = new TList<SourceExpr>();
-        body.add(e.let("m", e.v("note")));
-        for (var brk : OCTAVE_BREAKS) {
-            body.add(ifOnly(e, gt(e, e.v("note"), e.n(brk)), set(e, e.v("m"), sub(e, e.v("m"), e.n(4)))));
-        }
-        body.add(
-                e.let("semi", add(e, sub(e, f32(e, e.v("m")), e.n(42)), mul(e, hv(e, "h_detune", 0), e.n(1.0 / 128)))));
-        body.add(set(e, ph(e, "inc", 0, t), call(e, "powf", f32(e, e.n(2)), mul(e, e.v("semi"), e.n(1.0 / 12)))));
-        for (int h = 1; h < HARMONICS; h++) {
-            body.add(set(
-                    e,
-                    ph(e, "inc", h, t),
-                    call(
-                            e,
-                            "powf",
-                            f32(e, e.n(2)),
-                            mul(
-                                    e,
-                                    add(
-                                            e,
-                                            add(e, mul(e, hv(e, "h_detune", h), e.n(1.0 / 128)), hv(e, "h_trans", h)),
-                                            e.v("semi")),
-                                    e.n(1.0 / 12)))));
-        }
-        body.add(set(e, pt(e, "t_state", t), e.n(1)));
-        body.add(set(e, pt(e, "t_counter", t), e.n(0)));
-        body.add(set(e, pt(e, "t_target", t), mul(e, pt(e, "t_vol", t), e.n(256))));
-        return e.seq(body.toArray(SourceExpr[]::new));
     }
 
     static TList<SourceExpr> module(EcoMb e) {
@@ -312,6 +150,89 @@ final class EcoBuzzKAway {
             body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("f1_fn_t"))));
         }
         body.add(e.let("powf", EcoBuzz.externDef(e, e.v("ll"), "powf", e.lowerV("f2_fn_t"))));
+        SourceExpr coefsSeq;
+        {
+            var cut = e.v("cut");
+            var res1 = e.v("res1");
+            var ftype = e.v("ftype");
+            var one = f32(e, e.n(1));
+            var zero = f32(e, e.n(0));
+            var sw = e.v("sw");
+            var cw = e.v("cw");
+            var alpha = e.v("alpha");
+            var a0 = add(e, alpha, e.n(1));
+            var a1 = mul(e, cw, e.n(-2));
+            var a2 = sub(e, one, alpha);
+            coefsSeq = e.seq(
+                    e.let(
+                            "f",
+                            add(
+                                    e,
+                                    mul(
+                                            e,
+                                            call(
+                                                    e,
+                                                    "powf",
+                                                    mul(e, f32(e, add(e, cut, e.n(5))), e.n(1.0 / 132)),
+                                                    f32(e, e.n(1.7))),
+                                            e.n(13000)),
+                                    e.n(30))),
+                    e.let("w", mul(e, e.v("f"), e.n(TWO_PI / RATE))),
+                    e.let("sw", call(e, "sinf", e.v("w"))),
+                    e.let("cw", call(e, "cosf", e.v("w"))),
+                    e.let("alpha", f32(e, e.n(0))),
+                    ifOnly(
+                            e,
+                            lt(e, ftype, e.n(2)),
+                            e.let("ra", mul(e, f32(e, mul(e, add(e, cut, e.n(70)), res1)), e.n(1.0 / 197))),
+                            e.let(
+                                    "rq",
+                                    add(
+                                            e,
+                                            mul(
+                                                    e,
+                                                    call(e, "powf", mul(e, e.v("ra"), e.n(1.0 / 127)), f32(e, e.n(4))),
+                                                    e.n(150)),
+                                            e.n(0.1))),
+                            set(e, alpha, div(e, sw, e.v("rq")))),
+                    ifOnly(
+                            e,
+                            ge(e, ftype, e.n(2)),
+                            e.let(
+                                    "bq",
+                                    add(
+                                            e,
+                                            mul(
+                                                    e,
+                                                    call(
+                                                            e,
+                                                            "powf",
+                                                            mul(e, f32(e, res1), e.n(1.0 / 127)),
+                                                            f32(e, e.n(4))),
+                                                    e.n(4)),
+                                            e.n(0.1))),
+                            set(e, alpha, mul(e, sw, call(e, "sinhf", div(e, mul(e, e.v("bq"), e.v("w")), sw))))),
+                    ifOnly(
+                            e,
+                            eq(e, ftype, e.n(0)),
+                            e.let("lp", sub(e, one, cw)),
+                            biquad(e, mul(e, e.v("lp"), e.n(0.5)), e.v("lp"), mul(e, e.v("lp"), e.n(0.5)), a0, a1, a2)),
+                    ifOnly(
+                            e,
+                            eq(e, ftype, e.n(1)),
+                            e.let("hp", add(e, cw, e.n(1))),
+                            biquad(
+                                    e,
+                                    mul(e, e.v("hp"), e.n(0.5)),
+                                    e.mb.operatorNeg(e.v("hp")),
+                                    mul(e, e.v("hp"), e.n(0.5)),
+                                    a0,
+                                    a1,
+                                    a2)),
+                    ifOnly(e, eq(e, ftype, e.n(2)), biquad(e, alpha, zero, e.mb.operatorNeg(alpha), a0, a1, a2)),
+                    ifOnly(e, eq(e, ftype, e.n(3)), biquad(e, one, mul(e, cw, e.n(-2)), one, a0, a1, a2)),
+                    ifOnly(e, gt(e, ftype, e.n(3)), biquad(e, one, zero, zero, one, zero, zero)));
+        }
         body.add(e.let(
                 "coefs",
                 EcoBuzz.funcDef(
@@ -320,7 +241,7 @@ final class EcoBuzzKAway {
                         "ka_coefs",
                         new String[] {"p", "cut", "res1", "ftype"},
                         e.lowerV("coefs_fn_t"),
-                        coefs(e))));
+                        coefsSeq)));
 
         var t = e.v("t");
         var init = new TList<SourceExpr>();
@@ -355,7 +276,55 @@ final class EcoBuzzKAway {
                 set(e, pt(e, "t_vol", t), e.n(128)),
                 set(e, pt(e, "t_counter", t), e.n(0)),
                 set(e, pt(e, "t_state", t), e.n(0))));
-        init.add(tableGen(e));
+        SourceExpr tableGenSeq;
+        {
+            var i = e.v("i");
+            var fi = e.v("fi");
+            var lo = lt(e, i, e.n(256));
+            tableGenSeq = e.seq(
+                    forRange(e, "i", e.n(WAVES * WAVE_STRIDE), set(e, idx(e, p(e, "table"), i), e.n(0))),
+                    e.let("seed", EcoBuzz.i32(e, e.n(RAND_SEED))),
+                    e.let("prev", f32(e, e.n(0))),
+                    forRange(
+                            e,
+                            "i",
+                            e.n(WAVE_LEN),
+                            e.let("fi", f32(e, i)),
+                            e.let("s", call(e, "sinf", mul(e, fi, e.n(TABLE_STEP)))),
+                            e.let("saw", sub(e, mul(e, fi, e.n(126)), e.n(32768))),
+                            set(e, tab(e, 0, i), mul(e, e.v("s"), e.n(32000))),
+                            set(e, tab(e, 4, i), mul(e, e.v("s"), e.n(-32000))),
+                            set(e, tab(e, 1, i), e.v("saw")),
+                            set(e, tab(e, 5, i), e.mb.operatorNeg(e.v("saw"))),
+                            set(e, tab(e, 2, i), e.ifElse(lo, f32(e, e.n(-32000)), f32(e, e.n(32000)))),
+                            set(e, tab(e, 6, i), e.ifElse(lo, f32(e, e.n(32000)), f32(e, e.n(-32000)))),
+                            e.let(
+                                    "tri",
+                                    e.ifElse(
+                                            lo,
+                                            sub(e, mul(e, fi, e.n(256)), e.n(32768)),
+                                            sub(e, f32(e, e.n(98304)), mul(e, fi, e.n(256))))),
+                            set(e, tab(e, 3, i), e.v("tri")),
+                            set(e, tab(e, 7, i), e.mb.operatorNeg(e.v("tri"))),
+                            set(e, e.v("seed"), add(e, mul(e, e.v("seed"), e.n(214013)), e.n(2531011))),
+                            e.let("r", f32(e, and(e, e.mb.operatorShr(e.v("seed"), e.n(16)), e.n(0x7fff)))),
+                            set(e, e.v("prev"), add(e, e.v("prev"), mul(e, sub(e, e.v("r"), e.v("prev")), e.n(0.25)))),
+                            set(e, tab(e, 8, i), e.v("prev")),
+                            e.let("fk", f32(e, e.mb.operatorShr(i, e.n(3)))),
+                            e.let("s2", call(e, "sinf", mul(e, mul(e, e.v("fk"), e.v("fk")), e.n(TABLE_STEP)))),
+                            set(e, tab(e, 9, i), mul(e, e.v("s2"), e.n(32000))),
+                            set(e, tab(e, 10, i), mul(e, e.v("s2"), e.n(-32000))),
+                            e.let("para", mul(e, mul(e, fi, fi), e.n(0.5))),
+                            set(e, tab(e, 11, i), e.v("para")),
+                            set(e, tab(e, 12, i), e.mb.operatorNeg(e.v("para"))),
+                            e.let("pulse16", e.ifElse(lt(e, i, e.n(16)), f32(e, e.n(32000)), f32(e, e.n(0)))),
+                            set(e, tab(e, 13, i), e.v("pulse16")),
+                            set(e, tab(e, 14, i), e.mb.operatorNeg(e.v("pulse16"))),
+                            e.let("pulse4", e.ifElse(lt(e, i, e.n(4)), f32(e, e.n(32000)), f32(e, e.n(0)))),
+                            set(e, tab(e, 15, i), e.v("pulse4")),
+                            set(e, tab(e, 16, i), e.mb.operatorNeg(e.v("pulse4")))));
+        }
+        init.add(tableGenSeq);
         init.add(resetVals(e));
         body.add(e.let(
                 "init",
@@ -367,6 +336,41 @@ final class EcoBuzzKAway {
                         e.lowerV("init_fn_t"),
                         e.seq(init.toArray(SourceExpr[]::new)))));
 
+        SourceExpr noteOnSeq;
+        {
+            var noteBody = new TList<SourceExpr>();
+            noteBody.add(e.let("m", e.v("note")));
+            for (var brk : OCTAVE_BREAKS) {
+                noteBody.add(ifOnly(e, gt(e, e.v("note"), e.n(brk)), set(e, e.v("m"), sub(e, e.v("m"), e.n(4)))));
+            }
+            noteBody.add(e.let(
+                    "semi", add(e, sub(e, f32(e, e.v("m")), e.n(42)), mul(e, hv(e, "h_detune", 0), e.n(1.0 / 128)))));
+            noteBody.add(
+                    set(e, ph(e, "inc", 0, t), call(e, "powf", f32(e, e.n(2)), mul(e, e.v("semi"), e.n(1.0 / 12)))));
+            for (int h = 1; h < HARMONICS; h++) {
+                noteBody.add(set(
+                        e,
+                        ph(e, "inc", h, t),
+                        call(
+                                e,
+                                "powf",
+                                f32(e, e.n(2)),
+                                mul(
+                                        e,
+                                        add(
+                                                e,
+                                                add(
+                                                        e,
+                                                        mul(e, hv(e, "h_detune", h), e.n(1.0 / 128)),
+                                                        hv(e, "h_trans", h)),
+                                                e.v("semi")),
+                                        e.n(1.0 / 12)))));
+            }
+            noteBody.add(set(e, pt(e, "t_state", t), e.n(1)));
+            noteBody.add(set(e, pt(e, "t_counter", t), e.n(0)));
+            noteBody.add(set(e, pt(e, "t_target", t), mul(e, pt(e, "t_vol", t), e.n(256))));
+            noteOnSeq = e.seq(noteBody.toArray(SourceExpr[]::new));
+        }
         var tick = new TList<SourceExpr>();
         tick.add(onGval(e, 0, set(e, hv(e, "h_detune", 0), sub(e, f32(e, e.v("v")), e.n(64)))));
         tick.add(onGval(e, 1, set(e, hv(e, "h_wave", 0), e.v("v"))));
@@ -404,10 +408,7 @@ final class EcoBuzzKAway {
                         set(e, pt(e, "t_smooth", t), f32(e, add(e, mul(e, e.v("sm"), e.n(32)), e.n(16))))),
                 e.let("note", tval(e, t, 0)),
                 ifOnly(e, eq(e, e.v("note"), e.n(EcoBuzz.NOTE_OFF)), set(e, pt(e, "t_state", t), e.n(2))),
-                ifOnly(
-                        e,
-                        and(e, gt(e, e.v("note"), e.n(0)), ne(e, e.v("note"), e.n(EcoBuzz.NOTE_OFF))),
-                        noteOn(e, t))));
+                ifOnly(e, and(e, gt(e, e.v("note"), e.n(0)), ne(e, e.v("note"), e.n(EcoBuzz.NOTE_OFF))), noteOnSeq)));
         tick.add(resetVals(e));
         body.add(e.let(
                 "tick",

@@ -31,12 +31,13 @@ final class EcoBuzzTunaMan {
     static final int TRACKS = 8;
     private static final int DELAY = 32768;
     private static final int DELAY_MASK = DELAY - 1;
+    private static final int CHUNK = 64;
     private static final double RATE = 44100.0;
     private static final double PI = Math.PI;
     private static final IList<Integer> TIMES = IList.of(1, 2, 3, 4, 6, 8, 12, 16, 24, 28, 32, 48, 64, 96, 128);
     private static final IList<String> T_I32_FIELDS =
             IList.of("t_transpose", "t_finetune", "t_overlap", "t_vibrate", "t_vibdepth", "t_reverse");
-    private static final IList<String> T_F32_FIELDS = IList.of("t_moddepth", "t_wetout", "t_lfophase", "t_lfodelta");
+    private static final IList<String> T_F32_FIELDS = IList.of("t_moddepth", "t_wetout", "t_lfodelta");
 
     private static SourceExpr p(EcoMb e, String field) {
         return fld(e, e.v("p"), field);
@@ -88,6 +89,10 @@ final class EcoBuzzTunaMan {
                         f32(e, idx(e, lw(e, "times"), sub(e, rate, e.n(240))))));
     }
 
+    private static SourceExpr f64(EcoMb e, SourceExpr v) {
+        return EcoBuzz.conv(e, "t_f64", v);
+    }
+
     private static SourceExpr readTap(EcoMb e, SourceExpr ch, SourceExpr intpos, SourceExpr frac) {
         var base = mul(e, ch, e.n(DELAY));
         var d0 = idx(e, p(e, "buf"), add(e, base, and(e, intpos, e.n(DELAY_MASK))));
@@ -110,6 +115,9 @@ final class EcoBuzzTunaMan {
         fields.add(EcoBuzz.field(e, "pos", e.v("t_i32")));
         fields.add(EcoBuzz.field(e, "dryout", e.v("t_f32")));
         fields.add(EcoBuzz.field(e, "t_phase", EcoBuzz.array(e, e.v("t_f32"), e.intOf(2 * TRACKS))));
+        fields.add(EcoBuzz.field(e, "t_lfophase", EcoBuzz.array(e, e.v("t_f32"), e.intOf(2 * TRACKS))));
+        fields.add(EcoBuzz.field(e, "dc_x1", EcoBuzz.array(e, e.v("t_f32"), e.intOf(2))));
+        fields.add(EcoBuzz.field(e, "dc_y1", EcoBuzz.array(e, e.v("t_f32"), e.intOf(2))));
         for (var f : T_I32_FIELDS) fields.add(EcoBuzz.field(e, f, e.v("i32xt")));
         for (var f : T_F32_FIELDS) fields.add(EcoBuzz.field(e, f, e.v("f32xt")));
         defs.add(e.let("state_t", EcoBuzz.struct(e, "tm_state", fields.toArray(SourceExpr[]::new))));
@@ -119,9 +127,11 @@ final class EcoBuzzTunaMan {
         defs.add(e.let("work_fn_t", EcoBuzz.fnType(e, e.v("t_void"), e.v("p_state_t"), e.v("t_pf32"), e.v("t_i32"))));
         defs.add(e.let("f1_fn_t", EcoBuzz.fnType(e, e.v("t_f32"), e.v("t_f32"))));
         defs.add(e.let("f2_fn_t", EcoBuzz.fnType(e, e.v("t_f32"), e.v("t_f32"), e.v("t_f32"))));
+        defs.add(e.let("d1_fn_t", EcoBuzz.fnType(e, e.v("t_f64"), e.v("t_f64"))));
 
         var body = new TList<SourceExpr>();
-        for (var fn : new String[] {"sinf", "floorf"}) {
+        body.add(e.let("floor", EcoBuzz.externDef(e, e.v("ll"), "floor", e.lowerV("d1_fn_t"))));
+        for (var fn : new String[] {"sinf"}) {
             body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("f1_fn_t"))));
         }
         for (var fn : new String[] {"powf", "fmodf"}) {
@@ -156,7 +166,8 @@ final class EcoBuzzTunaMan {
                         set(e, pt(e, "t_vibdepth", t), e.n(0)),
                         set(e, pt(e, "t_vibrate", t), e.n(80)),
                         set(e, pt(e, "t_reverse", t), e.n(0)),
-                        set(e, pt(e, "t_lfophase", t), e.n(0)),
+                        set(e, pt(e, "t_lfophase", mul(e, t, e.n(2))), e.n(0)),
+                        set(e, pt(e, "t_lfophase", add(e, mul(e, t, e.n(2)), e.n(1))), e.n(0)),
                         set(e, pt(e, "t_lfodelta", t), lfoDelta(e, EcoBuzz.i32(e, e.n(80)))),
                         set(e, pt(e, "t_phase", mul(e, t, e.n(2))), e.n(0)),
                         set(e, pt(e, "t_phase", add(e, mul(e, t, e.n(2)), e.n(1))), e.n(0))),
@@ -192,7 +203,11 @@ final class EcoBuzzTunaMan {
                         e.let("rv", tval(e, t, 7)),
                         ifOnly(e, ne(e, e.v("rv"), e.n(-1)), set(e, pt(e, "t_reverse", t), e.v("rv"))),
                         set(e, pt(e, "t_lfodelta", t), lfoDelta(e, pt(e, "t_vibrate", t))),
-                        ifOnly(e, eq(e, tval(e, t, 8), e.n(1)), set(e, pt(e, "t_lfophase", t), e.n(0)))),
+                        ifOnly(
+                                e,
+                                eq(e, tval(e, t, 8), e.n(1)),
+                                set(e, pt(e, "t_lfophase", mul(e, t, e.n(2))), e.n(0)),
+                                set(e, pt(e, "t_lfophase", add(e, mul(e, t, e.n(2)), e.n(1))), e.n(0)))),
                 e.let("dr", idx(e, p(e, "gval"), e.n(0))),
                 ifOnly(e, ne(e, e.v("dr"), e.n(-1)), set(e, p(e, "dryout"), dbGain(e, e.v("dr")))),
                 resetVals(e));
@@ -202,189 +217,278 @@ final class EcoBuzzTunaMan {
         var i = e.v("i");
         var ch = e.v("ch");
         var work = e.seq(
+                e.let("silent", EcoBuzz.i32(e, e.n(0))),
                 forRange(
                         e,
                         "ch",
                         e.n(2),
-                        forRange(
-                                e,
-                                "i",
-                                e.v("n"),
-                                e.let("x", idx(e, e.v("out"), add(e, mul(e, i, e.n(2)), ch))),
-                                set(
-                                        e,
-                                        idx(
-                                                e,
-                                                p(e, "buf"),
-                                                add(
-                                                        e,
-                                                        mul(e, ch, e.n(DELAY)),
-                                                        and(e, add(e, p(e, "pos"), i), e.n(DELAY_MASK)))),
-                                        e.v("x")),
-                                set(
-                                        e,
-                                        idx(e, e.v("out"), add(e, mul(e, i, e.n(2)), ch)),
-                                        mul(e, p(e, "dryout"), e.v("x"))))),
-                forRange(
-                        e,
-                        "t",
-                        e.n(TRACKS),
                         ifOnly(
                                 e,
-                                ne(e, pt(e, "t_wetout", t), e.n(0)),
-                                e.let(
-                                        "ratio",
-                                        call(
+                                eq(e, e.v("silent"), e.n(0)),
+                                forRange(
+                                        e,
+                                        "i",
+                                        e.v("n"),
+                                        e.let("x", idx(e, e.v("out"), add(e, mul(e, i, e.n(2)), ch))),
+                                        set(
                                                 e,
-                                                "powf",
-                                                f32(e, e.n(2)),
-                                                add(
+                                                idx(
                                                         e,
-                                                        mul(e, f32(e, pt(e, "t_transpose", t)), e.n(1.0 / 12)),
-                                                        mul(e, f32(e, pt(e, "t_finetune", t)), e.n(1.0 / 1200))))),
-                                e.let(
-                                        "delta",
-                                        e.ifElse(
-                                                ne(e, pt(e, "t_reverse", t), e.n(0)),
-                                                add(e, e.v("ratio"), e.n(1)),
-                                                add(e, e.mb.operatorNeg(e.v("ratio")), e.n(1)))),
-                                e.let("odmd", div(e, f32(e, e.n(1)), pt(e, "t_moddepth", t))),
-                                e.let("disp", i32(e, mul(e, pt(e, "t_moddepth", t), e.n(0.5)))),
-                                e.let("dispf", f32(e, e.v("disp"))),
-                                e.let("smooth", mul(e, f32(e, pt(e, "t_overlap", t)), e.n(0.005))),
-                                e.let("odsmooth", div(e, f32(e, e.n(1)), e.v("smooth"))),
-                                e.let(
-                                        "vibterm",
-                                        e.ifElse(
-                                                ne(e, pt(e, "t_vibdepth", t), e.n(0)),
-                                                sub(
-                                                        e,
+                                                        p(e, "buf"),
+                                                        add(
+                                                                e,
+                                                                mul(e, ch, e.n(DELAY)),
+                                                                and(e, add(e, p(e, "pos"), i), e.n(DELAY_MASK)))),
+                                                e.v("x")),
+                                        set(
+                                                e,
+                                                idx(e, e.v("out"), add(e, mul(e, i, e.n(2)), ch)),
+                                                mul(e, p(e, "dryout"), e.v("x")))),
+                                forRange(
+                                        e,
+                                        "t",
+                                        e.n(TRACKS),
+                                        ifOnly(
+                                                e,
+                                                ne(e, pt(e, "t_wetout", t), e.n(0)),
+                                                e.let(
+                                                        "ratio",
                                                         call(
                                                                 e,
                                                                 "powf",
                                                                 f32(e, e.n(2)),
-                                                                mul(
+                                                                add(
                                                                         e,
                                                                         mul(
                                                                                 e,
-                                                                                f32(e, pt(e, "t_vibdepth", t)),
-                                                                                e.n(1.0 / 1200)),
-                                                                        call(e, "sinf", pt(e, "t_lfophase", t)))),
-                                                        e.n(1)),
-                                                f32(e, e.n(0)))),
+                                                                                f32(e, pt(e, "t_transpose", t)),
+                                                                                e.n(1.0 / 12)),
+                                                                        mul(
+                                                                                e,
+                                                                                f32(e, pt(e, "t_finetune", t)),
+                                                                                e.n(1.0 / 1200))))),
+                                                e.let(
+                                                        "delta",
+                                                        f64(
+                                                                e,
+                                                                e.ifElse(
+                                                                        ne(e, pt(e, "t_reverse", t), e.n(0)),
+                                                                        add(e, e.v("ratio"), e.n(1)),
+                                                                        add(
+                                                                                e,
+                                                                                e.mb.operatorNeg(e.v("ratio")),
+                                                                                e.n(1))))),
+                                                e.let("odmd", div(e, f64(e, e.n(1)), f64(e, pt(e, "t_moddepth", t)))),
+                                                e.let("disp", i32(e, mul(e, pt(e, "t_moddepth", t), e.n(0.5)))),
+                                                e.let("dispf", f64(e, e.v("disp"))),
+                                                e.let("smooth", mul(e, f64(e, pt(e, "t_overlap", t)), e.n(0.005))),
+                                                e.let("odsmooth", div(e, f64(e, e.n(1)), e.v("smooth"))),
+                                                e.let("pi", add(e, mul(e, t, e.n(2)), ch)),
+                                                e.let("phase", f64(e, pt(e, "t_phase", e.v("pi")))),
+                                                e.let("npos", p(e, "pos")),
+                                                e.let("so", EcoBuzz.i32(e, e.n(0))),
+                                                EcoBuzz.whileLoop(
+                                                        e,
+                                                        "chunk",
+                                                        lt(e, e.v("so"), e.v("n")),
+                                                        e.let(
+                                                                "c",
+                                                                EcoBuzz.min(
+                                                                        e,
+                                                                        EcoBuzz.i32(e, e.n(CHUNK)),
+                                                                        sub(e, e.v("n"), e.v("so")))),
+                                                        e.let("vibterm", f64(e, e.n(0))),
+                                                        ifOnly(
+                                                                e,
+                                                                ne(e, pt(e, "t_vibdepth", t), e.n(0)),
+                                                                set(
+                                                                        e,
+                                                                        e.v("vibterm"),
+                                                                        f64(
+                                                                                e,
+                                                                                sub(
+                                                                                        e,
+                                                                                        call(
+                                                                                                e,
+                                                                                                "powf",
+                                                                                                f32(e, e.n(2)),
+                                                                                                mul(
+                                                                                                        e,
+                                                                                                        mul(
+                                                                                                                e,
+                                                                                                                f32(
+                                                                                                                        e,
+                                                                                                                        pt(
+                                                                                                                                e,
+                                                                                                                                "t_vibdepth",
+                                                                                                                                t)),
+                                                                                                                e.n(
+                                                                                                                        1.0
+                                                                                                                                / 1200)),
+                                                                                                        call(
+                                                                                                                e,
+                                                                                                                "sinf",
+                                                                                                                pt(
+                                                                                                                        e,
+                                                                                                                        "t_lfophase",
+                                                                                                                        e
+                                                                                                                                .v(
+                                                                                                                                        "pi"))))),
+                                                                                        e.n(1)))),
+                                                                set(
+                                                                        e,
+                                                                        pt(e, "t_lfophase", e.v("pi")),
+                                                                        call(
+                                                                                e,
+                                                                                "fmodf",
+                                                                                add(
+                                                                                        e,
+                                                                                        pt(e, "t_lfophase", e.v("pi")),
+                                                                                        mul(
+                                                                                                e,
+                                                                                                pt(e, "t_lfodelta", t),
+                                                                                                mul(
+                                                                                                        e,
+                                                                                                        f32(
+                                                                                                                e,
+                                                                                                                e.v(
+                                                                                                                        "c")),
+                                                                                                        e.n(2)))),
+                                                                                f32(e, e.n(2 * PI))))),
+                                                        forRange(
+                                                                e,
+                                                                "k",
+                                                                e.v("c"),
+                                                                e.let("i", add(e, e.v("so"), e.v("k"))),
+                                                                e.let("ph", mul(e, e.v("phase"), e.v("odmd"))),
+                                                                e.let(
+                                                                        "rp0",
+                                                                        sub(
+                                                                                e,
+                                                                                f64(e, e.v("npos")),
+                                                                                add(e, e.v("phase"), e.n(10)))),
+                                                                e.let(
+                                                                        "rp",
+                                                                        e.ifElse(
+                                                                                lt(e, e.v("rp0"), e.n(0)),
+                                                                                add(e, e.v("rp0"), e.n(DELAY)),
+                                                                                e.v("rp0"))),
+                                                                e.let(
+                                                                        "ip",
+                                                                        i32(
+                                                                                e,
+                                                                                call(
+                                                                                        e,
+                                                                                        "floor",
+                                                                                        add(e, e.v("rp"), e.n(0.5))))),
+                                                                e.let(
+                                                                        "frac",
+                                                                        f32(e, sub(e, e.v("rp"), f64(e, e.v("ip"))))),
+                                                                e.let("a0", readTap(e, ch, e.v("ip"), e.v("frac"))),
+                                                                e.let("a", e.v("a0")),
+                                                                ifOnly(
+                                                                        e,
+                                                                        lt(e, e.v("ph"), e.v("smooth")),
+                                                                        e.let(
+                                                                                "win",
+                                                                                f32(
+                                                                                        e,
+                                                                                        mul(
+                                                                                                e,
+                                                                                                e.v("ph"),
+                                                                                                e.v("odsmooth")))),
+                                                                        set(
+                                                                                e,
+                                                                                e.v("a"),
+                                                                                add(
+                                                                                        e,
+                                                                                        mul(e, e.v("win"), e.v("a0")),
+                                                                                        mul(
+                                                                                                e,
+                                                                                                sub(
+                                                                                                        e,
+                                                                                                        f32(e, e.n(1)),
+                                                                                                        e.v("win")),
+                                                                                                readTap(
+                                                                                                        e,
+                                                                                                        ch,
+                                                                                                        sub(
+                                                                                                                e,
+                                                                                                                e.v(
+                                                                                                                        "ip"),
+                                                                                                                e.v(
+                                                                                                                        "disp")),
+                                                                                                        e.v(
+                                                                                                                "frac")))))),
+                                                                set(
+                                                                        e,
+                                                                        idx(
+                                                                                e,
+                                                                                e.v("out"),
+                                                                                add(e, mul(e, i, e.n(2)), ch)),
+                                                                        add(
+                                                                                e,
+                                                                                idx(
+                                                                                        e,
+                                                                                        e.v("out"),
+                                                                                        add(e, mul(e, i, e.n(2)), ch)),
+                                                                                mul(
+                                                                                        e,
+                                                                                        pt(e, "t_wetout", t),
+                                                                                        e.v("a")))),
+                                                                set(
+                                                                        e,
+                                                                        e.v("phase"),
+                                                                        add(
+                                                                                e,
+                                                                                e.v("phase"),
+                                                                                add(e, e.v("delta"), e.v("vibterm")))),
+                                                                ifOnly(
+                                                                        e,
+                                                                        ge(e, e.v("phase"), e.v("dispf")),
+                                                                        set(
+                                                                                e,
+                                                                                e.v("phase"),
+                                                                                sub(e, e.v("phase"), e.v("dispf")))),
+                                                                ifOnly(
+                                                                        e,
+                                                                        lt(e, e.v("phase"), e.n(0)),
+                                                                        set(
+                                                                                e,
+                                                                                e.v("phase"),
+                                                                                add(e, e.v("phase"), e.v("dispf")))),
+                                                                set(
+                                                                        e,
+                                                                        e.v("npos"),
+                                                                        and(
+                                                                                e,
+                                                                                add(e, e.v("npos"), e.n(1)),
+                                                                                e.n(DELAY_MASK)))),
+                                                        set(e, e.v("phase"), f64(e, f32(e, e.v("phase")))),
+                                                        set(e, e.v("so"), add(e, e.v("so"), e.v("c")))),
+                                                set(e, pt(e, "t_phase", e.v("pi")), f32(e, e.v("phase"))))),
                                 ifOnly(
                                         e,
-                                        ne(e, pt(e, "t_vibdepth", t), e.n(0)),
-                                        set(
-                                                e,
-                                                pt(e, "t_lfophase", t),
-                                                call(
-                                                        e,
-                                                        "fmodf",
-                                                        add(
-                                                                e,
-                                                                pt(e, "t_lfophase", t),
-                                                                mul(
-                                                                        e,
-                                                                        pt(e, "t_lfodelta", t),
-                                                                        mul(e, f32(e, e.v("n")), e.n(2)))),
-                                                        f32(e, e.n(2 * PI))))),
-                                forRange(
-                                        e,
-                                        "ch",
-                                        e.n(2),
-                                        e.let("pi", add(e, mul(e, t, e.n(2)), ch)),
-                                        e.let("phase", pt(e, "t_phase", e.v("pi"))),
-                                        e.let("npos", p(e, "pos")),
+                                        eq(e, ch, e.n(0)),
+                                        set(e, e.v("silent"), e.n(1)),
                                         forRange(
                                                 e,
                                                 "i",
                                                 e.v("n"),
-                                                e.let("ph", mul(e, e.v("phase"), e.v("odmd"))),
-                                                e.let(
-                                                        "rp0",
-                                                        sub(e, f32(e, e.v("npos")), add(e, e.v("phase"), e.n(10)))),
-                                                e.let(
-                                                        "rp",
-                                                        e.ifElse(
-                                                                lt(e, e.v("rp0"), e.n(0)),
-                                                                add(e, e.v("rp0"), e.n(DELAY)),
-                                                                e.v("rp0"))),
-                                                e.let("ip", i32(e, call(e, "floorf", add(e, e.v("rp"), e.n(0.5))))),
-                                                e.let("frac", sub(e, e.v("rp"), f32(e, e.v("ip")))),
-                                                e.let("a0", readTap(e, ch, e.v("ip"), e.v("frac"))),
-                                                e.let(
-                                                        "a",
-                                                        e.mb.labeled(
-                                                                "tap",
-                                                                e.seq(
-                                                                        ifOnly(
-                                                                                e,
-                                                                                lt(e, e.v("ph"), e.v("smooth")),
-                                                                                e.let(
-                                                                                        "win",
-                                                                                        mul(
-                                                                                                e,
-                                                                                                e.v("ph"),
-                                                                                                e.v("odsmooth"))),
-                                                                                e.mb.return_(
-                                                                                        "tap",
-                                                                                        add(
-                                                                                                e,
-                                                                                                mul(
-                                                                                                        e,
-                                                                                                        e.v("win"),
-                                                                                                        e.v("a0")),
-                                                                                                mul(
-                                                                                                        e,
-                                                                                                        sub(
-                                                                                                                e,
-                                                                                                                f32(
-                                                                                                                        e,
-                                                                                                                        e
-                                                                                                                                .n(
-                                                                                                                                        1)),
-                                                                                                                e.v(
-                                                                                                                        "win")),
-                                                                                                        readTap(
-                                                                                                                e,
-                                                                                                                ch,
-                                                                                                                sub(
-                                                                                                                        e,
-                                                                                                                        e
-                                                                                                                                .v(
-                                                                                                                                        "ip"),
-                                                                                                                        e
-                                                                                                                                .v(
-                                                                                                                                        "disp")),
-                                                                                                                e.v(
-                                                                                                                        "frac")))))),
-                                                                        e.mb.return_("tap", e.v("a0"))))),
-                                                set(
+                                                e.let("y", idx(e, e.v("out"), mul(e, i, e.n(2)))),
+                                                ifOnly(
                                                         e,
-                                                        idx(e, e.v("out"), add(e, mul(e, i, e.n(2)), ch)),
-                                                        add(
+                                                        EcoBuzz.or(
                                                                 e,
-                                                                idx(e, e.v("out"), add(e, mul(e, i, e.n(2)), ch)),
-                                                                mul(e, pt(e, "t_wetout", t), e.v("a")))),
-                                                set(
-                                                        e,
-                                                        e.v("phase"),
-                                                        add(e, e.v("phase"), add(e, e.v("delta"), e.v("vibterm")))),
-                                                ifOnly(
-                                                        e,
-                                                        ge(e, e.v("phase"), e.v("dispf")),
-                                                        set(e, e.v("phase"), sub(e, e.v("phase"), e.v("dispf")))),
-                                                ifOnly(
-                                                        e,
-                                                        lt(e, e.v("phase"), e.n(0)),
-                                                        set(e, e.v("phase"), add(e, e.v("phase"), e.v("dispf")))),
-                                                set(
-                                                        e,
-                                                        e.v("npos"),
-                                                        and(e, add(e, e.v("npos"), e.n(1)), e.n(DELAY_MASK)))),
-                                        set(e, pt(e, "t_phase", e.v("pi")), e.v("phase"))))),
-                set(e, p(e, "pos"), and(e, add(e, p(e, "pos"), e.v("n")), e.n(DELAY_MASK))));
+                                                                ge(e, e.v("y"), e.n(1)),
+                                                                EcoBuzz.le(e, e.v("y"), e.n(-1))),
+                                                        set(e, e.v("silent"), e.n(0))))))),
+                set(e, p(e, "pos"), and(e, add(e, p(e, "pos"), e.v("n")), e.n(DELAY_MASK))),
+                ifOnly(
+                        e,
+                        ne(e, e.v("silent"), e.n(0)),
+                        forRange(e, "i", mul(e, e.v("n"), e.n(2)), set(e, idx(e, e.v("out"), i), e.n(0)))),
+                ifOnly(e, eq(e, e.v("silent"), e.n(0)), EcoBuzz.mdkDcBlock(e, e.v("out"), e.v("n"))));
         body.add(e.let(
                 "work",
                 EcoBuzz.funcDef(e, e.v("ll"), "tm_work", new String[] {"p", "out", "n"}, e.lowerV("work_fn_t"), work)));
