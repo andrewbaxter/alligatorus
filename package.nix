@@ -46,7 +46,7 @@ maven.buildMavenPackage rec {
     "dependency:copy-dependencies"
     "-DincludeScope=runtime"
   ];
-  mvnHash = "sha256-E0nY3+OW8PeMUPR1oJP5SOUVGgxflGgGMkyawIx6mlI=";
+  mvnHash = "sha256-b4QOR/BIZbBRTe5VKX2Wkw2ROIQCqgBRJA8E6uZihDk=";
   doCheck = false;
 
   installPhase = ''
