@@ -44,6 +44,7 @@ import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.DefinitionSetBuilder;
 import compilerxyz.main.gen.GenAspectNumericConst;
+import compilerxyz.main.gen.ListStoreInt;
 import compilerxyz.main.gen.Target;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.langhelp.Sources;
@@ -172,6 +173,21 @@ public final class BuiltinBodies {
         }
         if (data.local().optIsSome()) ix.localData.add(data.local().optUnwrap());
         return new FileHandle(data.bytes());
+    }
+
+    @BuiltinPath(value = "exec", scopeId = 5047L)
+    public static ExecRun exec(
+            String command,
+            TList<String> args,
+            TOrderedMap<String, String> env,
+            TOrderedMap<String, byte[]> files,
+            Opt<ListStoreInt> successCodes) {
+        return ExecRun.start(command, args, env, files, successCodes);
+    }
+
+    @BuiltinPath(value = "app", scopeId = 5048L)
+    public static App app(Opt<String> executor, byte[] bytes) {
+        return new App(executor, bytes);
     }
 
     @BuiltinPath(value = "eval.str_utf8", scopeId = 5044L)

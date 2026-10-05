@@ -231,7 +231,7 @@ final class EcoBuzz {
     }
 
     static void prelude(EcoMb e, TList<SourceExpr> out) {
-        out.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        out.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         for (var t : new String[] {"i1", "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64", "void"}) {
             out.add(e.let("t_" + t, llvm(e, t)));
         }
@@ -328,7 +328,7 @@ final class EcoBuzz {
             SourceExpr[] builderResults) {
         var exprs = new TList<SourceExpr>();
         prelude(e, exprs);
-        exprs.add(e.let("dsp_m", e.importLocal("dsp", "buzz-dsp.at")));
+        exprs.add(e.let("dsp_m", e.importLocal("dsp", "buzz-dsp.atz")));
         exprs.add(e.let("wave_t", e.fld(e.v("dsp_m"), "wave_t")));
         exprs.add(e.let("wave_table_t", e.fld(e.v("dsp_m"), "wave_table_t")));
         exprs.add(e.let("p_wave_table_t", e.call(llvm(e, "ptr"), e.v("wave_table_t"))));

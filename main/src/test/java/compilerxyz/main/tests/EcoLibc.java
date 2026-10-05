@@ -37,7 +37,7 @@ public final class EcoLibc {
 
     public static TList<SourceExpr> module(EcoMb e) {
         var exprs = new TList<SourceExpr>();
-        exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         var llvm = EcoExtern.Llvm.top(e);
         EcoExtern.bindTypes(e, exprs, llvm);
         for (var ex : EXTERNS) {
@@ -73,7 +73,10 @@ public final class EcoLibc {
                 e.fld(e.v("llvm"), "mod_t"),
                 e.optionTypeSome(e.fld(e.v("libc_o"), "type")),
                 e.mb.optNoneType(),
-                e.stage(e.call(e.lower(e.fld(e.v("libc_o"), "new")), e.rec(ctorFields.toArray(EcoMb.P[]::new))))));
+                e.stage(e.seq(
+                        e.callM(e.v("arg"), "lib", e.s("m")),
+                        e.ret(e.call(
+                                e.lower(e.fld(e.v("libc_o"), "new")), e.rec(ctorFields.toArray(EcoMb.P[]::new))))))));
 
         exprs.add(e.finish(e.v("d")));
         exprs.add(e.ret(e.fld(e.v("libc_builder"), "func")));

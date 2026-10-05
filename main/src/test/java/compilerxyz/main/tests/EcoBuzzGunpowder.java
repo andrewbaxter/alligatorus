@@ -40,21 +40,21 @@ final class EcoBuzzGunpowder {
 
     private static final IMap<String, Port> PORTS = IMap.ofEntries(
             new Pair<>(
-                    "BTDSys SampleGrid - byte x 16", new Port("sg", "buzz-samplegrid.at", EcoBuzzSampleGrid.NG, true)),
-            new Pair<>("Fuzzpilz UnwieldyTracker", new Port("ut", "buzz-unwieldytracker.at", 0, false)),
-            new Pair<>("M4", new Port("m4", "buzz-m4.at", EcoBuzzM4.NG, true)),
-            new Pair<>("FSM Infector", new Port("inf", "buzz-infector.at", EcoBuzzInfector.NG, true)),
-            new Pair<>("FSM TunaMan (Stereo)", new Port("tm", "buzz-tunaman.at", EcoBuzzTunaMan.NG, true)),
-            new Pair<>("Jeskola NiNjA dElaY (Stereo)", new Port("nj", "buzz-ninja.at", EcoBuzzNinja.NG, true)),
-            new Pair<>("m4wii", new Port("mw", "buzz-m4wii.at", EcoBuzzM4wII.NG, true)),
-            new Pair<>("Arguelles kAway", new Port("ka", "buzz-kaway.at", EcoBuzzKAway.NG, true)));
+                    "BTDSys SampleGrid - byte x 16", new Port("sg", "buzz-samplegrid.atz", EcoBuzzSampleGrid.NG, true)),
+            new Pair<>("Fuzzpilz UnwieldyTracker", new Port("ut", "buzz-unwieldytracker.atz", 0, false)),
+            new Pair<>("M4", new Port("m4", "buzz-m4.atz", EcoBuzzM4.NG, true)),
+            new Pair<>("FSM Infector", new Port("inf", "buzz-infector.atz", EcoBuzzInfector.NG, true)),
+            new Pair<>("FSM TunaMan (Stereo)", new Port("tm", "buzz-tunaman.atz", EcoBuzzTunaMan.NG, true)),
+            new Pair<>("Jeskola NiNjA dElaY (Stereo)", new Port("nj", "buzz-ninja.atz", EcoBuzzNinja.NG, true)),
+            new Pair<>("m4wii", new Port("mw", "buzz-m4wii.atz", EcoBuzzM4wII.NG, true)),
+            new Pair<>("Arguelles kAway", new Port("ka", "buzz-kaway.atz", EcoBuzzKAway.NG, true)));
     private static final IMap<String, Port> VST_PORTS = IMap.ofEntries(
-            new Pair<>("Classic EQ", new Port("ceq", "buzz-classiceq.at", EcoBuzzVst.NG, true)),
-            new Pair<>("KarmaFX Filter", new Port("kfx", "buzz-karmafilter.at", EcoBuzzVst.NG, true)),
-            new Pair<>("KarmaFX Filter2", new Port("kfx", "buzz-karmafilter.at", EcoBuzzVst.NG, true)),
-            new Pair<>("KarmaFX Filter3", new Port("kfx", "buzz-karmafilter.at", EcoBuzzVst.NG, true)),
-            new Pair<>("BloodOverdrive", new Port("bod", "buzz-bloodoverdrive.at", EcoBuzzVst.NG, true)),
-            new Pair<>("Blue Cat Phaser VST(", new Port("bcp", "buzz-bluecatphaser.at", EcoBuzzVst.NG, true)));
+            new Pair<>("Classic EQ", new Port("ceq", "buzz-classiceq.atz", EcoBuzzVst.NG, true)),
+            new Pair<>("KarmaFX Filter", new Port("kfx", "buzz-karmafilter.atz", EcoBuzzVst.NG, true)),
+            new Pair<>("KarmaFX Filter2", new Port("kfx", "buzz-karmafilter.atz", EcoBuzzVst.NG, true)),
+            new Pair<>("KarmaFX Filter3", new Port("kfx", "buzz-karmafilter.atz", EcoBuzzVst.NG, true)),
+            new Pair<>("BloodOverdrive", new Port("bod", "buzz-bloodoverdrive.atz", EcoBuzzVst.NG, true)),
+            new Pair<>("Blue Cat Phaser VST(", new Port("bcp", "buzz-bluecatphaser.atz", EcoBuzzVst.NG, true)));
 
     private record Inst(String id, EcoBuzzGunpowderData.Machine data, Opt<Port> port, boolean generatorType) {}
 
@@ -207,7 +207,7 @@ final class EcoBuzzGunpowder {
         return e.call(llvm(e, "global_t"), e.rec(e.p("ty", e.v(ptrTypeName)), e.p("mem", e.b(false))));
     }
 
-    public static TList<SourceExpr> module(EcoMb e) {
+    public static TList<SourceExpr> module(EcoMb e, EcoRootMode mode) {
         var byName = new HashMap<String, Inst>();
         var all = new ArrayList<Inst>();
         for (var m : EcoBuzzGunpowderData.MACHINES) {
@@ -267,8 +267,8 @@ final class EcoBuzzGunpowder {
         }
         for (var t : new String[] {"t_pv", "t_pu8", "t_pi8", "t_pf32", "t_pi32", "t_range_i32"}) k.names.add(t);
         k.def(e, "ll", e.call(llvm(e, "new"), e.tup()));
-        k.def(e, "pw", e.call(e.importLocal("pipewire", "pipewire-1.6.at"), e.v("ll")));
-        k.def(e, "dsp_m", e.importLocal("dsp", "buzz-dsp.at"));
+        k.def(e, "pw", e.call(e.importLocal("pipewire", "pipewire-1.6.atz"), e.v("ll")));
+        k.def(e, "dsp_m", e.importLocal("dsp", "buzz-dsp.atz"));
         k.def(e, "wave_t", e.fld(e.v("dsp_m"), "wave_t"));
         k.def(e, "wave_table_t", e.fld(e.v("dsp_m"), "wave_table_t"));
         var usedPorts = new HashSet<String>();
@@ -716,7 +716,7 @@ final class EcoBuzzGunpowder {
                 EcoBuzz.call(e, "pw_deinit", e.tup()),
                 e.ret(e.n(0)));
         x.add(fnDef(e, "main", new String[] {}, "main_fn_t", main));
-        x.add(e.call(e.mb.log(), e.callM0(e.v("ll"), "render")));
+        x.add(mode.ecoRootModeFinish(e, e.v("llvm"), e.v("ll")));
         return x;
     }
 }

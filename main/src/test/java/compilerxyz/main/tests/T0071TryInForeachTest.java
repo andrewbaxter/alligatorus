@@ -104,7 +104,8 @@ public final class T0071TryInForeachTest {
             }
             var messages = new TList<String>();
             for (var entry : ok.value().logs()) messages.add(entry.message());
-            assertEquals(TList.of("ok 1", "[0:" + locExpr.id().value() + "] boom"), messages);
+            var sourceId = T0200EcosystemLlvmTest.mainSourceId(cache, src.resolve("main.at"));
+            assertEquals(TList.of("ok 1", "[" + sourceId + ":" + locExpr.id().value() + "] boom"), messages);
         }
     }
 

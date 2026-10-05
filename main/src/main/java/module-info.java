@@ -12,6 +12,7 @@ module compilerxyz.main {
     requires java.sql;
     requires java.net.http;
     requires org.xerial.sqlitejdbc;
+    requires com.github.luben.zstd_jni;
 
     exports compilerxyz.main.artifact;
     exports compilerxyz.main.eval;

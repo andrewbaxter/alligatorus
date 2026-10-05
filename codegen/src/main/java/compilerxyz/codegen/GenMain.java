@@ -1891,77 +1891,192 @@ public final class GenMain {
                             throw new IllegalStateException("Unsupported kind: " + info.kind + " for " + qname);
                         }
 
+                        {
+                            var toBody = CodeBlock.builder();
+                            var fromBody = CodeBlock.builder();
+                            if (info.kind == TypeKind.RECORD) {
+                                toBody.addStatement(
+                                        "$T<String, $T> __o = new $T<>()",
+                                        CodecEmitter.TORDERED_MAP,
+                                        CodecEmitter.JSON_VALUE,
+                                        CodecEmitter.TORDERED_MAP);
+                                var fi = 0;
+                                for (var c : info.components) {
+                                    var key = CodecEmitter.toSnakeCase(c.name);
+                                    var fv = "__f" + fi++;
+                                    toBody.add(
+                                            CodecEmitter.toValueStmts(c.type, CodeBlock.of("value.$L()", c.name), fv));
+                                    toBody.addStatement("__o.put($S, $L)", key, fv);
+                                }
+                                toBody.addStatement("return new $T(__o)", CodecEmitter.JSON_VALUE_OBJECT);
+
+                                for (var c : info.components) {
+                                    var boxed = c.type.kind != CodecsGen.ParsedTypeKind.PRIMITIVE
+                                            ? CodecEmitter.javaTypeOf(c.type)
+                                            : switch (c.type.name) {
+                                                case "boolean" -> "Boolean";
+                                                case "char" -> "Character";
+                                                case "float" -> "Float";
+                                                case "double" -> "Double";
+                                                case "long" -> "Long";
+                                                case "int" -> "Integer";
+                                                case "short" -> "Short";
+                                                case "byte" -> "Byte";
+                                                default ->
+                                                    throw new IllegalStateException(
+                                                            "Unsupported primitive: " + c.type.name);
+                                            };
+                                    fromBody.addStatement(
+                                            "$T<$L> __$L = $T.none()",
+                                            CodecEmitter.OPT,
+                                            boxed,
+                                            c.name,
+                                            CodecEmitter.OPT);
+                                }
+                                fromBody.beginControlFlow(
+                                        "for (var __entry : $T.object(value, path).entrySet())",
+                                        CodecEmitter.JSON_VALUES);
+                                fromBody.addStatement("String __fname = __entry.getKey()");
+                                fromBody.beginControlFlow("switch (__fname)");
+                                for (var c : info.components) {
+                                    var key = CodecEmitter.toSnakeCase(c.name);
+                                    fromBody.beginControlFlow("case $S ->", key);
+                                    fromBody.addStatement("$T __p = path.field($S)", CodecEmitter.FIELD_PATH, key);
+                                    fromBody.addStatement("$L __v", CodecEmitter.javaTypeOf(c.type));
+                                    fromBody.add(CodecEmitter.fromValueStmts(
+                                            c.type, CodeBlock.of("__entry.getValue()"), CodeBlock.of("__p"), "__v"));
+                                    fromBody.addStatement("__$L = $T.some(__v)", c.name, CodecEmitter.OPT);
+                                    fromBody.endControlFlow();
+                                }
+                                fromBody.add(
+                                        "default -> throw new $T($S + __fname + $S, path.field(__fname));\n",
+                                        CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                        "Unknown field '",
+                                        "' in " + qname);
+                                fromBody.endControlFlow();
+                                fromBody.endControlFlow();
+                                for (var c : info.components) {
+                                    var key = CodecEmitter.toSnakeCase(c.name);
+                                    fromBody.addStatement(
+                                            "if (__$L.optIsNone()) throw new $T($S, path.field($S))",
+                                            c.name,
+                                            CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                            "Missing required field '" + c.name + "'",
+                                            key);
+                                }
+                                var ctorArgs = CodeBlock.builder();
+                                for (var i = 0; i < info.components.size(); i++) {
+                                    if (i > 0) ctorArgs.add(", ");
+                                    ctorArgs.add("__$L.optUnwrap()", info.components.get(i).name);
+                                }
+                                fromBody.addStatement("return new $L($L)", qname, ctorArgs.build());
+                            } else if (info.kind == TypeKind.SEALED) {
+                                toBody.addStatement(
+                                        "$T<String, $T> __o = new $T<>()",
+                                        CodecEmitter.TORDERED_MAP,
+                                        CodecEmitter.JSON_VALUE,
+                                        CodecEmitter.TORDERED_MAP);
+                                for (var perm : info.permittedSubclasses) {
+                                    var key = CodecEmitter.toSnakeCase(CodecEmitter.lastSegment(perm));
+                                    toBody.beginControlFlow("if (value instanceof $L __v)", perm);
+                                    toBody.addStatement(
+                                            "__o.put($S, $L.toValue(__v))",
+                                            key,
+                                            CodecEmitter.codecTargetFor(perm).klass());
+                                    toBody.nextControlFlow("else");
+                                }
+                                toBody.addStatement(
+                                        "throw new IllegalStateException($S + value.getClass())",
+                                        "Unhandled variant of " + qname + ": ");
+                                for (var i = 0; i < info.permittedSubclasses.size(); i++) {
+                                    toBody.endControlFlow();
+                                }
+                                toBody.addStatement("return new $T(__o)", CodecEmitter.JSON_VALUE_OBJECT);
+
+                                fromBody.addStatement("var __o = $T.object(value, path)", CodecEmitter.JSON_VALUES);
+                                fromBody.addStatement(
+                                        "if (__o.size() != 1) throw new $T($S, path)",
+                                        CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                        "Sealed " + qname + " must have exactly one variant");
+                                fromBody.addStatement("var __en = __o.entrySet().iterator().next()");
+                                fromBody.addStatement("String __tag = __en.getKey()");
+                                fromBody.addStatement("$L __out", qname);
+                                fromBody.beginControlFlow("switch (__tag)");
+                                for (var perm : info.permittedSubclasses) {
+                                    var key = CodecEmitter.toSnakeCase(CodecEmitter.lastSegment(perm));
+                                    var ct = CodecEmitter.codecTargetFor(perm);
+                                    if (ct.castTo().optIsSome()) {
+                                        fromBody.add(
+                                                "case $S -> __out = ($L) $L.fromValue(__en.getValue(), path.field($S));\n",
+                                                key,
+                                                ct.castTo().optUnwrap(),
+                                                ct.klass(),
+                                                key);
+                                    } else {
+                                        fromBody.add(
+                                                "case $S -> __out = $L.fromValue(__en.getValue(), path.field($S));\n",
+                                                key,
+                                                ct.klass(),
+                                                key);
+                                    }
+                                }
+                                fromBody.add(
+                                        "default -> throw new $T($S + __tag + $S, path);\n",
+                                        CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                        "Unknown variant '",
+                                        "' for " + qname);
+                                fromBody.endControlFlow();
+                                fromBody.addStatement("return __out");
+                            } else {
+                                toBody.addStatement(
+                                        "return new $T(value.name().toLowerCase(java.util.Locale.ROOT))",
+                                        CodecEmitter.JSON_VALUE_STRING);
+                                fromBody.addStatement("String __s = $T.string(value, path)", CodecEmitter.JSON_VALUES);
+                                fromBody.addStatement("String __u = __s.toUpperCase(java.util.Locale.ROOT)");
+                                fromBody.beginControlFlow("for ($L __c : $L.values())", qname, qname);
+                                fromBody.addStatement("if (__c.name().equals(__u)) return __c");
+                                fromBody.endControlFlow();
+                                fromBody.addStatement(
+                                        "throw new $T($S + __s + $S, path)",
+                                        CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                        "Unknown enum constant '",
+                                        "' for " + qname);
+                            }
+                            cls.addMethod(MethodSpec.methodBuilder("toValue")
+                                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                    .returns(CodecEmitter.JSON_VALUE)
+                                    .addParameter(target, "value")
+                                    .addCode(toBody.build())
+                                    .build());
+                            cls.addMethod(MethodSpec.methodBuilder("fromValue")
+                                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                    .returns(target)
+                                    .addParameter(CodecEmitter.JSON_VALUE, "value")
+                                    .addParameter(CodecEmitter.FIELD_PATH, "path")
+                                    .addCode(fromBody.build())
+                                    .build());
+                            cls.addMethod(MethodSpec.methodBuilder("fromValue")
+                                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                    .returns(target)
+                                    .addParameter(CodecEmitter.JSON_VALUE, "value")
+                                    .addStatement("return fromValue(value, $T.root())", CodecEmitter.FIELD_PATH)
+                                    .build());
+                        }
                         if (info.implementsMarker) {
-                            MethodSpec buildToValue;
-                            _buildToValue:
-                            {
-                                var body = CodeBlock.builder();
-                                body.beginControlFlow("try");
-                                body.addStatement(
-                                        "$T __sw = new $T()", CodecEmitter.STRING_WRITER, CodecEmitter.STRING_WRITER);
-                                body.addStatement(
-                                        "$T __jw = new $T(__sw)", CodecEmitter.JSON_WRITER, CodecEmitter.JSON_WRITER);
-                                body.addStatement("__jw.setSerializeNulls(true)");
-                                body.addStatement("__jw.setIndent($S)", "");
-                                body.addStatement("encode(__jw, value, $T.COMPACT)", CodecEmitter.JSON_STYLE);
-                                body.addStatement("__jw.close()");
-                                body.addStatement("return $T.parse(__sw.toString())", CodecEmitter.JSON_VALUES);
-                                body.nextControlFlow("catch ($T __e)", CodecEmitter.IO_EXCEPTION);
-                                body.addStatement("throw new AssertionError($S, __e)", "In-memory IO failed");
-                                body.endControlFlow();
-                                {
-                                    buildToValue = MethodSpec.methodBuilder("toValue")
-                                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                                            .returns(CodecEmitter.JSON_VALUE)
-                                            .addParameter(target, "value")
-                                            .addCode(body.build())
-                                            .build();
-                                    break _buildToValue;
-                                }
-                            }
-                            cls.addMethod(buildToValue);
-                            MethodSpec buildFromValue;
-                            _buildFromValue:
-                            {
-                                var body = CodeBlock.builder();
-                                body.beginControlFlow("try");
-                                body.addStatement("return deserialize($T.serialize(value))", CodecEmitter.JSON_VALUES);
-                                body.nextControlFlow("catch ($T __e)", CodecEmitter.IO_EXCEPTION);
-                                body.addStatement("throw new AssertionError($S, __e)", "In-memory IO failed");
-                                body.endControlFlow();
-                                {
-                                    buildFromValue = MethodSpec.methodBuilder("fromValue")
-                                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                                            .returns(target)
-                                            .addParameter(CodecEmitter.JSON_VALUE, "value")
-                                            .addCode(body.build())
-                                            .build();
-                                    break _buildFromValue;
-                                }
-                            }
-                            cls.addMethod(buildFromValue);
-                            MethodSpec buildDeserialize;
-                            _buildDeserialize:
-                            {
-                                var body = CodeBlock.builder();
-                                body.addStatement(
-                                        "$T __reader = new $T(new $T(json))",
-                                        CodecEmitter.JSON_READER,
-                                        CodecEmitter.JSON_READER,
-                                        CodecEmitter.STRING_READER);
-                                body.addStatement("return decode(__reader, $T.root())", CodecEmitter.FIELD_PATH);
-                                {
-                                    buildDeserialize = MethodSpec.methodBuilder("deserialize")
-                                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                                            .returns(target)
-                                            .addParameter(String.class, "json")
-                                            .addException(CodecEmitter.IO_EXCEPTION)
-                                            .addCode(body.build())
-                                            .build();
-                                    break _buildDeserialize;
-                                }
-                            }
-                            cls.addMethod(buildDeserialize);
+                            var body = CodeBlock.builder();
+                            body.addStatement(
+                                    "$T __reader = new $T(new $T(json))",
+                                    CodecEmitter.JSON_READER,
+                                    CodecEmitter.JSON_READER,
+                                    CodecEmitter.STRING_READER);
+                            body.addStatement("return decode(__reader, $T.root())", CodecEmitter.FIELD_PATH);
+                            cls.addMethod(MethodSpec.methodBuilder("deserialize")
+                                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                    .returns(target)
+                                    .addParameter(String.class, "json")
+                                    .addException(CodecEmitter.IO_EXCEPTION)
+                                    .addCode(body.build())
+                                    .build());
                         }
 
                         var javaFile = JavaFile.builder(CodecsGen.GEN_PACKAGE, cls.build())

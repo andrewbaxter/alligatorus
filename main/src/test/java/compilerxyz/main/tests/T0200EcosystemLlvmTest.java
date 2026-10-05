@@ -2,6 +2,7 @@ package compilerxyz.main.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.github.luben.zstd.Zstd;
 import com.google.gson.stream.JsonWriter;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.gen.codec.SourceModuleCodec;
@@ -39,8 +40,24 @@ public final class T0200EcosystemLlvmTest {
         return sw.toString();
     }
 
+    static byte[] serializeModuleZ(TList<SourceExpr> exprs) throws IOException {
+        var sw = new StringWriter();
+        var writer = new JsonWriter(sw);
+        writer.setSerializeNulls(true);
+        writer.setIndent("");
+        SourceModuleCodec.encode(writer, new SourceModule.V1(exprs), Json.Style.COMPACT);
+        writer.close();
+        return Zstd.compress(sw.toString().getBytes(StandardCharsets.UTF_8), ZSTD_LEVEL);
+    }
+
+    static final int ZSTD_LEVEL = 19;
+
     static void writeModule(Path file, TList<SourceExpr> exprs) throws IOException {
-        Files.writeString(file, serializeModule(exprs));
+        if (file.getFileName().toString().endsWith(".atz")) {
+            Files.write(file, serializeModuleZ(exprs));
+        } else {
+            Files.writeString(file, serializeModule(exprs));
+        }
     }
 
     static Compile.CompileResult compileOk(Path entry, Path cacheDir) {
@@ -113,14 +130,14 @@ public final class T0200EcosystemLlvmTest {
     public void test00000HelloWorldIr(@TempDir Path tmp) throws IOException {
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        writeModule(src.resolve("llvm-ir-22.at"), EcoLlvmIr.module(new EcoMb()));
+        writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
         var e = new EcoMb();
         var hello = "hello ecosys!\n".getBytes(StandardCharsets.UTF_8);
         var helloInit = new SourceExpr[hello.length + 1];
         for (int i = 0; i < hello.length; i++) helloInit[i] = e.n(hello[i] & 0xFF);
         helloInit[hello.length] = e.n(0);
         var setup = new TList<SourceExpr>();
-        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
         EcoExtern.bindTypes(e, setup, EcoExtern.Llvm.top(e));
         var puts = new EcoExtern("puts", IList.of("pu8"), "i32", false);
@@ -139,7 +156,7 @@ public final class T0200EcosystemLlvmTest {
         for (var n : exported) exportedFields.add(e.p(n, e.v(n)));
         setup.add(e.ret(e.rec(exportedFields.toArray(EcoMb.P[]::new))));
         var top = new TList<SourceExpr>();
-        top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : exported) top.add(e.let(n, e.fld(e.v("k"), n)));
         top.add(e.let("puts", puts.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.v("ll"), e.v("puts_fn_t"))));
@@ -154,7 +171,7 @@ public final class T0200EcosystemLlvmTest {
                                 e.p("init", e.tup(helloInit))))));
         top.add(func(
                 e, "main", "main_fn_t", e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hello"))), e.ret(e.n(0)))));
-        top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
+        top.add(e.call(e.mb.log(), e.fld(e.callM(e.v("ll"), "render", e.tup()), "ir")));
         writeModule(src.resolve("main.at"), top);
 
         var ok = compileOk(src.resolve("main.at"), tmp.resolve("cache"));
@@ -204,9 +221,9 @@ public final class T0200EcosystemLlvmTest {
             throws IOException {
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        writeModule(src.resolve("llvm-ir-22.at"), EcoLlvmIr.module(new EcoMb()));
+        writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
         var setup = new TList<SourceExpr>();
-        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
         EcoExtern.bindTypes(e, setup, EcoExtern.Llvm.top(e));
         var puts = new EcoExtern("puts", IList.of("pu8"), "i32", false);
@@ -225,7 +242,7 @@ public final class T0200EcosystemLlvmTest {
         for (var n : exported) exportedFields.add(e.p(n, e.v(n)));
         setup.add(e.ret(e.rec(exportedFields.toArray(EcoMb.P[]::new))));
         var top = new TList<SourceExpr>();
-        top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : exported) top.add(e.let(n, e.fld(e.v("k"), n)));
         top.add(e.let("puts", puts.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.v("ll"), e.v("puts_fn_t"))));
@@ -240,7 +257,7 @@ public final class T0200EcosystemLlvmTest {
                                 e.p("ty", e.v("hi_arr_t")),
                                 e.p("init", init)))));
         top.add(func(e, "main", "main_fn_t", e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hi"))), e.ret(e.n(0)))));
-        top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
+        top.add(e.call(e.mb.log(), e.fld(e.callM(e.v("ll"), "render", e.tup()), "ir")));
         writeModule(src.resolve("main.at"), top);
 
         return src.resolve("main.at");
@@ -276,7 +293,10 @@ public final class T0200EcosystemLlvmTest {
                     var errors = (TList<?>) err.error();
                     assertEquals(1, errors.size(), () -> "unexpected: " + res);
                     var only = (ExprErr) errors.get(0);
-                    assertEquals(0L, only.loc().source().value(), () -> "error not located in main.at: " + res);
+                    assertEquals(
+                            mainSourceId(cache, entry),
+                            only.loc().source().value(),
+                            () -> "error not located in main.at: " + res);
                     Assertions.assertTrue(
                             only.message().contains("host int values do not fit llvm u8"), () -> "unexpected: " + res);
                 }
@@ -360,7 +380,10 @@ public final class T0200EcosystemLlvmTest {
                     var errors = (TList<?>) err.error();
                     assertEquals(1, errors.size(), () -> "unexpected: " + res);
                     var only = (ExprErr) errors.get(0);
-                    assertEquals(0L, only.loc().source().value(), () -> "error not located in main.at: " + res);
+                    assertEquals(
+                            mainSourceId(cache, entry),
+                            only.loc().source().value(),
+                            () -> "error not located in main.at: " + res);
                     Assertions.assertTrue(
                             only.message().contains("string initializer has 4 bytes, expected 5"),
                             () -> "unexpected: " + res);
@@ -373,10 +396,10 @@ public final class T0200EcosystemLlvmTest {
     public void test00090Cstr(@TempDir Path tmp) throws IOException {
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        writeModule(src.resolve("llvm-ir-22.at"), EcoLlvmIr.module(new EcoMb()));
+        writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
         var e = new EcoMb();
         var setup = new TList<SourceExpr>();
-        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
         EcoExtern.bindTypes(e, setup, EcoExtern.Llvm.top(e));
         var puts = new EcoExtern("puts", IList.of("pu8"), "i32", false);
@@ -389,14 +412,14 @@ public final class T0200EcosystemLlvmTest {
                 e.p("t_i32", e.v("t_i32")),
                 e.p("t_pu8", e.v("t_pu8")))));
         var top = new TList<SourceExpr>();
-        top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : new String[] {"ll", "puts_fn_t", "main_fn_t", "t_i32", "t_pu8"})
             top.add(e.let(n, e.fld(e.v("k"), n)));
         top.add(e.let("puts", puts.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.v("ll"), e.v("puts_fn_t"))));
         top.add(e.let("hi", e.callM(e.v("ll"), "cstr", e.s("hé\n"))));
         top.add(func(e, "main", "main_fn_t", e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hi"))), e.ret(e.n(0)))));
-        top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
+        top.add(e.call(e.mb.log(), e.fld(e.callM(e.v("ll"), "render", e.tup()), "ir")));
         writeModule(src.resolve("main.at"), top);
 
         var ok = compileOk(src.resolve("main.at"), tmp.resolve("cache"));
@@ -446,23 +469,23 @@ public final class T0200EcosystemLlvmTest {
             """;
 
     private static void writeStagedModule(Path src, EcoMb e, String name, SourceExpr body) throws IOException {
-        writeModule(src.resolve("llvm-ir-22.at"), EcoLlvmIr.module(new EcoMb()));
-        writeModule(src.resolve("libc-2.42.at"), EcoLibc.module(new EcoMb()));
+        writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
+        writeModule(src.resolve("libc-2.42.atz"), EcoLibc.module(new EcoMb()));
         var setup = new TList<SourceExpr>();
-        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
-        setup.add(e.let("libc", e.importLocal("libc", "libc-2.42.at")));
+        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
+        setup.add(e.let("libc", e.importLocal("libc", "libc-2.42.atz")));
         setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
         setup.add(e.let("c", e.call(e.v("libc"), e.v("ll"))));
         EcoExtern.bindTypes(e, setup, EcoExtern.Llvm.top(e));
         setup.add(e.let("f_fn_t", fnType(e, "t_f64", "t_f64")));
         setup.add(e.ret(e.rec(e.p("ll", e.v("ll")), e.p("c", e.v("c")), e.p("f_fn_t", e.v("f_fn_t")))));
         var top = new TList<SourceExpr>();
-        top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : new String[] {"ll", "c", "f_fn_t"}) top.add(e.let(n, e.fld(e.v("k"), n)));
         top.add(e.let("sin", e.callM(e.v("c"), "sin", e.tup())));
         top.add(func(e, name, "f_fn_t", body, "x"));
-        top.add(e.call(e.mb.log(), e.callM(e.v("ll"), "render", e.tup())));
+        top.add(e.call(e.mb.log(), e.fld(e.callM(e.v("ll"), "render", e.tup()), "ir")));
         writeModule(src.resolve("main.at"), top);
     }
 
@@ -586,13 +609,13 @@ public final class T0200EcosystemLlvmTest {
     public void test00200Synth(@TempDir Path tmp) throws IOException {
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        writeModule(src.resolve("llvm-ir-22.at"), EcoLlvmIr.module(new EcoMb()));
-        writeModule(src.resolve("libc-2.42.at"), EcoLibc.module(new EcoMb()));
-        writeModule(src.resolve("spa-pod-1.6.at"), EcoSpaPod.module(new EcoMb()));
-        writeModule(src.resolve("pipewire-1.6.at"), EcoPipewire.module(new EcoMb()));
-        writeModule(src.resolve("synth-midi-sine.at"), EcoSynth.module(new EcoMb()));
+        writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
+        writeModule(src.resolve("libc-2.42.atz"), EcoLibc.module(new EcoMb()));
+        writeModule(src.resolve("spa-pod-1.6.atz"), EcoSpaPod.module(new EcoMb()));
+        writeModule(src.resolve("pipewire-1.6.atz"), EcoPipewire.module(new EcoMb()));
+        writeModule(src.resolve("synth-midi-sine.atz"), EcoSynth.module(new EcoMb(), EcoRootMode.IR));
 
-        var ok = compileOk(src.resolve("synth-midi-sine.at"), tmp.resolve("cache"));
+        var ok = compileOk(src.resolve("synth-midi-sine.atz"), tmp.resolve("cache"));
         assertEquals(1, ok.logs().size());
         var ir = ok.logs().get(0).message();
         Files.writeString(tmp.resolve("synth.ll"), ir);
@@ -633,11 +656,69 @@ public final class T0200EcosystemLlvmTest {
         assertValidIr(tmp, "synth", ir);
     }
 
-    private static void writeIfChanged(Path file, String content) throws IOException {
-        if (Files.exists(file) && Files.readString(file).equals(content)) {
+    static long mainSourceId(CacheReal cache, Path entry) {
+        return switch (cache.sourcesGet(new SourceSpecAbsolute.Local(entry.toString()))) {
+            case Result.Ok<compilerxyz.main.langhelp.Sources.SourceResolved, String> ok ->
+                switch (ok.value()) {
+                    case compilerxyz.main.langhelp.Sources.SourceResolved.Module m -> m.id().value();
+                    case compilerxyz.main.langhelp.Sources.SourceResolved.Bundle b ->
+                        throw new AssertionError("entry is a bundle: " + entry);
+                };
+            case Result.Err<compilerxyz.main.langhelp.Sources.SourceResolved, String> err ->
+                throw new AssertionError("entry does not resolve: " + err.error());
+        };
+    }
+
+    static boolean onPath(String tool) {
+        var path = System.getenv("PATH");
+        if (path == null) return false;
+        for (var dir : path.split(File.pathSeparator)) {
+            if (Files.isExecutable(Path.of(dir, tool))) return true;
+        }
+        return false;
+    }
+
+    static boolean canLink(Path tmp, String... libs) throws IOException {
+        if (!onPath("clang")) return false;
+        var probe = tmp.resolve("probe.c");
+        Files.writeString(probe, "int main(void) { return 0; }\n");
+        var argv = new java.util.ArrayList<String>();
+        argv.add("clang");
+        argv.add(probe.toString());
+        for (var lib : libs) argv.add("-l" + lib);
+        argv.add("-o");
+        argv.add(tmp.resolve("probe").toString());
+        try {
+            var proc = new ProcessBuilder(argv).redirectErrorStream(true).start();
+            proc.getInputStream().readAllBytes();
+            return proc.waitFor() == 0;
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @Test
+    public void test00210SynthApp(@TempDir Path tmp) throws IOException {
+        Assumptions.assumeTrue(canLink(tmp, "pipewire-0.3", "m"), "clang cannot link libpipewire-0.3 and libm");
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
+        writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
+        writeModule(src.resolve("libc-2.42.atz"), EcoLibc.module(new EcoMb()));
+        writeModule(src.resolve("spa-pod-1.6.atz"), EcoSpaPod.module(new EcoMb()));
+        writeModule(src.resolve("pipewire-1.6.atz"), EcoPipewire.module(new EcoMb()));
+        writeModule(src.resolve("synth-midi-sine.atz"), EcoSynth.module(new EcoMb(), EcoRootMode.APP));
+        var app = T0049AppTest.compileApp(tmp.resolve("cache"), src.resolve("synth-midi-sine.atz"));
+        Assertions.assertTrue(app.executor().optIsNone());
+        var bytes = app.bytes();
+        Assertions.assertTrue(bytes.length > 4, "app is empty");
+        Assertions.assertArrayEquals(new byte[] {0x7f, 'E', 'L', 'F'}, java.util.Arrays.copyOf(bytes, 4));
+    }
+
+    private static void writeIfChanged(Path file, byte[] content) throws IOException {
+        if (Files.exists(file) && java.util.Arrays.equals(Files.readAllBytes(file), content)) {
             return;
         }
-        Files.writeString(file, content);
+        Files.write(file, content);
     }
 
     @Test
@@ -648,23 +729,23 @@ public final class T0200EcosystemLlvmTest {
         var src = repoRoot.resolve("tmp-buzz-test");
         Files.createDirectories(src);
         try {
-            writeModule(src.resolve("llvm-ir-22.at"), EcoLlvmIr.module(new EcoMb()));
-            writeModule(src.resolve("libc-2.42.at"), EcoLibc.module(new EcoMb()));
-            writeModule(src.resolve("spa-pod-1.6.at"), EcoSpaPod.module(new EcoMb()));
-            writeModule(src.resolve("pipewire-1.6.at"), EcoPipewire.module(new EcoMb()));
-            writeModule(src.resolve("buzz-dsp.at"), EcoBuzzDsp.module(new EcoMb()));
-            writeModule(src.resolve("buzz-samplegrid.at"), EcoBuzzSampleGrid.module(new EcoMb()));
-            writeModule(src.resolve("buzz-unwieldytracker.at"), EcoBuzzUnwieldyTracker.module(new EcoMb()));
-            writeModule(src.resolve("buzz-m4.at"), EcoBuzzM4.module(new EcoMb()));
-            writeModule(src.resolve("buzz-infector.at"), EcoBuzzInfector.module(new EcoMb()));
-            writeModule(src.resolve("buzz-tunaman.at"), EcoBuzzTunaMan.module(new EcoMb()));
-            writeModule(src.resolve("buzz-ninja.at"), EcoBuzzNinja.module(new EcoMb()));
-            writeModule(src.resolve("buzz-m4wii.at"), EcoBuzzM4wII.module(new EcoMb()));
-            writeModule(src.resolve("buzz-classiceq.at"), EcoBuzzClassicEq.module(new EcoMb()));
-            writeModule(src.resolve("buzz-karmafilter.at"), EcoBuzzKarmaFilter.module(new EcoMb()));
-            writeModule(src.resolve("buzz-kaway.at"), EcoBuzzKAway.module(new EcoMb()));
-            writeModule(src.resolve("buzz-bloodoverdrive.at"), EcoBuzzBloodOverdrive.module(new EcoMb()));
-            writeModule(src.resolve("buzz-bluecatphaser.at"), EcoBuzzBlueCatPhaser.module(new EcoMb()));
+            writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
+            writeModule(src.resolve("libc-2.42.atz"), EcoLibc.module(new EcoMb()));
+            writeModule(src.resolve("spa-pod-1.6.atz"), EcoSpaPod.module(new EcoMb()));
+            writeModule(src.resolve("pipewire-1.6.atz"), EcoPipewire.module(new EcoMb()));
+            writeModule(src.resolve("buzz-dsp.atz"), EcoBuzzDsp.module(new EcoMb()));
+            writeModule(src.resolve("buzz-samplegrid.atz"), EcoBuzzSampleGrid.module(new EcoMb()));
+            writeModule(src.resolve("buzz-unwieldytracker.atz"), EcoBuzzUnwieldyTracker.module(new EcoMb()));
+            writeModule(src.resolve("buzz-m4.atz"), EcoBuzzM4.module(new EcoMb()));
+            writeModule(src.resolve("buzz-infector.atz"), EcoBuzzInfector.module(new EcoMb()));
+            writeModule(src.resolve("buzz-tunaman.atz"), EcoBuzzTunaMan.module(new EcoMb()));
+            writeModule(src.resolve("buzz-ninja.atz"), EcoBuzzNinja.module(new EcoMb()));
+            writeModule(src.resolve("buzz-m4wii.atz"), EcoBuzzM4wII.module(new EcoMb()));
+            writeModule(src.resolve("buzz-classiceq.atz"), EcoBuzzClassicEq.module(new EcoMb()));
+            writeModule(src.resolve("buzz-karmafilter.atz"), EcoBuzzKarmaFilter.module(new EcoMb()));
+            writeModule(src.resolve("buzz-kaway.atz"), EcoBuzzKAway.module(new EcoMb()));
+            writeModule(src.resolve("buzz-bloodoverdrive.atz"), EcoBuzzBloodOverdrive.module(new EcoMb()));
+            writeModule(src.resolve("buzz-bluecatphaser.atz"), EcoBuzzBlueCatPhaser.module(new EcoMb()));
             Files.copy(
                     repoRoot.resolve("ecosystem").resolve("buzz-m4wii-waves.raw"),
                     src.resolve("buzz-m4wii-waves.raw"),
@@ -673,8 +754,9 @@ public final class T0200EcosystemLlvmTest {
                     repoRoot.resolve("ecosystem").resolve("buzz-m4-waves.raw"),
                     src.resolve("buzz-m4-waves.raw"),
                     StandardCopyOption.REPLACE_EXISTING);
-            writeModule(src.resolve("buzz-gunpowder-valentine.at"), EcoBuzzGunpowder.module(new EcoMb()));
-            var ok = compileOk(src.resolve("buzz-gunpowder-valentine.at"), tmp.resolve("cache"));
+            writeModule(
+                    src.resolve("buzz-gunpowder-valentine.atz"), EcoBuzzGunpowder.module(new EcoMb(), EcoRootMode.IR));
+            var ok = compileOk(src.resolve("buzz-gunpowder-valentine.atz"), tmp.resolve("cache"));
             assertEquals(1, ok.logs().size());
             var ir = ok.logs().get(0).message();
             Files.writeString(tmp.resolve("buzz.ll"), ir);
@@ -734,32 +816,42 @@ public final class T0200EcosystemLlvmTest {
         if (repoRoot == null) throw new IllegalStateException("test working directory has no parent");
         var ecosystem = repoRoot.resolve("ecosystem");
         Assumptions.assumeTrue(Files.exists(repoRoot.resolve("pom.xml")) && Files.isDirectory(ecosystem));
-        writeIfChanged(ecosystem.resolve("llvm-ir-22.at"), serializeModule(EcoLlvmIr.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("libc-2.42.at"), serializeModule(EcoLibc.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("spa-pod-1.6.at"), serializeModule(EcoSpaPod.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("pipewire-1.6.at"), serializeModule(EcoPipewire.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("synth-midi-sine.at"), serializeModule(EcoSynth.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("buzz-dsp.at"), serializeModule(EcoBuzzDsp.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("buzz-samplegrid.at"), serializeModule(EcoBuzzSampleGrid.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("llvm-ir-22.atz"), serializeModuleZ(EcoLlvmIr.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("libc-2.42.atz"), serializeModuleZ(EcoLibc.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("spa-pod-1.6.atz"), serializeModuleZ(EcoSpaPod.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("pipewire-1.6.atz"), serializeModuleZ(EcoPipewire.module(new EcoMb())));
         writeIfChanged(
-                ecosystem.resolve("buzz-unwieldytracker.at"),
-                serializeModule(EcoBuzzUnwieldyTracker.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("buzz-m4.at"), serializeModule(EcoBuzzM4.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("buzz-infector.at"), serializeModule(EcoBuzzInfector.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("buzz-tunaman.at"), serializeModule(EcoBuzzTunaMan.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("buzz-ninja.at"), serializeModule(EcoBuzzNinja.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("buzz-m4wii.at"), serializeModule(EcoBuzzM4wII.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("buzz-classiceq.at"), serializeModule(EcoBuzzClassicEq.module(new EcoMb())));
+                ecosystem.resolve("synth-midi-sine.atz"),
+                serializeModuleZ(EcoSynth.module(new EcoMb(), EcoRootMode.APP)));
         writeIfChanged(
-                ecosystem.resolve("buzz-karmafilter.at"), serializeModule(EcoBuzzKarmaFilter.module(new EcoMb())));
-        writeIfChanged(ecosystem.resolve("buzz-kaway.at"), serializeModule(EcoBuzzKAway.module(new EcoMb())));
+                ecosystem.resolve("synth-midi-sine-ir.atz"),
+                serializeModuleZ(EcoSynth.module(new EcoMb(), EcoRootMode.IR)));
+        writeIfChanged(ecosystem.resolve("buzz-dsp.atz"), serializeModuleZ(EcoBuzzDsp.module(new EcoMb())));
         writeIfChanged(
-                ecosystem.resolve("buzz-bloodoverdrive.at"),
-                serializeModule(EcoBuzzBloodOverdrive.module(new EcoMb())));
+                ecosystem.resolve("buzz-samplegrid.atz"), serializeModuleZ(EcoBuzzSampleGrid.module(new EcoMb())));
         writeIfChanged(
-                ecosystem.resolve("buzz-bluecatphaser.at"), serializeModule(EcoBuzzBlueCatPhaser.module(new EcoMb())));
+                ecosystem.resolve("buzz-unwieldytracker.atz"),
+                serializeModuleZ(EcoBuzzUnwieldyTracker.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-m4.atz"), serializeModuleZ(EcoBuzzM4.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-infector.atz"), serializeModuleZ(EcoBuzzInfector.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-tunaman.atz"), serializeModuleZ(EcoBuzzTunaMan.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-ninja.atz"), serializeModuleZ(EcoBuzzNinja.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-m4wii.atz"), serializeModuleZ(EcoBuzzM4wII.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-classiceq.atz"), serializeModuleZ(EcoBuzzClassicEq.module(new EcoMb())));
         writeIfChanged(
-                ecosystem.resolve("buzz-gunpowder-valentine.at"),
-                serializeModule(EcoBuzzGunpowder.module(new EcoMb())));
+                ecosystem.resolve("buzz-karmafilter.atz"), serializeModuleZ(EcoBuzzKarmaFilter.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("buzz-kaway.atz"), serializeModuleZ(EcoBuzzKAway.module(new EcoMb())));
+        writeIfChanged(
+                ecosystem.resolve("buzz-bloodoverdrive.atz"),
+                serializeModuleZ(EcoBuzzBloodOverdrive.module(new EcoMb())));
+        writeIfChanged(
+                ecosystem.resolve("buzz-bluecatphaser.atz"),
+                serializeModuleZ(EcoBuzzBlueCatPhaser.module(new EcoMb())));
+        writeIfChanged(
+                ecosystem.resolve("buzz-gunpowder-valentine.atz"),
+                serializeModuleZ(EcoBuzzGunpowder.module(new EcoMb(), EcoRootMode.APP)));
+        writeIfChanged(
+                ecosystem.resolve("buzz-gunpowder-valentine-ir.atz"),
+                serializeModuleZ(EcoBuzzGunpowder.module(new EcoMb(), EcoRootMode.IR)));
     }
 }

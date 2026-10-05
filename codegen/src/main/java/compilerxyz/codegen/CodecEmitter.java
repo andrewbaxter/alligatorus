@@ -19,6 +19,19 @@ final class CodecEmitter {
     public static final ClassName JSON = ClassName.get("compilerxyz.main.safejson", "Json");
     public static final ClassName JSON_VALUE = ClassName.get("compilerxyz.main.safejson", "JsonValue");
     public static final ClassName JSON_VALUES = ClassName.get("compilerxyz.main.safejson", "JsonValues");
+    public static final ClassName JSON_VALUE_NULL = ClassName.get("compilerxyz.main.safejson", "JsonValueNull");
+    public static final ClassName JSON_VALUE_BOOLEAN = ClassName.get("compilerxyz.main.safejson", "JsonValueBoolean");
+    public static final ClassName JSON_VALUE_NUMBER = ClassName.get("compilerxyz.main.safejson", "JsonValueNumber");
+    public static final ClassName JSON_VALUE_STRING = ClassName.get("compilerxyz.main.safejson", "JsonValueString");
+    public static final ClassName JSON_VALUE_ARRAY = ClassName.get("compilerxyz.main.safejson", "JsonValueArray");
+    public static final ClassName JSON_VALUE_OBJECT = ClassName.get("compilerxyz.main.safejson", "JsonValueObject");
+    private static int freshCounter = 0;
+
+    private static String fresh(String base) {
+        freshCounter++;
+        return "__" + base + freshCounter;
+    }
+
     public static final ClassName STRING_READER = ClassName.get("java.io", "StringReader");
     public static final ClassName STRING_WRITER = ClassName.get("java.io", "StringWriter");
     public static final ClassName JSON_STYLE = ClassName.get("compilerxyz.main.safejson", "Json", "Style");
@@ -27,8 +40,8 @@ final class CodecEmitter {
             ClassName.get("compilerxyz.main.safejson", "Json", "DeserializationException");
     public static final ClassName IO_EXCEPTION = ClassName.get(IOException.class);
     private static final ClassName BASE64 = ClassName.get("java.util", "Base64");
-    private static final ClassName TLIST = ClassName.get("compilerxyz.prelude.util", "TList");
-    private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.prelude.util", "TOrderedMap");
+    public static final ClassName TLIST = ClassName.get("compilerxyz.prelude.util", "TList");
+    public static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.prelude.util", "TOrderedMap");
     public static final ClassName OPT = ClassName.get("compilerxyz.prelude.util", "Opt");
     private static final ClassName OPT_SOME = ClassName.get("compilerxyz.prelude.util", "Opt", "Some");
     private static final String ARTIFACT_CODECS_REF = "compilerxyz.main.artifact.ArtifactCodecs";
@@ -319,6 +332,308 @@ final class CodecEmitter {
                     pathExpr);
         } else {
             b.addStatement("$L = $L.decode($L, $L)", targetVar, codecTarget.klass(), readerExpr, pathExpr);
+        }
+        return b.build();
+    }
+
+    public static CodeBlock toValueStmts(ParsedType type, CodeBlock valueExpr, String targetVar) {
+        var b = CodeBlock.builder();
+        if (type.kind == ParsedTypeKind.PRIMITIVE) {
+            switch (type.name) {
+                case "int", "long", "short", "byte" ->
+                    b.addStatement("$T $L = new $T((long) $L)", JSON_VALUE, targetVar, JSON_VALUE_NUMBER, valueExpr);
+                case "double", "float" ->
+                    b.addStatement("$T $L = new $T((double) $L)", JSON_VALUE, targetVar, JSON_VALUE_NUMBER, valueExpr);
+                case "boolean" ->
+                    b.addStatement("$T $L = new $T($L)", JSON_VALUE, targetVar, JSON_VALUE_BOOLEAN, valueExpr);
+                case "char" ->
+                    b.addStatement(
+                            "$T $L = new $T(String.valueOf($L))", JSON_VALUE, targetVar, JSON_VALUE_STRING, valueExpr);
+                default -> throw new IllegalStateException("Unsupported primitive: " + type.name);
+            }
+            return b.build();
+        }
+        if (type.kind == ParsedTypeKind.BYTE_ARRAY) {
+            b.addStatement(
+                    "$T $L = new $T($T.getEncoder().encodeToString($L))",
+                    JSON_VALUE,
+                    targetVar,
+                    JSON_VALUE_STRING,
+                    BASE64,
+                    valueExpr);
+            return b.build();
+        }
+        var qn = type.name;
+        if (qn.equals("TList") || qn.equals("compilerxyz.prelude.util.TList")) {
+            var elem = typeArg(type, 0);
+            var arr = fresh("a");
+            var el = fresh("e");
+            var ev = fresh("ev");
+            b.addStatement("$T $L", JSON_VALUE, targetVar);
+            b.beginControlFlow("");
+            b.addStatement("$T<$T> $L = new $T<>()", TLIST, JSON_VALUE, arr, TLIST);
+            b.beginControlFlow("for (var $L : $L)", el, valueExpr);
+            b.add(toValueStmts(elem, CodeBlock.of("$L", el), ev));
+            b.addStatement("$L.add($L)", arr, ev);
+            b.endControlFlow();
+            b.addStatement("$L = new $T($L)", targetVar, JSON_VALUE_ARRAY, arr);
+            b.endControlFlow();
+            return b.build();
+        }
+        if (qn.equals("TOrderedMap") || qn.equals("compilerxyz.prelude.util.TOrderedMap")) {
+            var keyT = typeArg(type, 0);
+            var valT = typeArg(type, 1);
+            var arr = fresh("a");
+            var me = fresh("me");
+            var pair = fresh("p");
+            var kv = fresh("kv");
+            var vv = fresh("vv");
+            b.addStatement("$T $L", JSON_VALUE, targetVar);
+            b.beginControlFlow("");
+            b.addStatement("$T<$T> $L = new $T<>()", TLIST, JSON_VALUE, arr, TLIST);
+            b.beginControlFlow("for (var $L : $L.entrySet())", me, valueExpr);
+            b.addStatement("$T<$T> $L = new $T<>()", TLIST, JSON_VALUE, pair, TLIST);
+            b.add(toValueStmts(keyT, CodeBlock.of("$L.getKey()", me), kv));
+            b.addStatement("$L.add($L)", pair, kv);
+            b.add(toValueStmts(valT, CodeBlock.of("$L.getValue()", me), vv));
+            b.addStatement("$L.add($L)", pair, vv);
+            b.addStatement("$L.add(new $T($L))", arr, JSON_VALUE_ARRAY, pair);
+            b.endControlFlow();
+            b.addStatement("$L = new $T($L)", targetVar, JSON_VALUE_ARRAY, arr);
+            b.endControlFlow();
+            return b.build();
+        }
+        if (qn.equals("Opt") || qn.equals("compilerxyz.prelude.util.Opt")) {
+            var elem = typeArg(type, 0);
+            var elemJava = javaTypeOf(elem);
+            var obj = fresh("o");
+            var some = fresh("some");
+            var sv = fresh("sv");
+            var svv = fresh("svv");
+            b.addStatement("$T $L", JSON_VALUE, targetVar);
+            b.beginControlFlow("");
+            b.addStatement("$T<String, $T> $L = new $T<>()", TORDERED_MAP, JSON_VALUE, obj, TORDERED_MAP);
+            b.beginControlFlow("if ($L instanceof $T<?> $L)", valueExpr, OPT_SOME, some);
+            b.addStatement("$L $L = ($L) $L.value()", elemJava, sv, elemJava, some);
+            b.add(toValueStmts(elem, CodeBlock.of("$L", sv), svv));
+            b.addStatement("$L.put($S, $L)", obj, "some", svv);
+            b.nextControlFlow("else");
+            b.addStatement("$L.put($S, new $T())", obj, "none", JSON_VALUE_NULL);
+            b.endControlFlow();
+            b.addStatement("$L = new $T($L)", targetVar, JSON_VALUE_OBJECT, obj);
+            b.endControlFlow();
+            return b.build();
+        }
+        if (qn.equals("String") || qn.equals("java.lang.String")) {
+            b.addStatement("$T $L = new $T($L)", JSON_VALUE, targetVar, JSON_VALUE_STRING, valueExpr);
+            return b.build();
+        }
+        if (qn.equals("Integer")
+                || qn.equals("java.lang.Integer")
+                || qn.equals("Long")
+                || qn.equals("java.lang.Long")
+                || qn.equals("Short")
+                || qn.equals("java.lang.Short")
+                || qn.equals("Byte")
+                || qn.equals("java.lang.Byte")) {
+            b.addStatement("$T $L = new $T($L.longValue())", JSON_VALUE, targetVar, JSON_VALUE_NUMBER, valueExpr);
+            return b.build();
+        }
+        if (qn.equals("Double")
+                || qn.equals("java.lang.Double")
+                || qn.equals("Float")
+                || qn.equals("java.lang.Float")) {
+            b.addStatement("$T $L = new $T($L.doubleValue())", JSON_VALUE, targetVar, JSON_VALUE_NUMBER, valueExpr);
+            return b.build();
+        }
+        if (qn.equals("Boolean") || qn.equals("java.lang.Boolean")) {
+            b.addStatement("$T $L = new $T((boolean) $L)", JSON_VALUE, targetVar, JSON_VALUE_BOOLEAN, valueExpr);
+            return b.build();
+        }
+        var codecTarget = codecTargetFor(qn);
+        b.addStatement("$T $L = $L.toValue($L)", JSON_VALUE, targetVar, codecTarget.klass(), valueExpr);
+        return b.build();
+    }
+
+    public static CodeBlock fromValueStmts(ParsedType type, CodeBlock jsonExpr, CodeBlock pathExpr, String targetVar) {
+        var b = CodeBlock.builder();
+        if (type.kind == ParsedTypeKind.PRIMITIVE) {
+            switch (type.name) {
+                case "int" ->
+                    b.addStatement("$L = (int) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+                case "long" ->
+                    b.addStatement("$L = (long) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+                case "short" ->
+                    b.addStatement("$L = (short) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+                case "byte" ->
+                    b.addStatement("$L = (byte) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+                case "double" -> b.addStatement("$L = $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+                case "float" ->
+                    b.addStatement("$L = (float) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+                case "boolean" -> b.addStatement("$L = $T.bool($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+                case "char" -> {
+                    var sv = fresh("s");
+                    b.beginControlFlow("");
+                    b.addStatement("String $L = $T.string($L, $L)", sv, JSON_VALUES, jsonExpr, pathExpr);
+                    b.addStatement(
+                            "if ($L.length() != 1) throw new $T($S + $L, $L)",
+                            sv,
+                            DESERIALIZATION_EXCEPTION,
+                            "Expected single character, got: ",
+                            sv,
+                            pathExpr);
+                    b.addStatement("$L = $L.charAt(0)", targetVar, sv);
+                    b.endControlFlow();
+                }
+                default -> throw new IllegalStateException("Unsupported primitive: " + type.name);
+            }
+            return b.build();
+        }
+        if (type.kind == ParsedTypeKind.BYTE_ARRAY) {
+            b.addStatement(
+                    "$L = $T.getDecoder().decode($T.string($L, $L))",
+                    targetVar,
+                    BASE64,
+                    JSON_VALUES,
+                    jsonExpr,
+                    pathExpr);
+            return b.build();
+        }
+        var qn = type.name;
+        if (qn.equals("Opt") || qn.equals("compilerxyz.prelude.util.Opt")) {
+            var elem = typeArg(type, 0);
+            var elemJava = javaTypeOf(elem);
+            var obj = fresh("o");
+            var en = fresh("en");
+            var sv = fresh("sv");
+            b.beginControlFlow("");
+            b.addStatement("var $L = $T.object($L, $L)", obj, JSON_VALUES, jsonExpr, pathExpr);
+            b.addStatement(
+                    "if ($L.size() != 1) throw new $T($S, $L)",
+                    obj,
+                    DESERIALIZATION_EXCEPTION,
+                    "Opt object must have exactly one tag",
+                    pathExpr);
+            b.addStatement("var $L = $L.entrySet().iterator().next()", en, obj);
+            b.beginControlFlow("switch ($L.getKey())", en);
+            b.beginControlFlow("case $S ->", "some");
+            b.addStatement("$L $L", elemJava, sv);
+            b.add(fromValueStmts(
+                    elem, CodeBlock.of("$L.getValue()", en), CodeBlock.of("$L.field($S)", pathExpr, "some"), sv));
+            b.addStatement("$L = $T.some($L)", targetVar, OPT, sv);
+            b.endControlFlow();
+            b.beginControlFlow("case $S ->", "none");
+            b.addStatement(
+                    "if (!($L.getValue() instanceof $T)) throw new $T($S, $L)",
+                    en,
+                    JSON_VALUE_NULL,
+                    DESERIALIZATION_EXCEPTION,
+                    "Opt none must carry null",
+                    pathExpr);
+            b.addStatement("$L = $T.none()", targetVar, OPT);
+            b.endControlFlow();
+            b.add(
+                    "default -> throw new $T($S + $L.getKey() + $S, $L);\n",
+                    DESERIALIZATION_EXCEPTION,
+                    "Unknown Opt tag '",
+                    en,
+                    "'",
+                    pathExpr);
+            b.endControlFlow();
+            b.endControlFlow();
+            return b.build();
+        }
+        if (qn.equals("TList") || qn.equals("compilerxyz.prelude.util.TList")) {
+            var elem = typeArg(type, 0);
+            var elemType = javaTypeOf(elem);
+            var list = fresh("l");
+            var idx = fresh("i");
+            var je = fresh("je");
+            var ev = fresh("ev");
+            b.beginControlFlow("");
+            b.addStatement("$T<$L> $L = new $T<>()", TLIST, elemType, list, TLIST);
+            b.addStatement("int $L = 0", idx);
+            b.beginControlFlow("for (var $L : $T.array($L, $L))", je, JSON_VALUES, jsonExpr, pathExpr);
+            b.addStatement("$L $L", elemType, ev);
+            b.add(fromValueStmts(elem, CodeBlock.of("$L", je), CodeBlock.of("$L.index($L)", pathExpr, idx), ev));
+            b.addStatement("$L.add($L)", list, ev);
+            b.addStatement("$L++", idx);
+            b.endControlFlow();
+            b.addStatement("$L = $L", targetVar, list);
+            b.endControlFlow();
+            return b.build();
+        }
+        if (qn.equals("TOrderedMap") || qn.equals("compilerxyz.prelude.util.TOrderedMap")) {
+            var keyT = typeArg(type, 0);
+            var valT = typeArg(type, 1);
+            var keyType = javaTypeOf(keyT);
+            var valType = javaTypeOf(valT);
+            var map = fresh("m");
+            var idx = fresh("mi");
+            var je = fresh("je");
+            var pair = fresh("pair");
+            var mk = fresh("mk");
+            var mv = fresh("mv");
+            b.beginControlFlow("");
+            b.addStatement("$T<$L, $L> $L = new $T<>()", TORDERED_MAP, keyType, valType, map, TORDERED_MAP);
+            b.addStatement("int $L = 0", idx);
+            b.beginControlFlow("for (var $L : $T.array($L, $L))", je, JSON_VALUES, jsonExpr, pathExpr);
+            b.addStatement("var $L = $T.array($L, $L.index($L))", pair, JSON_VALUES, je, pathExpr, idx);
+            b.addStatement(
+                    "if ($L.size() != 2) throw new $T($S, $L.index($L))",
+                    pair,
+                    DESERIALIZATION_EXCEPTION,
+                    "Map entry must be a two element array",
+                    pathExpr,
+                    idx);
+            b.addStatement("$L $L", keyType, mk);
+            b.add(fromValueStmts(
+                    keyT, CodeBlock.of("$L.get(0)", pair), CodeBlock.of("$L.index($L)", pathExpr, idx), mk));
+            b.addStatement("$L $L", valType, mv);
+            b.add(fromValueStmts(
+                    valT, CodeBlock.of("$L.get(1)", pair), CodeBlock.of("$L.index($L)", pathExpr, idx), mv));
+            b.addStatement("$L.put($L, $L)", map, mk, mv);
+            b.addStatement("$L++", idx);
+            b.endControlFlow();
+            b.addStatement("$L = $L", targetVar, map);
+            b.endControlFlow();
+            return b.build();
+        }
+        if (qn.equals("String") || qn.equals("java.lang.String")) {
+            b.addStatement("$L = $T.string($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+            return b.build();
+        }
+        if (qn.equals("Integer") || qn.equals("java.lang.Integer")) {
+            b.addStatement("$L = (int) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+            return b.build();
+        }
+        if (qn.equals("Long") || qn.equals("java.lang.Long")) {
+            b.addStatement("$L = (long) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+            return b.build();
+        }
+        if (qn.equals("Double") || qn.equals("java.lang.Double")) {
+            b.addStatement("$L = $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+            return b.build();
+        }
+        if (qn.equals("Float") || qn.equals("java.lang.Float")) {
+            b.addStatement("$L = (float) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+            return b.build();
+        }
+        if (qn.equals("Boolean") || qn.equals("java.lang.Boolean")) {
+            b.addStatement("$L = $T.bool($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+            return b.build();
+        }
+        var codecTarget = codecTargetFor(qn);
+        if (codecTarget.castTo().optIsSome()) {
+            b.addStatement(
+                    "$L = ($L) $L.fromValue($L, $L)",
+                    targetVar,
+                    codecTarget.castTo().optUnwrap(),
+                    codecTarget.klass(),
+                    jsonExpr,
+                    pathExpr);
+        } else {
+            b.addStatement("$L = $L.fromValue($L, $L)", targetVar, codecTarget.klass(), jsonExpr, pathExpr);
         }
         return b.build();
     }

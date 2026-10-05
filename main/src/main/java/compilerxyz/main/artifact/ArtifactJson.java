@@ -75,7 +75,7 @@ public final class ArtifactJson {
         return new JsonValueObject(m);
     }
 
-    private static ArtifactIdSource decodeArtifactIdSource(JsonValue v) {
+    public static ArtifactIdSource decodeArtifactIdSource(JsonValue v) {
         var obj = object(v, "decodeArtifactIdSource");
         var ci = object(field(obj, "compile_id", "decodeArtifactIdSource"), "decodeArtifactIdSource compile_id");
         return new ArtifactIdSource(

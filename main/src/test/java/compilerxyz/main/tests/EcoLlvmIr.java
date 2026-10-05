@@ -48,6 +48,10 @@ public final class EcoLlvmIr {
         return e.call(e.mb.typesOption(), t(e, "lmod"));
     }
 
+    private static SourceExpr renderT(EcoMb e) {
+        return e.rec(e.p("ir", str(e)), e.p("libs", e.listType(str(e))));
+    }
+
     private static SourceExpr constEvalIn(EcoMb e, SourceExpr xx, SourceExpr staged) {
         return e.call(e.mb.evalConstEval(), e.rec(e.p("xx", xx), e.p("staged", staged)));
     }
@@ -1313,6 +1317,7 @@ public final class EcoLlvmIr {
                             e.p("constants", e.listType(t(e, "lglobal"))),
                             e.p("slots", e.listType(t(e, "lglobal"))),
                             e.p("funcs", e.listType(str(e))),
+                            e.p("libs", e.listType(str(e))),
                             e.p("labels", e.listType(t(e, "llabel")))));
             defObj(e, x, "ltarget", "llvm target", e.rec(e.p("mod", lmodT(e))));
             defObj(e, x, "lirctx", "llvm ir rendering context", e.rec(e.p("xx", xxT(e)), e.p("mod", lmodOptT(e))));
@@ -3186,7 +3191,7 @@ public final class EcoLlvmIr {
                     "lmod",
                     "render",
                     e.tup(),
-                    str(e),
+                    renderT(e),
                     e.seq(
                             e.let("out", e.listNew(str(e))),
                             e.let("declared", e.listNew(str(e))),
@@ -3267,7 +3272,21 @@ public final class EcoLlvmIr {
                             e.let("all", e.listNew(str(e))),
                             e.foreach(in(e, "struct_lines"), "l", push(e, e.v("all"), e.v("l"))),
                             e.foreach(e.v("out"), "l", push(e, e.v("all"), e.v("l"))),
-                            e.ret(e.cat(e.join(e.v("all"), "\n"), e.s("\n")))));
+                            e.ret(e.rec(
+                                    e.p("ir", e.cat(e.join(e.v("all"), "\n"), e.s("\n"))),
+                                    e.p("libs", in(e, "libs"))))));
+            x.add(e.methodImpl(
+                    e.v("lmod"),
+                    "lib",
+                    str(e),
+                    e.optionTypeNone(),
+                    e.stage(e.seq(
+                            e.let("dup", e.rec(e.p("v", e.intOf(0)))),
+                            e.foreach(
+                                    in(e, "libs"),
+                                    "l0",
+                                    e.ifOnly(e.eq(e.v("l0"), e.v("arg")), e.mb.set(e.fld(e.v("dup"), "v"), num(e, 1)))),
+                            e.ifOnly(e.eq(e.fld(e.v("dup"), "v"), num(e, 0)), push(e, in(e, "libs"), e.v("arg")))))));
 
             method(
                     e,
@@ -5741,6 +5760,7 @@ public final class EcoLlvmIr {
                                         e.p("constants", e.listNew(lt(e, "lglobal"))),
                                         e.p("slots", e.listNew(lt(e, "lglobal"))),
                                         e.p("funcs", e.listNew(str(e))),
+                                        e.p("libs", e.listNew(str(e))),
                                         e.p("labels", e.listNew(lt(e, "llabel"))))),
                         e.let("tgt", mk(e, "ltarget", e.p("mod", e.v("m")))),
                         e.let("vx", e.call(e.evalBuiltin("eval_context"), e.tup())),
@@ -5828,8 +5848,10 @@ public final class EcoLlvmIr {
                 e.v("mod_o"),
                 "render",
                 e.tup(),
-                e.optionTypeSome(str(e)),
+                e.optionTypeSome(renderT(e)),
                 e.stage(e.callM(in(e, "m"), "render", e.tup()))));
+        y.add(e.methodImpl(
+                e.v("mod_o"), "lib", str(e), e.optionTypeNone(), e.stage(e.callM(in(e, "m"), "lib", e.v("arg")))));
         y.add(e.methodImpl(
                 e.v("mod_o"), "m", e.tup(), e.optionTypeSome(e.fld(e.v("k"), "mod_t")), e.stage(in(e, "m"))));
         y.add(e.methodImpl(
@@ -5851,9 +5873,47 @@ public final class EcoLlvmIr {
                 e.optionTypeSome(e.fld(e.v("mod_o"), "type")),
                 e.mb.optNoneType(),
                 e.stage(mkArg(e, "mod_o", e.rec(e.p("m", e.call(e.fld(e.lowerV("k"), "new"), e.tup())))))));
+        y.add(e.let("build_b", e.defFunc(e.v("d"), "build")));
+        y.add(e.funcImpl(
+                e.v("build_b"),
+                renderT(e),
+                e.optionTypeSome(e.mb.builtin("types", "app")),
+                e.mb.optNoneType(),
+                e.stage(e.seq(
+                        e.let("args", e.strList(e.s("-O2"), e.s("app.ll"), e.s("-o"), e.s("app"))),
+                        e.foreach(a(e, "libs"), "l", push(e, e.v("args"), e.cat(e.s("-l"), e.v("l")))),
+                        e.let(
+                                "r",
+                                e.call(
+                                        e.mb.builtin("exec"),
+                                        e.rec(
+                                                e.p("command", e.s("clang")),
+                                                e.p("args", e.v("args")),
+                                                e.p("env", e.mapNew(str(e), str(e))),
+                                                e.p(
+                                                        "files",
+                                                        e.mapNew(
+                                                                str(e),
+                                                                e.call(e.mb.typesArray(), e.mb.typesByte()),
+                                                                e.p("app.ll", e.call(e.mb.evalStrUtf8(), a(e, "ir"))))),
+                                                e.p("success_codes", e.optNone(e.listType(intT(e))))))),
+                        e.let("f", e.callM(e.callM0(e.v("r"), "dir"), "open", e.s("app"))),
+                        e.ret(e.call(
+                                e.mb.builtin("app"),
+                                e.rec(
+                                        e.p("executor", e.mb.optNoneString()),
+                                        e.p(
+                                                "bytes",
+                                                e.callM(
+                                                        e.v("f"),
+                                                        "read",
+                                                        e.rec(
+                                                                e.p("offset", e.intOf(0)),
+                                                                e.p("len", e.fld(e.v("f"), "len"))))))))))));
         y.add(e.finish(e.v("d")));
         var ydefs = new TList<EcoMb.P>();
         ydefs.add(e.p("new", e.fld(e.v("llvm_b"), "func")));
+        ydefs.add(e.p("build", e.fld(e.v("build_b"), "func")));
         ydefs.add(e.p("mod_t", e.fld(e.v("mod_o"), "type")));
         for (var name : passthrough) ydefs.add(e.p(name, e.fld(e.v("k"), name)));
 
@@ -5863,7 +5923,7 @@ public final class EcoLlvmIr {
         var top = new TList<SourceExpr>();
         top.add(e.let("k", e.lower(e.mb.seq(y))));
         var exports = new TList<EcoMb.P>();
-        for (var name : new String[] {"new", "mod_t"}) exports.add(e.p(name, e.fld(e.v("k"), name)));
+        for (var name : new String[] {"new", "build", "mod_t"}) exports.add(e.p(name, e.fld(e.v("k"), name)));
         for (var name : passthrough) exports.add(e.p(name, e.fld(e.v("k"), name)));
         for (var name : exported) exports.add(e.p(name, e.fld(e.v("k"), name)));
         top.add(e.ret(e.rec(exports.toArray(EcoMb.P[]::new))));

@@ -20,6 +20,7 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
+import compilerxyz.codegen.ListsGen;
 import compilerxyz.codegen.util.DynamicTypes;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.TypeRef;
@@ -255,6 +256,8 @@ public final class BuiltinPathScanner {
         if (tn instanceof ClassName cn) {
             var descriptor = VALUE_CLASS_DESCRIPTORS.getOpt(cn.canonicalName());
             if (descriptor.optIsSome()) return TypeRef.leaf(descriptor.optUnwrap(), scannedLeaves);
+            var specialized = ListsGen.specializedListType(cn);
+            if (specialized.optIsSome()) return new TypeRef(cn, specialized.optUnwrap());
             try {
                 return TypeRef.leaf(cn, scannedLeaves);
             } catch (IllegalArgumentException e) {
@@ -262,22 +265,17 @@ public final class BuiltinPathScanner {
         }
         if (tn instanceof ParameterizedTypeName pt) {
             var wrapperOpt = COMPOSITE_WRAPPERS.getOpt(pt.rawType.canonicalName());
-            if (wrapperOpt.optIsSome()
-                    && pt.typeArguments.size() == 1
-                    && pt.typeArguments.get(0) instanceof ClassName inner) {
+            if (wrapperOpt.optIsSome() && pt.typeArguments.size() == 1) {
                 var wrapper = wrapperOpt.optUnwrap();
-                var innerRef = TypeRef.leaf(inner, scannedLeaves);
+                var innerRef = typeRefOfName(pt.typeArguments.get(0), scannedLeaves);
                 return new TypeRef(
                         DynamicTypes.compositeValueClass(wrapper, innerRef.path()),
                         DynamicTypes.composite(wrapper, innerRef.dynamicType()));
             }
-            if (wrapperOpt.optIsSome()
-                    && pt.typeArguments.size() == 2
-                    && pt.typeArguments.get(0) instanceof ClassName k
-                    && pt.typeArguments.get(1) instanceof ClassName v) {
+            if (wrapperOpt.optIsSome() && pt.typeArguments.size() == 2) {
                 var wrapper = wrapperOpt.optUnwrap();
-                var kRef = TypeRef.leaf(k, scannedLeaves);
-                var vRef = TypeRef.leaf(v, scannedLeaves);
+                var kRef = typeRefOfName(pt.typeArguments.get(0), scannedLeaves);
+                var vRef = typeRefOfName(pt.typeArguments.get(1), scannedLeaves);
                 return new TypeRef(
                         DynamicTypes.compositeValueClass(wrapper, kRef.path(), vRef.path()),
                         DynamicTypes.composite(wrapper, kRef.dynamicType(), vRef.dynamicType()));

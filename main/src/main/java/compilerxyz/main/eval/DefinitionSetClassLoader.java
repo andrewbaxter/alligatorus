@@ -58,6 +58,20 @@ public final class DefinitionSetClassLoader extends ClassLoader {
     }
 
     @Override
+    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+        synchronized (getClassLoadingLock(name)) {
+            var loaded = findLoadedClass(name);
+            if (loaded != null) return loaded;
+            if (pendingBytecode.getOpt(name).optIsSome() || name.startsWith(CompositeClassEmitter.BINARY_NAME_PREFIX)) {
+                var found = findClass(name);
+                if (resolve) resolveClass(found);
+                return found;
+            }
+        }
+        return super.loadClass(name, resolve);
+    }
+
+    @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         var bytesOpt = pendingBytecode.getOpt(name);
         if (bytesOpt.optIsSome()) {

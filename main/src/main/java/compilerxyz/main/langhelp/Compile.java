@@ -1,5 +1,6 @@
 package compilerxyz.main.langhelp;
 
+import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.CompileModule;
 import compilerxyz.main.eval.CompileResResult;
@@ -7,6 +8,7 @@ import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ImportStateId;
 import compilerxyz.main.eval.LogEntry;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
+import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
@@ -35,8 +37,18 @@ public final class Compile {
         if (!allErrors.isEmpty()) {
             return Result.err(allErrors);
         }
-        return Result.ok(new CompileResult(res.logs(), gx.capturedBytecode));
+        Opt<Artifact> artifact =
+                switch (res.result()) {
+                    case CompileResResult.Ok ok -> ok.artifact();
+                    case CompileResResult.Err err ->
+                        throw new IllegalStateException("root compile errors not collected");
+                };
+        return Result.ok(new CompileResult(res.logs(), gx.capturedBytecode, rootCompileId, artifact));
     }
 
-    public record CompileResult(TList<LogEntry> logs, TOrderedMap<String, byte[]> bytecode) {}
+    public record CompileResult(
+            TList<LogEntry> logs,
+            TOrderedMap<String, byte[]> bytecode,
+            CompileId rootCompileId,
+            Opt<Artifact> artifact) {}
 }

@@ -1,5 +1,6 @@
 package compilerxyz.main.langhelp.cache;
 
+import com.github.luben.zstd.ZstdInputStream;
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactIdSource;
@@ -49,6 +50,7 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -62,7 +64,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 22;
+    private static final int SCHEMA_VERSION = 24;
 
     private final Connection conn;
     private final Object dbLock = new Object();
@@ -71,6 +73,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
     private final HttpClient http =
             HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
 
+    private final TMap<String, SourceSlot> sourceMem = new TMap<>();
+    private final ReentrantLock sourceMapLock = new ReentrantLock();
     private final TMap<ArtifactIdSource, ArtifactBody> artifactMem = new TMap<>();
     private final TMap<ArtifactIdSource, ArtifactBody> pendingArtifacts = new TMap<>();
     private final TMap<CompileId, CompileSlot> compileMem = new TMap<>();
@@ -79,6 +83,11 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
     private static final class CompileSlot {
         final ReentrantLock lock = new ReentrantLock();
         Opt<CompileRes> value = Opt.none();
+    }
+
+    private static final class SourceSlot {
+        final ReentrantLock lock = new ReentrantLock();
+        Opt<SourceResolved.Module> value = Opt.none();
     }
 
     public CacheReal() {
@@ -117,6 +126,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             dirLock = acquired;
             conn = DriverManager.getConnection("jdbc:sqlite:" + dir.resolve("cache.sqlite"));
             conn.setAutoCommit(true);
+            configureConnection();
             initSchema();
         } catch (ClassNotFoundException | SQLException | IOException e) {
             throw new RuntimeException("CacheReal: failed to open cache database", e);
@@ -141,9 +151,17 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             dirLock = acquired;
             conn = DriverManager.getConnection("jdbc:sqlite:" + dir.resolve("cache.sqlite"));
             conn.setAutoCommit(true);
+            configureConnection();
             initSchema();
         } catch (ClassNotFoundException | SQLException | IOException e) {
             throw new RuntimeException("CacheReal: failed to open cache database", e);
+        }
+    }
+
+    private void configureConnection() throws SQLException {
+        try (var st = conn.createStatement()) {
+            st.execute("PRAGMA journal_mode=WAL");
+            st.execute("PRAGMA synchronous=NORMAL");
         }
     }
 
@@ -161,6 +179,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                     st.executeUpdate("DROP TABLE IF EXISTS artifact_seq");
                     st.executeUpdate("DROP TABLE IF EXISTS source_seq");
                     st.executeUpdate("DROP TABLE IF EXISTS sources");
+                    st.executeUpdate("DROP TABLE IF EXISTS artifact_ids");
+                    st.executeUpdate("DROP TABLE IF EXISTS source_ids");
                     st.executeUpdate("DROP TABLE IF EXISTS remote_bytes");
                     st.executeUpdate("DROP TABLE IF EXISTS artifacts");
                     st.executeUpdate("DROP TABLE IF EXISTS compiles");
@@ -169,11 +189,10 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             try (var st = conn.createStatement()) {
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)");
                 st.executeUpdate(
-                        "CREATE TABLE IF NOT EXISTS artifact_seq (id INTEGER PRIMARY KEY CHECK (id = 0), next INTEGER NOT NULL)");
-                st.executeUpdate(
-                        "CREATE TABLE IF NOT EXISTS source_seq (id INTEGER PRIMARY KEY CHECK (id = 0), next INTEGER NOT NULL)");
-                st.executeUpdate(
-                        "CREATE TABLE IF NOT EXISTS sources (spec_key TEXT PRIMARY KEY, source_id INTEGER NOT NULL)");
+                        "CREATE TABLE IF NOT EXISTS artifact_ids ("
+                                + "idx INTEGER PRIMARY KEY AUTOINCREMENT, import_state INTEGER NOT NULL, source INTEGER NOT NULL)");
+                st.executeUpdate("CREATE TABLE IF NOT EXISTS source_ids ("
+                        + "id INTEGER PRIMARY KEY AUTOINCREMENT, spec_key TEXT NOT NULL UNIQUE)");
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS remote_bytes (url TEXT PRIMARY KEY, bytes BLOB NOT NULL)");
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS artifacts ("
                         + "import_state INTEGER NOT NULL, source INTEGER NOT NULL, idx INTEGER NOT NULL,"
@@ -189,12 +208,6 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                     ins.executeUpdate();
                 }
             }
-            try (var ins = conn.prepareStatement("INSERT OR IGNORE INTO artifact_seq (id, next) VALUES (0, 0)")) {
-                ins.executeUpdate();
-            }
-            try (var ins = conn.prepareStatement("INSERT OR IGNORE INTO source_seq (id, next) VALUES (0, 0)")) {
-                ins.executeUpdate();
-            }
         }
     }
 
@@ -207,45 +220,59 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         }
     }
 
-    private long nextSeq(String table) {
-        synchronized (dbLock) {
-            try {
-                long current;
-                try (var ps = conn.prepareStatement("SELECT next FROM " + table + " WHERE id = 0");
-                        var rs = ps.executeQuery()) {
-                    current = rs.next() ? rs.getLong(1) : 0L;
-                }
-                try (var ps = conn.prepareStatement("UPDATE " + table + " SET next = ? WHERE id = 0")) {
-                    ps.setLong(1, current + 1);
-                    ps.executeUpdate();
-                }
-                return current;
-            } catch (SQLException e) {
-                throw new RuntimeException("CacheReal.nextSeq " + table, e);
-            }
-        }
-    }
-
     private SourceId sourceIdFor(String specKey) {
         synchronized (dbLock) {
             try {
-                try (var ps = conn.prepareStatement("SELECT source_id FROM sources WHERE spec_key = ?")) {
+                try (var ps = conn.prepareStatement("INSERT OR IGNORE INTO source_ids (spec_key) VALUES (?)")) {
                     ps.setString(1, specKey);
-                    try (var rs = ps.executeQuery()) {
-                        if (rs.next()) return new SourceId(rs.getLong(1));
-                    }
-                }
-                var id = nextSeq("source_seq");
-                try (var ps = conn.prepareStatement("INSERT INTO sources (spec_key, source_id) VALUES (?, ?)")) {
-                    ps.setString(1, specKey);
-                    ps.setLong(2, id);
                     ps.executeUpdate();
                 }
-                return new SourceId(id);
+                try (var ps = conn.prepareStatement("SELECT id FROM source_ids WHERE spec_key = ?")) {
+                    ps.setString(1, specKey);
+                    try (var rs = ps.executeQuery()) {
+                        if (!rs.next()) throw new IllegalStateException("source id missing after insert: " + specKey);
+                        return new SourceId(rs.getLong(1));
+                    }
+                }
             } catch (SQLException e) {
                 throw new RuntimeException("CacheReal.sourceIdFor", e);
             }
         }
+    }
+
+    private Result<SourceResolved.Module, String> sourceShared(
+            String specKey, Opt<Long> mtime, Supplier<Result<SourceResolved.Module, String>> parse) {
+        SourceSlot slot;
+        sourceMapLock.lock();
+        try {
+            slot = sourceMem.computeIfAbsentT(specKey, k -> new SourceSlot());
+        } finally {
+            sourceMapLock.unlock();
+        }
+        slot.lock.lock();
+        try {
+            if (slot.value.optIsSome()) {
+                var cached = slot.value.optUnwrap();
+                if (mtime.optIsNone() || cached.local().optUnwrap().timestampMs() == mtime.optUnwrap()) {
+                    return Result.ok(cached);
+                }
+            }
+            var parsed = parse.get();
+            switch (parsed) {
+                case Result.Ok<SourceResolved.Module, String> ok -> slot.value = Opt.some(ok.value());
+                case Result.Err<SourceResolved.Module, String> err -> {}
+            }
+            return parsed;
+        } finally {
+            slot.lock.unlock();
+        }
+    }
+
+    private static Result<SourceResolved, String> widen(Result<SourceResolved.Module, String> res) {
+        return switch (res) {
+            case Result.Ok<SourceResolved.Module, String> ok -> Result.ok(ok.value());
+            case Result.Err<SourceResolved.Module, String> err -> Result.err(err.error());
+        };
     }
 
     @Override
@@ -259,23 +286,30 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 if (!Files.isRegularFile(file)) {
                     return Result.err("local source not found: " + l.path());
                 }
-                String text;
                 long mtime;
                 try {
-                    text = Files.readString(file);
                     mtime = Files.getLastModifiedTime(file).toMillis();
                 } catch (IOException e) {
                     return Result.err("failed to read local source " + l.path() + ": " + e.getMessage());
                 }
-                SourceModule module;
-                try {
-                    module = SourceModuleCodec.deserialize(text);
-                } catch (IOException | RuntimeException e) {
-                    return Result.err("failed to parse local source " + l.path() + ": " + e.getMessage());
-                }
-                var id = sourceIdFor(l.sourceSpecAbsoluteSpecKey());
-                return Result.ok(
-                        new SourceResolved.Module(id, module, Opt.some(new Compiles.LocalMeta(l.path(), mtime))));
+                var specKey = l.sourceSpecAbsoluteSpecKey();
+                return widen(sourceShared(specKey, Opt.some(mtime), () -> {
+                    byte[] raw;
+                    try {
+                        raw = Files.readAllBytes(file);
+                    } catch (IOException e) {
+                        return Result.err("failed to read local source " + l.path() + ": " + e.getMessage());
+                    }
+                    SourceModule module;
+                    try {
+                        module = SourceModuleCodec.deserialize(moduleText(raw));
+                    } catch (IOException | RuntimeException e) {
+                        return Result.err("failed to parse local source " + l.path() + ": " + e.getMessage());
+                    }
+                    var id = sourceIdFor(specKey);
+                    return Result.ok(
+                            new SourceResolved.Module(id, module, Opt.some(new Compiles.LocalMeta(l.path(), mtime))));
+                }));
             }
             case SourceSpecAbsolute.Remote r -> {
                 byte[] bytes;
@@ -288,14 +322,16 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 var isZip = isZip(bytes);
                 if (r.subpath().isEmpty()) {
                     if (isZip) return Result.ok(new SourceResolved.Bundle(r));
-                    SourceModule module;
-                    try {
-                        module = SourceModuleCodec.deserialize(new String(bytes, StandardCharsets.UTF_8));
-                    } catch (IOException | RuntimeException e) {
-                        return Result.err("failed to parse remote source " + r.baseUrl() + ": " + e.getMessage());
-                    }
-                    var id = sourceIdFor(r.sourceSpecAbsoluteSpecKey());
-                    return Result.ok(new SourceResolved.Module(id, module, Opt.none()));
+                    var specKey = r.sourceSpecAbsoluteSpecKey();
+                    return widen(sourceShared(specKey, Opt.none(), () -> {
+                        SourceModule module;
+                        try {
+                            module = SourceModuleCodec.deserialize(moduleText(bytes));
+                        } catch (IOException | RuntimeException e) {
+                            return Result.err("failed to parse remote source " + r.baseUrl() + ": " + e.getMessage());
+                        }
+                        return Result.ok(new SourceResolved.Module(sourceIdFor(specKey), module, Opt.none()));
+                    }));
                 }
                 if (!isZip) {
                     return Result.err("remote source is not a bundle but a subpath was requested: " + r.subpath());
@@ -307,14 +343,16 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                         return Result.err(err.error());
                     }
                 }
-                SourceModule module;
-                try {
-                    module = SourceModuleCodec.deserialize(new String(entryBytes, StandardCharsets.UTF_8));
-                } catch (IOException | RuntimeException e) {
-                    return Result.err("failed to parse remote source " + r.baseUrl() + ": " + e.getMessage());
-                }
-                var id = sourceIdFor(r.sourceSpecAbsoluteSpecKey());
-                return Result.ok(new SourceResolved.Module(id, module, Opt.none()));
+                var entryKey = r.sourceSpecAbsoluteSpecKey();
+                return widen(sourceShared(entryKey, Opt.none(), () -> {
+                    SourceModule module;
+                    try {
+                        module = SourceModuleCodec.deserialize(moduleText(entryBytes));
+                    } catch (IOException | RuntimeException e) {
+                        return Result.err("failed to parse remote source " + r.baseUrl() + ": " + e.getMessage());
+                    }
+                    return Result.ok(new SourceResolved.Module(sourceIdFor(entryKey), module, Opt.none()));
+                }));
             }
         }
     }
@@ -385,6 +423,21 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             throw new RuntimeException("CacheReal.extractZipEntry", e);
         }
         return Result.err("bundle entry not found: " + subpath);
+    }
+
+    private static boolean isZstd(byte[] bytes) {
+        return bytes.length >= 4
+                && bytes[0] == (byte) 0x28
+                && bytes[1] == (byte) 0xB5
+                && bytes[2] == (byte) 0x2F
+                && bytes[3] == (byte) 0xFD;
+    }
+
+    private static String moduleText(byte[] bytes) throws IOException {
+        if (!isZstd(bytes)) return new String(bytes, StandardCharsets.UTF_8);
+        try (var in = new ZstdInputStream(new ByteArrayInputStream(bytes))) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
     }
 
     private static boolean isZip(byte[] bytes) {
@@ -477,7 +530,20 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
 
     @Override
     public ArtifactIdSource artifactsReserveId(CompileId compileId) {
-        return new ArtifactIdSource(compileId, nextSeq("artifact_seq"));
+        synchronized (dbLock) {
+            try (var ps = conn.prepareStatement(
+                    "INSERT INTO artifact_ids (import_state, source) VALUES (?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+                ps.setLong(1, compileId.importState().value());
+                ps.setLong(2, compileId.source().value());
+                ps.executeUpdate();
+                try (var rs = ps.getGeneratedKeys()) {
+                    if (!rs.next()) throw new IllegalStateException("artifact id reservation returned no key");
+                    return new ArtifactIdSource(compileId, rs.getLong(1));
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.artifactsReserveId", e);
+            }
+        }
     }
 
     @Override

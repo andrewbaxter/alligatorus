@@ -141,7 +141,7 @@ public final class CompileModule {
                     fallbackValue = Opt.none();
                 }
                 if (stage1Code.optIsNone() && evalVx.definitionSets.isEmpty()) {
-                    evalResult = new EvalOutcome.Ok(fallbackValue, new TList<>(), false);
+                    evalResult = new EvalOutcome.Ok(fallbackValue, new TList<>());
                     break evalBlock;
                 }
                 var installRes = EvalRoot.installDefinitionSets(evalXx, evalRootLoc);
@@ -150,7 +150,7 @@ public final class CompileModule {
                     break evalBlock;
                 }
                 if (stage1Code.optIsNone()) {
-                    evalResult = new EvalOutcome.Ok(fallbackValue, evalVx.logs, false);
+                    evalResult = new EvalOutcome.Ok(fallbackValue, evalVx.logs);
                     break evalBlock;
                 }
                 var runRes = EvalRoot.run(
@@ -183,7 +183,7 @@ public final class CompileModule {
                     }
                     finalValue = Opt.some(liftedRes.requireValue("Eval::eval lift result"));
                 }
-                evalResult = new EvalOutcome.Ok(finalValue, evalVx.logs, fallbackValue.optIsNone());
+                evalResult = new EvalOutcome.Ok(finalValue, evalVx.logs);
             }
             switch (evalResult) {
                 case EvalOutcome.Err err -> {
@@ -195,13 +195,6 @@ public final class CompileModule {
                 case EvalOutcome.Ok ok -> {
                     allLogs.addAll(ok.logs());
                     if (!isStage) {
-                        if (compilePath.isEmpty()
-                                && (ok.producedDynamicRoot() || ok.value().optIsNone())) {
-                            return new CompileModuleResult(
-                                    new CompileRes(allLogs, new CompileResResult.Ok(Opt.none())),
-                                    cix.localDependencies,
-                                    cix.localData);
-                        }
                         var vx = new EvalContext(cix);
                         var rootScope = new Scope(vx);
                         var target = new TargetDynamic();
@@ -347,7 +340,7 @@ public final class CompileModule {
 
     public sealed interface EvalOutcome {
 
-        record Ok(Opt<Value> value, TList<LogEntry> logs, boolean producedDynamicRoot) implements EvalOutcome {}
+        record Ok(Opt<Value> value, TList<LogEntry> logs) implements EvalOutcome {}
 
         record Err(TList<ExprErr> errors) implements EvalOutcome {}
     }

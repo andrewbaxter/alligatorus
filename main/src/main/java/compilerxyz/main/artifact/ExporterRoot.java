@@ -8,6 +8,7 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.builtin.App;
 import compilerxyz.main.eval.value.array.TypeArrayConst;
 import compilerxyz.main.eval.value.array.TypeArrayDynamic;
 import compilerxyz.main.eval.value.bool.TypeBoolConst;
@@ -69,7 +70,9 @@ import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
+import compilerxyz.prelude.util.IMap;
 import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.TMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -222,6 +225,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return TypeEResultConst.TYPE_DELEGATE;
+        }
+    },
+    APP("app") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return App.DELEGATE;
         }
     },
     EXPR_ERR("expr_err") {
@@ -544,11 +553,21 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         return EResult.ok(ROOT);
     }
 
-    public static Opt<ExporterRoot> fromTag(String tag) {
+    private static final IMap<String, ExporterRoot> BY_TAG;
+
+    static {
+        var byTag = new TMap<String, ExporterRoot>();
         for (var v : values()) {
-            if (v.tag.equals(tag)) return Opt.some(v);
+            if (byTag.getOpt(v.tag).optIsSome()) {
+                throw new IllegalStateException("ExporterRoot: duplicate tag " + v.tag);
+            }
+            byTag.put(v.tag, v);
         }
-        return Opt.none();
+        BY_TAG = IMap.from(byTag);
+    }
+
+    public static Opt<ExporterRoot> fromTag(String tag) {
+        return BY_TAG.getOpt(tag);
     }
 
     @Override

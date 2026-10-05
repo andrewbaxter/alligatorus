@@ -80,6 +80,54 @@ public final class JsonValues {
         };
     }
 
+    public static JsonValue toValue(JsonValue value) {
+        return value;
+    }
+
+    public static JsonValue fromValue(JsonValue value, Json.FieldPath path) {
+        return value;
+    }
+
+    public static double number(JsonValue value, Json.FieldPath path) {
+        if (!(value instanceof JsonValueNumber n)) {
+            throw new Json.DeserializationException(
+                    "Expected number, got " + value.getClass().getSimpleName(), path);
+        }
+        return n.value();
+    }
+
+    public static String string(JsonValue value, Json.FieldPath path) {
+        if (!(value instanceof JsonValueString s)) {
+            throw new Json.DeserializationException(
+                    "Expected string, got " + value.getClass().getSimpleName(), path);
+        }
+        return s.value();
+    }
+
+    public static boolean bool(JsonValue value, Json.FieldPath path) {
+        if (!(value instanceof JsonValueBoolean b)) {
+            throw new Json.DeserializationException(
+                    "Expected boolean, got " + value.getClass().getSimpleName(), path);
+        }
+        return b.value();
+    }
+
+    public static TList<JsonValue> array(JsonValue value, Json.FieldPath path) {
+        if (!(value instanceof JsonValueArray a)) {
+            throw new Json.DeserializationException(
+                    "Expected array, got " + value.getClass().getSimpleName(), path);
+        }
+        return a.elements();
+    }
+
+    public static TOrderedMap<String, JsonValue> object(JsonValue value, Json.FieldPath path) {
+        if (!(value instanceof JsonValueObject o)) {
+            throw new Json.DeserializationException(
+                    "Expected object, got " + value.getClass().getSimpleName(), path);
+        }
+        return o.entries();
+    }
+
     public static String serialize(JsonValue value) {
         try {
             var writer = new StringWriter();

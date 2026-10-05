@@ -36,6 +36,18 @@ public final class ArtifactCodecs {
             writer.endObject();
         }
 
+        public static JsonValue toValue(Artifact value) {
+            return ArtifactJson.encodeArtifact(value);
+        }
+
+        public static Artifact fromValue(JsonValue value, FieldPath path) {
+            try {
+                return ArtifactJson.decodeArtifact(value);
+            } catch (IllegalStateException e) {
+                throw new DeserializationException(String.valueOf(e.getMessage()), path, e);
+            }
+        }
+
         public static Artifact decode(JsonReader reader, FieldPath path) throws IOException {
             reader.beginObject();
             if (!reader.hasNext()) {
@@ -91,6 +103,18 @@ public final class ArtifactCodecs {
                 ArtifactBodyExporterCodec.encode(writer, value.exporter(), style);
             }
             writer.endObject();
+        }
+
+        public static JsonValue toValue(ArtifactBody value) {
+            return ArtifactJson.encodeArtifactBody(value);
+        }
+
+        public static ArtifactBody fromValue(JsonValue value, FieldPath path) {
+            try {
+                return ArtifactJson.decodeArtifactBody(value);
+            } catch (IllegalStateException e) {
+                throw new DeserializationException(String.valueOf(e.getMessage()), path, e);
+            }
         }
 
         public static ArtifactBody decode(JsonReader reader, FieldPath path) throws IOException {
@@ -195,6 +219,18 @@ public final class ArtifactCodecs {
             writer.name("index");
             writer.value(value.index());
             writer.endObject();
+        }
+
+        public static JsonValue toValue(ArtifactIdSource value) {
+            return ArtifactJson.encodeArtifactIdSource(value);
+        }
+
+        public static ArtifactIdSource fromValue(JsonValue value, FieldPath path) {
+            try {
+                return ArtifactJson.decodeArtifactIdSource(value);
+            } catch (IllegalStateException e) {
+                throw new DeserializationException(String.valueOf(e.getMessage()), path, e);
+            }
         }
 
         public static ArtifactIdSource decode(JsonReader reader, FieldPath path) throws IOException {

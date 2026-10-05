@@ -152,14 +152,14 @@ public final class EcoSynth {
         return e.callM(refs.refsRef("pw"), name, e.tup());
     }
 
-    public static TList<SourceExpr> module(EcoMb e) {
+    public static TList<SourceExpr> module(EcoMb e, EcoRootMode mode) {
         var cx = new Cx(new TList<>(), new TList<>(), new TList<>());
         var setup = cx.setup();
         var top = cx.top();
-        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
+        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
-        setup.add(e.let("c", e.call(e.importLocal("libc", "libc-2.42.at"), e.v("ll"))));
-        setup.add(e.let("pw", e.call(e.importLocal("pipewire", "pipewire-1.6.at"), e.v("ll"))));
+        setup.add(e.let("c", e.call(e.importLocal("libc", "libc-2.42.atz"), e.v("ll"))));
+        setup.add(e.let("pw", e.call(e.importLocal("pipewire", "pipewire-1.6.atz"), e.v("ll"))));
         setup.add(e.let("t_pv", e.callM(e.v("llvm"), "ptr", e.fld(e.v("llvm"), "void"))));
         setup.add(e.let("t_events", pwT(e, Refs.setup(e), "pw_stream_events")));
         for (var n : new String[] {"llvm", "ll", "c", "pw", "t_pv", "t_events"})
@@ -535,7 +535,8 @@ public final class EcoSynth {
                         callFn(e, "pw_deinit", e.tup()),
                         e.ret(e.n(0))));
 
-        top.add(e.call(e.mb.log(), e.callM(Refs.top(e).refsRef("ll"), "render", e.tup())));
+        top.add(mode.ecoRootModeFinish(
+                e, Refs.top(e).refsRef("llvm"), Refs.top(e).refsRef("ll")));
         setup.add(e.ret(e.rec(cx.fields().toArray(EcoMb.P[]::new))));
         var module = new TList<SourceExpr>();
         module.add(e.let("k", e.lower(e.mb.seq(setup))));

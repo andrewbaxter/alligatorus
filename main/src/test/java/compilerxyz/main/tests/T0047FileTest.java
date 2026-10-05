@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 public final class T0047FileTest {
-    private static void writeModule(Path file, TList<SourceExpr> exprs) throws IOException {
+    static void writeModule(Path file, TList<SourceExpr> exprs) throws IOException {
         var sw = new StringWriter();
         var writer = new JsonWriter(sw);
         writer.setSerializeNulls(true);

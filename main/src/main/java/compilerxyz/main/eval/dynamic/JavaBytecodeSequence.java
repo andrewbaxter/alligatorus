@@ -131,7 +131,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                     while (outer.hasNext()) {
                         var enclosing = outer.next().line();
                         if (enclosing.optIsSome()) {
-                            flat.add(new Item.Line(new Label(), enclosing.optUnwrap()));
+                            pushLine(flat, enclosing.optUnwrap());
                             break;
                         }
                     }
@@ -146,7 +146,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                                 case CodeLoc.Some some -> Opt.some(locTable.line(some.qExprId()));
                                 case CodeLoc.Infallible inf -> Opt.none();
                             };
-                    if (line.optIsSome()) flat.add(new Item.Line(new Label(), line.optUnwrap()));
+                    if (line.optIsSome()) pushLine(flat, line.optUnwrap());
                     frames.addLast(new Frame(TList.<JavaBytecode>of(cd.code()).iterator(), Opt.none(), line));
                 }
                 case JavaBytecodeSequence s ->
@@ -592,6 +592,13 @@ public final class JavaBytecodeSequence implements JavaBytecode {
         for (var tcb : node.tryCatchBlocks) {
             out.visitTryCatchBlock(tcb.start.getLabel(), tcb.end.getLabel(), tcb.handler.getLabel(), tcb.type);
         }
+    }
+
+    private static void pushLine(TList<Item> flat, int line) {
+        if (!flat.isEmpty() && flat.get(flat.size() - 1) instanceof Item.Line) {
+            flat.removeAt(flat.size() - 1);
+        }
+        flat.add(new Item.Line(new Label(), line));
     }
 
     private static TList<JavaBytecodeReg> argsOf(Item item) {

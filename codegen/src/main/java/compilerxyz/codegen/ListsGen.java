@@ -1,8 +1,10 @@
 package compilerxyz.codegen;
 
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
 import compilerxyz.prelude.util.IList;
+import compilerxyz.prelude.util.Opt;
 import java.util.Locale;
 
 public final class ListsGen {
@@ -85,6 +87,22 @@ public final class ListsGen {
                     "ListStoreBool",
                     ClassName.get("compilerxyz.main.eval.value.bool", "TypeBoolDynamic"),
                     6210L));
+
+    public static Opt<CodeBlock> specializedListType(ClassName storeClass) {
+        if (!storeClass.packageName().equals(GEN_PACKAGE)) return Opt.none();
+        for (var prim : PRIMS) {
+            if (!prim.storeSimple().equals(storeClass.simpleName())) continue;
+            return Opt.some(CodeBlock.of(
+                    "new $T(new $T(), $T.fromClass($T.class), $T.$L)",
+                    ClassName.get("compilerxyz.main.eval.value.list", "TypeListSpecializedDynamic"),
+                    prim.elementClass(),
+                    ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName"),
+                    storeClass,
+                    GEN_IDENTITIES,
+                    constantName(snake(typeSimple(prim)))));
+        }
+        return Opt.none();
+    }
 
     public static String typeSimple(Prim prim) {
         return "TypeList" + prim.name() + "Dynamic";

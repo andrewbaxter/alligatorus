@@ -199,8 +199,8 @@ public final class EcoPipewire {
 
     public static TList<SourceExpr> module(EcoMb e) {
         var exprs = new TList<SourceExpr>();
-        exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
-        exprs.add(e.let("spa", e.importLocal("spa", "spa-pod-1.6.at")));
+        exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
+        exprs.add(e.let("spa", e.importLocal("spa", "spa-pod-1.6.atz")));
         var llvm = EcoExtern.Llvm.top(e);
         EcoExtern.bindTypes(e, exprs, llvm);
         for (var s : STRUCTS) {
@@ -380,6 +380,7 @@ public final class EcoPipewire {
         }
         var ctorFields = new TList<EcoMb.P>();
         for (var m : members) ctorFields.add(e.p(m, e.v(m)));
+        body.add(e.callM(e.v("arg"), "lib", e.s("pipewire-0.3")));
         body.add(e.ret(e.call(e.lower(e.fld(e.v("pw_o"), "new")), e.rec(ctorFields.toArray(EcoMb.P[]::new)))));
         exprs.add(e.funcImpl(
                 e.v("pw_builder"),
