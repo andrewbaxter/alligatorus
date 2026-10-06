@@ -102,9 +102,9 @@ final class EcoBuzzTunaMan {
 
     static TList<SourceExpr> module(EcoMb e) {
         var defs = new TList<SourceExpr>();
+        defs.add(e.let("global_list_i32", e.call(EcoBuzz.llvm(e, "global_list"), e.v("t_i32"))));
         defs.add(e.let("i32xt", EcoBuzz.array(e, e.v("t_i32"), e.intOf(TRACKS))));
         defs.add(e.let("f32xt", EcoBuzz.array(e, e.v("t_f32"), e.intOf(TRACKS))));
-        defs.add(e.let("times_t", EcoBuzz.array(e, e.v("t_i32"), e.intOf(TIMES.size()))));
         var fields = new TList<SourceExpr>();
         fields.add(EcoBuzz.field(e, "waves", e.v("p_wave_table_t")));
         fields.add(EcoBuzz.field(e, "spt", e.v("t_i32")));
@@ -142,12 +142,11 @@ final class EcoBuzzTunaMan {
         body.add(e.let(
                 "times",
                 e.call(
-                        EcoBuzz.llvmL(e, "global_fn"),
+                        e.lowerV("global_list_i32"),
                         e.rec(
                                 e.p("mod", e.v("ll")),
                                 e.p("name", e.s("tm_times")),
-                                e.p("ty", e.lowerV("times_t")),
-                                e.p("init", e.listNew(e.mb.typesInt(), timesInit.toArray(SourceExpr[]::new)))))));
+                                e.p("values", e.listNew(e.mb.typesInt(), timesInit.toArray(SourceExpr[]::new)))))));
 
         var t = e.v("t");
         var init = e.seq(

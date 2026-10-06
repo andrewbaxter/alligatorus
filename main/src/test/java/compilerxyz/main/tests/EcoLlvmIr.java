@@ -92,6 +92,126 @@ public final class EcoLlvmIr {
             new HostInt("long", -9223372036854775808.0, 9223372036854775807.0),
             new HostInt("ulong", 0, 18446744073709551615.0));
 
+    private static final IList<String> DATA_FACTORIES =
+            IList.of("const_list", "global_list", "const_def", "global_def");
+
+    private record LlvmPrim(String llvm, String ir, String host, int bits, boolean signed, boolean isFloat) {}
+
+    private static final IList<LlvmPrim> LLVM_PRIMS = IList.of(
+            new LlvmPrim("i8", "i8", "byte", 8, true, false),
+            new LlvmPrim("u8", "i8", "ubyte", 8, false, false),
+            new LlvmPrim("i16", "i16", "short", 16, true, false),
+            new LlvmPrim("u16", "i16", "ushort", 16, false, false),
+            new LlvmPrim("i32", "i32", "int", 32, true, false),
+            new LlvmPrim("u32", "i32", "uint", 32, false, false),
+            new LlvmPrim("i64", "i64", "long", 64, true, false),
+            new LlvmPrim("u64", "i64", "ulong", 64, false, false),
+            new LlvmPrim("f32", "float", "float", 32, false, true),
+            new LlvmPrim("f64", "double", "double", 64, false, true));
+
+    private static SourceExpr isPrim(EcoMb e, SourceExpr xx, SourceExpr ty, LlvmPrim prim) {
+        return prim.isFloat()
+                ? andB(e, has(e, xx, ty, "lfloat"), e.eq(acc(e, xx, ty, "lfloat", "bits"), num(e, prim.bits())))
+                : andB(
+                        e,
+                        has(e, xx, ty, "lint"),
+                        andB(
+                                e,
+                                e.eq(acc(e, xx, ty, "lint", "bits"), num(e, prim.bits())),
+                                prim.signed()
+                                        ? acc(e, xx, ty, "lint", "signed")
+                                        : e.not(acc(e, xx, ty, "lint", "signed"))));
+    }
+
+    private static SourceExpr[] globalDef(EcoMb e, boolean konst, SourceExpr init) {
+        return new SourceExpr[] {
+            e.let("gname", e.cat(e.s("@"), a(e, "name"))),
+            push(
+                    e,
+                    in(e, konst ? "constants" : "globals"),
+                    mk(e, "lglobal", e.p("name", e.v("gname")), e.p("ty", e.v("gty")), e.p("init", init))),
+            e.ret(mk(
+                    e,
+                    "lgref",
+                    e.p("ref", e.v("gname")),
+                    e.p("mod", outer(e)),
+                    e.p(
+                            "ty",
+                            konst
+                                    ? mk(
+                                            e,
+                                            "lt_global",
+                                            e.p("base", mk(e, "lt_ptr", e.p("pointee", e.v("gty")))),
+                                            e.p("mem", e.b(false)))
+                                    : mk(e, "lt_global", e.p("base", e.v("gty")), e.p("mem", e.b(true))))))
+        };
+    }
+
+    private static SourceExpr ptrPointeeLet(EcoMb e) {
+        return e.let("pointee", e.callM(e.v("desc"), "pointee", e.tup()));
+    }
+
+    private static SourceExpr ptrObjLet(EcoMb e) {
+        return e.let("gref_obj", e.fld(e.lowerV("k"), "gref_obj_t"));
+    }
+
+    private static SourceExpr grefsFill(EcoMb e, SourceExpr grefs) {
+        return e.foreach(
+                grefs,
+                "g",
+                push(e, e.v("refs"), e.call(e.mb.mustReinterpret(), e.tup(e.v("g"), e.lower(e.v("gref_obj"))))));
+    }
+
+    private static SourceExpr grefsNew(EcoMb e) {
+        return e.let("refs", e.listNew(e.lower(e.v("gref_obj"))));
+    }
+
+    private static SourceExpr specialize(EcoMb e, String name, SourceExpr argType, SourceExpr implBody) {
+        return e.seq(
+                e.let("sp_d", e.define()),
+                e.let("sp", e.callM(e.v("sp_d"), "func", e.s(name))),
+                e.callM(
+                        e.v("sp"),
+                        "impl",
+                        e.rec(
+                                e.p("arg", argType),
+                                e.p("ret", e.optionTypeLoweredSome(e.lowerV("gref_t"))),
+                                e.p("impl_body", e.stage(implBody)),
+                                e.p("exception_type", e.optionTypeLoweredNone()),
+                                e.p("description", e.optNone(str(e))))),
+                e.finish(e.v("sp_d")),
+                retM(
+                        e,
+                        okCve(
+                                e,
+                                cvOf(
+                                        e,
+                                        codeNone(e, loc(e)),
+                                        unwrapM(
+                                                e,
+                                                bim(
+                                                        e,
+                                                        e.mb.evalAspectLift(),
+                                                        "lift",
+                                                        lookupV(e, xx(e), ty(e), e.mb.evalAspectLift()),
+                                                        e.rec(
+                                                                e.p("xx", xx(e)),
+                                                                e.p("loc", loc(e)),
+                                                                e.p(
+                                                                        "external_host_value",
+                                                                        e.call(
+                                                                                e.mb.mustReinterpret(),
+                                                                                e.tup(
+                                                                                        e.mb.as(
+                                                                                                e.fld(
+                                                                                                        e.v("sp"),
+                                                                                                        "func"),
+                                                                                                ty(e)),
+                                                                                        e.mb.builtin(
+                                                                                                "types", "object")))))),
+                                                e.mb.typesCve())))));
+    }
+
     private static SourceExpr initMismatch(EcoMb e, SourceExpr st) {
         return throwErr(
                 e, loc(e), e.cat(e.s("cannot initialize llvm "), tyDesc(e, a(e, "ty")), e.s(" from "), tyDesc(e, st)));
@@ -1178,30 +1298,6 @@ public final class EcoLlvmIr {
                                 e.rec(e.p("dynamic_key", e.v("arg")), e.p("type", outer(e)))))));
     }
 
-    private static void rtType(
-            EcoMb e,
-            TList<SourceExpr> x,
-            String obj,
-            SourceExpr underType,
-            String desc,
-            String marker,
-            SourceExpr dispatchInner) {
-        selfType(
-                e,
-                x,
-                obj,
-                e.s(desc),
-                rtDispatch(e, underType, dispatchInner),
-                canCastFromSelf(e),
-                castFromSelf(e),
-                noCastTo(e),
-                castToPanic(e),
-                body(e, e.ret(has(e, xx(e), a(e, "other"), marker))));
-        rtLiftImpl(e, x, obj);
-        rtBindImpl(e, x, obj, underType);
-        rtUseImpl(e, x, obj);
-    }
-
     public static TList<SourceExpr> module(EcoMb e) {
         var x = new TList<SourceExpr>();
         x.add(e.let("d", e.define()));
@@ -1224,9 +1320,7 @@ public final class EcoLlvmIr {
             defIface(e, x, "lrange_m", e.p("elem", ty(e)));
             defIface(e, x, "lloop_m");
             defIface(e, x, "lgtype_m", e.p("base", ty(e)), e.p("mem", boolT(e)));
-            defIface(e, x, "lrange_fn_m");
             defIface(e, x, "lgfn_m", e.p("kind", intT(e)));
-            defIface(e, x, "linit_fn_m", e.p("ty", ty(e)));
 
             x.add(e.let("lsrc_u", e.callM0(e.v("d"), "union")));
             for (var tag : new String[] {"ssa", "mem"}) {
@@ -1369,11 +1463,19 @@ public final class EcoLlvmIr {
                     "lrange",
                     "llvm range",
                     e.rec(e.p("t", ty(e)), e.p("code", e.mb.typesCode()), e.p("n", lvalT(e))));
-            defObj(e, x, "lrange_fn_t", "llvm range function type", e.rec(e.p("t", ty(e)), e.p("elem", ty(e))));
             defObj(e, x, "lloop_t", "llvm loop type", e.tup());
             defObj(e, x, "lgfn_t", "llvm global definition function", e.rec(e.p("kind", intT(e))));
-            defObj(e, x, "linit_fn_t", "llvm initializer renderer", e.rec(e.p("ty", ty(e)), e.p("loc", locT(e))));
             defObj(e, x, "lt_global", "llvm global type", e.rec(e.p("base", ty(e)), e.p("mem", boolT(e))));
+            defIface(e, x, "lgref_m");
+            defObj(
+                    e,
+                    x,
+                    "lgref",
+                    "llvm global reference",
+                    e.rec(e.p("ref", str(e)), e.p("ty", ty(e)), e.p("mod", lmodT(e))));
+            accessor(e, x, "lgref", "ref", str(e));
+            accessor(e, x, "lgref", "ty", ty(e));
+            defObj(e, x, "lt_gref", "llvm global reference type", e.tup());
         }
         {
             fnDef(e, x, "h_ir", e.rec(e.p("xx", xxT(e)), e.p("mod", lmodOptT(e)), e.p("ty", ty(e))), str(e));
@@ -2316,17 +2418,65 @@ public final class EcoLlvmIr {
                                         e.p("varargs", e.b(varargs))))));
             }
             fnDef(e, x, "c_range", ty(e), ty(e));
+            fnDef(
+                    e,
+                    x,
+                    "h_range_call",
+                    e.rec(e.p("xx", xxT(e)), e.p("loc", locT(e)), e.p("elem", ty(e)), e.p("cv", cveT(e))),
+                    e.call(e.mb.typesEresult(), cveT(e)));
+            fnImpl(
+                    e,
+                    x,
+                    "h_range_call",
+                    body(
+                            e,
+                            e.let(
+                                    "a2",
+                                    unwrapCveM(
+                                            e,
+                                            tryEr(
+                                                    e,
+                                                    operand(e, xx(e), loc(e), xmod(e), a(e, "elem"), a(e, "cv")),
+                                                    cveT(e)))),
+                            e.ret(okCve(
+                                    e,
+                                    cvOf(
+                                            e,
+                                            codeNone(e, loc(e)),
+                                            mk(
+                                                    e,
+                                                    "lrange",
+                                                    e.p("t", mk(e, "lrange_t", e.p("elem", a(e, "elem")))),
+                                                    e.p("code", cveCode(e, e.v("a2"))),
+                                                    e.p("n", lvalOf(e, e.v("a2")))))))));
             fnImpl(
                     e,
                     x,
                     "c_range",
                     body(
                             e,
-                            e.ret(mk(
-                                    e,
-                                    "lrange_fn_t",
-                                    e.p("t", mk(e, "lrange_t", e.p("elem", e.v("arg")))),
-                                    e.p("elem", e.v("arg"))))));
+                            e.let("elem", e.v("arg")),
+                            e.let("h_range_call_f", e.lowerV("h_range_call")),
+                            e.let("cf_d", e.define()),
+                            e.let("cf", e.callM(e.v("cf_d"), "const_func", e.s("llvm range"))),
+                            e.callM(
+                                    e.v("cf"),
+                                    "impl",
+                                    e.rec(
+                                            e.p(
+                                                    "impl_body",
+                                                    e.stage(
+                                                            e.call(
+                                                                    e.lower(e.v("h_range_call_f")),
+                                                                    e.rec(
+                                                                            e.p("xx", xx(e)),
+                                                                            e.p("loc", loc(e)),
+                                                                            e.p("elem", e.lower(e.v("elem"))),
+                                                                            e.p("cv", a(e, "argument")))))),
+                                            e.p("exception_type", e.optionTypeLoweredNone()),
+                                            e.p("description", e.optNone(str(e))))),
+                            e.finish(e.v("cf_d")),
+                            e.ret(e.mb.as(e.fld(e.v("cf"), "func"), ty(e)))));
             fnDef(e, x, "c_global_t", e.rec(e.p("ty", ty(e)), e.p("mem", boolT(e))), ty(e));
             fnImpl(
                     e,
@@ -2492,7 +2642,97 @@ public final class EcoLlvmIr {
                                                             e.let("s", hf(e, "h_gref", a(e, "cv"))),
                                                             retM(e, strCve(e, e.v("s"))))),
                                             retM(e, retagRuntime(e, a(e, "cv"), str(e))))),
+                            e.ifOnly(
+                                    has(e, xx(e), e.v("st"), "lgref_m"),
+                                    e.seq(
+                                            e.let("lgref_ty", lt(e, "lgref")),
+                                            e.let("pointee", acc(e, xx(e), a(e, "ty"), "lptr", "pointee")),
+                                            retM(
+                                                    e,
+                                                    hostCve(
+                                                            e,
+                                                            e.stage(
+                                                                    e.callM(
+                                                                            e.call(
+                                                                                    e.mb.mustReinterpret(),
+                                                                                    e.tup(
+                                                                                            graft(e, a(e, "cv")),
+                                                                                            e.lower(e.v("lgref_ty")))),
+                                                                            "ptr_ref",
+                                                                            e.lower(e.v("pointee")))))))),
                             initMismatch(e, e.v("st"))));
+            var hostListInits = new TList<SourceExpr>();
+            defObj(e, x, "llist", "llvm list initializer", e.rec(e.p("ir", str(e)), e.p("count", intT(e))));
+            accessor(e, x, "llist", "ir", str(e));
+            accessor(e, x, "llist", "count", intT(e));
+            for (var prim : LLVM_PRIMS) {
+                var fmt = "h_fmt_list_" + prim.llvm();
+                var fn = "h_init_list_" + prim.llvm();
+                var hostT = e.mb.builtin("types", prim.host());
+                fnDef(e, x, fmt, e.listType(hostT), t(e, "llist"));
+                fnImpl(
+                        e,
+                        x,
+                        fmt,
+                        body(
+                                e,
+                                e.let("parts", e.listNew(str(e))),
+                                countLet(e, "n"),
+                                e.foreach(
+                                        e.v("arg"),
+                                        "v",
+                                        e.seq(
+                                                push(
+                                                        e,
+                                                        e.v("parts"),
+                                                        e.cat(
+                                                                e.s(prim.ir() + " "),
+                                                                toStr(
+                                                                        e,
+                                                                        prim.host()
+                                                                                        .equals("float")
+                                                                                ? e.mb.as(e.v("v"), e.typesDouble())
+                                                                                : e.v("v")))),
+                                                e.incr(e.fld(e.v("n"), "v")))),
+                                e.ret(mk(
+                                        e,
+                                        "llist",
+                                        e.p("ir", e.cat(e.s("["), e.join(e.v("parts"), ", "), e.s("]"))),
+                                        e.p("count", e.fld(e.v("n"), "v"))))));
+                fnDef(e, x, fn, e.rec(e.p("count", intT(e)), e.p("values", e.listType(hostT))), str(e));
+                fnImpl(
+                        e,
+                        x,
+                        fn,
+                        body(
+                                e,
+                                e.let("list", hf(e, fmt, a(e, "values"))),
+                                e.ifOnly(
+                                        e.not(e.eq(e.callM(e.v("list"), "count", e.tup()), a(e, "count"))),
+                                        e.mb.panic(e.cat(
+                                                e.s("llvm: array initializer has "),
+                                                toStr(e, e.callM(e.v("list"), "count", e.tup())),
+                                                e.s(" elements, expected "),
+                                                toStr(e, a(e, "count"))))),
+                                e.ret(e.callM(e.v("list"), "ir", e.tup()))));
+                var isElem = isPrim(e, xx(e), e.v("elem"), prim);
+                hostListInits.add(e.ifOnly(
+                        isElem,
+                        e.seq(
+                                e.let(
+                                        "values",
+                                        unwrapCveT(e, castValue(e, xx(e), loc(e), e.listType(hostT), a(e, "cv")))),
+                                e.let("init_list", e.lowerV(fn)),
+                                retM(
+                                        e,
+                                        hostCve(
+                                                e,
+                                                e.stage(e.call(
+                                                        e.lower(e.v("init_list")),
+                                                        e.rec(
+                                                                e.p("count", e.lower(e.v("count"))),
+                                                                e.p("values", graft(e, e.v("values")))))))))));
+            }
             fnImpl(
                     e,
                     x,
@@ -2503,62 +2743,7 @@ public final class EcoLlvmIr {
                             e.let("count", acc(e, xx(e), a(e, "ty"), "larr", "count")),
                             e.let("eir", irFn(e, xx(e), e.optNone(lt(e, "lmod")), e.v("elem"))),
                             e.let("st", cveType(e, a(e, "cv"))),
-                            e.let("sk", lookup(e, xx(e), e.v("st"), e.mb.evalAspectStringConst())),
-                            e.ifOnly(
-                                    e.fld(e.v("sk"), "is_some"),
-                                    e.seq(
-                                            e.ifOnly(
-                                                    e.not(
-                                                            andB(
-                                                                    e,
-                                                                    has(e, xx(e), e.v("elem"), "lint"),
-                                                                    e.eq(
-                                                                            acc(e, xx(e), e.v("elem"), "lint", "bits"),
-                                                                            num(e, 8)))),
-                                                    throwErr(
-                                                            e,
-                                                            loc(e),
-                                                            e.cat(
-                                                                    e.s(
-                                                                            "string initializer needs an 8-bit integer"
-                                                                                    + " element type, not "),
-                                                                    tyDesc(e, e.v("elem"))))),
-                                            e.let(
-                                                    "bytes",
-                                                    e.call(
-                                                            e.mb.evalStrUtf8(),
-                                                            bim(
-                                                                    e,
-                                                                    e.mb.evalAspectStringConst(),
-                                                                    "get",
-                                                                    e.fld(e.v("sk"), "value"),
-                                                                    cveValue(e, a(e, "cv"))))),
-                                            e.ifOnly(
-                                                    e.not(e.eq(e.fld(e.v("bytes"), "len"), e.v("count"))),
-                                                    throwErr(
-                                                            e,
-                                                            loc(e),
-                                                            e.cat(
-                                                                    e.s("string initializer has "),
-                                                                    toStr(e, e.fld(e.v("bytes"), "len")),
-                                                                    e.s(" bytes, expected "),
-                                                                    toStr(e, e.v("count"))))),
-                                            e.let("parts", e.listNew(str(e))),
-                                            e.foreach(
-                                                    e.v("bytes"),
-                                                    "b",
-                                                    push(
-                                                            e,
-                                                            e.v("parts"),
-                                                            e.cat(
-                                                                    e.v("eir"),
-                                                                    e.s(" "),
-                                                                    toStr(
-                                                                            e,
-                                                                            e.mb.operatorAnd(
-                                                                                    e.mb.as(e.v("b"), e.mb.typesInt()),
-                                                                                    num(e, 255)))))),
-                                            retM(e, strCve(e, e.cat(e.s("["), e.join(e.v("parts"), ", "), e.s("]")))))),
+                            e.seq(hostListInits.toArray(SourceExpr[]::new)),
                             e.let("tk", lookup(e, xx(e), e.v("st"), aspIface(e, "tuple"))),
                             e.ifOnly(
                                     e.fld(e.v("tk"), "is_some"),
@@ -2602,39 +2787,7 @@ public final class EcoLlvmIr {
                                                                     e.s(" elements, expected "),
                                                                     toStr(e, e.v("count"))))),
                                             retM(e, foldJoin(e, e.v("parts"), "[", "]")))),
-                            e.ifOnly(
-                                    e.not(e.fld(lookup(e, xx(e), e.v("st"), aspIface(e, "iterable")), "is_some")),
-                                    initMismatch(e, e.v("st"))),
-                            e.let(
-                                    "rty",
-                                    e.mb.as(mk(e, "linit_fn_t", e.p("ty", e.v("elem")), e.p("loc", loc(e))), ty(e))),
-                            e.let("cstr", toStr(e, e.v("count"))),
-                            e.ret(hostCve(
-                                    e,
-                                    e.stage(e.seq(
-                                            e.let("parts", e.listNew(str(e))),
-                                            e.let("n", e.rec(e.p("v", e.intOf(0)))),
-                                            e.foreach(
-                                                    graft(e, a(e, "cv")),
-                                                    "x",
-                                                    e.seq(
-                                                            push(
-                                                                    e,
-                                                                    e.v("parts"),
-                                                                    e.cat(
-                                                                            e.lower(e.v("eir")),
-                                                                            e.s(" "),
-                                                                            e.call(e.lower(e.v("rty")), e.v("x")))),
-                                                            e.incr(e.fld(e.v("n"), "v")))),
-                                            e.ifOnly(
-                                                    e.not(e.eq(e.fld(e.v("n"), "v"), e.lower(e.v("count")))),
-                                                    e.mb.panic(
-                                                            e.cat(
-                                                                    e.s("llvm: array initializer has "),
-                                                                    toStr(e, e.fld(e.v("n"), "v")),
-                                                                    e.s(" elements, expected "),
-                                                                    e.lower(e.v("cstr"))))),
-                                            e.ret(e.cat(e.s("["), e.join(e.v("parts"), ", "), e.s("]")))))))));
+                            initMismatch(e, e.v("st"))));
             fnImpl(
                     e,
                     x,
@@ -4956,57 +5109,20 @@ public final class EcoLlvmIr {
                                                     push(e, e.v("out"), brInst(e, e.v("head"))))),
                                     push(e, e.v("out"), labelInst(e, e.v("end"))),
                                     e.ret(okCve(e, cvNo(e, codeOf(e, e.v("out")))))))));
-            rtType(
-                    e,
-                    x,
-                    "lrange_fn_t",
-                    e.mb.typesString(),
-                    "range constructor",
-                    "lrange_fn_m",
-                    e.aspectDispatch(lv(e, "lrange_fn_m_id"), aspId(e, "function")));
-            x.add(e.implInterface(e.v("lrange_fn_t"), t(e, "lrange_fn_m")));
-            x.add(e.implInterface(
-                    e.v("lrange_fn_t"),
-                    aspIface(e, "function"),
-                    e.p(
-                            "call",
-                            body(
-                                    e,
-                                    e.let(
-                                            "a2",
-                                            unwrapCveM(
-                                                    e,
-                                                    tryEr(
-                                                            e,
-                                                            operand(
-                                                                    e,
-                                                                    xx(e),
-                                                                    loc(e),
-                                                                    xmod(e),
-                                                                    in(e, "elem"),
-                                                                    a(e, "argument")),
-                                                            cveT(e)))),
-                                    e.ret(okCve(
-                                            e,
-                                            cvOf(
-                                                    e,
-                                                    codeNone(e, loc(e)),
-                                                    mk(
-                                                            e,
-                                                            "lrange",
-                                                            e.p("t", in(e, "t")),
-                                                            e.p("code", cveCode(e, e.v("a2"))),
-                                                            e.p("n", lvalOf(e, e.v("a2"))))))))),
-                    e.p("exception_type", e.optionTypeLoweredNone())));
-
-            rtType(
+            selfType(
                     e,
                     x,
                     "lloop_t",
-                    e.mb.typesString(),
-                    "loop",
-                    "lloop_m",
-                    e.aspectDispatch(lv(e, "lloop_m_id"), aspId(e, "iterable")));
+                    e.s("loop"),
+                    rtDispatch(e, e.mb.typesString(), e.aspectDispatch(lv(e, "lloop_m_id"), aspId(e, "iterable"))),
+                    canCastFromSelf(e),
+                    castFromSelf(e),
+                    noCastTo(e),
+                    castToPanic(e),
+                    body(e, e.ret(has(e, xx(e), a(e, "other"), "lloop_m"))));
+            rtLiftImpl(e, x, "lloop_t");
+            rtBindImpl(e, x, "lloop_t", e.mb.typesString());
+            rtUseImpl(e, x, "lloop_t");
             x.add(e.implInterface(e.v("lloop_t"), t(e, "lloop_m")));
             x.add(e.implInterface(
                     e.v("lloop_t"),
@@ -5214,18 +5330,7 @@ public final class EcoLlvmIr {
                                                                     orB(
                                                                             e,
                                                                             has(e, xx(e), e.v("tyv"), "lgtype_m"),
-                                                                            orB(
-                                                                                    e,
-                                                                                    has(
-                                                                                            e,
-                                                                                            xx(e),
-                                                                                            e.v("tyv"),
-                                                                                            "lloop_m"),
-                                                                                    has(
-                                                                                            e,
-                                                                                            xx(e),
-                                                                                            e.v("tyv"),
-                                                                                            "lrange_fn_m")))),
+                                                                            has(e, xx(e), e.v("tyv"), "lloop_m"))),
                                                             retM(
                                                                     e,
                                                                     errCve(
@@ -5491,49 +5596,6 @@ public final class EcoLlvmIr {
                                                                     lgfnGlobalT(e, e.v("tyv"), true))))))),
                     e.p("exception_type", e.optionTypeLoweredNone())));
 
-            selfType(
-                    e,
-                    x,
-                    "linit_fn_t",
-                    e.cat(e.s("llvm initializer renderer for "), tyDesc(e, in(e, "ty"))),
-                    rtDispatch(e, e.mb.typesString(), e.aspectDispatch(lv(e, "linit_fn_m_id"), aspId(e, "function"))),
-                    canCastFromSelf(e),
-                    castFromSelf(e),
-                    noCastTo(e),
-                    castToPanic(e),
-                    body(
-                            e,
-                            e.ret(andB(
-                                    e,
-                                    has(e, xx(e), a(e, "other"), "linit_fn_m"),
-                                    isEqual(
-                                            e,
-                                            xx(e),
-                                            in(e, "ty"),
-                                            acc(e, xx(e), a(e, "other"), "linit_fn_m", "ty"))))));
-            rtLiftImpl(e, x, "linit_fn_t");
-            rtBindImpl(e, x, "linit_fn_t", e.mb.typesString());
-            rtUseImpl(e, x, "linit_fn_t");
-            x.add(e.implInterface(e.v("linit_fn_t"), t(e, "linit_fn_m"), e.p("ty", in(e, "ty"))));
-            x.add(e.implInterface(
-                    e.v("linit_fn_t"),
-                    aspIface(e, "function"),
-                    e.p(
-                            "call",
-                            body(
-                                    e,
-                                    e.ret(tryEr(
-                                            e,
-                                            hf(
-                                                    e,
-                                                    "h_init",
-                                                    e.p("xx", xx(e)),
-                                                    e.p("loc", in(e, "loc")),
-                                                    e.p("ty", in(e, "ty")),
-                                                    e.p("cv", a(e, "argument"))),
-                                            cveT(e))))),
-                    e.p("exception_type", e.optionTypeLoweredNone())));
-
             x.add(e.implInterface(
                     e.v("ltarget"),
                     e.mb.evalTarget(),
@@ -5782,6 +5844,309 @@ public final class EcoLlvmIr {
                                                 e.p("exception_type", str(e))))),
                         e.callM(e.v("m"), "set_xx", e.v("ctx")),
                         e.ret(e.v("m"))))));
+        {
+            selfType(
+                    e,
+                    x,
+                    "lt_gref",
+                    e.s("llvm global reference"),
+                    rtDispatch(e, lt(e, "lgref"), e.aspectDispatch(lv(e, "lgref_m_id"))),
+                    body(
+                            e,
+                            e.ret(orB(
+                                    e,
+                                    isEqual(e, xx(e), outer(e), srcType(e)),
+                                    isEqual(e, xx(e), lt(e, "lgref"), srcType(e))))),
+                    body(
+                            e,
+                            e.ifOnly(
+                                    isEqual(e, xx(e), outer(e), cveType(e, a(e, "cv"))), retM(e, okCve(e, a(e, "cv")))),
+                            e.ret(okCve(e, retagRuntime(e, a(e, "cv"), outer(e))))),
+                    noCastTo(e),
+                    castToPanic(e),
+                    body(e, e.ret(has(e, xx(e), a(e, "other"), "lgref_m"))));
+            x.add(e.implInterface(e.v("lt_gref"), t(e, "lgref_m")));
+            x.add(e.implInterface(
+                    e.v("lt_gref"),
+                    e.mb.evalAspectLift(),
+                    e.p(
+                            "lift",
+                            body(
+                                    e,
+                                    e.let("host", reinterpret(e, a(e, "external_host_value"), "lgref")),
+                                    e.ret(e.eresultOk(
+                                            e.mb.evalValue(),
+                                            e.call(
+                                                    e.evalBuiltin("value_object_const"),
+                                                    e.rec(
+                                                            e.p("type", e.callM(e.v("host"), "ty", e.tup())),
+                                                            e.p(
+                                                                    "data",
+                                                                    e.call(
+                                                                            e.mb.mustReinterpret(),
+                                                                            e.tup(
+                                                                                    e.callM(
+                                                                                            e.v("host"),
+                                                                                            "ref",
+                                                                                            e.tup()),
+                                                                                    e.mb.builtin(
+                                                                                            "types",
+                                                                                            "object"))))))))))));
+            rtBindImpl(e, x, "lt_gref", lt(e, "lgref"));
+            rtUseImpl(e, x, "lt_gref");
+            for (var prim : LLVM_PRIMS) {
+                var elemT =
+                        prim.isFloat() ? mk(e, "lt_float", e.p("bits", num(e, prim.bits()))) : intTy(e, prim.llvm());
+                var hostT = e.mb.builtin("types", prim.host());
+                for (var konst : new boolean[] {true, false}) {
+                    var kind = konst ? "const" : "global";
+                    var list = new TList<SourceExpr>();
+                    list.add(e.let("list", hf(e, "h_fmt_list_" + prim.llvm(), a(e, "values"))));
+                    list.add(e.let(
+                            "gty",
+                            mk(e, "lt_arr", e.p("elem", elemT), e.p("count", e.callM(e.v("list"), "count", e.tup())))));
+                    list.addAll(TList.of(globalDef(e, konst, e.callM(e.v("list"), "ir", e.tup()))));
+                    method(
+                            e,
+                            x,
+                            "lmod",
+                            kind + "_list_" + prim.llvm(),
+                            e.rec(e.p("name", str(e)), e.p("values", e.listType(hostT))),
+                            t(e, "lgref"),
+                            e.seq(list.toArray(SourceExpr[]::new)));
+                    var scalar = new TList<SourceExpr>();
+                    scalar.add(e.let("gty", elemT));
+                    scalar.addAll(TList.of(globalDef(
+                            e,
+                            konst,
+                            e.ifElse(
+                                    e.fld(a(e, "init"), "is_some"),
+                                    toStr(
+                                            e,
+                                            prim.host().equals("float")
+                                                    ? e.mb.as(e.fld(a(e, "init"), "value"), e.typesDouble())
+                                                    : e.fld(a(e, "init"), "value")),
+                                    e.dstr("zeroinitializer")))));
+                    method(
+                            e,
+                            x,
+                            "lmod",
+                            kind + "_" + prim.llvm(),
+                            e.rec(e.p("name", str(e)), e.p("init", e.call(e.mb.typesOption(), hostT))),
+                            t(e, "lgref"),
+                            e.seq(scalar.toArray(SourceExpr[]::new)));
+                    var array = new TList<SourceExpr>();
+                    array.add(e.let("gty", mk(e, "lt_arr", e.p("elem", elemT), e.p("count", a(e, "count")))));
+                    array.addAll(TList.of(globalDef(
+                            e,
+                            konst,
+                            e.ifElse(
+                                    e.fld(a(e, "init"), "is_some"),
+                                    hf(
+                                            e,
+                                            "h_init_list_" + prim.llvm(),
+                                            e.p("count", a(e, "count")),
+                                            e.p("values", e.fld(a(e, "init"), "value"))),
+                                    e.dstr("zeroinitializer")))));
+                    method(
+                            e,
+                            x,
+                            "lmod",
+                            kind + "_array_" + prim.llvm(),
+                            e.rec(
+                                    e.p("name", str(e)),
+                                    e.p("count", intT(e)),
+                                    e.p("init", e.call(e.mb.typesOption(), e.listType(hostT)))),
+                            t(e, "lgref"),
+                            e.seq(array.toArray(SourceExpr[]::new)));
+                }
+            }
+            method(
+                    e,
+                    x,
+                    "lgref",
+                    "ptr_ref",
+                    ty(e),
+                    str(e),
+                    e.seq(
+                            e.let("cx", e.callM(in(e, "mod"), "xx", e.tup())),
+                            e.let("gt", in(e, "ty")),
+                            e.let("base", acc(e, e.v("cx"), e.v("gt"), "lgtype_m", "base")),
+                            e.let(
+                                    "target",
+                                    e.ifElse(
+                                            acc(e, e.v("cx"), e.v("gt"), "lgtype_m", "mem"),
+                                            e.v("base"),
+                                            acc(e, e.v("cx"), e.v("base"), "lptr", "pointee"))),
+                            e.ifOnly(
+                                    e.not(orB(
+                                            e,
+                                            has(e, e.v("cx"), e.v("arg"), "lvoid"),
+                                            orB(
+                                                    e,
+                                                    isEqual(e, e.v("cx"), e.v("target"), e.v("arg")),
+                                                    andB(
+                                                            e,
+                                                            has(e, e.v("cx"), e.v("target"), "larr"),
+                                                            isEqual(
+                                                                    e,
+                                                                    e.v("cx"),
+                                                                    acc(e, e.v("cx"), e.v("target"), "larr", "elem"),
+                                                                    e.v("arg")))))),
+                                    e.mb.panic(e.cat(
+                                            e.s("llvm: pointer initializer "),
+                                            in(e, "ref"),
+                                            e.s(" points to "),
+                                            tyDesc(e, e.v("target")),
+                                            e.s(", expected "),
+                                            tyDesc(e, e.v("arg"))))),
+                            e.ret(in(e, "ref"))));
+            method(
+                    e,
+                    x,
+                    "lmod",
+                    "h_fmt_list_ptr",
+                    e.rec(e.p("pointee", ty(e)), e.p("values", e.listType(t(e, "lgref")))),
+                    t(e, "llist"),
+                    e.seq(
+                            e.let("parts", e.listNew(str(e))),
+                            countLet(e, "n"),
+                            e.foreach(
+                                    a(e, "values"),
+                                    "g",
+                                    e.seq(
+                                            push(
+                                                    e,
+                                                    e.v("parts"),
+                                                    e.cat(e.s("ptr "), e.callM(e.v("g"), "ptr_ref", a(e, "pointee")))),
+                                            e.incr(e.fld(e.v("n"), "v")))),
+                            e.ret(mk(
+                                    e,
+                                    "llist",
+                                    e.p("ir", e.cat(e.s("["), e.join(e.v("parts"), ", "), e.s("]"))),
+                                    e.p("count", e.fld(e.v("n"), "v"))))));
+            for (var konst : new boolean[] {true, false}) {
+                var kind = konst ? "const" : "global";
+                var ptrElem = mk(e, "lt_ptr", e.p("pointee", a(e, "pointee")));
+                var ptrs = new TList<SourceExpr>();
+                ptrs.add(e.let(
+                        "list",
+                        e.callM(
+                                outer(e),
+                                "h_fmt_list_ptr",
+                                e.rec(e.p("pointee", a(e, "pointee")), e.p("values", a(e, "values"))))));
+                ptrs.add(e.let(
+                        "gty",
+                        mk(e, "lt_arr", e.p("elem", ptrElem), e.p("count", e.callM(e.v("list"), "count", e.tup())))));
+                ptrs.addAll(TList.of(globalDef(e, konst, e.callM(e.v("list"), "ir", e.tup()))));
+                method(
+                        e,
+                        x,
+                        "lmod",
+                        kind + "_list_ptr",
+                        e.rec(e.p("name", str(e)), e.p("pointee", ty(e)), e.p("values", e.listType(t(e, "lgref")))),
+                        t(e, "lgref"),
+                        e.seq(ptrs.toArray(SourceExpr[]::new)));
+                var scalar = new TList<SourceExpr>();
+                scalar.add(e.let("gty", ptrElem));
+                scalar.addAll(TList.of(globalDef(
+                        e,
+                        konst,
+                        e.ifElse(
+                                e.fld(a(e, "init"), "is_some"),
+                                e.callM(e.fld(a(e, "init"), "value"), "ptr_ref", a(e, "pointee")),
+                                e.dstr("null")))));
+                method(
+                        e,
+                        x,
+                        "lmod",
+                        kind + "_ptr",
+                        e.rec(
+                                e.p("name", str(e)),
+                                e.p("pointee", ty(e)),
+                                e.p("init", e.call(e.mb.typesOption(), t(e, "lgref")))),
+                        t(e, "lgref"),
+                        e.seq(scalar.toArray(SourceExpr[]::new)));
+                var array = new TList<SourceExpr>();
+                array.add(e.let("gty", mk(e, "lt_arr", e.p("elem", ptrElem), e.p("count", a(e, "count")))));
+                array.addAll(TList.of(globalDef(
+                        e,
+                        konst,
+                        e.ifElse(
+                                e.fld(a(e, "init"), "is_some"),
+                                e.seq(
+                                        e.let(
+                                                "list",
+                                                e.callM(
+                                                        outer(e),
+                                                        "h_fmt_list_ptr",
+                                                        e.rec(
+                                                                e.p("pointee", a(e, "pointee")),
+                                                                e.p("values", e.fld(a(e, "init"), "value"))))),
+                                        e.ifOnly(
+                                                e.not(e.eq(e.callM(e.v("list"), "count", e.tup()), a(e, "count"))),
+                                                e.mb.panic(e.cat(
+                                                        e.s("llvm: array initializer has "),
+                                                        toStr(e, e.callM(e.v("list"), "count", e.tup())),
+                                                        e.s(" elements, expected "),
+                                                        toStr(e, a(e, "count"))))),
+                                        e.ret(e.callM(e.v("list"), "ir", e.tup()))),
+                                e.dstr("zeroinitializer")))));
+                method(
+                        e,
+                        x,
+                        "lmod",
+                        kind + "_array_ptr",
+                        e.rec(
+                                e.p("name", str(e)),
+                                e.p("pointee", ty(e)),
+                                e.p("count", intT(e)),
+                                e.p("init", e.call(e.mb.typesOption(), e.listType(t(e, "lgref"))))),
+                        t(e, "lgref"),
+                        e.seq(array.toArray(SourceExpr[]::new)));
+            }
+            defObj(
+                    e,
+                    x,
+                    "ldesc",
+                    "llvm data type description",
+                    e.rec(e.p("prim", str(e)), e.p("count", intT(e)), e.p("pointee", ty(e))));
+            accessor(e, x, "ldesc", "pointee", ty(e));
+            accessor(e, x, "ldesc", "prim", str(e));
+            accessor(e, x, "ldesc", "count", intT(e));
+            fnDef(e, x, "c_describe", e.rec(e.p("xx", xxT(e)), e.p("ty", ty(e))), t(e, "ldesc"));
+            var describe = new TList<SourceExpr>();
+            describe.add(e.let("cx", xx(e)));
+            describe.add(e.let("dty", a(e, "ty")));
+            describe.add(e.let("r", e.rec(e.p("prim", e.dstr("")), e.p("count", e.intOf(-1)))));
+            describe.add(e.let(
+                    "elem",
+                    e.ifElse(
+                            has(e, e.v("cx"), e.v("dty"), "larr"),
+                            acc(e, e.v("cx"), e.v("dty"), "larr", "elem"),
+                            e.v("dty"))));
+            describe.add(e.ifOnly(
+                    has(e, e.v("cx"), e.v("dty"), "larr"),
+                    e.mb.set(e.fld(e.v("r"), "count"), acc(e, e.v("cx"), e.v("dty"), "larr", "count"))));
+            for (var prim : LLVM_PRIMS) {
+                describe.add(e.ifOnly(
+                        isPrim(e, e.v("cx"), e.v("elem"), prim), e.mb.set(e.fld(e.v("r"), "prim"), e.s(prim.llvm()))));
+            }
+            describe.add(
+                    e.ifOnly(has(e, e.v("cx"), e.v("elem"), "lptr"), e.mb.set(e.fld(e.v("r"), "prim"), e.s("ptr"))));
+            describe.add(e.ret(mk(
+                    e,
+                    "ldesc",
+                    e.p("prim", e.fld(e.v("r"), "prim")),
+                    e.p("count", e.fld(e.v("r"), "count")),
+                    e.p(
+                            "pointee",
+                            e.ifElse(
+                                    has(e, e.v("cx"), e.v("elem"), "lptr"),
+                                    acc(e, e.v("cx"), e.v("elem"), "lptr", "pointee"),
+                                    e.v("elem"))))));
+            fnImpl(e, x, "c_describe", body(e, describe.toArray(SourceExpr[]::new)));
+        }
         x.add(e.finish(e.v("d")));
         var passthrough = new String[] {
             "field_t", "ptr", "array", "field", "struct", "struct_tail", "tail", "fn", "fn_varargs", "range", "global_t"
@@ -5790,8 +6155,11 @@ public final class EcoLlvmIr {
         defs.add(e.p("new", e.fld(e.v("llvm_b"), "func")));
         defs.add(e.p("mod_t", t(e, "lmod")));
         defs.add(e.p("field_t", t(e, "lfield")));
+        defs.add(e.p("describe", e.v("c_describe")));
+        defs.add(e.p("gref_obj_t", t(e, "lgref")));
         for (var i = 1; i < passthrough.length; i++) defs.add(e.p(passthrough[i], e.v("c_" + passthrough[i])));
-        for (var obj : new String[] {"lt_int", "lt_float", "lt_void", "lloop_t", "lgfn_t", "lt_ptr", "lt_global"}) {
+        for (var obj :
+                new String[] {"lt_int", "lt_float", "lt_void", "lloop_t", "lgfn_t", "lt_ptr", "lt_global", "lt_gref"}) {
             defs.add(e.p(obj + "_new", e.fld(e.v(obj), "new")));
         }
         x.add(e.ret(e.rec(defs.toArray(EcoMb.P[]::new))));
@@ -5840,6 +6208,8 @@ public final class EcoLlvmIr {
             if (!kind.equals("cstr_fn")) exported.add(kind);
             y.add(e.let(kind, lty(e, "lgfn_t", e.rec(e.p("kind", e.intOf(lgfnKind(kind)))))));
         }
+        exported.add("gref_t");
+        y.add(e.let("gref_t", lty(e, "lt_gref", e.tup())));
         y.add(e.let("d", e.define()));
         y.add(e.optionTypeLet());
         y.add(e.let("mod_o", e.defObject(e.v("d"), "llvm module")));
@@ -5866,6 +6236,195 @@ public final class EcoLlvmIr {
                 str(e),
                 e.optionTypeSome(e.v("cstr_t")),
                 e.stage(e.call(e.lowerV("cstr_fn"), e.rec(e.p("mod", outer(e)), e.p("value", e.v("arg")))))));
+        for (var factory : DATA_FACTORIES) {
+            var kind = factory.startsWith("const") ? "const" : "global";
+            var fb = new TList<SourceExpr>();
+            fb.add(e.let("tycv", a(e, "argument")));
+            fb.add(e.let("tk", lookup(e, xx(e), cveType(e, e.v("tycv")), aspIface(e, "type"))));
+            fb.add(e.ifOnly(
+                    orB(e, isRuntime(e, e.v("tycv")), e.not(e.fld(e.v("tk"), "is_some"))),
+                    retM(e, errCve(e, loc(e), "llvm." + factory + ": argument must be a constant type"))));
+            fb.add(e.let(
+                    "desc",
+                    e.call(
+                            e.fld(e.lowerV("k"), "describe"),
+                            e.rec(
+                                    e.p("xx", xx(e)),
+                                    e.p(
+                                            "ty",
+                                            bim(
+                                                    e,
+                                                    aspIface(e, "type"),
+                                                    "type",
+                                                    e.fld(e.v("tk"), "value"),
+                                                    cveValue(e, e.v("tycv"))))))));
+            fb.add(e.let("prim", e.callM(e.v("desc"), "prim", e.tup())));
+            fb.add(e.let("count", e.callM(e.v("desc"), "count", e.tup())));
+            fb.add(e.let("scalar", e.mb.operatorLt(e.v("count"), num(e, 0))));
+            fb.add(e.let("mod_t", e.lower(e.fld(e.v("mod_o"), "type"))));
+            var isPtr = e.eq(e.v("prim"), e.s("ptr"));
+            var ptrLmod = e.callM(e.fld(e.v("arg"), "mod"), "m", e.tup());
+            if (factory.endsWith("_list")) {
+                fb.add(e.ifOnly(
+                        andB(e, isPtr, e.v("scalar")),
+                        e.seq(
+                                ptrPointeeLet(e),
+                                ptrObjLet(e),
+                                specialize(
+                                        e,
+                                        "llvm." + factory,
+                                        e.rec(
+                                                e.p("mod", e.v("mod_t")),
+                                                e.p("name", str(e)),
+                                                e.p("values", e.listType(e.lowerV("gref_t")))),
+                                        e.seq(
+                                                grefsNew(e),
+                                                grefsFill(e, e.fld(e.v("arg"), "values")),
+                                                e.ret(e.callM(
+                                                        ptrLmod,
+                                                        kind + "_list_ptr",
+                                                        e.rec(
+                                                                e.p("name", e.fld(e.v("arg"), "name")),
+                                                                e.p("pointee", e.lower(e.v("pointee"))),
+                                                                e.p("values", e.v("refs"))))))))));
+            } else {
+                fb.add(e.ifOnly(
+                        andB(e, isPtr, e.v("scalar")),
+                        e.seq(
+                                ptrPointeeLet(e),
+                                ptrObjLet(e),
+                                specialize(
+                                        e,
+                                        "llvm." + factory,
+                                        e.rec(
+                                                e.p("mod", e.v("mod_t")),
+                                                e.p("name", str(e)),
+                                                e.p("init", e.call(e.mb.typesOption(), e.lowerV("gref_t")))),
+                                        e.seq(
+                                                e.let("init", e.fld(e.v("arg"), "init")),
+                                                e.let(
+                                                        "ref",
+                                                        e.ifElse(
+                                                                e.fld(e.v("init"), "is_some"),
+                                                                e.optSome(
+                                                                        e.lower(e.v("gref_obj")),
+                                                                        e.call(
+                                                                                e.mb.mustReinterpret(),
+                                                                                e.tup(
+                                                                                        e.fld(e.v("init"), "value"),
+                                                                                        e.lower(e.v("gref_obj"))))),
+                                                                e.optNone(e.lower(e.v("gref_obj"))))),
+                                                e.ret(e.callM(
+                                                        ptrLmod,
+                                                        kind + "_ptr",
+                                                        e.rec(
+                                                                e.p("name", e.fld(e.v("arg"), "name")),
+                                                                e.p("pointee", e.lower(e.v("pointee"))),
+                                                                e.p("init", e.v("ref"))))))))));
+                fb.add(e.ifOnly(
+                        andB(e, isPtr, e.not(e.v("scalar"))),
+                        e.seq(
+                                ptrPointeeLet(e),
+                                ptrObjLet(e),
+                                specialize(
+                                        e,
+                                        "llvm." + factory,
+                                        e.rec(
+                                                e.p("mod", e.v("mod_t")),
+                                                e.p("name", str(e)),
+                                                e.p(
+                                                        "init",
+                                                        e.call(e.mb.typesOption(), e.listType(e.lowerV("gref_t"))))),
+                                        e.seq(
+                                                e.let("init", e.fld(e.v("arg"), "init")),
+                                                e.let(
+                                                        "ref",
+                                                        e.ifElse(
+                                                                e.fld(e.v("init"), "is_some"),
+                                                                e.seq(
+                                                                        grefsNew(e),
+                                                                        grefsFill(e, e.fld(e.v("init"), "value")),
+                                                                        e.ret(
+                                                                                e.optSome(
+                                                                                        e.listType(
+                                                                                                e.lower(
+                                                                                                        e.v(
+                                                                                                                "gref_obj"))),
+                                                                                        e.v("refs")))),
+                                                                e.optNone(e.listType(e.lower(e.v("gref_obj")))))),
+                                                e.ret(e.callM(
+                                                        ptrLmod,
+                                                        kind + "_array_ptr",
+                                                        e.rec(
+                                                                e.p("name", e.fld(e.v("arg"), "name")),
+                                                                e.p("pointee", e.lower(e.v("pointee"))),
+                                                                e.p("count", e.lower(e.v("count"))),
+                                                                e.p("init", e.v("ref"))))))))));
+            }
+            for (var prim : LLVM_PRIMS) {
+                var hostT = e.mb.builtin("types", prim.host());
+                var lmod = e.callM(e.fld(e.v("arg"), "mod"), "m", e.tup());
+                var isPrim = e.eq(e.v("prim"), e.s(prim.llvm()));
+                if (factory.endsWith("_list")) {
+                    fb.add(e.ifOnly(
+                            andB(e, isPrim, e.v("scalar")),
+                            specialize(
+                                    e,
+                                    "llvm." + factory,
+                                    e.rec(
+                                            e.p("mod", e.v("mod_t")),
+                                            e.p("name", str(e)),
+                                            e.p("values", e.listType(hostT))),
+                                    e.callM(
+                                            lmod,
+                                            kind + "_list_" + prim.llvm(),
+                                            e.rec(
+                                                    e.p("name", e.fld(e.v("arg"), "name")),
+                                                    e.p("values", e.fld(e.v("arg"), "values")))))));
+                } else {
+                    fb.add(e.ifOnly(
+                            andB(e, isPrim, e.v("scalar")),
+                            specialize(
+                                    e,
+                                    "llvm." + factory,
+                                    e.rec(
+                                            e.p("mod", e.v("mod_t")),
+                                            e.p("name", str(e)),
+                                            e.p("init", e.call(e.mb.typesOption(), hostT))),
+                                    e.callM(
+                                            lmod,
+                                            kind + "_" + prim.llvm(),
+                                            e.rec(
+                                                    e.p("name", e.fld(e.v("arg"), "name")),
+                                                    e.p("init", e.fld(e.v("arg"), "init")))))));
+                    fb.add(e.ifOnly(
+                            andB(e, isPrim, e.not(e.v("scalar"))),
+                            specialize(
+                                    e,
+                                    "llvm." + factory,
+                                    e.rec(
+                                            e.p("mod", e.v("mod_t")),
+                                            e.p("name", str(e)),
+                                            e.p("init", e.call(e.mb.typesOption(), e.listType(hostT)))),
+                                    e.callM(
+                                            lmod,
+                                            kind + "_array_" + prim.llvm(),
+                                            e.rec(
+                                                    e.p("name", e.fld(e.v("arg"), "name")),
+                                                    e.p("count", e.lower(e.v("count"))),
+                                                    e.p("init", e.fld(e.v("arg"), "init")))))));
+                }
+            }
+            fb.add(e.ret(errCve(e, loc(e), "llvm." + factory + ": unsupported type")));
+            y.add(e.let(factory + "_b", e.callM(e.v("d"), "const_func", e.s("llvm." + factory))));
+            y.add(e.callM(
+                    e.v(factory + "_b"),
+                    "impl",
+                    e.rec(
+                            e.p("impl_body", e.stage(body(e, fb.toArray(SourceExpr[]::new)))),
+                            e.p("exception_type", e.mb.optNoneType()),
+                            e.p("description", e.optNone(str(e))))));
+        }
         y.add(e.let("llvm_b", e.defFunc(e.v("d"), "llvm")));
         y.add(e.funcImpl(
                 e.v("llvm_b"),
@@ -5914,6 +6473,7 @@ public final class EcoLlvmIr {
         var ydefs = new TList<EcoMb.P>();
         ydefs.add(e.p("new", e.fld(e.v("llvm_b"), "func")));
         ydefs.add(e.p("build", e.fld(e.v("build_b"), "func")));
+        for (var factory : DATA_FACTORIES) ydefs.add(e.p(factory, e.fld(e.v(factory + "_b"), "func")));
         ydefs.add(e.p("mod_t", e.fld(e.v("mod_o"), "type")));
         for (var name : passthrough) ydefs.add(e.p(name, e.fld(e.v("k"), name)));
 
@@ -5924,6 +6484,7 @@ public final class EcoLlvmIr {
         top.add(e.let("k", e.lower(e.mb.seq(y))));
         var exports = new TList<EcoMb.P>();
         for (var name : new String[] {"new", "build", "mod_t"}) exports.add(e.p(name, e.fld(e.v("k"), name)));
+        for (var factory : DATA_FACTORIES) exports.add(e.p(factory, e.fld(e.v("k"), factory)));
         for (var name : passthrough) exports.add(e.p(name, e.fld(e.v("k"), name)));
         for (var name : exported) exports.add(e.p(name, e.fld(e.v("k"), name)));
         top.add(e.ret(e.rec(exports.toArray(EcoMb.P[]::new))));

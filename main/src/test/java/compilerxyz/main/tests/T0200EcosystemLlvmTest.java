@@ -229,12 +229,14 @@ public final class T0200EcosystemLlvmTest {
         var puts = new EcoExtern("puts", IList.of("pu8"), "i32", false);
         setup.add(e.let("puts_fn_t", puts.fnType(e, EcoExtern.Llvm.top(e))));
         setup.add(e.let("main_fn_t", fnType(e, "t_i32")));
-        setup.add(e.let("hi_arr_t", EcoPipewire.byteArrayType(e, EcoExtern.Llvm.top(e), e.intOf(count))));
+        setup.add(e.let("hi_arr_t", EcoPipewire.byteArrayType(e, EcoExtern.Llvm.top(e), e.intOf(Math.max(count, 0)))));
         var exported = new TList<String>();
         exported.add("ll");
         exported.add("puts_fn_t");
         exported.add("main_fn_t");
         exported.add("hi_arr_t");
+        setup.add(e.let("hi_def", e.call(e.fld(e.v("llvm"), "const_list"), e.v("t_u8"))));
+        exported.add("hi_def");
         for (var t : new String[] {"i1", "i8", "i32", "i64", "u8", "u32", "u64", "f32", "f64", "void", "pv", "pu8"}) {
             exported.add("t_" + t);
         }
@@ -249,13 +251,17 @@ public final class T0200EcosystemLlvmTest {
         top.addAll(preInit);
         top.add(e.let(
                 "hi",
-                e.call(
-                        e.fld(e.v("llvm"), "global_const_fn"),
-                        e.rec(
-                                e.p("mod", e.v("ll")),
-                                e.p("name", e.s("str.hi")),
-                                e.p("ty", e.v("hi_arr_t")),
-                                e.p("init", init)))));
+                count < 0
+                        ? e.call(
+                                e.v("hi_def"),
+                                e.rec(e.p("mod", e.v("ll")), e.p("name", e.s("str.hi")), e.p("values", init)))
+                        : e.call(
+                                e.fld(e.v("llvm"), "global_const_fn"),
+                                e.rec(
+                                        e.p("mod", e.v("ll")),
+                                        e.p("name", e.s("str.hi")),
+                                        e.p("ty", e.v("hi_arr_t")),
+                                        e.p("init", init)))));
         top.add(func(e, "main", "main_fn_t", e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hi"))), e.ret(e.n(0)))));
         top.add(e.call(e.mb.log(), e.fld(e.callM(e.v("ll"), "render", e.tup()), "ir")));
         writeModule(src.resolve("main.at"), top);
@@ -282,6 +288,198 @@ public final class T0200EcosystemLlvmTest {
     }
 
     @Test
+    public void test00055ListConstDerivedLength(@TempDir Path tmp) throws IOException {
+        var e = new EcoMb();
+        var ubyte = e.mb.builtin("types", "ubyte");
+        var entry = writeArrayInitModule(
+                tmp,
+                e,
+                -1,
+                TList.of(
+                        e.let(
+                                "bytes",
+                                e.listNew(
+                                        ubyte,
+                                        e.mb.as(e.n('h'), ubyte),
+                                        e.mb.as(e.n('i'), ubyte),
+                                        e.mb.as(e.n('\n'), ubyte))),
+                        e.push(e.v("bytes"), e.mb.as(e.n(0), ubyte))),
+                e.v("bytes"));
+        var ok = compileOk(entry, tmp.resolve("cache"));
+        assertEquals(1, ok.logs().size());
+        var ir = ok.logs().get(0).message();
+        assertEquals(
+                """
+                declare i32 @puts(ptr)
+                @str.hi = constant [4 x i8] [i8 104, i8 105, i8 10, i8 0]
+                define i32 @main() {
+                  %t0 = call i32 @puts(ptr @str.hi)
+                  ret i32 0
+                }
+                """,
+                ir);
+        assertValidIr(tmp, "hi", ir);
+    }
+
+    private static Path writeTypedDefinersModule(Path tmp, int mismatch) throws IOException {
+        var e = new EcoMb();
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
+        writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
+        var ubyte = e.mb.builtin("types", "ubyte");
+        var setup = new TList<SourceExpr>();
+        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
+        setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
+        EcoExtern.bindTypes(e, setup, EcoExtern.Llvm.top(e));
+        setup.add(e.let("arr_t", EcoPipewire.byteArrayType(e, EcoExtern.Llvm.top(e), e.intOf(3))));
+        setup.add(e.let("global_i32", e.call(e.fld(e.v("llvm"), "global_def"), e.v("t_i32"))));
+        setup.add(e.ret(e.rec(
+                e.p("ll", e.v("ll")),
+                e.p("global_i32", e.v("global_i32")),
+                e.p("arr_t", e.v("arr_t")),
+                e.p("pi32", e.call(e.fld(e.v("llvm"), "ptr"), e.v("t_i32"))),
+                e.p(
+                        "pu8_arr2",
+                        e.call(
+                                e.fld(e.v("llvm"), "array"),
+                                e.rec(e.p("elem", e.v("t_pu8")), e.p("count", e.intOf(2))))),
+                e.p("pv", e.v("t_pv")),
+                e.p("pu8", e.v("t_pu8")))));
+        var top = new TList<SourceExpr>();
+        top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
+        top.add(e.let("k", e.lower(e.mb.seq(setup))));
+        top.add(e.let("ll", e.fld(e.v("k"), "ll")));
+        top.add(e.let("const_arr", e.call(e.fld(e.v("llvm"), "const_def"), e.fld(e.v("k"), "arr_t"))));
+        top.add(e.let("global_arr", e.call(e.fld(e.v("llvm"), "global_def"), e.fld(e.v("k"), "arr_t"))));
+        top.add(e.let("ptrs_i32", e.call(e.fld(e.v("llvm"), "const_list"), e.fld(e.v("k"), "pi32"))));
+        top.add(e.let("ptrs_u8", e.call(e.fld(e.v("llvm"), "const_list"), e.fld(e.v("k"), "pu8"))));
+        top.add(e.let("ptr_u8", e.call(e.fld(e.v("llvm"), "global_def"), e.fld(e.v("k"), "pu8"))));
+        top.add(e.let("ptr_u8_arr2", e.call(e.fld(e.v("llvm"), "const_def"), e.fld(e.v("k"), "pu8_arr2"))));
+        top.add(e.let(
+                "a",
+                e.call(
+                        e.fld(e.v("k"), "global_i32"),
+                        e.rec(
+                                e.p("mod", e.v("ll")),
+                                e.p("name", e.s("a")),
+                                e.p("init", e.optSome(e.mb.typesInt(), e.intOf(7)))))));
+        top.add(e.call(
+                e.fld(e.v("k"), "global_i32"),
+                e.rec(e.p("mod", e.v("ll")), e.p("name", e.s("b")), e.p("init", e.optNone(e.mb.typesInt())))));
+        top.add(e.let(
+                "c",
+                e.call(
+                        e.v("const_arr"),
+                        e.rec(
+                                e.p("mod", e.v("ll")),
+                                e.p("name", e.s("c")),
+                                e.p(
+                                        "init",
+                                        e.optSome(
+                                                e.listType(ubyte),
+                                                e.listNew(
+                                                        ubyte,
+                                                        e.mb.as(e.n(1), ubyte),
+                                                        e.mb.as(e.n(2), ubyte),
+                                                        e.mb.as(e.n(3), ubyte))))))));
+        top.add(e.call(
+                e.v("global_arr"),
+                e.rec(e.p("mod", e.v("ll")), e.p("name", e.s("d")), e.p("init", e.optNone(e.listType(ubyte))))));
+        var grefList = e.listType(e.fld(e.v("llvm"), "gref_t"));
+        top.add(e.call(
+                e.v("ptrs_i32"),
+                e.rec(
+                        e.p("mod", e.v("ll")),
+                        e.p("name", e.s("pa")),
+                        e.p("values", e.callM(grefList, "new", e.v("a"))))));
+        top.add(e.call(
+                e.v("ptrs_u8"),
+                e.rec(
+                        e.p("mod", e.v("ll")),
+                        e.p("name", e.s("pc")),
+                        e.p("values", e.callM(grefList, "new", e.v(mismatch == 1 ? "a" : "c"))))));
+        var gref = e.fld(e.v("llvm"), "gref_t");
+        top.add(e.call(
+                e.v("ptr_u8"),
+                e.rec(e.p("mod", e.v("ll")), e.p("name", e.s("qc")), e.p("init", e.optSome(gref, e.v("c"))))));
+        top.add(e.call(
+                e.v("ptr_u8"), e.rec(e.p("mod", e.v("ll")), e.p("name", e.s("qn")), e.p("init", e.optNone(gref)))));
+        top.add(e.call(
+                e.v("ptr_u8_arr2"),
+                e.rec(
+                        e.p("mod", e.v("ll")),
+                        e.p("name", e.s("qcc")),
+                        e.p("init", e.optSome(grefList, e.callM(grefList, "new", e.tup(e.v("c"), e.v("c"))))))));
+        top.add(e.call(
+                e.v("ptr_u8_arr2"),
+                e.rec(e.p("mod", e.v("ll")), e.p("name", e.s("qz")), e.p("init", e.optNone(grefList)))));
+        top.add(e.call(
+                e.fld(e.v("llvm"), "global_fn"),
+                e.rec(
+                        e.p("mod", e.v("ll")),
+                        e.p("name", e.s("qm")),
+                        e.p("ty", e.fld(e.v("k"), "pu8")),
+                        e.p("init", e.v(mismatch == 2 ? "a" : "c")))));
+        top.add(e.call(
+                e.fld(e.v("llvm"), "global_fn"),
+                e.rec(
+                        e.p("mod", e.v("ll")),
+                        e.p("name", e.s("qv")),
+                        e.p("ty", e.fld(e.v("k"), "pv")),
+                        e.p("init", e.v("a")))));
+        top.add(e.call(e.mb.log(), e.fld(e.callM(e.v("ll"), "render", e.tup()), "ir")));
+        writeModule(src.resolve("main.at"), top);
+        return src.resolve("main.at");
+    }
+
+    @Test
+    public void test00057PointerListWrongPointee(@TempDir Path tmp) throws IOException {
+        assertPointerMismatch(writeTypedDefinersModule(tmp, 1), tmp);
+    }
+
+    @Test
+    public void test00058MacroGlobalWrongPointee(@TempDir Path tmp) throws IOException {
+        assertPointerMismatch(writeTypedDefinersModule(tmp, 2), tmp);
+    }
+
+    private static void assertPointerMismatch(Path entry, Path tmp) {
+        try (var cache = new CacheReal(tmp.resolve("cache"))) {
+            var res = Helpers.compile(
+                    GlobalContext.newContext(cache, cache, cache), new SourceSpecAbsolute.Local(entry.toString()));
+            switch (res) {
+                case Result.Ok<Compile.CompileResult, ?> o -> throw new AssertionError("expected compile failure");
+                case Result.Err<Compile.CompileResult, ?> err ->
+                    Assertions.assertTrue(
+                            err.error().toString().contains("llvm: pointer initializer @a points to"),
+                            () -> "unexpected: " + res);
+            }
+        }
+    }
+
+    @Test
+    public void test00056TypedDefinersOptionalInit(@TempDir Path tmp) throws IOException {
+        var ok = compileOk(writeTypedDefinersModule(tmp, 0), tmp.resolve("cache"));
+        assertEquals(1, ok.logs().size());
+        var ir = ok.logs().get(0).message();
+        assertEquals(
+                """
+                @a = global i32 7
+                @b = global i32 zeroinitializer
+                @d = global [3 x i8] zeroinitializer
+                @qc = global ptr @c
+                @qn = global ptr null
+                @qm = global ptr @c
+                @qv = global ptr @a
+                @c = constant [3 x i8] [i8 1, i8 2, i8 3]
+                @pa = constant [1 x ptr] [ptr @a]
+                @pc = constant [1 x ptr] [ptr @c]
+                @qcc = constant [2 x ptr] [ptr @c, ptr @c]
+                @qz = constant [2 x ptr] zeroinitializer
+                """,
+                ir);
+    }
+
+    @Test
     public void test00060ListArrayInitElementTooWide(@TempDir Path tmp) throws IOException {
         var entry = writeListInitModule(tmp, "int");
         try (var cache = new CacheReal(tmp.resolve("cache"))) {
@@ -298,7 +496,9 @@ public final class T0200EcosystemLlvmTest {
                             only.loc().source().value(),
                             () -> "error not located in main.at: " + res);
                     Assertions.assertTrue(
-                            only.message().contains("host int values do not fit llvm u8"), () -> "unexpected: " + res);
+                            only.message()
+                                    .contains("source list(dynamic int) cannot convert to dest list(dynamic ubyte)"),
+                            () -> "unexpected: " + res);
                 }
             }
         }
@@ -380,12 +580,8 @@ public final class T0200EcosystemLlvmTest {
                     var errors = (TList<?>) err.error();
                     assertEquals(1, errors.size(), () -> "unexpected: " + res);
                     var only = (ExprErr) errors.get(0);
-                    assertEquals(
-                            mainSourceId(cache, entry),
-                            only.loc().source().value(),
-                            () -> "error not located in main.at: " + res);
                     Assertions.assertTrue(
-                            only.message().contains("string initializer has 4 bytes, expected 5"),
+                            only.message().contains("panic: llvm: array initializer has 4 elements, expected 5"),
                             () -> "unexpected: " + res);
                 }
             }

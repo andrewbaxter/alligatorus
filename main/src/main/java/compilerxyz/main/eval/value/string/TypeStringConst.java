@@ -117,13 +117,12 @@ public record TypeStringConst() implements Aspect, Type {
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return false;
+        return StringCastBytes.canCast(xx, destType);
     }
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-        throw new UnsupportedOperationException(
-                getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+        return StringCastBytes.cast(xx, loc, cv, destType);
     }
 
     @Override

@@ -190,13 +190,7 @@ public final class EcoSynth {
         }
         defType(e, cx, "t_range_u32", e.callM(e.v("llvm"), "range", e.fld(e.v("llvm"), "u32")));
         defValue(e, cx, "nullp", e.callM(Refs.top(e).refsRef("ll"), "null", e.tup()));
-        defValue(
-                e,
-                cx,
-                "range_u32",
-                e.call(
-                        e.fld(Refs.top(e).refsRef("llvm"), "ref_fn"),
-                        e.rec(e.p("ref", e.s("range")), e.p("ty", Refs.top(e).refsRef("t_range_u32")))));
+        defValue(e, cx, "range_u32", Refs.top(e).refsRef("t_range_u32"));
         defValue(
                 e,
                 cx,

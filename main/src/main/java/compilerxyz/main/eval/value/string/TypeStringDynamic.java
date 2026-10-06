@@ -119,7 +119,7 @@ public record TypeStringDynamic() implements Aspect, Type {
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return GenAspectStringDynamic.getMaybe(xx, destType).optIsSome();
+        return GenAspectStringDynamic.getMaybe(xx, destType).optIsSome() || StringCastBytes.canCast(xx, destType);
     }
 
     @Override
@@ -143,6 +143,9 @@ public record TypeStringDynamic() implements Aspect, Type {
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+        if (StringCastBytes.canCast(xx, destType)) {
+            return StringCastBytes.cast(xx, loc, cv, destType);
+        }
         return EResult.ok(cv);
     }
 }

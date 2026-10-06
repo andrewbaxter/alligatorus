@@ -152,31 +152,36 @@ public final class EvalRoot {
         try {
             result = rootClass.getDeclaredMethod("run").invoke(null);
         } catch (InvocationTargetException e) {
-            var cause = e.getCause();
-            if (cause == null) {
-                throw new AssertionError("Generated root class " + binaryName + " threw without a cause", e);
-            }
-            if (cause instanceof DynCompileErrors compileErrs) {
-                return EResult.errs(compileErrs.errors);
-            }
-            var at = loc;
-            for (var frame : cause.getStackTrace()) {
-                var found = loader.locate(frame);
-                if (found.optIsSome()) {
-                    at = found.optUnwrap();
-                    break;
-                }
-            }
-            if (cause instanceof DynPanic panic) {
-                return EResult.err(at, "panic: " + panic.getMessage());
-            }
-            if (cause instanceof DynException dynEx) {
-                return EResult.err(at, dynEx.payload == null ? "null" : dynEx.payload.toString());
-            }
-            return EResult.err(at, "uncaught " + cause);
+            return thrownErrors(loader, loc, e, "Generated root class " + binaryName);
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("Generated root class " + binaryName + " invoke failed", e);
         }
         return EResult.ok(result);
+    }
+
+    public static <T> EResult<T> thrownErrors(
+            DefinitionSetClassLoader loader, QExprId loc, InvocationTargetException e, String what) {
+        var cause = e.getCause();
+        if (cause == null) {
+            throw new AssertionError(what + " threw without a cause", e);
+        }
+        if (cause instanceof DynCompileErrors compileErrs) {
+            return EResult.errs(compileErrs.errors);
+        }
+        var at = loc;
+        for (var frame : cause.getStackTrace()) {
+            var found = loader.locate(frame);
+            if (found.optIsSome()) {
+                at = found.optUnwrap();
+                break;
+            }
+        }
+        if (cause instanceof DynPanic panic) {
+            return EResult.err(at, "panic: " + panic.getMessage());
+        }
+        if (cause instanceof DynException dynEx) {
+            return EResult.err(at, dynEx.payload == null ? "null" : dynEx.payload.toString());
+        }
+        return EResult.err(at, "uncaught " + cause);
     }
 }

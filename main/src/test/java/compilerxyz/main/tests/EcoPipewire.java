@@ -251,12 +251,10 @@ public final class EcoPipewire {
         podBuild(e, exprs, "audio", POD_AUDIO_F32_MONO_48K);
         podBuild(e, exprs, "audio_stereo_44k1", POD_AUDIO_F32_STEREO_44K1);
         podBuild(e, exprs, "midi", POD_MIDI_CONTROL);
+        exprs.add(e.let("const_bytes", e.call(llvm.llvmField("const_list"), llvm.llvmField("u8"))));
         for (var g : POD_GLOBALS) {
             members.add(g.name());
-            exprs.add(e.let(g.name() + "_arr_t", byteArrayType(e, llvm, e.callM0(e.v(g.init() + "_pod"), "len"))));
-            exprs.add(e.let(
-                    g.name() + "_t",
-                    EcoExtern.globalT(e, llvm, e.call(llvm.llvmField("ptr"), e.v(g.name() + "_arr_t")))));
+            exprs.add(e.let(g.name() + "_t", llvm.llvmField("gref_t")));
         }
         exprs.add(e.let(
                 "params_arr_t",
@@ -360,12 +358,11 @@ public final class EcoPipewire {
             body.add(e.let(
                     g.name(),
                     e.call(
-                            e.lower(e.fld(e.v("llvm"), "global_const_fn")),
+                            e.lowerV("const_bytes"),
                             e.rec(
                                     e.p("mod", e.v("arg")),
                                     e.p("name", e.s(g.globalName())),
-                                    e.p("ty", e.lowerV(g.name() + "_arr_t")),
-                                    e.p("init", e.lower(e.callM0(e.v(g.init() + "_pod"), "bytes")))))));
+                                    e.p("values", e.lower(e.callM0(e.v(g.init() + "_pod"), "bytes")))))));
         }
         for (var g : PARAMS_GLOBALS) {
             body.add(e.let(

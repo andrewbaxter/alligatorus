@@ -306,10 +306,8 @@ final class EcoBuzzM4wII {
             new Pair<>("lfoosc", "lfoosc_t"),
             new Pair<>("lfovib", "lfoosc_t"),
             new Pair<>("nonlin", "nonlin_t"),
-            new Pair<>("tables_ready", "t_i32"),
-            new Pair<>("osc_offs", "offs_t"),
-            new Pair<>("lfo1_dests", "dests_t"),
-            new Pair<>("lfo2_dests", "dests_t"));
+            new Pair<>("tables_ready", "t_i32"));
+    private static final IList<String> GLOBAL_LISTS = IList.of("osc_offs", "lfo1_dests", "lfo2_dests");
 
     private static SourceExpr p(EcoMb e, String field) {
         return fld(e, e.v("p"), field);
@@ -518,6 +516,7 @@ final class EcoBuzzM4wII {
 
     static TList<SourceExpr> module(EcoMb e) {
         var defs = new TList<SourceExpr>();
+        defs.add(e.let("global_list_i32", e.call(EcoBuzz.llvm(e, "global_list"), e.v("t_i32"))));
         defs.add(e.let("i32xt", EcoBuzz.array(e, e.v("t_i32"), e.intOf(TRACKS))));
         defs.add(e.let("f32xt", EcoBuzz.array(e, e.v("t_f32"), e.intOf(TRACKS))));
         defs.add(e.let(
@@ -528,8 +527,6 @@ final class EcoBuzzM4wII {
         defs.add(e.let("coefs_t", EcoBuzz.array(e, e.v("t_f32"), e.intOf(COEFS))));
         defs.add(e.let("lfoosc_t", EcoBuzz.array(e, e.v("t_f32"), e.intOf(LFOOSC))));
         defs.add(e.let("nonlin_t", EcoBuzz.array(e, e.v("t_i32"), e.intOf(NONLIN))));
-        defs.add(e.let("offs_t", EcoBuzz.array(e, e.v("t_i32"), e.intOf(OSC_OFFS.size()))));
-        defs.add(e.let("dests_t", EcoBuzz.array(e, e.v("t_i32"), e.intOf(LFO1_DESTS.size()))));
         defs.add(e.let(
                 "wave_bytes",
                 e.callM(
@@ -582,6 +579,7 @@ final class EcoBuzzM4wII {
             if (fnType.optIsSome()) return EcoBuzz.globalT(e, e.v(fnType.optUnwrap()));
             var globalType = GLOBAL_TYPES.getOpt(name);
             if (globalType.optIsSome()) return EcoBuzz.globalMemT(e, e.v(globalType.optUnwrap()));
+            if (GLOBAL_LISTS.contains(name)) return EcoBuzz.llvm(e, "gref_t");
             throw new IllegalArgumentException("no type for builder value " + name);
         };
         defs.add(e.let("osc_at_fn_t", EcoBuzz.fnType(e, e.v("t_i32"), e.v("t_i32"), e.v("t_i32"))));
@@ -619,12 +617,11 @@ final class EcoBuzzM4wII {
         body.add(e.let(
                 "osc_offs",
                 e.call(
-                        EcoBuzz.llvmL(e, "global_fn"),
+                        e.lowerV("global_list_i32"),
                         e.rec(
                                 e.p("mod", e.v("ll")),
                                 e.p("name", e.s("mw_osc_offs")),
-                                e.p("ty", e.lowerV("offs_t")),
-                                e.p("init", e.listNew(e.mb.typesInt(), offs.toArray(SourceExpr[]::new)))))));
+                                e.p("values", e.listNew(e.mb.typesInt(), offs.toArray(SourceExpr[]::new)))))));
         var pp = e.v("pp");
         var nlLo = i32(
                 e,
@@ -2589,21 +2586,19 @@ final class EcoBuzzM4wII {
         body.add(e.let(
                 "lfo1_dests",
                 e.call(
-                        EcoBuzz.llvmL(e, "global_fn"),
+                        e.lowerV("global_list_i32"),
                         e.rec(
                                 e.p("mod", e.v("ll")),
                                 e.p("name", e.s("mw_lfo1_dests")),
-                                e.p("ty", e.lowerV("dests_t")),
-                                e.p("init", e.listNew(e.mb.typesInt(), destTab1.toArray(SourceExpr[]::new)))))));
+                                e.p("values", e.listNew(e.mb.typesInt(), destTab1.toArray(SourceExpr[]::new)))))));
         body.add(e.let(
                 "lfo2_dests",
                 e.call(
-                        EcoBuzz.llvmL(e, "global_fn"),
+                        e.lowerV("global_list_i32"),
                         e.rec(
                                 e.p("mod", e.v("ll")),
                                 e.p("name", e.s("mw_lfo2_dests")),
-                                e.p("ty", e.lowerV("dests_t")),
-                                e.p("init", e.listNew(e.mb.typesInt(), destTab2.toArray(SourceExpr[]::new)))))));
+                                e.p("values", e.listNew(e.mb.typesInt(), destTab2.toArray(SourceExpr[]::new)))))));
         body.add(e.let(
                 "tick",
                 EcoBuzz.funcDef(

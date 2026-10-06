@@ -122,12 +122,16 @@ public final class TypeListSpecializedDynamic<T extends Type> implements Aspect,
 
     @Override
     public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-        return typeIsEqual(xx, sourceType);
+        return typeIsEqual(xx, sourceType) || ListCastFrom.canCast(xx, loc, elementType, sourceType);
     }
 
     @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-        return EResult.ok(cv);
+        if (cv.value().optIsSome() && typeIsEqual(xx, cv.value().optUnwrap().valueType())) {
+            return EResult.ok(cv);
+        }
+        return ListCastFrom.cast(
+                xx, loc, this, elementType, new ListCastFrom.Store(storeName, "push", pushDescriptor(xx)), cv);
     }
 
     @Override

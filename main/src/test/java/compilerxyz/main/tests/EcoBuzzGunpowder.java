@@ -161,6 +161,14 @@ final class EcoBuzzGunpowder {
                         e.rec(e.p("mod", e.v("ll")), e.p("name", e.s(name)), e.p("ty", ty), e.p("init", init))));
     }
 
+    private static SourceExpr constList(EcoMb e, String name, SourceExpr values) {
+        return e.let(
+                name,
+                e.call(
+                        e.v("const_list_i8"),
+                        e.rec(e.p("mod", e.v("ll")), e.p("name", e.s(name)), e.p("values", values))));
+    }
+
     private static SourceExpr addrOf(EcoMb e, String pname, String globalName, SourceExpr ptrGlobalTy) {
         return e.let(
                 pname, e.call(llvm(e, "ref_fn"), e.rec(e.p("ref", e.s("@" + globalName)), e.p("ty", ptrGlobalTy))));
@@ -345,10 +353,6 @@ final class EcoBuzzGunpowder {
             }
             k.def(
                     e,
-                    "warr_" + w.index(),
-                    e.call(llvm(e, "array"), e.rec(e.p("elem", e.v("t_i8")), e.p("count", e.v("wlen_" + w.index())))));
-            k.def(
-                    e,
                     "wb_" + w.index(),
                     e.callM(
                             e.call(e.mb.builtin("file", "open"), e.s(w.path())),
@@ -363,31 +367,18 @@ final class EcoBuzzGunpowder {
         k.def(e, "pi32_g", ptrGlobalT(e, "t_pi32"));
         k.def(e, "pi8_g", ptrGlobalT(e, "t_pi8"));
         k.def(e, "void_fn_t", EcoBuzz.fnType(e, e.v("t_void")));
+        k.def(e, "const_list_i8", e.call(llvm(e, "const_list"), e.v("t_i8")));
         k.def(e, "block_fn_t", EcoBuzz.fnType(e, e.v("t_void"), e.v("t_i32")));
         k.def(e, "render_fn_t", EcoBuzz.fnType(e, e.v("t_void"), e.v("t_pf32"), e.v("t_i32")));
         k.def(e, "cb_fn_t", EcoBuzz.fnType(e, e.v("t_void"), e.v("t_pv")));
         k.def(e, "main_fn_t", EcoBuzz.fnType(e, e.v("t_i32")));
-        for (var inst : insts) {
-            if (inst.port().optIsNone()) continue;
-            var evs = inst.data().events();
-            if (evs.size() > 0) {
-                k.def(
-                        e,
-                        "evt_" + inst.id() + "_t",
-                        e.call(
-                                llvm(e, "array"),
-                                e.rec(e.p("elem", e.v("t_i8")), e.p("count", e.intOf(evs.size() * 5 * ENC_DIGITS)))));
-            }
-        }
         var fields = new TList<EcoMb.P>();
         for (var name : k.names) fields.add(e.p(name, e.v(name)));
         k.exprs.add(e.ret(e.rec(fields.toArray(EcoMb.P[]::new))));
         var x = new TList<SourceExpr>();
         x.add(e.let("k", e.lower(e.mb.seq(k.exprs))));
         for (var name : k.names) x.add(e.let(name, e.fld(e.v("k"), name)));
-        x.add(e.let(
-                "range_i32",
-                e.call(llvm(e, "ref_fn"), e.rec(e.p("ref", e.s("range")), e.p("ty", e.v("t_range_i32"))))));
+        x.add(e.let("range_i32", e.v("t_range_i32")));
         x.add(e.let("loop", e.call(llvm(e, "ref_fn"), e.rec(e.p("ref", e.s("loop")), e.p("ty", llvm(e, "loop"))))));
         x.add(e.let(
                 "dsp",
@@ -420,7 +411,7 @@ final class EcoBuzzGunpowder {
         for (var fn : PW_NAMES) x.add(e.let(fn, e.callM0(e.v("pw"), fn)));
         var firstData = "wave_" + EcoBuzzGunpowderData.WAVES.get(0).index();
         for (var w : EcoBuzzGunpowderData.WAVES) {
-            x.add(globalConst(e, "wave_" + w.index(), e.v("warr_" + w.index()), e.v("wb_" + w.index())));
+            x.add(constList(e, "wave_" + w.index(), e.v("wb_" + w.index())));
         }
         var entries = new SourceExpr[EcoBuzzDsp.MAX_WAVES];
         var byIndex = new HashMap<Integer, EcoBuzzGunpowderData.Wave>();
@@ -473,8 +464,7 @@ final class EcoBuzzGunpowder {
                         }
                     }
                 }
-                x.add(globalConst(
-                        e, "evt_" + id, e.v("evt_" + id + "_t"), e.call(e.mb.evalStrUtf8(), e.s(sb.toString()))));
+                x.add(constList(e, "evt_" + id, e.s(sb.toString())));
                 x.add(addrOf(e, "ev_" + id, "evt_" + id, e.v("pi8_g")));
                 x.add(globalInit(e, "cur_" + id, e.v("t_i32"), e.n(0)));
             }

@@ -98,12 +98,12 @@ final class EcoBuzzDsp {
         var inner = new TList<EcoMb.P>();
         inner.add(e.p("m", EcoBuzz.llvm(e, "mod_t")));
         inner.add(e.p("types", e.fld(e.v("types_o"), "type")));
-        inner.add(e.p("range_i32", e.v("t_range_i32")));
+        inner.add(e.p("range_i32", e.mb.evalType()));
         inner.add(e.p("loop", EcoBuzz.llvm(e, "loop")));
         for (var fn : FNS) inner.add(e.p(fn, EcoBuzz.globalT(e, e.v(fn + "_fn_t"))));
         exprs.add(e.objectImpl(e.v("dsp_o"), e.rec(inner.toArray(EcoMb.P[]::new))));
         exprs.add(accessor(e, "dsp_o", "m", EcoBuzz.llvm(e, "mod_t")));
-        exprs.add(accessor(e, "dsp_o", "range_i32", e.v("t_range_i32")));
+        exprs.add(accessor(e, "dsp_o", "range_i32", e.mb.evalType()));
         exprs.add(accessor(e, "dsp_o", "loop", EcoBuzz.llvm(e, "loop")));
         exprs.add(accessor(e, "dsp_o", "types", e.fld(e.v("types_o"), "type")));
         for (var fn : FNS) exprs.add(accessor(e, "dsp_o", fn, EcoBuzz.globalT(e, e.v(fn + "_fn_t"))));
@@ -526,7 +526,7 @@ final class EcoBuzzDsp {
                         e.mb.builtin("types", "record"),
                         e.rec(
                                 e.p("m", EcoBuzz.llvm(e, "mod_t")),
-                                e.p("range_i32", e.v("t_range_i32")),
+                                e.p("range_i32", e.mb.evalType()),
                                 e.p("loop", EcoBuzz.llvm(e, "loop")))),
                 e.optionTypeSome(e.fld(e.v("dsp_o"), "type")),
                 e.mb.optNoneType(),

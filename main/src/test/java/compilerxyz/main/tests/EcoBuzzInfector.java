@@ -173,14 +173,9 @@ final class EcoBuzzInfector {
             new Pair<>("fcos", "wave_t2"),
             new Pair<>("fscr", "iwave_t"),
             new Pair<>("isine", "iwave_t"),
-            new Pair<>("tables_ready", "t_i32"),
-            new Pair<>("tab_base", "tabs_t"),
-            new Pair<>("tab_lev", "tabs_t"),
-            new Pair<>("tab_count", "tabs_t"),
-            new Pair<>("map_a", "map_a_t"),
-            new Pair<>("map_b", "map_a_t"),
-            new Pair<>("map_c", "map_c_t"),
-            new Pair<>("times", "times_t"));
+            new Pair<>("tables_ready", "t_i32"));
+    private static final IList<String> GLOBAL_LISTS =
+            IList.of("tab_base", "tab_lev", "tab_count", "map_a", "map_b", "map_c", "times");
 
     private static SourceExpr p(EcoMb e, String field) {
         return fld(e, e.v("p"), field);
@@ -292,6 +287,7 @@ final class EcoBuzzInfector {
 
     static TList<SourceExpr> module(EcoMb e) {
         var defs = new TList<SourceExpr>();
+        defs.add(e.let("global_list_i32", e.call(EcoBuzz.llvm(e, "global_list"), e.v("t_i32"))));
         defs.add(e.let("i32xc", EcoBuzz.array(e, e.v("t_i32"), e.intOf(CHANNELS))));
         defs.add(e.let("f32xc", EcoBuzz.array(e, e.v("t_f32"), e.intOf(CHANNELS))));
         defs.add(e.let("i32xe", EcoBuzz.array(e, e.v("t_i32"), e.intOf(2 * CHANNELS))));
@@ -299,10 +295,6 @@ final class EcoBuzzInfector {
         defs.add(e.let("f32xb", EcoBuzz.array(e, e.v("t_f32"), e.intOf(3 * CHANNELS))));
         defs.add(e.let("i32xt", EcoBuzz.array(e, e.v("t_i32"), e.intOf(TRACKS + 1))));
         defs.add(e.let("f32xt", EcoBuzz.array(e, e.v("t_f32"), e.intOf(TRACKS + 1))));
-        defs.add(e.let("tabs_t", EcoBuzz.array(e, e.v("t_i32"), e.intOf(TABLES.size()))));
-        defs.add(e.let("map_a_t", EcoBuzz.array(e, e.v("t_i32"), e.intOf(TABLES_A.size()))));
-        defs.add(e.let("map_c_t", EcoBuzz.array(e, e.v("t_i32"), e.intOf(TABLES_C.size()))));
-        defs.add(e.let("times_t", EcoBuzz.array(e, e.v("t_i32"), e.intOf(TIMES.size()))));
         defs.add(e.let("pool_t", EcoBuzz.array(e, e.v("t_f32"), e.intOf(tableBase(TABLES.size())))));
         defs.add(e.let("levmax_t", EcoBuzz.array(e, e.v("t_f32"), e.intOf(levelIndexBase(TABLES.size())))));
         defs.add(e.let("wave_t2", EcoBuzz.array(e, e.v("t_f32"), e.intOf(WAVE))));
@@ -402,6 +394,7 @@ final class EcoBuzzInfector {
             if (fnType.optIsSome()) return EcoBuzz.globalT(e, e.v(fnType.optUnwrap()));
             var globalType = GLOBAL_TYPES.getOpt(name);
             if (globalType.optIsSome()) return EcoBuzz.globalMemT(e, e.v(globalType.optUnwrap()));
+            if (GLOBAL_LISTS.contains(name)) return EcoBuzz.llvm(e, "gref_t");
             throw new IllegalArgumentException("no type for builder value " + name);
         };
         var partTables = new EcoBuzz.Part("tables", typeOf);
@@ -882,22 +875,22 @@ final class EcoBuzzInfector {
         var t = e.v("t");
         var ei = e.v("ei");
         var bi = e.v("bi");
-        for (var tabc : new String[][] {{"tab_base", "tabs_t"}, {"tab_lev", "tabs_t"}, {"tab_count", "tabs_t"}}) {
+        for (var tab : new String[] {"tab_base", "tab_lev", "tab_count"}) {
             var vals = new TList<SourceExpr>();
             for (int k = 0; k < TABLES.size(); k++) {
                 vals.add(e.intOf(
-                        switch (tabc[0]) {
+                        switch (tab) {
                             case "tab_base" -> tableBase(k);
                             case "tab_lev" -> levelIndexBase(k);
                             default -> levelCount(TABLES.get(k));
                         }));
             }
-            body.add(constArray(e, tabc[0], tabc[1], vals));
+            body.add(constArray(e, tab, vals));
         }
-        body.add(constArray(e, "map_a", "map_a_t", intList(e, TABLES_A)));
-        body.add(constArray(e, "map_b", "map_a_t", intList(e, TABLES_B)));
-        body.add(constArray(e, "map_c", "map_c_t", intList(e, TABLES_C)));
-        body.add(constArray(e, "times", "times_t", intList(e, TIMES)));
+        body.add(constArray(e, "map_a", intList(e, TABLES_A)));
+        body.add(constArray(e, "map_b", intList(e, TABLES_B)));
+        body.add(constArray(e, "map_c", intList(e, TABLES_C)));
+        body.add(constArray(e, "times", intList(e, TIMES)));
 
         body = partDsp.body;
         body.add(e.let(
@@ -2530,16 +2523,15 @@ final class EcoBuzzInfector {
                 new SourceExpr[] {e.v("init"), e.v("tick"), e.v("work")});
     }
 
-    private static SourceExpr constArray(EcoMb e, String name, String ty, TList<SourceExpr> vals) {
+    private static SourceExpr constArray(EcoMb e, String name, TList<SourceExpr> vals) {
         return e.let(
                 name,
                 e.call(
-                        EcoBuzz.llvmL(e, "global_fn"),
+                        e.lowerV("global_list_i32"),
                         e.rec(
                                 e.p("mod", e.v("ll")),
                                 e.p("name", e.s("inf_" + name)),
-                                e.p("ty", e.lowerV(ty)),
-                                e.p("init", e.listNew(e.mb.typesInt(), vals.toArray(SourceExpr[]::new))))));
+                                e.p("values", e.listNew(e.mb.typesInt(), vals.toArray(SourceExpr[]::new))))));
     }
 
     private static TList<SourceExpr> intList(EcoMb e, IList<Integer> values) {

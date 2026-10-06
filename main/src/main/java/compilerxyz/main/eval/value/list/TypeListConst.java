@@ -213,7 +213,8 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
         return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_LIST_BOXED_DYNAMIC_IDENTITY)
-                .optIsSome();
+                        .optIsSome()
+                || GenLists.listDynamic(xx, elementType).typeIsEqual(xx, destType);
     }
 
     @Override

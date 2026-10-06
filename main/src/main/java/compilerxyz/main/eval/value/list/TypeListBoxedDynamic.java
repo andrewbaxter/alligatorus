@@ -12,6 +12,9 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.main.eval.dynamic.JavaInternalName;
+import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.gen.AspectLift;
@@ -29,6 +32,7 @@ import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 
 @BuiltinFull(uniqueId = 6117L)
@@ -142,12 +146,25 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
 
     @Override
     public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-        return typeIsEqual(xx, sourceType);
+        return typeIsEqual(xx, sourceType) || ListCastFrom.canCast(xx, loc, elementType, sourceType);
     }
 
     @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-        return EResult.ok(cv);
+        if (cv.value().optIsSome() && typeIsEqual(xx, cv.value().optUnwrap().valueType())) {
+            return EResult.ok(cv);
+        }
+        return ListCastFrom.cast(
+                xx,
+                loc,
+                this,
+                elementType,
+                new ListCastFrom.Store(
+                        JavaInternalName.fromClass(TList.class),
+                        "add",
+                        JavaMethodDescriptor.fromParts(
+                                JavaDataDescriptor.DESC_VOID, TList.of(JavaDataDescriptor.fromClass(Object.class)))),
+                cv);
     }
 
     @Override

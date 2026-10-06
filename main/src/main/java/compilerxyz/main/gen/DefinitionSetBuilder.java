@@ -13,6 +13,8 @@ import compilerxyz.main.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.main.eval.value.source_interface.InterfaceBuilding;
 import compilerxyz.main.eval.value.source_interface.InterfaceCell;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
+import compilerxyz.main.eval.value.source_macro.SourceMacroData;
+import compilerxyz.main.eval.value.source_macro.TypeSourceMacroConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.eval.value.string.TypeStringConst;
@@ -34,6 +36,15 @@ public final class DefinitionSetBuilder {
                 new SourceFunctionData(name, this.inner, DynRuntime.freshUnique(vx), "_" + this.inner.functions.size());
         this.inner.functions.add(data);
         return new SourceFuncResult(new TypeSourceFunctionConst(data));
+    }
+
+    @BuiltinEvalContext
+    public SourceMacroResult constFunc(EvalContext vx, String name) {
+        var function =
+                new SourceFunctionData(name, this.inner, DynRuntime.freshUnique(vx), "_" + this.inner.functions.size());
+        this.inner.functions.add(function);
+        return new SourceMacroResult(
+                new TypeSourceMacroConst(new SourceMacroData(DynRuntime.freshUnique(vx), function)));
     }
 
     @BuiltinEvalContext
