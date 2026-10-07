@@ -36,7 +36,20 @@ public record EcoExtern(String name, IList<String> params, String ret, boolean v
         return e.call(llvm.llvmField("global_t"), e.rec(e.p("ty", ty), e.p("mem", e.b(false))));
     }
 
-    public SourceExpr declare(EcoMb e, SourceExpr externFn, SourceExpr ll, SourceExpr constFnType) {
-        return e.call(externFn, e.rec(e.p("mod", ll), e.p("name", e.s(name)), e.p("ty", constFnType)));
+    public SourceExpr externT(EcoMb e, Llvm llvm, SourceExpr constFnType, String... libs) {
+        var libExprs = new SourceExpr[libs.length];
+        for (int i = 0; i < libs.length; i++) libExprs[i] = e.s(libs[i]);
+        return e.call(
+                llvm.llvmField("extern_t"),
+                e.rec(
+                        e.p("name", e.s(name)),
+                        e.p("ty", constFnType),
+                        e.p("libs", e.listNew(e.mb.typesString(), libExprs))));
+    }
+
+    public SourceExpr declare(EcoMb e, SourceExpr externFn, SourceExpr constFnType, String... libs) {
+        var libExprs = new SourceExpr[libs.length];
+        for (int i = 0; i < libs.length; i++) libExprs[i] = e.s(libs[i]);
+        return e.call(externFn, e.rec(e.p("name", e.s(name)), e.p("ty", constFnType), e.p("libs", e.tup(libExprs))));
     }
 }

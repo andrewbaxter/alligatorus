@@ -147,9 +147,9 @@ final class EcoBuzzKAway {
         var body = new TList<SourceExpr>();
         body.add(e.let("zero", e.callM0(e.v("arg"), "zero")));
         for (var fn : new String[] {"sinf", "cosf", "sinhf"}) {
-            body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("f1_fn_t"))));
+            body.add(e.let(fn, EcoBuzz.externDef(e, fn, e.lowerV("f1_fn_t"), "m")));
         }
-        body.add(e.let("powf", EcoBuzz.externDef(e, e.v("ll"), "powf", e.lowerV("f2_fn_t"))));
+        body.add(e.let("powf", EcoBuzz.externDef(e, "powf", e.lowerV("f2_fn_t"), "m")));
         SourceExpr coefsSeq;
         {
             var cut = e.v("cut");

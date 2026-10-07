@@ -5,7 +5,6 @@ import com.google.gson.stream.JsonWriter;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.io.IOException;
-import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Comparator;
 import java.util.TreeMap;
@@ -80,52 +79,49 @@ public final class JsonValues {
         };
     }
 
-    public static JsonValue toValue(JsonValue value) {
-        return value;
-    }
-
-    public static JsonValue fromValue(JsonValue value, Json.FieldPath path) {
-        return value;
-    }
-
     public static double number(JsonValue value, Json.FieldPath path) {
-        if (!(value instanceof JsonValueNumber n)) {
-            throw new Json.DeserializationException(
-                    "Expected number, got " + value.getClass().getSimpleName(), path);
-        }
-        return n.value();
+        return switch (value) {
+            case JsonValueNumber n -> n.value();
+            default ->
+                throw new Json.DeserializationException(
+                        "Expected number, got " + value.getClass().getSimpleName(), path);
+        };
     }
 
     public static String string(JsonValue value, Json.FieldPath path) {
-        if (!(value instanceof JsonValueString s)) {
-            throw new Json.DeserializationException(
-                    "Expected string, got " + value.getClass().getSimpleName(), path);
-        }
-        return s.value();
+        return switch (value) {
+            case JsonValueString s -> s.value();
+            default ->
+                throw new Json.DeserializationException(
+                        "Expected string, got " + value.getClass().getSimpleName(), path);
+        };
     }
 
     public static boolean bool(JsonValue value, Json.FieldPath path) {
-        if (!(value instanceof JsonValueBoolean b)) {
-            throw new Json.DeserializationException(
-                    "Expected boolean, got " + value.getClass().getSimpleName(), path);
-        }
-        return b.value();
+        return switch (value) {
+            case JsonValueBoolean b -> b.value();
+            default ->
+                throw new Json.DeserializationException(
+                        "Expected boolean, got " + value.getClass().getSimpleName(), path);
+        };
     }
 
     public static TList<JsonValue> array(JsonValue value, Json.FieldPath path) {
-        if (!(value instanceof JsonValueArray a)) {
-            throw new Json.DeserializationException(
-                    "Expected array, got " + value.getClass().getSimpleName(), path);
-        }
-        return a.elements();
+        return switch (value) {
+            case JsonValueArray a -> a.elements();
+            default ->
+                throw new Json.DeserializationException(
+                        "Expected array, got " + value.getClass().getSimpleName(), path);
+        };
     }
 
     public static TOrderedMap<String, JsonValue> object(JsonValue value, Json.FieldPath path) {
-        if (!(value instanceof JsonValueObject o)) {
-            throw new Json.DeserializationException(
-                    "Expected object, got " + value.getClass().getSimpleName(), path);
-        }
-        return o.entries();
+        return switch (value) {
+            case JsonValueObject o -> o.entries();
+            default ->
+                throw new Json.DeserializationException(
+                        "Expected object, got " + value.getClass().getSimpleName(), path);
+        };
     }
 
     public static String serialize(JsonValue value) {
@@ -140,10 +136,5 @@ public final class JsonValues {
         } catch (IOException e) {
             throw new AssertionError("In-memory IO failed", e);
         }
-    }
-
-    public static JsonValue parse(String json) throws IOException {
-        var reader = new JsonReader(new StringReader(json));
-        return decode(reader, Json.FieldPath.root());
     }
 }

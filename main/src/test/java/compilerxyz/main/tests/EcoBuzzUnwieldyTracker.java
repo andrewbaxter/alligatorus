@@ -406,7 +406,7 @@ final class EcoBuzzUnwieldyTracker {
         body.add(e.let("wave_spline", e.callM0(e.v("arg"), "wave_spline")));
         body.add(e.let("zero", e.callM0(e.v("arg"), "zero")));
         body.add(e.let("note_rate", e.callM0(e.v("arg"), "note_rate")));
-        body.add(e.let("fabsf", EcoBuzz.externDef(e, e.v("ll"), "fabsf", e.lowerV("fabsf_fn_t"))));
+        body.add(e.let("fabsf", EcoBuzz.externDef(e, "fabsf", e.lowerV("fabsf_fn_t"), "m")));
         body.add(e.let(
                 "init", EcoBuzz.funcDef(e, e.v("ll"), "ut_init", new String[] {"p"}, e.lowerV("init_fn_t"), initBody)));
         body.add(e.let(

@@ -1,6 +1,7 @@
 package compilerxyz.main.langhelp.cache;
 
 import com.github.luben.zstd.ZstdInputStream;
+import com.google.gson.stream.JsonReader;
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactIdSource;
@@ -18,6 +19,7 @@ import compilerxyz.main.eval.SourceId;
 import compilerxyz.main.gen.codec.SourceModuleCodec;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.Sources;
+import compilerxyz.main.safejson.Json;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueNumber;
@@ -35,6 +37,7 @@ import compilerxyz.prelude.util.TMap;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -54,6 +57,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.HexFormat;
@@ -65,7 +69,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 26;
+    private static final int SCHEMA_VERSION = 27;
 
     private final Connection conn;
     private final Object dbLock = new Object();
@@ -345,7 +349,20 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 if (!isZip) {
                     return Result.err("remote source is not a bundle but a subpath was requested: " + r.subpath());
                 }
-                if (zipHasDirectory(bytes, r.subpath())) {
+                boolean hasDir = false;
+                var prefix = r.subpath().endsWith("/") ? r.subpath() : r.subpath() + "/";
+                try (var zin = new ZipInputStream(new ByteArrayInputStream(bytes))) {
+                    ZipEntry entry;
+                    while ((entry = zin.getNextEntry()) != null) {
+                        if (entry.getName().startsWith(prefix)) {
+                            hasDir = true;
+                            break;
+                        }
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException("CacheReal.zipHasDirectory", e);
+                }
+                if (hasDir) {
                     return Result.ok(new SourceResolved.Bundle(r));
                 }
                 if (!isModulePath(r.subpath())) {
@@ -403,10 +420,70 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 case RemoteOrigin.Git g -> Result.ok(cached);
             };
         }
-        var fetched =
+        Result<byte[], String> fetched =
                 switch (origin) {
-                    case RemoteOrigin.Http h -> httpBytes(h);
-                    case RemoteOrigin.Git g -> gitArchive(g);
+                    case RemoteOrigin.Http h -> {
+                        var url = h.url();
+                        try {
+                            var response = http.send(
+                                    HttpRequest.newBuilder(URI.create(url))
+                                            .GET()
+                                            .build(),
+                                    HttpResponse.BodyHandlers.ofByteArray());
+                            if (response.statusCode() != 200) {
+                                yield Result.err("remote fetch failed (" + response.statusCode() + "): " + url);
+                            }
+                            yield verifyHash(url, response.body(), h.hash());
+                        } catch (IOException e) {
+                            yield Result.err("remote fetch failed: " + url + ": " + e.getMessage());
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            yield Result.err("remote fetch interrupted: " + url);
+                        }
+                    }
+                    case RemoteOrigin.Git g -> {
+                        Path dir;
+                        try {
+                            dir = Files.createTempDirectory("allig-git");
+                        } catch (IOException e) {
+                            yield Result.err("git fetch: cannot create a work directory: " + e.getMessage());
+                        }
+                        try {
+                            for (var argv : new String[][] {
+                                {"git", "init", "-q", "."},
+                                {"git", "fetch", "-q", "--depth", "1", g.url(), g.commit()},
+                            }) {
+                                Result<byte[], String> gitRes = gitOutput(dir, argv);
+                                switch (gitRes) {
+                                    case Result.Ok<byte[], String> ok -> {}
+                                    case Result.Err<byte[], String> err -> {
+                                        yield Result.err(err.error());
+                                    }
+                                }
+                            }
+                            var head = gitOutput(dir, "git", "rev-parse", "FETCH_HEAD");
+                            switch (head) {
+                                case Result.Ok<byte[], String> ok -> {
+                                    var got = new String(ok.value(), StandardCharsets.UTF_8).trim();
+                                    if (!got.equals(g.commit())) {
+                                        yield Result.err(
+                                                "git fetch of " + g.remoteOriginDesc() + " yielded commit " + got);
+                                    }
+                                }
+                                case Result.Err<byte[], String> err -> {
+                                    yield Result.err(err.error());
+                                }
+                            }
+                            yield gitOutput(dir, "git", "archive", "--format=zip", "FETCH_HEAD");
+                        } finally {
+                            try (var walk = Files.walk(dir)) {
+                                for (var p :
+                                        walk.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(p);
+                            } catch (IOException e) {
+                                throw new RuntimeException("CacheReal.gitArchive cleanup " + dir, e);
+                            }
+                        }
+                    }
                 };
         switch (fetched) {
             case Result.Ok<byte[], String> ok -> {
@@ -424,67 +501,6 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             case Result.Err<byte[], String> err -> {}
         }
         return fetched;
-    }
-
-    private Result<byte[], String> httpBytes(RemoteOrigin.Http origin) {
-        var url = origin.url();
-        try {
-            var response = http.send(
-                    HttpRequest.newBuilder(URI.create(url)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
-            if (response.statusCode() != 200) {
-                return Result.err("remote fetch failed (" + response.statusCode() + "): " + url);
-            }
-            return verifyHash(url, response.body(), origin.hash());
-        } catch (IOException e) {
-            return Result.err("remote fetch failed: " + url + ": " + e.getMessage());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return Result.err("remote fetch interrupted: " + url);
-        }
-    }
-
-    private static Result<byte[], String> gitArchive(RemoteOrigin.Git origin) {
-        Path dir;
-        try {
-            dir = Files.createTempDirectory("allig-git");
-        } catch (IOException e) {
-            return Result.err("git fetch: cannot create a work directory: " + e.getMessage());
-        }
-        try {
-            for (var argv : new String[][] {
-                {"git", "init", "-q", "."},
-                {"git", "fetch", "-q", "--depth", "1", origin.url(), origin.commit()},
-            }) {
-                var res = runGit(dir, argv);
-                if (res.optIsSome()) return Result.err(res.optUnwrap());
-            }
-            var head = gitOutput(dir, "git", "rev-parse", "FETCH_HEAD");
-            switch (head) {
-                case Result.Ok<byte[], String> ok -> {
-                    var got = new String(ok.value(), StandardCharsets.UTF_8).trim();
-                    if (!got.equals(origin.commit())) {
-                        return Result.err("git fetch of " + origin.remoteOriginDesc() + " yielded commit " + got);
-                    }
-                }
-                case Result.Err<byte[], String> err -> {
-                    return Result.err(err.error());
-                }
-            }
-            return gitOutput(dir, "git", "archive", "--format=zip", "FETCH_HEAD");
-        } finally {
-            deleteRecursively(dir);
-        }
-    }
-
-    private static Opt<String> runGit(Path dir, String... argv) {
-        switch (gitOutput(dir, argv)) {
-            case Result.Ok<byte[], String> ok -> {
-                return Opt.none();
-            }
-            case Result.Err<byte[], String> err -> {
-                return Opt.some(err.error());
-            }
-        }
     }
 
     private static Result<byte[], String> gitOutput(Path dir, String... argv) {
@@ -506,27 +522,6 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         }
     }
 
-    private static void deleteRecursively(Path dir) {
-        try (var walk = Files.walk(dir)) {
-            for (var p : walk.sorted(java.util.Comparator.reverseOrder()).toList()) Files.deleteIfExists(p);
-        } catch (IOException e) {
-            throw new RuntimeException("CacheReal.deleteRecursively " + dir, e);
-        }
-    }
-
-    private static boolean zipHasDirectory(byte[] bundle, String subpath) {
-        var prefix = subpath.endsWith("/") ? subpath : subpath + "/";
-        try (var zin = new ZipInputStream(new ByteArrayInputStream(bundle))) {
-            ZipEntry entry;
-            while ((entry = zin.getNextEntry()) != null) {
-                if (entry.getName().startsWith(prefix)) return true;
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("CacheReal.zipHasDirectory", e);
-        }
-        return false;
-    }
-
     private static Result<byte[], String> zipEntryBytes(byte[] bundle, String subpath) {
         try (var zin = new ZipInputStream(new ByteArrayInputStream(bundle))) {
             ZipEntry entry;
@@ -541,16 +536,13 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         return Result.err("bundle entry not found: " + subpath);
     }
 
-    private static boolean isZstd(byte[] bytes) {
-        return bytes.length >= 4
+    private static String moduleText(byte[] bytes) throws IOException {
+        var zstd = bytes.length >= 4
                 && bytes[0] == (byte) 0x28
                 && bytes[1] == (byte) 0xB5
                 && bytes[2] == (byte) 0x2F
                 && bytes[3] == (byte) 0xFD;
-    }
-
-    private static String moduleText(byte[] bytes) throws IOException {
-        if (!isZstd(bytes)) return new String(bytes, StandardCharsets.UTF_8);
+        if (!zstd) return new String(bytes, StandardCharsets.UTF_8);
         try (var in = new ZstdInputStream(new ByteArrayInputStream(bytes))) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
@@ -1030,7 +1022,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
 
     private static JsonValue parseJson(String s) {
         try {
-            return JsonValues.parse(s);
+            return JsonValues.decode(new JsonReader(new StringReader(s)), Json.FieldPath.root());
         } catch (IOException e) {
             throw new RuntimeException("CacheReal.parseJson", e);
         }

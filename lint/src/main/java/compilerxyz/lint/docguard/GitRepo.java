@@ -34,8 +34,8 @@ public final class GitRepo {
         return lines(e, suffix);
     }
 
-    public List<String> tracked(String suffix) {
-        Exec e = run(root, "ls-files", "--", "*" + suffix);
+    public List<String> workingTree(String suffix) {
+        Exec e = run(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", "*" + suffix);
         return lines(e, suffix);
     }
 

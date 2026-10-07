@@ -126,6 +126,13 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
             }
         }
 
+        record HasFn(Type type) implements FieldSpec {
+            @Override
+            public Type fieldSpecFieldType() {
+                return type;
+            }
+        }
+
         record PutFn(Type type) implements FieldSpec {
             @Override
             public Type fieldSpecFieldType() {
@@ -138,6 +145,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
         return TMap.ofEntries(
                 new Pair<>(new ConstKey.Str("new"), new FieldSpec.Factory(new TypeMapNewDynamic(keyType, valueType))),
                 new Pair<>(new ConstKey.Str("get"), new FieldSpec.GetFn(new TypeMapGetFnDynamic(keyType, valueType))),
+                new Pair<>(new ConstKey.Str("has"), new FieldSpec.HasFn(new TypeMapHasFnDynamic(keyType, valueType))),
                 new Pair<>(new ConstKey.Str("put"), new FieldSpec.PutFn(new TypeMapPutFnDynamic(keyType, valueType))));
     }
 

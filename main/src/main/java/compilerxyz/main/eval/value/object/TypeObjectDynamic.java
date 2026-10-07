@@ -272,7 +272,7 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         var sourceType = cv.value().optUnwrap().valueType();
         for (var rule : castFromRules()) {
             if (rule.typeObjectCastFromRuleMatches(xx, sourceType)) {
-                return rule.typeObjectCastFromRuleApply(this, cv);
+                return rule.typeObjectCastFromRuleApply(xx, loc, this, cv);
             }
         }
         return EResult.err(loc, "Cannot cast " + sourceType.typeDesc() + " to " + typeDesc());

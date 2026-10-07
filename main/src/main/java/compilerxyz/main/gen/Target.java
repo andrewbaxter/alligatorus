@@ -23,6 +23,14 @@ public interface Target {
 
     boolean targetValueIsRuntime(ExprContext xx, Value value);
 
+    @BuiltinFull(uniqueId = 1049L)
+    @BuiltinPath("types.exit_value")
+    record ExitValue(boolean carries, CodeValue cv) {}
+
+    EResult<CodeValue> targetSourceValue(ExprContext xx, QExprId loc, CodeValue cv);
+
+    EResult<ExitValue> targetExitValue(ExprContext xx, QExprId loc, CodeValue cv);
+
     EResult<Code> targetExit(ExprContext xx, QExprId loc, JumpKey dest, Opt<Type> argument, CodeValue value);
 
     EResult<CodeValue> targetLand(ExprContext xx, QExprId loc, JumpKey dest, Opt<Type> argument);

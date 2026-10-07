@@ -33,7 +33,46 @@ public final class ImportRun {
                 switch (specValue) {
                     case SourceSpecValue.Virtual v -> Result.ok(new SourceSpecAbsolute.Virtual(v.name()));
                     case SourceSpecValue.Remote r -> Result.ok(new SourceSpecAbsolute.Remote(r.origin(), ""));
-                    case SourceSpecValue.Local l -> resolveRelative(ix, l.path());
+                    case SourceSpecValue.Local l ->
+                        switch (ix.currentSpec) {
+                            case SourceSpecAbsolute.Virtual cv ->
+                                Result.err("relative path is not allowed from a virtual module");
+                            case SourceSpecAbsolute.Local cl -> {
+                                var dir = Path.of(cl.path()).getParent();
+                                var base = dir == null ? Path.of("") : dir;
+                                yield Result.ok(new SourceSpecAbsolute.Local(
+                                        base.resolve(l.path()).normalize().toString()));
+                            }
+                            case SourceSpecAbsolute.Remote cr -> {
+                                if (cr.subpath().isEmpty()) {
+                                    yield Result.err(
+                                            "relative path is only allowed from a bundle, not a single remote file");
+                                }
+                                var subpath = cr.subpath();
+                                var slashIdx = subpath.lastIndexOf('/');
+                                var baseDir = slashIdx < 0 ? "" : subpath.substring(0, slashIdx);
+                                var rel = l.path();
+                                var segs = new ArrayList<String>();
+                                if (!baseDir.isEmpty()) {
+                                    for (var s : baseDir.split("/")) {
+                                        if (!s.isEmpty() && !s.equals(".")) segs.add(s);
+                                    }
+                                }
+                                for (var s : rel.split("/")) {
+                                    if (s.isEmpty() || s.equals(".")) continue;
+                                    if (s.equals("..")) {
+                                        if (segs.isEmpty()) {
+                                            yield Result.err("path escapes bundle root: " + rel);
+                                        }
+                                        segs.remove(segs.size() - 1);
+                                    } else {
+                                        segs.add(s);
+                                    }
+                                }
+                                var resolvedPath = String.join("/", segs);
+                                yield Result.ok(new SourceSpecAbsolute.Remote(cr.origin(), resolvedPath));
+                            }
+                        };
                 };
         Result.Ok<SourceSpecAbsolute, String> resolveResOk;
         switch (resolveRes) {
@@ -44,46 +83,6 @@ public final class ImportRun {
         }
         var abs = resolveResOk.value();
         return compileAbsolute(xx, loc, abs);
-    }
-
-    public static Result<SourceSpecAbsolute, String> resolveRelative(CompileImportContext ix, String relPath) {
-        return switch (ix.currentSpec) {
-            case SourceSpecAbsolute.Virtual cv -> Result.err("relative path is not allowed from a virtual module");
-            case SourceSpecAbsolute.Local cl -> {
-                var dir = Path.of(cl.path()).getParent();
-                var base = dir == null ? Path.of("") : dir;
-                yield Result.ok(new SourceSpecAbsolute.Local(
-                        base.resolve(relPath).normalize().toString()));
-            }
-            case SourceSpecAbsolute.Remote cr -> {
-                if (cr.subpath().isEmpty()) {
-                    yield Result.err("relative path is only allowed from a bundle, not a single remote file");
-                }
-                var subpath = cr.subpath();
-                var slashIdx = subpath.lastIndexOf('/');
-                var baseDir = slashIdx < 0 ? "" : subpath.substring(0, slashIdx);
-                var rel = relPath;
-                var segs = new ArrayList<String>();
-                if (!baseDir.isEmpty()) {
-                    for (var s : baseDir.split("/")) {
-                        if (!s.isEmpty() && !s.equals(".")) segs.add(s);
-                    }
-                }
-                for (var s : rel.split("/")) {
-                    if (s.isEmpty() || s.equals(".")) continue;
-                    if (s.equals("..")) {
-                        if (segs.isEmpty()) {
-                            yield Result.err("path escapes bundle root: " + rel);
-                        }
-                        segs.remove(segs.size() - 1);
-                    } else {
-                        segs.add(s);
-                    }
-                }
-                var resolvedPath = String.join("/", segs);
-                yield Result.ok(new SourceSpecAbsolute.Remote(cr.origin(), resolvedPath));
-            }
-        };
     }
 
     public static EResult<SpecOutcome> compileAbsolute(ExprContext xx, QExprId loc, SourceSpecAbsolute abs) {
@@ -131,61 +130,57 @@ public final class ImportRun {
                     case SourceSpecAbsolute.Virtual v -> {}
                     case SourceSpecAbsolute.Remote r -> {}
                 }
-                yield materialize(xx, loc, m.res());
+                var erb = new Erb(loc);
+                Artifact artifact;
+                switch (m.res().result()) {
+                    case CompileResResult.Ok okRes -> {
+                        if (okRes.artifact().optIsNone()) {
+                            erb.errPush("Imported module yields no value to import");
+                            yield EResult.errs(erb.errors());
+                        }
+                        artifact = okRes.artifact().optUnwrap();
+                    }
+                    case CompileResResult.Err errRes -> {
+                        erb.errPush("Import failed");
+                        yield EResult.errs(erb.errors());
+                    }
+                }
+                var exporterRes = erb.mustEr(ArtifactSupport.importArtifact(xx, loc, artifact));
+                if (exporterRes.optIsNone()) yield EResult.errs(erb.errors());
+                var value = ArtifactSupport.importedAsValue(exporterRes.optUnwrap());
+                var cv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
+                var valueType = value.valueType();
+                var pdRes = erb.mustEr(GenAspectPostDeserialize.get(xx, loc, valueType));
+                if (pdRes.optIsNone()) yield EResult.errs(erb.errors());
+                var finalRes = erb.mustEr(pdRes.optUnwrap().aspectPostDeserializePostDeserialize(xx, loc, cv));
+                if (finalRes.optIsNone()) yield EResult.errs(erb.errors());
+                yield EResult.ok(finalRes.optUnwrap());
             }
-            case SpecOutcome.FileOut f -> openFile(xx, loc, f.abs());
+            case SpecOutcome.FileOut f -> {
+                var scope = new Scope(xx.vx);
+                for (var entry : Eval.bodyBuiltinScope(xx).entrySet())
+                    scope.pushNamed(entry.getKey(), entry.getValue());
+                var sx = new ExprContext(scope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
+                var fn = new Expr(
+                        loc,
+                        new Expr.Field(
+                                new Expr(
+                                        loc,
+                                        new Expr.Field(
+                                                new Expr(loc, new Expr.ScopeUse(constString(loc, Eval.KEY_BUILTINS))),
+                                                constString(loc, "eval"))),
+                                constString(loc, "import_file")));
+                var call =
+                        new Expr(loc, new Expr.Call(fn, constString(loc, f.abs().sourceSpecAbsoluteSpecKey())));
+                var res = ConstEval.constEval(sx, call);
+                if (res.hasErrors()) yield res.reerr();
+                yield EResult.ok(res.requireValue("import file").cv());
+            }
         };
-    }
-
-    private static EResult<CodeValue> openFile(ExprContext xx, QExprId loc, SourceSpecAbsolute abs) {
-        var scope = new Scope(xx.vx);
-        for (var entry : Eval.bodyBuiltinScope(xx).entrySet()) scope.pushNamed(entry.getKey(), entry.getValue());
-        var sx = new ExprContext(scope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
-        var fn = new Expr(
-                loc,
-                new Expr.Field(
-                        new Expr(
-                                loc,
-                                new Expr.Field(
-                                        new Expr(loc, new Expr.ScopeUse(constString(loc, Eval.KEY_BUILTINS))),
-                                        constString(loc, "eval"))),
-                        constString(loc, "import_file")));
-        var call = new Expr(loc, new Expr.Call(fn, constString(loc, abs.sourceSpecAbsoluteSpecKey())));
-        var res = ConstEval.constEval(sx, call);
-        if (res.hasErrors()) return res.reerr();
-        return EResult.ok(res.requireValue("import file").cv());
     }
 
     private static Expr constString(QExprId loc, String value) {
         return new Expr(
                 loc, new Expr.Literal(Expr.LitValue.shared(new ValueObjectConst(new TypeStringConst(), value))));
-    }
-
-    public static EResult<CodeValue> materialize(ExprContext xx, QExprId loc, CompileRes compileRes) {
-        var erb = new Erb(loc);
-        Artifact artifact;
-        switch (compileRes.result()) {
-            case CompileResResult.Ok okRes -> {
-                if (okRes.artifact().optIsNone()) {
-                    erb.errPush("Imported module yields no value to import");
-                    return EResult.errs(erb.errors());
-                }
-                artifact = okRes.artifact().optUnwrap();
-            }
-            case CompileResResult.Err errRes -> {
-                erb.errPush("Import failed");
-                return EResult.errs(erb.errors());
-            }
-        }
-        var exporterRes = erb.mustEr(ArtifactSupport.importArtifact(xx, loc, artifact));
-        if (exporterRes.optIsNone()) return EResult.errs(erb.errors());
-        var value = ArtifactSupport.importedAsValue(exporterRes.optUnwrap());
-        var cv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
-        var valueType = value.valueType();
-        var pdRes = erb.mustEr(GenAspectPostDeserialize.get(xx, loc, valueType));
-        if (pdRes.optIsNone()) return EResult.errs(erb.errors());
-        var finalRes = erb.mustEr(pdRes.optUnwrap().aspectPostDeserializePostDeserialize(xx, loc, cv));
-        if (finalRes.optIsNone()) return EResult.errs(erb.errors());
-        return EResult.ok(finalRes.optUnwrap());
     }
 }

@@ -25,12 +25,6 @@ final class CodecEmitter {
     public static final ClassName JSON_VALUE_STRING = ClassName.get("compilerxyz.main.safejson", "JsonValueString");
     public static final ClassName JSON_VALUE_ARRAY = ClassName.get("compilerxyz.main.safejson", "JsonValueArray");
     public static final ClassName JSON_VALUE_OBJECT = ClassName.get("compilerxyz.main.safejson", "JsonValueObject");
-    private static int freshCounter = 0;
-
-    private static String fresh(String base) {
-        freshCounter++;
-        return "__" + base + freshCounter;
-    }
 
     public static final ClassName STRING_READER = ClassName.get("java.io", "StringReader");
     public static final ClassName STRING_WRITER = ClassName.get("java.io", "StringWriter");
@@ -50,9 +44,6 @@ final class CodecEmitter {
 
     private static final IMap<String, CodecTarget> HAND_CODED_REFS = IMap.ofEntries(
             new Pair<>(
-                    "compilerxyz.main.safejson.JsonValue",
-                    new CodecTarget("compilerxyz.main.safejson.JsonValues", Opt.none())),
-            new Pair<>(
                     "compilerxyz.main.artifact.Artifact",
                     new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactCodec", Opt.none())),
             new Pair<>(
@@ -64,13 +55,7 @@ final class CodecEmitter {
                     "compilerxyz.main.artifact.Artifact.Ref",
                     new CodecTarget(
                             ARTIFACT_CODECS_REF + ".ArtifactCodec",
-                            Opt.some("compilerxyz.main.artifact.Artifact.Ref"))),
-            new Pair<>(
-                    "compilerxyz.main.artifact.ArtifactBody",
-                    new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactBodyCodec", Opt.none())),
-            new Pair<>(
-                    "compilerxyz.main.artifact.ArtifactIdSource",
-                    new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactIdSourceCodec", Opt.none())));
+                            Opt.some("compilerxyz.main.artifact.Artifact.Ref"))));
 
     public static void resolveType(CodecsGen.ParsedType type, String ctxQname, TypeIndex index) {
         if (type.kind == CodecsGen.ParsedTypeKind.NAMED) {
@@ -366,9 +351,9 @@ final class CodecEmitter {
         var qn = type.name;
         if (qn.equals("TList") || qn.equals("compilerxyz.prelude.util.TList")) {
             var elem = typeArg(type, 0);
-            var arr = fresh("a");
-            var el = fresh("e");
-            var ev = fresh("ev");
+            var arr = targetVar + "_a";
+            var el = targetVar + "_e";
+            var ev = targetVar + "_ev";
             b.addStatement("$T $L", JSON_VALUE, targetVar);
             b.beginControlFlow("");
             b.addStatement("$T<$T> $L = new $T<>()", TLIST, JSON_VALUE, arr, TLIST);
@@ -383,11 +368,11 @@ final class CodecEmitter {
         if (qn.equals("TOrderedMap") || qn.equals("compilerxyz.prelude.util.TOrderedMap")) {
             var keyT = typeArg(type, 0);
             var valT = typeArg(type, 1);
-            var arr = fresh("a");
-            var me = fresh("me");
-            var pair = fresh("p");
-            var kv = fresh("kv");
-            var vv = fresh("vv");
+            var arr = targetVar + "_a";
+            var me = targetVar + "_me";
+            var pair = targetVar + "_p";
+            var kv = targetVar + "_kv";
+            var vv = targetVar + "_vv";
             b.addStatement("$T $L", JSON_VALUE, targetVar);
             b.beginControlFlow("");
             b.addStatement("$T<$T> $L = new $T<>()", TLIST, JSON_VALUE, arr, TLIST);
@@ -406,10 +391,10 @@ final class CodecEmitter {
         if (qn.equals("Opt") || qn.equals("compilerxyz.prelude.util.Opt")) {
             var elem = typeArg(type, 0);
             var elemJava = javaTypeOf(elem);
-            var obj = fresh("o");
-            var some = fresh("some");
-            var sv = fresh("sv");
-            var svv = fresh("svv");
+            var obj = targetVar + "_o";
+            var some = targetVar + "_some";
+            var sv = targetVar + "_sv";
+            var svv = targetVar + "_svv";
             b.addStatement("$T $L", JSON_VALUE, targetVar);
             b.beginControlFlow("");
             b.addStatement("$T<String, $T> $L = new $T<>()", TORDERED_MAP, JSON_VALUE, obj, TORDERED_MAP);
@@ -472,7 +457,7 @@ final class CodecEmitter {
                     b.addStatement("$L = (float) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
                 case "boolean" -> b.addStatement("$L = $T.bool($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
                 case "char" -> {
-                    var sv = fresh("s");
+                    var sv = targetVar + "_s";
                     b.beginControlFlow("");
                     b.addStatement("String $L = $T.string($L, $L)", sv, JSON_VALUES, jsonExpr, pathExpr);
                     b.addStatement(
@@ -503,9 +488,9 @@ final class CodecEmitter {
         if (qn.equals("Opt") || qn.equals("compilerxyz.prelude.util.Opt")) {
             var elem = typeArg(type, 0);
             var elemJava = javaTypeOf(elem);
-            var obj = fresh("o");
-            var en = fresh("en");
-            var sv = fresh("sv");
+            var obj = targetVar + "_o";
+            var en = targetVar + "_en";
+            var sv = targetVar + "_sv";
             b.beginControlFlow("");
             b.addStatement("var $L = $T.object($L, $L)", obj, JSON_VALUES, jsonExpr, pathExpr);
             b.addStatement(
@@ -546,10 +531,10 @@ final class CodecEmitter {
         if (qn.equals("TList") || qn.equals("compilerxyz.prelude.util.TList")) {
             var elem = typeArg(type, 0);
             var elemType = javaTypeOf(elem);
-            var list = fresh("l");
-            var idx = fresh("i");
-            var je = fresh("je");
-            var ev = fresh("ev");
+            var list = targetVar + "_l";
+            var idx = targetVar + "_i";
+            var je = targetVar + "_je";
+            var ev = targetVar + "_ev";
             b.beginControlFlow("");
             b.addStatement("$T<$L> $L = new $T<>()", TLIST, elemType, list, TLIST);
             b.addStatement("int $L = 0", idx);
@@ -568,12 +553,12 @@ final class CodecEmitter {
             var valT = typeArg(type, 1);
             var keyType = javaTypeOf(keyT);
             var valType = javaTypeOf(valT);
-            var map = fresh("m");
-            var idx = fresh("mi");
-            var je = fresh("je");
-            var pair = fresh("pair");
-            var mk = fresh("mk");
-            var mv = fresh("mv");
+            var map = targetVar + "_m";
+            var idx = targetVar + "_mi";
+            var je = targetVar + "_je";
+            var pair = targetVar + "_pair";
+            var mk = targetVar + "_mk";
+            var mv = targetVar + "_mv";
             b.beginControlFlow("");
             b.addStatement("$T<$L, $L> $L = new $T<>()", TORDERED_MAP, keyType, valType, map, TORDERED_MAP);
             b.addStatement("int $L = 0", idx);

@@ -214,6 +214,14 @@ public final class DefinitionSet implements Artifactable {
         }
     }
 
+    private boolean objectImplements(TypeSourceObjectDynamic obj, Class<?> iface) {
+        var internalName = JavaInternalName.fromClass(iface).value();
+        for (var impl : obj.interfaceImpls) {
+            if (impl.interface_.jvmInternalNameForSet(this).value().equals(internalName)) return true;
+        }
+        return false;
+    }
+
     public Opt<String> incomplete() {
         if (finished) {
             return Opt.none();
@@ -230,6 +238,10 @@ public final class DefinitionSet implements Artifactable {
             for (var method : obj.methods) {
                 var r = method.incomplete(objName);
                 if (r.optIsSome()) return r;
+            }
+            if (objectImplements(obj, Value.class) && objectImplements(obj, Type.class)) {
+                return Opt.some("Object '" + objName
+                        + "' implements both eval.value and eval.type: a value's type must be distinct from the value");
             }
         }
         for (var iface : interfaces) {
@@ -707,18 +719,9 @@ public final class DefinitionSet implements Artifactable {
                     }
                 }
                 {
-                    var valueInternalName =
-                            JavaInternalName.fromClass(Value.class).value();
-                    var implementsValue = false;
-                    for (var aeImpl : obj.interfaceImpls) {
-                        if (aeImpl.interface_
-                                .jvmInternalNameForSet(this)
-                                .value()
-                                .equals(valueInternalName)) {
-                            implementsValue = true;
-                        }
-                    }
-                    if (implementsValue) {
+                    var implementsValue = objectImplements(obj, Value.class);
+                    var implementsType = objectImplements(obj, Type.class);
+                    if (implementsValue || implementsType) {
                         var aeDescriptor = JavaMethodDescriptor.fromParts(
                                 JavaDataDescriptor.fromClass(EResult.class),
                                 JavaDataDescriptor.fromClass(ExprContext.class),
@@ -727,11 +730,15 @@ public final class DefinitionSet implements Artifactable {
                                 Opcodes.ACC_PUBLIC, "artifactableExporter", aeDescriptor.value(), null, null);
                         var aeSeq = new JavaBytecodeSequence();
                         var ab = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
-                        var aeSelf = ab.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName));
-                        var aeXx = ab.loadIndexed(1, JavaDataDescriptor.fromClass(ExprContext.class));
-                        var aeLoc = ab.loadIndexed(2, JavaDataDescriptor.fromClass(QExprId.class));
-                        ab.ret(ab.invokeStatic(
-                                GenCodegenDescriptors.DYN_RUNTIME_SOURCE_OBJECT_EXPORTER, aeSelf, aeXx, aeLoc));
+                        if (implementsValue) {
+                            var aeSelf = ab.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName));
+                            var aeXx = ab.loadIndexed(1, JavaDataDescriptor.fromClass(ExprContext.class));
+                            var aeLoc = ab.loadIndexed(2, JavaDataDescriptor.fromClass(QExprId.class));
+                            ab.ret(ab.invokeStatic(
+                                    GenCodegenDescriptors.DYN_RUNTIME_SOURCE_OBJECT_EXPORTER, aeSelf, aeXx, aeLoc));
+                        } else {
+                            ab.ret(ab.invokeStatic(GenCodegenDescriptors.DYN_RUNTIME_SOURCE_OBJECT_TYPE_EXPORTER));
+                        }
                         aeSeq.add(ab.code());
                         JavaBytecodeUtils.renderMethod(aeSeq, aeMv, TList.of(), soeLocTable);
                     }

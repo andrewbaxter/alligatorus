@@ -329,6 +329,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
         }
         if (key.equals(GenAspectLift.AspectId)) {
             var entryLifts = new TList<RecordLift.Entry>(fields.size());
+            var held = new TOrderedMap<ConstKey, Value>();
             for (var entry : fields) {
                 var k = entry.getKey();
                 var f = entry.getValue();
@@ -346,8 +347,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
                         }
                         var fv = cv.value().optUnwrap();
                         if (!(fv instanceof ValueDynamic)) {
-                            entryLifts.add(
-                                    new RecordLift.Entry(k, (xx2, loc2, host) -> EResult.ok(fv), fv.valueType()));
+                            held.put(k, fv);
                             continue;
                         }
                         d = new RecordField.Dynamic(fv.valueType());
@@ -359,7 +359,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
                 }
                 entryLifts.add(new RecordLift.Entry(k, entryLiftOpt.optUnwrap(), d.type()));
             }
-            return Opt.some(new RecordLift(xx, entryLifts));
+            return Opt.some(new RecordLift(xx, entryLifts, held));
         }
         return Opt.none();
     }
@@ -568,10 +568,33 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
         var srcReg = DynUtil.sourceReg(b, srcDyn.source());
         var srcKlass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, srcSlotInfo.sortedTypes()));
 
-        var destSortedKeys = new TList<ConstKey>(fields.size());
-        for (var k : fields.keys()) destSortedKeys.add(k);
-        for (var k : fields.keys()) {
+        var destSlotKeys = slotFieldTypes(destFields).keySet();
+        var destSortedKeys = new TList<ConstKey>(destSlotKeys.size());
+        for (var k : destSlotKeys) destSortedKeys.add(k);
+        for (var k : destSlotKeys) {
             destSortedKeys.set(destSlotInfo.slotOfKey().getOpt(k).optUnwrap(), k);
+        }
+        for (var destEntry : destFields) {
+            if (isSlotField(destEntry.getValue())) continue;
+            var key = destEntry.getKey();
+            CodeValue srcFieldCv;
+            switch (srcRecordType.fields().getOpt(key).optUnwrap()) {
+                case RecordField.Dynamic d -> {
+                    int srcSlot = srcSlotInfo.slotOfKey().getOpt(key).optUnwrap();
+                    var load = b.getField(
+                            srcKlass,
+                            CompositeClassEmitter.slotFieldName(srcSlot),
+                            CompositeClassEmitter.slotDescriptor(xx, d.type()),
+                            srcReg);
+                    srcFieldCv = DynUtil.regToValue(new CodeDynamic(loc, new JavaBytecodeSequence()), load, d.type());
+                }
+                case RecordField.EvalRes held -> {
+                    if (held.result().hasErrors()) return held.result().reerr();
+                    srcFieldCv = held.result().requireValue("Record::typeCastFrom source held field");
+                }
+            }
+            var heldConv = Eval.typecheckConvert(xx, loc, recordFieldType(destEntry.getValue()), srcFieldCv);
+            if (heldConv.hasErrors()) return heldConv.reerr();
         }
 
         var erb = new Erb(loc);
@@ -639,9 +662,13 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
         public record Entry(ConstKey key, AspectLift lift, Type type) {}
 
         private final TList<Entry> entryLifts;
+
+        private final TOrderedMap<ConstKey, Value> held;
+
         private volatile Opt<Field[]> cachedFields = Opt.none();
 
-        public RecordLift(ExprContext xx, TList<Entry> entryLifts) {
+        public RecordLift(ExprContext xx, TList<Entry> entryLifts, TOrderedMap<ConstKey, Value> held) {
+            this.held = held;
             var sorted = new TList<Entry>(entryLifts.size());
             sorted.addAll(entryLifts);
             sorted.sort((a, b) -> {
@@ -712,6 +739,12 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
             }
             if (!errors.isEmpty()) {
                 return EResult.errs(errors);
+            }
+            for (var entry : held.entrySet()) {
+                out.put(
+                        entry.getKey(),
+                        new RecordField.EvalRes(
+                                EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(entry.getValue())))));
             }
             return EResult.ok(new Record(IOrderedMap.from(out)));
         }

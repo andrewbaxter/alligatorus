@@ -42,6 +42,12 @@ public record AspectFieldMapDynamic<K extends Type, V extends Type>(TypeMapDynam
                     }
                     yield EResult.ok(DynUtil.methodRefOn(self, g.type()));
                 }
+                case FieldSpec.HasFn h -> {
+                    if (self.value().optIsNone() || !(self.value().optUnwrap() instanceof ValueDynamic fnSelfVdh)) {
+                        yield EResult.err(loc, "TypeMapDynamic::field: fn receiver has no dynamic source");
+                    }
+                    yield EResult.ok(DynUtil.methodRefOn(self, h.type()));
+                }
                 case FieldSpec.PutFn p -> {
                     if (self.value().optIsNone() || !(self.value().optUnwrap() instanceof ValueDynamic fnSelfVdp)) {
                         yield EResult.err(loc, "TypeMapDynamic::field: fn receiver has no dynamic source");

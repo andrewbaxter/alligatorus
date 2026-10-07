@@ -260,6 +260,16 @@ public final class DynUtil {
         return new CodeValue(receiver.code(), EvalOutcome.ofValue(new ValueDynamic(source.optUnwrap(), methodType)));
     }
 
+    public static EResult<CodeValue> consumeThenRestamp(ExprContext xx, QExprId loc, CodeValue cv, Type type) {
+        if (cv.value().optIsSome() && sourceOf(cv.value().optUnwrap()).optIsSome()) {
+            return EResult.ok(dynamicCastKeepingSource(cv, type));
+        }
+        var consumedRes = materialize(xx, loc, cv);
+        if (consumedRes.hasErrors()) return consumedRes.reerr();
+        var consumed = consumedRes.requireValue("DynUtil::consumeThenRestamp consumed");
+        return EResult.ok(regToValue(consumed.code(), consumed.reg(), type));
+    }
+
     public static CodeValue dynamicCastKeepingSource(CodeValue cv, Type type) {
         var source = sourceOf(cv.value().optUnwrap());
         if (source.optIsNone()) {
@@ -286,30 +296,6 @@ public final class DynUtil {
                 EvalRootEmitter.EXPR_CONTEXT_FIELD,
                 EvalRootEmitter.DESC_EXPR_CONTEXT);
         var out = b.invokeStatic(construct, xxReg, element);
-        return EResult.ok(regToValue(b.code(), out, GenType.dynamicType()));
-    }
-
-    public static EResult<CodeValue> typeConstructRuntime2(
-            ExprContext xx,
-            QExprId loc,
-            CodeValue self,
-            CodeValue first,
-            CodeValue second,
-            JavaStaticMethodRef construct) {
-        var firstRes = materialize(xx, loc, first);
-        if (firstRes.hasErrors()) return firstRes.reerr();
-        var secondRes = materialize(xx, loc, second);
-        if (secondRes.hasErrors()) return secondRes.reerr();
-        var b = new JavaBytecodeBuilder(loc);
-        var carryRes = b.addCode(loc, self.code());
-        if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
-        var firstReg = b.reg(firstRes.requireValue("DynUtil::typeConstructRuntime2 first"));
-        var secondReg = b.reg(secondRes.requireValue("DynUtil::typeConstructRuntime2 second"));
-        var xxReg = b.getStatic(
-                JavaInternalName.of(xx.vx.evalRootInternalName.optUnwrap()),
-                EvalRootEmitter.EXPR_CONTEXT_FIELD,
-                EvalRootEmitter.DESC_EXPR_CONTEXT);
-        var out = b.invokeStatic(construct, xxReg, firstReg, secondReg);
         return EResult.ok(regToValue(b.code(), out, GenType.dynamicType()));
     }
 

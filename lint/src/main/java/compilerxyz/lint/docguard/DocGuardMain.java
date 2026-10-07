@@ -15,9 +15,6 @@ public final class DocGuardMain {
     private DocGuardMain() {}
 
     public static void main(String[] args) throws IOException {
-        if (System.getenv("DOCGUARD_OFF") != null) {
-            System.exit(0);
-        }
         if (args.length == 0) {
             System.err.println("usage: docguard <scan|check|fix|strip-inline> [paths...]");
             System.exit(2);
@@ -56,15 +53,17 @@ public final class DocGuardMain {
                     System.exit(0);
                 }
                 GitRepo repo = repoOpt.optUnwrap();
+                boolean hasHead = repo.hasHead();
                 List<Violation> violations = new ArrayList<>();
-                for (String path : repo.tracked(".java")) {
+                for (String path : repo.workingTree(".java")) {
                     String current;
                     try {
                         current = repo.currentContent(path);
                     } catch (IOException e) {
                         continue;
                     }
-                    violations.addAll(new JavaGuard(path).check(Opt.none(), current, false));
+                    Opt<String> parent = hasHead ? repo.parentContent(path) : Opt.none();
+                    violations.addAll(new JavaGuard(path).check(parent, current));
                 }
                 violations.forEach(v -> System.out.println(v.render()));
                 System.exit(violations.isEmpty() ? 0 : 1);
@@ -111,7 +110,7 @@ public final class DocGuardMain {
                 }
                 violations.addAll(fr.residual());
             } else {
-                violations.addAll(guard.check(parent, staged, true));
+                violations.addAll(guard.check(parent, staged));
             }
         }
 

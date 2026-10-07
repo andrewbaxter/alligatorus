@@ -39,21 +39,20 @@ public record AspectFieldBundle(TypeBundle type) implements AspectField {
         }
         EResult<ImportRun.SpecOutcome> res = EResult.err(loc, "bundle: no entry " + s.value());
         for (var name : new String[] {s.value(), s.value() + ".at", s.value() + ".atz"}) {
-            res = ImportRun.compileAbsolute(xx, loc, entrySpec(type.base(), name));
+            var entry =
+                    switch (type.base()) {
+                        case SourceSpecAbsolute.Local l ->
+                            new SourceSpecAbsolute.Local(Path.of(l.path(), name).toString());
+                        case SourceSpecAbsolute.Remote r ->
+                            new SourceSpecAbsolute.Remote(
+                                    r.origin(), r.subpath().isEmpty() ? name : r.subpath() + "/" + name);
+                        case SourceSpecAbsolute.Virtual v -> throw new IllegalStateException("virtual bundle");
+                    };
+            res = ImportRun.compileAbsolute(xx, loc, entry);
             if (!res.hasErrors()) break;
         }
         if (res.hasErrors()) return res.reerr();
         return ImportRun.outcomeValue(xx, loc, res.requireValue("bundle entry"));
-    }
-
-    private static SourceSpecAbsolute entrySpec(SourceSpecAbsolute base, String name) {
-        return switch (base) {
-            case SourceSpecAbsolute.Local l ->
-                new SourceSpecAbsolute.Local(Path.of(l.path(), name).toString());
-            case SourceSpecAbsolute.Remote r ->
-                new SourceSpecAbsolute.Remote(r.origin(), r.subpath().isEmpty() ? name : r.subpath() + "/" + name);
-            case SourceSpecAbsolute.Virtual v -> throw new IllegalStateException("virtual bundle");
-        };
     }
 
     @Override

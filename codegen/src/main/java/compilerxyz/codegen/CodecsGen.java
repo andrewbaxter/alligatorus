@@ -39,6 +39,7 @@ public final class CodecsGen {
             "compilerxyz.prelude.util.Opt.None");
 
     private static final String MARKER = "compilerxyz.main.safejson.SafeJsonSerializable";
+    private static final String STREAM_MARKER = "compilerxyz.main.safejson.SafeJsonStreamable";
 
     public static void walk(String qname, TypeIndex index, TOrderedSet<String> seen) {
         if (!seen.add(qname)) return;
@@ -109,6 +110,7 @@ public final class CodecsGen {
     static final class TypeInfo {
         TypeKind kind = TypeKind.OTHER;
         boolean implementsMarker;
+        boolean implementsStreamMarker;
         final TList<Component> components = new TList<>();
         final TList<String> permittedSubclasses = new TList<>();
         final TList<String> enumConstants = new TList<>();
@@ -204,7 +206,9 @@ public final class CodecsGen {
                 for (var iface : rd.getImplementedTypes()) {
                     info.implementedSimpleNames.add(iface.getNameAsString());
                 }
-                info.implementsMarker = checkMarker(rd, importMap, pkg);
+                info.implementsMarker =
+                        checkMarker(rd, importMap, pkg, MARKER) || checkMarker(rd, importMap, pkg, STREAM_MARKER);
+                info.implementsStreamMarker = checkMarker(rd, importMap, pkg, STREAM_MARKER);
             } else if (td instanceof ClassOrInterfaceDeclaration cid) {
                 if (cid.isInterface()
                         && cid.getModifiers().stream()
@@ -256,10 +260,14 @@ public final class CodecsGen {
                             }
                         }
                     }
-                    info.implementsMarker = checkMarker(cid, importMap, pkg);
+                    info.implementsMarker =
+                            checkMarker(cid, importMap, pkg, MARKER) || checkMarker(cid, importMap, pkg, STREAM_MARKER);
+                    info.implementsStreamMarker = checkMarker(cid, importMap, pkg, STREAM_MARKER);
                 } else {
                     info.kind = TypeKind.OTHER;
-                    info.implementsMarker = checkMarker(cid, importMap, pkg);
+                    info.implementsMarker =
+                            checkMarker(cid, importMap, pkg, MARKER) || checkMarker(cid, importMap, pkg, STREAM_MARKER);
+                    info.implementsStreamMarker = checkMarker(cid, importMap, pkg, STREAM_MARKER);
                 }
             } else if (td instanceof EnumDeclaration ed) {
                 info.kind = TypeKind.ENUM;
@@ -279,16 +287,17 @@ public final class CodecsGen {
             }
         }
 
-        private boolean checkMarker(NodeWithImplements<?> nwi, TMap<String, String> importMap, String pkg) {
+        private boolean checkMarker(
+                NodeWithImplements<?> nwi, TMap<String, String> importMap, String pkg, String marker) {
             for (var iface : nwi.getImplementedTypes()) {
                 var qn = resolveSimpleName(iface.getNameAsString(), importMap, pkg);
-                if (qn.equals(MARKER)) return true;
+                if (qn.equals(marker)) return true;
             }
 
             if (nwi instanceof ClassOrInterfaceDeclaration cid && cid.isInterface()) {
                 for (var iface : cid.getExtendedTypes()) {
                     var qn = resolveSimpleName(iface.getNameAsString(), importMap, pkg);
-                    if (qn.equals(MARKER)) return true;
+                    if (qn.equals(marker)) return true;
                 }
             }
             return false;

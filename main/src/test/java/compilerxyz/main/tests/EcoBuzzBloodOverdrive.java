@@ -75,7 +75,7 @@ final class EcoBuzzBloodOverdrive {
         defs.add(e.let("f1_fn_t", EcoBuzz.fnType(e, e.v("t_f32"), e.v("t_f32"))));
 
         var body = new TList<SourceExpr>();
-        body.add(e.let("sinf", EcoBuzz.externDef(e, e.v("ll"), "sinf", e.lowerV("f1_fn_t"))));
+        body.add(e.let("sinf", EcoBuzz.externDef(e, "sinf", e.lowerV("f1_fn_t"), "m")));
         var recalc = e.seq(
                 set(e, p(e, "f_t"), mul(e, cube(e, pv(e, 1)), e.n(SMOOTH_IN))),
                 e.let("drive", e.ifElse(gt(e, pv(e, 3), e.n(0.5)), f32(e, e.n(2500)), f32(e, e.n(25)))),

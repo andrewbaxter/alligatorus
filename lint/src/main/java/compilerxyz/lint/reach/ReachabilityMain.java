@@ -195,19 +195,26 @@ public final class ReachabilityMain {
                 liveTypes.add(t.getQualifiedName());
             }
         }
-        for (CtTypeReference<?> tr : index.typeReferences) {
-            CtElement enclosing = tr;
-            boolean live = false;
-            while (enclosing != null && enclosing.isParentInitialized()) {
-                enclosing = enclosing.getParent();
-                if (enclosing instanceof CtType<?> et && liveTypes.contains(et.getQualifiedName())) {
-                    live = true;
-                    break;
+        boolean liveChanged = true;
+        while (liveChanged) {
+            liveChanged = false;
+            for (CtTypeReference<?> tr : index.typeReferences) {
+                CtElement enclosing = tr;
+                boolean live = false;
+                while (enclosing != null && enclosing.isParentInitialized()) {
+                    enclosing = enclosing.getParent();
+                    if (enclosing instanceof CtType<?> et && liveTypes.contains(et.getQualifiedName())) {
+                        live = true;
+                        break;
+                    }
                 }
-            }
-            if (live) {
-                String qn = tr.getQualifiedName();
-                if (qn != null && !qn.isEmpty()) referencedTypes.add(qn);
+                if (live) {
+                    String qn = tr.getQualifiedName();
+                    if (qn != null && !qn.isEmpty()) {
+                        referencedTypes.add(qn);
+                        if (liveTypes.add(qn)) liveChanged = true;
+                    }
+                }
             }
         }
 

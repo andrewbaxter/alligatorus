@@ -130,12 +130,12 @@ final class EcoBuzzTunaMan {
         defs.add(e.let("d1_fn_t", EcoBuzz.fnType(e, e.v("t_f64"), e.v("t_f64"))));
 
         var body = new TList<SourceExpr>();
-        body.add(e.let("floor", EcoBuzz.externDef(e, e.v("ll"), "floor", e.lowerV("d1_fn_t"))));
+        body.add(e.let("floor", EcoBuzz.externDef(e, "floor", e.lowerV("d1_fn_t"), "m")));
         for (var fn : new String[] {"sinf"}) {
-            body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("f1_fn_t"))));
+            body.add(e.let(fn, EcoBuzz.externDef(e, fn, e.lowerV("f1_fn_t"), "m")));
         }
         for (var fn : new String[] {"powf", "fmodf"}) {
-            body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("f2_fn_t"))));
+            body.add(e.let(fn, EcoBuzz.externDef(e, fn, e.lowerV("f2_fn_t"), "m")));
         }
         var timesInit = new TList<SourceExpr>();
         for (var v : TIMES) timesInit.add(e.intOf(v));

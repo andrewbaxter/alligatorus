@@ -213,7 +213,7 @@ public record TypeUlongConst() implements Aspect, Type {
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return Numerics.isNumeric(xx, destType);
+        return Numerics.isDynamicNumeric(xx, destType);
     }
 
     @Override

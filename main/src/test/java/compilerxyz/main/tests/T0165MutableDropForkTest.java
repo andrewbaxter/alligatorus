@@ -1079,20 +1079,6 @@ public final class T0165MutableDropForkTest {
                                                 mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                                                 mb.recordOf(
                                                         TList.of(
-                                                                new TestMb.RecordPair("iface_ref", mb.evalValue()),
-                                                                new TestMb.RecordPair(
-                                                                        "record",
-                                                                        ifaceMethods(
-                                                                                mb,
-                                                                                TList.of(
-                                                                                        new TestMb.RecordPair(
-                                                                                                "type",
-                                                                                                mb.scopeUse(
-                                                                                                        "outer")))))))),
-                                        mb.call(
-                                                mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
-                                                mb.recordOf(
-                                                        TList.of(
                                                                 new TestMb.RecordPair("iface_ref", mb.evalType()),
                                                                 new TestMb.RecordPair(
                                                                         "record",

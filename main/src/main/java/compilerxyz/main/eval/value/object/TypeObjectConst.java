@@ -137,6 +137,11 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
+        if (AspectLookup.getMaybe(
+                        xx, destType, GenTrivialIdentityAspects.TYPE_OBJECT_CONST_IDENTITY, TypeObjectConst.class)
+                .optIsSome()) {
+            return false;
+        }
         for (var rule : castRules()) if (rule.typeObjectCastRuleMatches(xx, destType)) return true;
         return false;
     }
@@ -173,7 +178,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
         var sourceType = cv.value().optUnwrap().valueType();
         for (var rule : castFromRules()) {
             if (rule.typeObjectCastFromRuleMatches(xx, sourceType)) {
-                return rule.typeObjectCastFromRuleApply(this, cv);
+                return rule.typeObjectCastFromRuleApply(xx, loc, this, cv);
             }
         }
         return EResult.err(loc, "Cannot cast " + sourceType.typeDesc() + " to " + typeDesc());
@@ -187,10 +192,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
         if (v instanceof ValueObjectConst wrap) {
             return EResult.ok((Type) wrap.data());
         }
-        if (v instanceof Type t) {
-            return EResult.ok(t);
-        }
-        return EResult.err(loc, typeDesc() + "::" + op + ": expected Type or ValueObjectConst, got " + v.getClass());
+        return EResult.err(loc, typeDesc() + "::" + op + ": expected ValueObjectConst, got " + v.getClass());
     }
 
     @Override

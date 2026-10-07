@@ -63,8 +63,8 @@ final class EcoBuzzBlueCatPhaser {
         defs.add(e.let("f2_fn_t", EcoBuzz.fnType(e, e.v("t_f32"), e.v("t_f32"), e.v("t_f32"))));
 
         var body = new TList<SourceExpr>();
-        body.add(e.let("sinf", EcoBuzz.externDef(e, e.v("ll"), "sinf", e.lowerV("f1_fn_t"))));
-        body.add(e.let("powf", EcoBuzz.externDef(e, e.v("ll"), "powf", e.lowerV("f2_fn_t"))));
+        body.add(e.let("sinf", EcoBuzz.externDef(e, "sinf", e.lowerV("f1_fn_t"), "m")));
+        body.add(e.let("powf", EcoBuzz.externDef(e, "powf", e.lowerV("f2_fn_t"), "m")));
         var recalc = e.seq(
                 set(
                         e,

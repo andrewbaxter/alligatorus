@@ -11,9 +11,4 @@ public sealed interface HashValue {
     }
 
     String hashValueHashKey();
-
-    static HashValue hashValueFromKey(String key) {
-        if (!key.startsWith("sha256:")) throw new IllegalArgumentException("unknown hash key: " + key);
-        return new Sha256(HexFormat.of().parseHex(key.substring("sha256:".length())));
-    }
 }

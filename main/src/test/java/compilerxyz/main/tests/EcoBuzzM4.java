@@ -569,11 +569,11 @@ final class EcoBuzzM4 {
         body.add(e.let("osc_at", e.callM0(e.v("arg"), "osc_at")));
         body.add(e.let("zero", e.callM0(e.v("arg"), "zero")));
         for (var fn : new String[] {"sinf", "cosf", "sinhf", "logf", "exp2f"}) {
-            body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("f1_fn_t"))));
+            body.add(e.let(fn, EcoBuzz.externDef(e, fn, e.lowerV("f1_fn_t"), "m")));
         }
-        body.add(e.let("powf", EcoBuzz.externDef(e, e.v("ll"), "powf", e.lowerV("f2_fn_t"))));
-        body.add(e.let("pow", EcoBuzz.externDef(e, e.v("ll"), "pow", e.lowerV("d2_fn_t"))));
-        body.add(e.let("sinh", EcoBuzz.externDef(e, e.v("ll"), "sinh", e.lowerV("d1_fn_t"))));
+        body.add(e.let("powf", EcoBuzz.externDef(e, "powf", e.lowerV("f2_fn_t"), "m")));
+        body.add(e.let("pow", EcoBuzz.externDef(e, "pow", e.lowerV("d2_fn_t"), "m")));
+        body.add(e.let("sinh", EcoBuzz.externDef(e, "sinh", e.lowerV("d1_fn_t"), "m")));
         body.add(e.let(
                 "m4_waves",
                 e.call(

@@ -8,6 +8,7 @@ import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.syntax.SourceExpr;
 import compilerxyz.main.syntax.SourceModule;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
+import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
@@ -133,6 +134,47 @@ public final class T0090MapsTest {
         var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
         assertEquals(1, ok.logs().size());
         assertEquals("hello", ok.logs().get(0).message());
+    }
+
+    @Test
+    public void test00025MapHas() {
+        var mb = new TestMb();
+        var modules = new TMap<String, SourceModule>();
+        modules.put(
+                "main",
+                new SourceModule.V1(TList.of(
+                        mb.bind(
+                                "my_map",
+                                mb.call(
+                                        mb.field(
+                                                mb.call(mb.typesMap(), mb.tupleOf(mb.typesString(), mb.typesString())),
+                                                mb.str("new")),
+                                        mb.tupleOf())),
+                        mb.call(
+                                mb.field(mb.scopeUse("my_map"), mb.str("put")),
+                                mb.tupleOf(mb.str("a"), mb.str("hello"))),
+                        mb.ifOf(
+                                TList.of(new TestMb.Branch(
+                                        mb.call(mb.field(mb.scopeUse("my_map"), mb.str("has")), mb.str("a")),
+                                        mb.call(mb.log(), mb.str("yes")))),
+                                Opt.some(mb.call(mb.log(), mb.str("no")))),
+                        mb.ifOf(
+                                TList.of(new TestMb.Branch(
+                                        mb.call(mb.field(mb.scopeUse("my_map"), mb.str("has")), mb.str("zzz")),
+                                        mb.call(mb.log(), mb.str("yes")))),
+                                Opt.some(mb.call(mb.log(), mb.str("no")))))));
+        var gx = Helpers.newGx(modules);
+        var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        assertTrue(
+                switch (res) {
+                    case Result.Ok<?, ?> o -> true;
+                    case Result.Err<?, ?> e -> false;
+                },
+                () -> "compile failed: " + res);
+        var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+        assertEquals(2, ok.logs().size());
+        assertEquals("yes", ok.logs().get(0).message());
+        assertEquals("no", ok.logs().get(1).message());
     }
 
     @Test

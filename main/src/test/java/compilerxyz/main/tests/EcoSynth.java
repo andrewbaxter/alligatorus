@@ -158,7 +158,7 @@ public final class EcoSynth {
         var top = cx.top();
         setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
-        setup.add(e.let("c", e.call(e.importLocal("libc", "libc-2.42.atz"), e.v("ll"))));
+        setup.add(e.let("c", e.importLocal("libc", "libc-2.42.atz")));
         setup.add(e.let("pw", e.call(e.importLocal("pipewire", "pipewire-1.6.atz"), e.v("ll"))));
         setup.add(e.let("t_pv", e.callM(e.v("llvm"), "ptr", e.fld(e.v("llvm"), "void"))));
         setup.add(e.let("t_events", pwT(e, Refs.setup(e), "pw_stream_events")));
@@ -183,7 +183,7 @@ public final class EcoSynth {
                         e.call(
                                 e.fld(Refs.top(e).refsRef("llvm"), "extern_fn"),
                                 e.rec(
-                                        e.p("mod", Refs.top(e).refsRef("ll")),
+                                        e.p("libs", e.tup(e.s(EcoPipewire.LIB))),
                                         e.p("name", e.s("pw_stream_" + op + "_buffer")),
                                         e.p("ty", Refs.top(e).refsRef(op + "_" + stream + "_fn_t")))));
             }
@@ -202,7 +202,7 @@ public final class EcoSynth {
                                 e.p("ty", e.fld(Refs.top(e).refsRef("llvm"), "loop")))));
 
         for (var fn : new String[] {"sin", "exp2"}) {
-            defValue(e, cx, fn, e.callM(Refs.top(e).refsRef("c"), fn, e.tup()));
+            defValue(e, cx, fn, e.fld(Refs.top(e).refsRef("c"), fn));
         }
         for (var fn : new String[] {
             "pw_init",

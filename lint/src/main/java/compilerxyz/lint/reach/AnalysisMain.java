@@ -104,6 +104,7 @@ public final class AnalysisMain {
         conventionFindings.addAll(new VariableChecks(generatedFiles).run(index));
         conventionFindings.addAll(new NamingChecks(generatedFiles).run(index));
         conventionFindings.addAll(new AspectChecks(generatedFiles).run(index));
+        conventionFindings.addAll(new TypecheckConvertChecks(generatedFiles).run(index));
         conventionFindings.addAll(new StructureChecks(base).run());
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (var f : conventionFindings) counts.merge(f.check(), 1, Integer::sum);

@@ -32,20 +32,4 @@ public sealed interface RemoteOrigin {
     String remoteOriginKey();
 
     String remoteOriginDesc();
-
-    static RemoteOrigin remoteOriginFromKey(String key) {
-        if (key.startsWith("http:")) {
-            var rest = key.substring("http:".length());
-            var hashAt = rest.lastIndexOf('#');
-            if (hashAt < 0) throw new IllegalArgumentException("malformed http origin key: " + key);
-            return new Http(rest.substring(0, hashAt), HashValue.hashValueFromKey(rest.substring(hashAt + 1)));
-        }
-        if (key.startsWith("git:")) {
-            var rest = key.substring("git:".length());
-            var commitAt = rest.lastIndexOf('@');
-            if (commitAt < 0) throw new IllegalArgumentException("malformed git origin key: " + key);
-            return new Git(rest.substring(0, commitAt), rest.substring(commitAt + 1));
-        }
-        throw new IllegalArgumentException("unknown remote origin key: " + key);
-    }
 }

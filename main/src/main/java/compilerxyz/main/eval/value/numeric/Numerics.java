@@ -727,6 +727,11 @@ public final class Numerics {
         return EResult.ok(DynUtil.regToValue(jb.code(), out, dynamicType(compute)));
     }
 
+    public static boolean isDynamicNumeric(ExprContext xx, Type type) {
+        var kOpt = kindOf(xx, type);
+        return kOpt.optIsSome() && !type.typeIsEqual(xx, constType(kOpt.optUnwrap()));
+    }
+
     public static boolean isNumeric(ExprContext xx, Type type) {
         return GenAspectNumericConst.getMaybe(xx, type).optIsSome()
                 || GenAspectNumericDynamic.getMaybe(xx, type).optIsSome();

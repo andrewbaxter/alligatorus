@@ -398,9 +398,9 @@ final class EcoBuzzGunpowder {
                     e.call(
                             llvm(e, "extern_fn"),
                             e.rec(
-                                    e.p("mod", e.v("ll")),
                                     e.p("name", e.s("pw_stream_" + op + "_buffer")),
-                                    e.p("ty", e.v(op + "_fn_t"))))));
+                                    e.p("ty", e.v(op + "_fn_t")),
+                                    e.p("libs", e.tup(e.s(EcoPipewire.LIB)))))));
         }
         for (var fn : PW_NAMES) x.add(e.let(fn, e.callM0(e.v("pw"), fn)));
         var firstData = "wave_" + EcoBuzzGunpowderData.WAVES.get(0).index();

@@ -378,6 +378,14 @@ public final class TestMb {
         return builtin("eval", "aspect_operator_add_id");
     }
 
+    public SourceExpr evalExitValue() {
+        return builtin("eval", "exit_value");
+    }
+
+    public SourceExpr typesExitValue() {
+        return builtin("types", "exit_value");
+    }
+
     public SourceExpr evalBindResult() {
         return builtin("eval", "bind_result");
     }

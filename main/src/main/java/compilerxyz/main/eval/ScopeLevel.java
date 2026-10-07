@@ -115,6 +115,8 @@ public sealed interface ScopeLevel {
     final class Landing {
         public final TList<Arrival> arrivals = new TList<>();
         public Opt<Type> resultType = Opt.none();
+
+        public boolean carries = false;
     }
 
     final class DestKey {

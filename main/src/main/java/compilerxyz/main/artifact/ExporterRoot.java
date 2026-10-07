@@ -9,6 +9,7 @@ import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.builtin.App;
+import compilerxyz.main.eval.builtin.Dir;
 import compilerxyz.main.eval.value.array.TypeArrayConst;
 import compilerxyz.main.eval.value.array.TypeArrayDynamic;
 import compilerxyz.main.eval.value.bool.TypeBoolConst;
@@ -244,6 +245,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return App.DELEGATE;
         }
     },
+    DIR("dir") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return Dir.DELEGATE;
+        }
+    },
     EXPR_ERR("expr_err") {
         @Override
         ExporterRootDelegate delegate() {
@@ -344,6 +351,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return ValueObjectConst.DELEGATE;
+        }
+    },
+    OBJECT_CONST_PAYLOAD("object_const_payload") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return ValueObjectConst.PAYLOAD_DELEGATE;
         }
     },
     TYPE_OBJECT_CONST("type_object_const") {

@@ -24,14 +24,6 @@ public final class T0048ExecTest {
         }
     }
 
-    private static Compile.CompileResult expectOk(Result<Compile.CompileResult, TList<ExprErr>> res) {
-        return switch (res) {
-            case Result.Ok<Compile.CompileResult, TList<ExprErr>> ok -> ok.value();
-            case Result.Err<Compile.CompileResult, TList<ExprErr>> err ->
-                throw new AssertionError("compile failed: " + err.error());
-        };
-    }
-
     private static TList<ExprErr> expectErr(Result<Compile.CompileResult, TList<ExprErr>> res) {
         return switch (res) {
             case Result.Ok<Compile.CompileResult, TList<ExprErr>> ok ->
@@ -89,7 +81,13 @@ public final class T0048ExecTest {
                         log(e, e.toStr(e.fld(e.v("f"), "len"))),
                         log(e, e.ifElse(e.callM(e.v("d"), "exists", e.s("nope")), e.dstr("yes"), e.dstr("no"))),
                         log(e, e.join(e.callM(e.v("d"), "list", e.s("")), ","))));
-        var logs = expectOk(compile(tmp.resolve("cache"), main)).logs();
+        var compiled =
+                switch (compile(tmp.resolve("cache"), main)) {
+                    case Result.Ok<Compile.CompileResult, TList<ExprErr>> ok -> ok.value();
+                    case Result.Err<Compile.CompileResult, TList<ExprErr>> err ->
+                        throw new AssertionError("compile failed: " + err.error());
+                };
+        var logs = compiled.logs();
         assertEquals(5, logs.size(), () -> "logs: " + logs);
         assertEquals("hello hi", logs.get(0).message());
         assertEquals("3", logs.get(1).message());

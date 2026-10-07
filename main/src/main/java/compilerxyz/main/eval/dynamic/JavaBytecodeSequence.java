@@ -595,8 +595,11 @@ public final class JavaBytecodeSequence implements JavaBytecode {
     }
 
     private static void pushLine(TList<Item> flat, int line) {
-        if (!flat.isEmpty() && flat.get(flat.size() - 1) instanceof Item.Line) {
-            flat.removeAt(flat.size() - 1);
+        if (!flat.isEmpty()) {
+            switch (flat.get(flat.size() - 1)) {
+                case Item.Line l -> flat.removeAt(flat.size() - 1);
+                default -> {}
+            }
         }
         flat.add(new Item.Line(new Label(), line));
     }

@@ -62,7 +62,7 @@ public final class JavaGuard {
         return new FixResult(LexicalPreservingPrinter.print(cu), true, List.of());
     }
 
-    public List<Violation> check(Opt<String> base, String current, boolean strict) {
+    public List<Violation> check(Opt<String> base, String current) {
         Opt<CompilationUnit> parsed = parse(current);
         if (parsed.optIsNone()) {
             return List.of(new Violation(file, 0, PARSE_ERROR, "docguard could not parse this file; cannot verify"));
@@ -74,36 +74,34 @@ public final class JavaGuard {
             String preview = s.length() > 60 ? s.substring(0, 60) + "..." : s;
             out.add(new Violation(file, lineOf(c), ADDED_COMMENT, "non-Javadoc comment: " + preview));
         }
-        if (strict) {
-            Map<String, String> baseDoc = new HashMap<>();
-            if (base.optIsSome()) {
-                Opt<CompilationUnit> baseParsed = parse(base.optUnwrap());
-                if (baseParsed.optIsSome()) {
-                    for (Node node : declarations(baseParsed.optUnwrap())) {
-                        String key = keyOf(node);
-                        if (key == null) {
-                            continue;
-                        }
-                        Opt<Comment> doc = javadocContent(node);
-                        if (doc.optIsSome()) {
-                            baseDoc.put(key, normalize(doc.optUnwrap().getContent()));
-                        }
+        Map<String, String> baseDoc = new HashMap<>();
+        if (base.optIsSome()) {
+            Opt<CompilationUnit> baseParsed = parse(base.optUnwrap());
+            if (baseParsed.optIsSome()) {
+                for (Node node : declarations(baseParsed.optUnwrap())) {
+                    String key = keyOf(node);
+                    if (key == null) {
+                        continue;
+                    }
+                    Opt<Comment> doc = javadocContent(node);
+                    if (doc.optIsSome()) {
+                        baseDoc.put(key, normalize(doc.optUnwrap().getContent()));
                     }
                 }
             }
-            for (Node node : declarations(cu)) {
-                String key = keyOf(node);
-                if (key == null) {
-                    continue;
-                }
-                Opt<Comment> doc = javadocContent(node);
-                String cur = doc.optIsSome() ? normalize(doc.optUnwrap().getContent()) : null;
-                String was = baseDoc.get(key);
-                if (was == null && cur != null) {
-                    out.add(new Violation(file, lineOf(node), ADDED_JAVADOC, "Javadoc added on " + key));
-                } else if (was != null && !was.equals(cur)) {
-                    out.add(new Violation(file, lineOf(node), CHANGED_JAVADOC, "Javadoc changed on " + key));
-                }
+        }
+        for (Node node : declarations(cu)) {
+            String key = keyOf(node);
+            if (key == null) {
+                continue;
+            }
+            Opt<Comment> doc = javadocContent(node);
+            String cur = doc.optIsSome() ? normalize(doc.optUnwrap().getContent()) : null;
+            String was = baseDoc.get(key);
+            if (was == null && cur != null) {
+                out.add(new Violation(file, lineOf(node), ADDED_JAVADOC, "Javadoc added on " + key));
+            } else if (was != null && !was.equals(cur)) {
+                out.add(new Violation(file, lineOf(node), CHANGED_JAVADOC, "Javadoc changed on " + key));
             }
         }
         return out;
@@ -173,7 +171,7 @@ public final class JavaGuard {
                     false,
                     List.of(new Violation(file, 0, PARSE_ERROR, "fix produced unparseable output; left unchanged")));
         }
-        List<Violation> residual = check(base, output, true);
+        List<Violation> residual = check(base, output);
         return new FixResult(output, !output.equals(current), residual);
     }
 

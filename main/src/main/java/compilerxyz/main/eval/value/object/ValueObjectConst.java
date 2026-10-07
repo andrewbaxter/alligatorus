@@ -81,4 +81,27 @@ public record ValueObjectConst(Type type, Object data) implements Value {
                     dataRes.requireValue("ValueObjectConst::import data")));
         }
     };
+
+    public static final ExporterRootDelegate PAYLOAD_DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+            return DELEGATE.exporterRootDelegateSelfExport(xx, loc, self, makeBody);
+        }
+
+        @Override
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            var res = DELEGATE.exporterRootDelegateSelfFromArtifactData(xx, loc, id, data);
+            if (res.hasErrors()) return res.reerr();
+            var voc = MustCast.mustCast(ValueObjectConst.class, res.requireValue("ValueObjectConst::import payload"));
+            if (!(voc.data() instanceof ValueObjectConst payload)) {
+                return EResult.err(
+                        loc,
+                        "ValueObjectConst payload data: expected a const value, got "
+                                + voc.data().getClass().getName());
+            }
+            return EResult.ok(new ValueObjectConst(voc.type(), payload.data()));
+        }
+    };
 }

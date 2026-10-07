@@ -163,7 +163,7 @@ final class EcoBuzzClassicEq {
         defs.add(e.let("d2_fn_t", EcoBuzz.fnType(e, e.v("t_f64"), e.v("t_f64"), e.v("t_f64"))));
 
         var body = new TList<SourceExpr>();
-        body.add(e.let("pow", EcoBuzz.externDef(e, e.v("ll"), "pow", e.lowerV("d2_fn_t"))));
+        body.add(e.let("pow", EcoBuzz.externDef(e, "pow", e.lowerV("d2_fn_t"), "m")));
         body.add(e.let(
                 "coef",
                 e.call(

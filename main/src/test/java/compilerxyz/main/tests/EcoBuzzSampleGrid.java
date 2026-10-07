@@ -731,7 +731,7 @@ final class EcoBuzzSampleGrid {
         var body = new TList<SourceExpr>();
         body.add(e.let("wave_hermite", e.callM0(e.v("arg"), "wave_hermite")));
         body.add(e.let("zero", e.callM0(e.v("arg"), "zero")));
-        body.add(e.let("pow", EcoBuzz.externDef(e, e.v("ll"), "pow", e.lowerV("d2_fn_t"))));
+        body.add(e.let("pow", EcoBuzz.externDef(e, "pow", e.lowerV("d2_fn_t"), "m")));
         body.add(e.let(
                 "init", EcoBuzz.funcDef(e, e.v("ll"), "sg_init", new String[] {"p"}, e.lowerV("init_fn_t"), initBody)));
         body.add(e.let(

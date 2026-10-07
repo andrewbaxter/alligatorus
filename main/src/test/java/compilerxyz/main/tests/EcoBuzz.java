@@ -268,6 +268,12 @@ final class EcoBuzz {
         return e.call(llvm(e, "global_t"), e.rec(e.p("ty", ty), e.p("mem", e.b(false))));
     }
 
+    static SourceExpr externT(EcoMb e, String name, SourceExpr fnType) {
+        return e.call(
+                llvm(e, "extern_t"),
+                e.rec(e.p("name", e.s(name)), e.p("ty", fnType), e.p("libs", e.listNew(e.mb.typesString(), e.s("m")))));
+    }
+
     static SourceExpr globalMemT(EcoMb e, SourceExpr ty) {
         return e.call(llvm(e, "global_t"), e.rec(e.p("ty", ty), e.p("mem", e.b(true))));
     }
@@ -294,8 +300,11 @@ final class EcoBuzz {
                         e.p("body", body(e, body))));
     }
 
-    static SourceExpr externDef(EcoMb e, SourceExpr mod, String name, SourceExpr fnType) {
-        return e.call(llvmL(e, "extern_fn"), e.rec(e.p("mod", mod), e.p("name", e.s(name)), e.p("ty", fnType)));
+    static SourceExpr externDef(EcoMb e, String name, SourceExpr fnType, String... libs) {
+        var libExprs = new SourceExpr[libs.length];
+        for (int i = 0; i < libs.length; i++) libExprs[i] = e.s(libs[i]);
+        return e.call(
+                llvmL(e, "extern_fn"), e.rec(e.p("name", e.s(name)), e.p("ty", fnType), e.p("libs", e.tup(libExprs))));
     }
 
     static SourceExpr mdkDcBlock(EcoMb e, SourceExpr out, SourceExpr n) {

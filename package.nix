@@ -17,6 +17,7 @@
   jdk21,
   clang,
   wasmtime,
+  wabt,
   git,
   pipewire,
   makeWrapper,
@@ -61,7 +62,7 @@ maven.buildMavenPackage rec {
     mkdir -p $out/share/alligatorus $out/bin
     cp main/target/allig3-main-*.jar main/target/dependency/*.jar $out/share/alligatorus/
     makeWrapper ${jdk21}/bin/java $out/bin/alligatorus \
-      --prefix PATH : ${lib.makeBinPath [ clang wasmtime git ]} \
+      --prefix PATH : ${lib.makeBinPath [ clang wasmtime wabt git ]} \
       --prefix LIBRARY_PATH : ${lib.makeLibraryPath [ pipewire ]} \
       --add-flag -cp \
       --add-flag "$out/share/alligatorus/*" \

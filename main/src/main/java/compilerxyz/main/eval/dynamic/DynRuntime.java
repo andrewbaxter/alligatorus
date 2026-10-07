@@ -4,6 +4,7 @@ import static compilerxyz.prelude.util.MustCast.mustCast;
 
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.CompileId;
@@ -58,6 +59,11 @@ public final class DynRuntime {
     @CodegenDescriptor
     public static EResult<ArtifactExporter> sourceObjectExporter(Object self, ExprContext xx, QExprId loc) {
         return Artifactable.exporterOfType(xx, loc, mustCast(Value.class, self).valueType());
+    }
+
+    @CodegenDescriptor
+    public static EResult<ArtifactExporter> sourceObjectTypeExporter() {
+        return EResult.ok(ExporterRoot.SOURCE_OBJECT_TYPE_INSTANCE);
     }
 
     @CodegenDescriptor
@@ -181,6 +187,11 @@ public final class DynRuntime {
             throw new DynPanic("map.get: missing key " + key);
         }
         return found.optUnwrap();
+    }
+
+    @CodegenDescriptor
+    public static <K, V> boolean mapHas(TOrderedMap<K, V> map, K key) {
+        return map.containsKey(key);
     }
 
     public static Unique freshUnique(EvalContext vx) {

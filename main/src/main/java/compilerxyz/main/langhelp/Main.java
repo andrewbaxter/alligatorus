@@ -2,6 +2,7 @@ package compilerxyz.main.langhelp;
 
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.builtin.App;
+import compilerxyz.main.eval.builtin.Dir;
 import compilerxyz.main.langhelp.cache.CacheReal;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Result;
@@ -18,7 +19,10 @@ public final class Main {
     private Main() {}
 
     private static final String USAGE =
-            "usage: alligatorus build <path.at>\n       alligatorus run <path.at> [args...]";
+            """
+            usage: alligatorus build <path.at>
+                   alligatorus build <path.at> --dir <out>
+                   alligatorus run <path.at> [args...]""";
 
     public static void main(String[] args) {
         if (args.length < 2) {
@@ -30,17 +34,43 @@ public final class Main {
         var rest = Arrays.copyOfRange(args, 2, args.length);
         switch (command) {
             case "build" -> {
-                if (rest.length != 0) {
+                if (rest.length == 0) {
+                    try (var cache = new CacheReal()) {
+                        var out = compileOrExit(cache, path);
+                        System.out.println("{\"import_state\":"
+                                + out.rootCompileId().importState().value()
+                                + ",\"source\":"
+                                + out.rootCompileId().source().value()
+                                + "}");
+                    }
+                } else if (rest.length == 2 && rest[0].equals("--dir")) {
+                    Dir dir;
+                    try (var cache = new CacheReal()) {
+                        var out = compileOrExit(cache, path);
+                        if (out.artifact().optIsNone()) {
+                            System.err.println("error: root module exports nothing; --dir expects a dir");
+                            System.exit(1);
+                            return;
+                        }
+                        switch (ArtifactResolve.artifactResolveDir(
+                                cache, out.artifact().optUnwrap())) {
+                            case Result.Ok<Dir, String> ok -> dir = ok.value();
+                            case Result.Err<Dir, String> err -> {
+                                System.err.println("error: " + err.error());
+                                System.exit(1);
+                                return;
+                            }
+                        }
+                    }
+                    try {
+                        writeDir(dir, Path.of(rest[1]));
+                    } catch (IOException e) {
+                        System.err.println("error: cannot write " + rest[1] + ": " + e.getMessage());
+                        System.exit(1);
+                    }
+                } else {
                     System.err.println(USAGE);
                     System.exit(2);
-                }
-                try (var cache = new CacheReal()) {
-                    var out = compileOrExit(cache, path);
-                    System.out.println("{\"import_state\":"
-                            + out.rootCompileId().importState().value()
-                            + ",\"source\":"
-                            + out.rootCompileId().source().value()
-                            + "}");
                 }
             }
             case "run" -> {
@@ -68,6 +98,20 @@ public final class Main {
                 System.err.println(USAGE);
                 System.exit(2);
             }
+        }
+    }
+
+    public static void writeDir(Dir dir, Path out) throws IOException {
+        var base = out.toAbsolutePath().normalize();
+        Files.createDirectories(base);
+        for (var entry : dir.files().entrySet()) {
+            var target = base.resolve(entry.getKey()).normalize();
+            if (!target.startsWith(base)) {
+                throw new IOException("dir entry escapes the output directory: " + entry.getKey());
+            }
+            var parent = target.getParent();
+            if (parent != null) Files.createDirectories(parent);
+            Files.write(target, entry.getValue());
         }
     }
 

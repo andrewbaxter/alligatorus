@@ -1,6 +1,5 @@
 package compilerxyz.main.eval.value.source_function;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -20,6 +19,6 @@ public final class AspectBindSourceFunctionConst implements AspectBind {
             return EResult.err(loc, "TypeSourceFunctionConst::bind: CodeValue has no compile-time value");
         }
         Value v = cv.value().optUnwrap();
-        return EResult.ok(new BindResult(Code.none(loc), new SourceFunctionConstBinding(v)));
+        return EResult.ok(new BindResult(cv.code(), new SourceFunctionConstBinding(v)));
     }
 }

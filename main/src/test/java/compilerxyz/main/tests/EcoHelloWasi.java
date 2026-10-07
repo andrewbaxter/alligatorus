@@ -11,8 +11,11 @@ public final class EcoHelloWasi {
 
     public enum Mode {
         APP,
-        WAT
+        WAT,
+        WAT_LIB
     }
+
+    public static final String LIB_FILE = "wasi-static.at";
 
     public static TList<SourceExpr> module(EcoMb e, Mode mode) {
         var setup = new TList<SourceExpr>();
@@ -38,13 +41,16 @@ public final class EcoHelloWasi {
         for (var n : exported) top.add(e.let(n, e.fld(e.v("k"), n)));
         top.add(e.let(
                 "fd_write",
-                e.call(
-                        e.fld(e.v("wasm"), "import_fn"),
-                        e.rec(
-                                e.p("mod", e.v("m")),
-                                e.p("module", e.fld(e.v("wasi"), "module")),
-                                e.p("name", e.s("fd_write")),
-                                e.p("ty", e.v("fd_write_fn_t"))))));
+                switch (mode) {
+                    case APP, WAT ->
+                        e.call(
+                                e.fld(e.v("wasm"), "import_fn"),
+                                e.rec(
+                                        e.p("module", e.fld(e.v("wasi"), "module")),
+                                        e.p("name", e.s("fd_write")),
+                                        e.p("ty", e.v("fd_write_fn_t"))));
+                    case WAT_LIB -> e.fld(e.importLocal("lib", LIB_FILE), "fd_write");
+                }));
         top.add(e.let("hello", e.callM(e.v("m"), "cstr", e.s(MESSAGE))));
         top.add(e.let(
                 "iov",
@@ -88,7 +94,7 @@ public final class EcoHelloWasi {
         top.add(
                 switch (mode) {
                     case APP -> e.ret(e.call(e.fld(e.v("wasm"), "build"), e.callM0(e.v("m"), "render")));
-                    case WAT -> e.call(e.mb.log(), e.fld(e.callM0(e.v("m"), "render"), "wat"));
+                    case WAT, WAT_LIB -> e.call(e.mb.log(), e.fld(e.callM0(e.v("m"), "render"), "wat"));
                 });
         return top;
     }

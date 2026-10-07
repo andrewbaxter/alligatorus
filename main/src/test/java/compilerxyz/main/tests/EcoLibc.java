@@ -35,51 +35,33 @@ public final class EcoLibc {
             new EcoExtern("exit", IList.of("i32"), "void", false),
             new EcoExtern("printf", IList.of("pu8"), "i32", true));
 
+    private static final String MATH_LIB = "m";
+
+    private static final IList<String> NOT_MATH = IList.of("memset", "puts", "exit", "printf");
+
     public static TList<SourceExpr> module(EcoMb e) {
-        var exprs = new TList<SourceExpr>();
-        exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
+        var setup = new TList<SourceExpr>();
+        setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         var llvm = EcoExtern.Llvm.top(e);
-        EcoExtern.bindTypes(e, exprs, llvm);
+        EcoExtern.bindTypes(e, setup, llvm);
+        var typeFields = new TList<EcoMb.P>();
         for (var ex : EXTERNS) {
-            exprs.add(e.let(ex.name() + "_fn_t", ex.fnType(e, llvm)));
-            exprs.add(e.let(ex.name() + "_t", EcoExtern.globalT(e, llvm, e.v(ex.name() + "_fn_t"))));
+            setup.add(e.let(ex.name() + "_fn_t", ex.fnType(e, llvm)));
+            typeFields.add(e.p(ex.name() + "_fn_t", e.v(ex.name() + "_fn_t")));
         }
+        setup.add(e.ret(e.rec(typeFields.toArray(EcoMb.P[]::new))));
 
-        exprs.add(e.let("d", e.define()));
-        exprs.add(e.optionTypeLet());
-        exprs.add(e.let("libc_o", e.defObject(e.v("d"), "libc 2.42")));
-        var innerFields = new TList<EcoMb.P>();
-        for (var ex : EXTERNS) innerFields.add(e.p(ex.name(), e.v(ex.name() + "_t")));
-        exprs.add(e.objectImpl(e.v("libc_o"), e.rec(innerFields.toArray(EcoMb.P[]::new))));
+        var top = new TList<SourceExpr>();
+        top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
+        top.add(e.let("k", e.lower(e.mb.seq(setup))));
+        var fields = new TList<EcoMb.P>();
         for (var ex : EXTERNS) {
-            exprs.add(e.methodImpl(
-                    e.v("libc_o"),
+            var libs = NOT_MATH.contains(ex.name()) ? new String[0] : new String[] {MATH_LIB};
+            fields.add(e.p(
                     ex.name(),
-                    e.tup(),
-                    e.optionTypeSome(e.v(ex.name() + "_t")),
-                    e.stage(e.fld(e.v("inner"), ex.name()))));
+                    ex.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.fld(e.v("k"), ex.name() + "_fn_t"), libs)));
         }
-
-        exprs.add(e.let("libc_builder", e.defFunc(e.v("d"), "libc")));
-        var ctorFields = new TList<EcoMb.P>();
-        for (var ex : EXTERNS) {
-            ctorFields.add(e.p(
-                    ex.name(),
-                    ex.declare(
-                            e, e.lower(e.fld(e.v("llvm"), "extern_fn")), e.v("arg"), e.lowerV(ex.name() + "_fn_t"))));
-        }
-        exprs.add(e.funcImpl(
-                e.v("libc_builder"),
-                e.fld(e.v("llvm"), "mod_t"),
-                e.optionTypeSome(e.fld(e.v("libc_o"), "type")),
-                e.mb.optNoneType(),
-                e.stage(e.seq(
-                        e.callM(e.v("arg"), "lib", e.s("m")),
-                        e.ret(e.call(
-                                e.lower(e.fld(e.v("libc_o"), "new")), e.rec(ctorFields.toArray(EcoMb.P[]::new))))))));
-
-        exprs.add(e.finish(e.v("d")));
-        exprs.add(e.ret(e.fld(e.v("libc_builder"), "func")));
-        return exprs;
+        top.add(e.ret(e.rec(fields.toArray(EcoMb.P[]::new))));
+        return top;
     }
 }

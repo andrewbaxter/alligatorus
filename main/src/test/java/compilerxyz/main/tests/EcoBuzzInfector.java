@@ -123,6 +123,9 @@ final class EcoBuzzInfector {
     private static final IList<Integer> INERTIA_PARAMS = IList.of(15, 16, 17, 22, 26, 27, 30, 31);
     private static final IList<Integer> TIMES = IList.of(1, 2, 3, 4, 6, 8, 12, 16, 24, 28, 32, 48, 64, 96, 128);
     private static final double LN_SEMI = Math.log(Math.pow(2.0, 1.0 / 12.0));
+    private static final IList<String> EXTERN_NAMES = IList.of(
+            "sinf", "cosf", "expf", "logf", "fabsf", "tanf", "sqrtf", "floorf", "powf", "fmodf", "pow", "sin", "rint");
+
     private static final IMap<String, String> FN_TYPES = IMap.ofEntries(
             new Pair<>("fft", "fft_fn_t"),
             new Pair<>("make", "make_fn_t"),
@@ -391,7 +394,10 @@ final class EcoBuzzInfector {
         main.add(e.let("zero", e.callM0(e.v("arg"), "zero")));
         Function<String, SourceExpr> typeOf = name -> {
             var fnType = FN_TYPES.getOpt(name);
-            if (fnType.optIsSome()) return EcoBuzz.globalT(e, e.v(fnType.optUnwrap()));
+            if (fnType.optIsSome()) {
+                var t = e.v(fnType.optUnwrap());
+                return EXTERN_NAMES.contains(name) ? EcoBuzz.externT(e, name, t) : EcoBuzz.globalT(e, t);
+            }
             var globalType = GLOBAL_TYPES.getOpt(name);
             if (globalType.optIsSome()) return EcoBuzz.globalMemT(e, e.v(globalType.optUnwrap()));
             if (GLOBAL_LISTS.contains(name)) return EcoBuzz.llvm(e, "gref_t");
@@ -402,14 +408,14 @@ final class EcoBuzzInfector {
         var partVoice = new EcoBuzz.Part("voice", typeOf);
         var body = partTables.body;
         for (var fn : new String[] {"sinf", "cosf", "expf", "logf", "fabsf", "tanf", "sqrtf", "floorf"}) {
-            body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("f1_fn_t"))));
+            body.add(e.let(fn, EcoBuzz.externDef(e, fn, e.lowerV("f1_fn_t"), "m")));
         }
         for (var fn : new String[] {"powf", "fmodf"}) {
-            body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("f2_fn_t"))));
+            body.add(e.let(fn, EcoBuzz.externDef(e, fn, e.lowerV("f2_fn_t"), "m")));
         }
-        body.add(e.let("pow", EcoBuzz.externDef(e, e.v("ll"), "pow", e.lowerV("d2_fn_t"))));
+        body.add(e.let("pow", EcoBuzz.externDef(e, "pow", e.lowerV("d2_fn_t"), "m")));
         for (var fn : new String[] {"sin", "rint"}) {
-            body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("d1_fn_t"))));
+            body.add(e.let(fn, EcoBuzz.externDef(e, fn, e.lowerV("d1_fn_t"), "m")));
         }
         for (var g : new String[][] {
             {"pool", "pool_t"},

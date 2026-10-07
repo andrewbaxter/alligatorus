@@ -8,6 +8,7 @@ import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.gen.codec.SourceModuleCodec;
 import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.langhelp.GlobalContext;
+import compilerxyz.main.langhelp.Sources;
 import compilerxyz.main.langhelp.cache.CacheReal;
 import compilerxyz.main.safejson.Json;
 import compilerxyz.main.syntax.SourceExpr;
@@ -23,6 +24,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -30,15 +33,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 public final class T0200EcosystemLlvmTest {
-    static String serializeModule(TList<SourceExpr> exprs) throws IOException {
-        var sw = new StringWriter();
-        var writer = new JsonWriter(sw);
-        writer.setSerializeNulls(true);
-        writer.setIndent("  ");
-        SourceModuleCodec.encode(writer, new SourceModule.V1(exprs), Json.Style.PRETTY);
-        writer.close();
-        return sw.toString();
-    }
 
     static byte[] serializeModuleZ(TList<SourceExpr> exprs) throws IOException {
         var sw = new StringWriter();
@@ -56,7 +50,14 @@ public final class T0200EcosystemLlvmTest {
         if (file.getFileName().toString().endsWith(".atz")) {
             Files.write(file, serializeModuleZ(exprs));
         } else {
-            Files.writeString(file, serializeModule(exprs));
+            var sw = new StringWriter();
+            var writer = new JsonWriter(sw);
+            writer.setSerializeNulls(true);
+            writer.setIndent("  ");
+            SourceModuleCodec.encode(writer, new SourceModule.V1(exprs), Json.Style.PRETTY);
+            writer.close();
+            var text = sw.toString();
+            Files.writeString(file, text);
         }
     }
 
@@ -159,7 +160,7 @@ public final class T0200EcosystemLlvmTest {
         top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : exported) top.add(e.let(n, e.fld(e.v("k"), n)));
-        top.add(e.let("puts", puts.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.v("ll"), e.v("puts_fn_t"))));
+        top.add(e.let("puts", puts.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.v("puts_fn_t"))));
         top.add(e.let(
                 "hello",
                 e.call(
@@ -247,7 +248,7 @@ public final class T0200EcosystemLlvmTest {
         top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : exported) top.add(e.let(n, e.fld(e.v("k"), n)));
-        top.add(e.let("puts", puts.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.v("ll"), e.v("puts_fn_t"))));
+        top.add(e.let("puts", puts.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.v("puts_fn_t"))));
         top.addAll(preInit);
         top.add(e.let(
                 "hi",
@@ -610,7 +611,7 @@ public final class T0200EcosystemLlvmTest {
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         for (var n : new String[] {"ll", "puts_fn_t", "main_fn_t", "t_i32", "t_pu8"})
             top.add(e.let(n, e.fld(e.v("k"), n)));
-        top.add(e.let("puts", puts.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.v("ll"), e.v("puts_fn_t"))));
+        top.add(e.let("puts", puts.declare(e, e.fld(e.v("llvm"), "extern_fn"), e.v("puts_fn_t"))));
         top.add(e.let("hi", e.callM(e.v("ll"), "cstr", e.s("hé\n"))));
         top.add(func(e, "main", "main_fn_t", e.seq(e.call(e.lower(e.v("puts")), e.lower(e.v("hi"))), e.ret(e.n(0)))));
         top.add(e.call(e.mb.log(), e.fld(e.callM(e.v("ll"), "render", e.tup()), "ir")));
@@ -632,34 +633,8 @@ public final class T0200EcosystemLlvmTest {
         assertValidIr(tmp, "cstr", ir);
     }
 
-    private static final String LIBC_DECLS =
-            """
+    private static final String LIBC_DECLS = """
             declare double @sin(double)
-            declare double @exp2(double)
-            declare double @fmod(double, double)
-            declare float @sinf(float)
-            declare float @cosf(float)
-            declare float @tanf(float)
-            declare float @expf(float)
-            declare float @exp2f(float)
-            declare float @logf(float)
-            declare float @powf(float, float)
-            declare float @sqrtf(float)
-            declare float @floorf(float)
-            declare float @fabsf(float)
-            declare float @fmodf(float, float)
-            declare double @pow(double, double)
-            declare double @exp(double)
-            declare double @log(double)
-            declare double @cos(double)
-            declare double @tan(double)
-            declare double @sqrt(double)
-            declare double @floor(double)
-            declare double @fabs(double)
-            declare ptr @memset(ptr, i32, i64)
-            declare i32 @puts(ptr)
-            declare void @exit(i32)
-            declare i32 @printf(ptr, ...)
             """;
 
     private static void writeStagedModule(Path src, EcoMb e, String name, SourceExpr body) throws IOException {
@@ -667,17 +642,15 @@ public final class T0200EcosystemLlvmTest {
         writeModule(src.resolve("libc-2.42.atz"), EcoLibc.module(new EcoMb()));
         var setup = new TList<SourceExpr>();
         setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
-        setup.add(e.let("libc", e.importLocal("libc", "libc-2.42.atz")));
         setup.add(e.let("ll", e.call(e.fld(e.v("llvm"), "new"), e.tup())));
-        setup.add(e.let("c", e.call(e.v("libc"), e.v("ll"))));
         EcoExtern.bindTypes(e, setup, EcoExtern.Llvm.top(e));
         setup.add(e.let("f_fn_t", fnType(e, "t_f64", "t_f64")));
-        setup.add(e.ret(e.rec(e.p("ll", e.v("ll")), e.p("c", e.v("c")), e.p("f_fn_t", e.v("f_fn_t")))));
+        setup.add(e.ret(e.rec(e.p("ll", e.v("ll")), e.p("f_fn_t", e.v("f_fn_t")))));
         var top = new TList<SourceExpr>();
         top.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
-        for (var n : new String[] {"ll", "c", "f_fn_t"}) top.add(e.let(n, e.fld(e.v("k"), n)));
-        top.add(e.let("sin", e.callM(e.v("c"), "sin", e.tup())));
+        for (var n : new String[] {"ll", "f_fn_t"}) top.add(e.let(n, e.fld(e.v("k"), n)));
+        top.add(e.let("sin", e.fld(e.importLocal("libc", "libc-2.42.atz"), "sin")));
         top.add(func(e, name, "f_fn_t", body, "x"));
         top.add(e.call(e.mb.log(), e.fld(e.callM(e.v("ll"), "render", e.tup()), "ir")));
         writeModule(src.resolve("main.at"), top);
@@ -852,15 +825,13 @@ public final class T0200EcosystemLlvmTest {
 
     static long mainSourceId(CacheReal cache, Path entry) {
         return switch (cache.sourcesGet(new SourceSpecAbsolute.Local(entry.toString()))) {
-            case Result.Ok<compilerxyz.main.langhelp.Sources.SourceResolved, String> ok ->
+            case Result.Ok<Sources.SourceResolved, String> ok ->
                 switch (ok.value()) {
-                    case compilerxyz.main.langhelp.Sources.SourceResolved.Module m -> m.id().value();
-                    case compilerxyz.main.langhelp.Sources.SourceResolved.Bundle b ->
-                        throw new AssertionError("entry is a bundle: " + entry);
-                    case compilerxyz.main.langhelp.Sources.SourceResolved.File f ->
-                        throw new AssertionError("entry is not a module: " + entry);
+                    case Sources.SourceResolved.Module m -> m.id().value();
+                    case Sources.SourceResolved.Bundle b -> throw new AssertionError("entry is a bundle: " + entry);
+                    case Sources.SourceResolved.File f -> throw new AssertionError("entry is not a module: " + entry);
                 };
-            case Result.Err<compilerxyz.main.langhelp.Sources.SourceResolved, String> err ->
+            case Result.Err<Sources.SourceResolved, String> err ->
                 throw new AssertionError("entry does not resolve: " + err.error());
         };
     }
@@ -874,28 +845,28 @@ public final class T0200EcosystemLlvmTest {
         return false;
     }
 
-    static boolean canLink(Path tmp, String... libs) throws IOException {
-        if (!onPath("clang")) return false;
-        var probe = tmp.resolve("probe.c");
-        Files.writeString(probe, "int main(void) { return 0; }\n");
-        var argv = new java.util.ArrayList<String>();
-        argv.add("clang");
-        argv.add(probe.toString());
-        for (var lib : libs) argv.add("-l" + lib);
-        argv.add("-o");
-        argv.add(tmp.resolve("probe").toString());
-        try {
-            var proc = new ProcessBuilder(argv).redirectErrorStream(true).start();
-            proc.getInputStream().readAllBytes();
-            return proc.waitFor() == 0;
-        } catch (InterruptedException e) {
-            throw new AssertionError(e);
-        }
-    }
-
     @Test
     public void test00210SynthApp(@TempDir Path tmp) throws IOException {
-        Assumptions.assumeTrue(canLink(tmp, "pipewire-0.3", "m"), "clang cannot link libpipewire-0.3 and libm");
+        boolean canLink = false;
+        if (onPath("clang")) {
+            var probe = tmp.resolve("probe.c");
+            Files.writeString(probe, "int main(void) { return 0; }\n");
+            var argv = new ArrayList<String>();
+            argv.add("clang");
+            argv.add(probe.toString());
+            argv.add("-lpipewire-0.3");
+            argv.add("-lm");
+            argv.add("-o");
+            argv.add(tmp.resolve("probe").toString());
+            try {
+                var proc = new ProcessBuilder(argv).redirectErrorStream(true).start();
+                proc.getInputStream().readAllBytes();
+                canLink = proc.waitFor() == 0;
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
+            }
+        }
+        Assumptions.assumeTrue(canLink, "clang cannot link libpipewire-0.3 and libm");
         var src = tmp.resolve("src");
         Files.createDirectories(src);
         writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
@@ -907,11 +878,11 @@ public final class T0200EcosystemLlvmTest {
         Assertions.assertTrue(app.executor().optIsNone());
         var bytes = app.bytes();
         Assertions.assertTrue(bytes.length > 4, "app is empty");
-        Assertions.assertArrayEquals(new byte[] {0x7f, 'E', 'L', 'F'}, java.util.Arrays.copyOf(bytes, 4));
+        Assertions.assertArrayEquals(new byte[] {0x7f, 'E', 'L', 'F'}, Arrays.copyOf(bytes, 4));
     }
 
     private static void writeIfChanged(Path file, byte[] content) throws IOException {
-        if (Files.exists(file) && java.util.Arrays.equals(Files.readAllBytes(file), content)) {
+        if (Files.exists(file) && Arrays.equals(Files.readAllBytes(file), content)) {
             return;
         }
         Files.write(file, content);
@@ -1050,6 +1021,12 @@ public final class T0200EcosystemLlvmTest {
                 ecosystem.resolve("buzz-gunpowder-valentine-ir.atz"),
                 serializeModuleZ(EcoBuzzGunpowder.module(new EcoMb(), EcoRootMode.IR)));
         writeIfChanged(ecosystem.resolve("wat-2.0.atz"), serializeModuleZ(EcoWat.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("js-es2020.atz"), serializeModuleZ(EcoJs.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("webidl.atz"), serializeModuleZ(EcoWebidl.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("webidl-wasm.atz"), serializeModuleZ(EcoWebidlWasm.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("webidl-js.atz"), serializeModuleZ(EcoWebidlJs.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("web-wasm.atz"), serializeModuleZ(EcoWebWasm.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("hello-web.atz"), serializeModuleZ(EcoHelloWeb.module(new EcoMb())));
         writeIfChanged(ecosystem.resolve("wasi-0.1.atz"), serializeModuleZ(EcoWasi.module(new EcoMb())));
         writeIfChanged(
                 ecosystem.resolve("hello-wasi.atz"),

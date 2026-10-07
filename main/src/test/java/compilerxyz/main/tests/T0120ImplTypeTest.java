@@ -97,17 +97,6 @@ public final class T0120ImplTypeTest {
                         mb.call(
                                 mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                                 mb.recordOf(TList.of(
-                                        new TestMb.RecordPair("iface_ref", mb.evalValue()),
-                                        new TestMb.RecordPair(
-                                                "record",
-                                                ifaceMethods(
-                                                        mb,
-                                                        TList.of(
-                                                                new TestMb.RecordPair(
-                                                                        "type", mb.scopeUse("inner")))))))),
-                        mb.call(
-                                mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
-                                mb.recordOf(TList.of(
                                         new TestMb.RecordPair("iface_ref", mb.evalType()),
                                         new TestMb.RecordPair(
                                                 "record",

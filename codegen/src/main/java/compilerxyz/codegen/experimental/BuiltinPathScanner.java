@@ -256,7 +256,21 @@ public final class BuiltinPathScanner {
         if (tn instanceof ClassName cn) {
             var descriptor = VALUE_CLASS_DESCRIPTORS.getOpt(cn.canonicalName());
             if (descriptor.optIsSome()) return TypeRef.leaf(descriptor.optUnwrap(), scannedLeaves);
-            var specialized = ListsGen.specializedListType(cn);
+            Opt<CodeBlock> specialized = Opt.none();
+            if (cn.packageName().equals(ListsGen.GEN_PACKAGE)) {
+                for (var prim : ListsGen.PRIMS) {
+                    if (!prim.storeSimple().equals(cn.simpleName())) continue;
+                    specialized = Opt.some(CodeBlock.of(
+                            "new $T(new $T(), $T.fromClass($T.class), $T.$L)",
+                            ClassName.get("compilerxyz.main.eval.value.list", "TypeListSpecializedDynamic"),
+                            prim.elementClass(),
+                            ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName"),
+                            cn,
+                            ListsGen.GEN_IDENTITIES,
+                            ListsGen.constantName(ListsGen.snake(ListsGen.typeSimple(prim)))));
+                    break;
+                }
+            }
             if (specialized.optIsSome()) return new TypeRef(cn, specialized.optUnwrap());
             try {
                 return TypeRef.leaf(cn, scannedLeaves);

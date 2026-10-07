@@ -1585,6 +1585,14 @@ public final class GenMain {
             for (var root : sortedRoots) {
                 CodecsGen.walk(root, index, closure);
             }
+            var streamWalk = new TOrderedSet<String>();
+            for (var root : sortedRoots) {
+                if (index.byQname.getOpt(root).optUnwrap().implementsStreamMarker) {
+                    CodecsGen.walk(root, index, streamWalk);
+                }
+            }
+            var streamClosure = new TSet<String>();
+            for (var qname : streamWalk) streamClosure.add(qname);
 
             for (var qname : closure) {
                 if (CodecsGen.HAND_CODED.contains(qname)) continue;
@@ -1642,253 +1650,258 @@ public final class GenMain {
                                 .addModifiers(Modifier.PRIVATE)
                                 .build());
 
-                        if (info.kind == TypeKind.RECORD) {
-                            MethodSpec buildRecordEncode;
-                            _buildRecordEncode:
-                            {
-                                var body = CodeBlock.builder();
-                                body.addStatement("writer.beginObject()");
-                                body.beginControlFlow("if (style == $T.CANONICAL)", CodecEmitter.JSON_STYLE);
-                                TList<Component> cs = info.components;
-                                TList<Component> sortedBySnake;
-                                _sortedBySnake:
+                        if (streamClosure.contains(qname)) {
+                            if (info.kind == TypeKind.RECORD) {
+                                MethodSpec buildRecordEncode;
+                                _buildRecordEncode:
                                 {
-                                    var out = TList.from(cs);
-                                    out.sort((a, b) -> CodecEmitter.toSnakeCase(a.name)
-                                            .compareTo(CodecEmitter.toSnakeCase(b.name)));
+                                    var body = CodeBlock.builder();
+                                    body.addStatement("writer.beginObject()");
+                                    body.beginControlFlow("if (style == $T.CANONICAL)", CodecEmitter.JSON_STYLE);
+                                    TList<Component> cs = info.components;
+                                    TList<Component> sortedBySnake;
+                                    _sortedBySnake:
                                     {
-                                        sortedBySnake = out;
-                                        break _sortedBySnake;
+                                        var out = TList.from(cs);
+                                        out.sort((a, b) -> CodecEmitter.toSnakeCase(a.name)
+                                                .compareTo(CodecEmitter.toSnakeCase(b.name)));
+                                        {
+                                            sortedBySnake = out;
+                                            break _sortedBySnake;
+                                        }
+                                    }
+                                    for (var c : sortedBySnake) {
+                                        body.add(CodecEmitter.encodeFieldBlock(c));
+                                    }
+                                    body.nextControlFlow("else");
+                                    for (var c : info.components) {
+                                        body.add(CodecEmitter.encodeFieldBlock(c));
+                                    }
+                                    body.endControlFlow();
+                                    body.addStatement("writer.endObject()");
+                                    {
+                                        buildRecordEncode = MethodSpec.methodBuilder("encode")
+                                                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                                .returns(void.class)
+                                                .addParameter(CodecEmitter.JSON_WRITER, "writer")
+                                                .addParameter(target, "value")
+                                                .addParameter(CodecEmitter.JSON_STYLE, "style")
+                                                .addException(CodecEmitter.IO_EXCEPTION)
+                                                .addCode(body.build())
+                                                .build();
+                                        break _buildRecordEncode;
                                     }
                                 }
-                                for (var c : sortedBySnake) {
-                                    body.add(CodecEmitter.encodeFieldBlock(c));
-                                }
-                                body.nextControlFlow("else");
-                                for (var c : info.components) {
-                                    body.add(CodecEmitter.encodeFieldBlock(c));
-                                }
-                                body.endControlFlow();
-                                body.addStatement("writer.endObject()");
+                                cls.addMethod(buildRecordEncode);
+                                MethodSpec buildRecordDecode;
+                                _buildRecordDecode:
                                 {
-                                    buildRecordEncode = MethodSpec.methodBuilder("encode")
-                                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                                            .returns(void.class)
-                                            .addParameter(CodecEmitter.JSON_WRITER, "writer")
-                                            .addParameter(target, "value")
-                                            .addParameter(CodecEmitter.JSON_STYLE, "style")
-                                            .addException(CodecEmitter.IO_EXCEPTION)
-                                            .addCode(body.build())
-                                            .build();
-                                    break _buildRecordEncode;
-                                }
-                            }
-                            cls.addMethod(buildRecordEncode);
-                            MethodSpec buildRecordDecode;
-                            _buildRecordDecode:
-                            {
-                                var body = CodeBlock.builder();
-                                for (var c : info.components) {
-                                    var boxed = c.type.kind != CodecsGen.ParsedTypeKind.PRIMITIVE
-                                            ? CodecEmitter.javaTypeOf(c.type)
-                                            : switch (c.type.name) {
-                                                case "boolean" -> "Boolean";
-                                                case "char" -> "Character";
-                                                case "float" -> "Float";
-                                                case "double" -> "Double";
-                                                case "long" -> "Long";
-                                                case "int" -> "Integer";
-                                                case "short" -> "Short";
-                                                case "byte" -> "Byte";
-                                                default ->
-                                                    throw new IllegalStateException(
-                                                            "Unsupported primitive: " + c.type.name);
-                                            };
-                                    body.addStatement(
-                                            "$T<$L> __$L = $T.none()",
-                                            CodecEmitter.OPT,
-                                            boxed,
-                                            c.name,
-                                            CodecEmitter.OPT);
-                                }
-                                body.addStatement("reader.beginObject()");
-                                body.beginControlFlow("while (reader.hasNext())");
-                                body.addStatement("String __fname = reader.nextName()");
-                                body.beginControlFlow("switch (__fname)");
-                                for (var c : info.components) {
-                                    var key = CodecEmitter.toSnakeCase(c.name);
-                                    body.beginControlFlow("case $S ->", key);
-                                    body.addStatement("$T __p = path.field($S)", CodecEmitter.FIELD_PATH, key);
-                                    body.addStatement("$L __v", CodecEmitter.javaTypeOf(c.type));
-                                    body.add(CodecEmitter.decodeStmts(c.type, "reader", CodeBlock.of("__p"), "__v"));
-                                    body.addStatement("__$L = $T.some(__v)", c.name, CodecEmitter.OPT);
-                                    body.endControlFlow();
-                                }
-                                body.add(
-                                        "default -> throw new $T($S + __fname + $S, path.field(__fname));\n",
-                                        CodecEmitter.DESERIALIZATION_EXCEPTION,
-                                        "Unknown field '",
-                                        "' in " + qname);
-                                body.endControlFlow();
-                                body.endControlFlow();
-                                body.addStatement("reader.endObject()");
-                                for (var c : info.components) {
-                                    var key = CodecEmitter.toSnakeCase(c.name);
-                                    body.addStatement(
-                                            "if (__$L.optIsNone()) throw new $T($S, path.field($S))",
-                                            c.name,
-                                            CodecEmitter.DESERIALIZATION_EXCEPTION,
-                                            "Missing required field '" + c.name + "'",
-                                            key);
-                                }
-                                var ctorArgs = CodeBlock.builder();
-                                for (var i = 0; i < info.components.size(); i++) {
-                                    if (i > 0) ctorArgs.add(", ");
-                                    ctorArgs.add("__$L.optUnwrap()", info.components.get(i).name);
-                                }
-                                body.addStatement("return new $L($L)", qname, ctorArgs.build());
-                                {
-                                    buildRecordDecode = MethodSpec.methodBuilder("decode")
-                                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                                            .returns(target)
-                                            .addParameter(CodecEmitter.JSON_READER, "reader")
-                                            .addParameter(CodecEmitter.FIELD_PATH, "path")
-                                            .addException(CodecEmitter.IO_EXCEPTION)
-                                            .addCode(body.build())
-                                            .build();
-                                    break _buildRecordDecode;
-                                }
-                            }
-                            cls.addMethod(buildRecordDecode);
-                        } else if (info.kind == TypeKind.SEALED) {
-                            MethodSpec buildSealedEncode;
-                            _buildSealedEncode:
-                            {
-                                var body = CodeBlock.builder();
-                                body.addStatement("writer.beginObject()");
-                                for (var perm : info.permittedSubclasses) {
-                                    var key = CodecEmitter.toSnakeCase(CodecEmitter.lastSegment(perm));
-                                    body.beginControlFlow("if (value instanceof $L __v)", perm);
-                                    body.addStatement("writer.name($S)", key);
-                                    body.addStatement(
-                                            "$L.encode(writer, __v, style)",
-                                            CodecEmitter.codecTargetFor(perm).klass());
-                                    body.nextControlFlow("else");
-                                }
-                                body.addStatement(
-                                        "throw new IllegalStateException($S + value.getClass())",
-                                        "Unhandled variant of " + qname + ": ");
-                                for (var i = 0; i < info.permittedSubclasses.size(); i++) {
-                                    body.endControlFlow();
-                                }
-                                body.addStatement("writer.endObject()");
-                                {
-                                    buildSealedEncode = MethodSpec.methodBuilder("encode")
-                                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                                            .returns(void.class)
-                                            .addParameter(CodecEmitter.JSON_WRITER, "writer")
-                                            .addParameter(target, "value")
-                                            .addParameter(CodecEmitter.JSON_STYLE, "style")
-                                            .addException(CodecEmitter.IO_EXCEPTION)
-                                            .addCode(body.build())
-                                            .build();
-                                    break _buildSealedEncode;
-                                }
-                            }
-                            cls.addMethod(buildSealedEncode);
-                            MethodSpec buildSealedDecode;
-                            _buildSealedDecode:
-                            {
-                                var body = CodeBlock.builder();
-                                body.addStatement("reader.beginObject()");
-                                body.addStatement(
-                                        "if (!reader.hasNext()) throw new $T($S, path)",
-                                        CodecEmitter.DESERIALIZATION_EXCEPTION,
-                                        "Empty object for sealed " + qname);
-                                body.addStatement("String __tag = reader.nextName()");
-                                body.addStatement("$L __out", qname);
-                                body.beginControlFlow("switch (__tag)");
-                                for (var perm : info.permittedSubclasses) {
-                                    var key = CodecEmitter.toSnakeCase(CodecEmitter.lastSegment(perm));
+                                    var body = CodeBlock.builder();
+                                    for (var c : info.components) {
+                                        var boxed = c.type.kind != CodecsGen.ParsedTypeKind.PRIMITIVE
+                                                ? CodecEmitter.javaTypeOf(c.type)
+                                                : switch (c.type.name) {
+                                                    case "boolean" -> "Boolean";
+                                                    case "char" -> "Character";
+                                                    case "float" -> "Float";
+                                                    case "double" -> "Double";
+                                                    case "long" -> "Long";
+                                                    case "int" -> "Integer";
+                                                    case "short" -> "Short";
+                                                    case "byte" -> "Byte";
+                                                    default ->
+                                                        throw new IllegalStateException(
+                                                                "Unsupported primitive: " + c.type.name);
+                                                };
+                                        body.addStatement(
+                                                "$T<$L> __$L = $T.none()",
+                                                CodecEmitter.OPT,
+                                                boxed,
+                                                c.name,
+                                                CodecEmitter.OPT);
+                                    }
+                                    body.addStatement("reader.beginObject()");
+                                    body.beginControlFlow("while (reader.hasNext())");
+                                    body.addStatement("String __fname = reader.nextName()");
+                                    body.beginControlFlow("switch (__fname)");
+                                    for (var c : info.components) {
+                                        var key = CodecEmitter.toSnakeCase(c.name);
+                                        body.beginControlFlow("case $S ->", key);
+                                        body.addStatement("$T __p = path.field($S)", CodecEmitter.FIELD_PATH, key);
+                                        body.addStatement("$L __v", CodecEmitter.javaTypeOf(c.type));
+                                        body.add(
+                                                CodecEmitter.decodeStmts(c.type, "reader", CodeBlock.of("__p"), "__v"));
+                                        body.addStatement("__$L = $T.some(__v)", c.name, CodecEmitter.OPT);
+                                        body.endControlFlow();
+                                    }
                                     body.add(
-                                            "case $S -> __out = $L.decode(reader, path.field($S));\n",
-                                            key,
-                                            CodecEmitter.codecTargetFor(perm).klass(),
-                                            key);
+                                            "default -> throw new $T($S + __fname + $S, path.field(__fname));\n",
+                                            CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                            "Unknown field '",
+                                            "' in " + qname);
+                                    body.endControlFlow();
+                                    body.endControlFlow();
+                                    body.addStatement("reader.endObject()");
+                                    for (var c : info.components) {
+                                        var key = CodecEmitter.toSnakeCase(c.name);
+                                        body.addStatement(
+                                                "if (__$L.optIsNone()) throw new $T($S, path.field($S))",
+                                                c.name,
+                                                CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                                "Missing required field '" + c.name + "'",
+                                                key);
+                                    }
+                                    var ctorArgs = CodeBlock.builder();
+                                    for (var i = 0; i < info.components.size(); i++) {
+                                        if (i > 0) ctorArgs.add(", ");
+                                        ctorArgs.add("__$L.optUnwrap()", info.components.get(i).name);
+                                    }
+                                    body.addStatement("return new $L($L)", qname, ctorArgs.build());
+                                    {
+                                        buildRecordDecode = MethodSpec.methodBuilder("decode")
+                                                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                                .returns(target)
+                                                .addParameter(CodecEmitter.JSON_READER, "reader")
+                                                .addParameter(CodecEmitter.FIELD_PATH, "path")
+                                                .addException(CodecEmitter.IO_EXCEPTION)
+                                                .addCode(body.build())
+                                                .build();
+                                        break _buildRecordDecode;
+                                    }
                                 }
-                                body.add(
-                                        "default -> throw new $T($S + __tag + $S, path);\n",
-                                        CodecEmitter.DESERIALIZATION_EXCEPTION,
-                                        "Unknown variant '",
-                                        "' for " + qname);
-                                body.endControlFlow();
-                                body.addStatement(
-                                        "if (reader.hasNext()) throw new $T($S, path)",
-                                        CodecEmitter.DESERIALIZATION_EXCEPTION,
-                                        "Sealed " + qname + " must have exactly one variant");
-                                body.addStatement("reader.endObject()");
-                                body.addStatement("return __out");
+                                cls.addMethod(buildRecordDecode);
+                            } else if (info.kind == TypeKind.SEALED) {
+                                MethodSpec buildSealedEncode;
+                                _buildSealedEncode:
                                 {
-                                    buildSealedDecode = MethodSpec.methodBuilder("decode")
-                                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                                            .returns(target)
-                                            .addParameter(CodecEmitter.JSON_READER, "reader")
-                                            .addParameter(CodecEmitter.FIELD_PATH, "path")
-                                            .addException(CodecEmitter.IO_EXCEPTION)
-                                            .addCode(body.build())
-                                            .build();
-                                    break _buildSealedDecode;
+                                    var body = CodeBlock.builder();
+                                    body.addStatement("writer.beginObject()");
+                                    for (var perm : info.permittedSubclasses) {
+                                        var key = CodecEmitter.toSnakeCase(CodecEmitter.lastSegment(perm));
+                                        body.beginControlFlow("if (value instanceof $L __v)", perm);
+                                        body.addStatement("writer.name($S)", key);
+                                        body.addStatement(
+                                                "$L.encode(writer, __v, style)",
+                                                CodecEmitter.codecTargetFor(perm)
+                                                        .klass());
+                                        body.nextControlFlow("else");
+                                    }
+                                    body.addStatement(
+                                            "throw new IllegalStateException($S + value.getClass())",
+                                            "Unhandled variant of " + qname + ": ");
+                                    for (var i = 0; i < info.permittedSubclasses.size(); i++) {
+                                        body.endControlFlow();
+                                    }
+                                    body.addStatement("writer.endObject()");
+                                    {
+                                        buildSealedEncode = MethodSpec.methodBuilder("encode")
+                                                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                                .returns(void.class)
+                                                .addParameter(CodecEmitter.JSON_WRITER, "writer")
+                                                .addParameter(target, "value")
+                                                .addParameter(CodecEmitter.JSON_STYLE, "style")
+                                                .addException(CodecEmitter.IO_EXCEPTION)
+                                                .addCode(body.build())
+                                                .build();
+                                        break _buildSealedEncode;
+                                    }
                                 }
-                            }
-                            cls.addMethod(buildSealedDecode);
-                        } else if (info.kind == TypeKind.ENUM) {
-                            MethodSpec buildEnumEncode;
-                            _buildEnumEncode:
-                            {
+                                cls.addMethod(buildSealedEncode);
+                                MethodSpec buildSealedDecode;
+                                _buildSealedDecode:
                                 {
-                                    buildEnumEncode = MethodSpec.methodBuilder("encode")
-                                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                                            .returns(void.class)
-                                            .addParameter(CodecEmitter.JSON_WRITER, "writer")
-                                            .addParameter(target, "value")
-                                            .addParameter(CodecEmitter.JSON_STYLE, "style")
-                                            .addException(CodecEmitter.IO_EXCEPTION)
-                                            .addStatement(
-                                                    "writer.value(value.name().toLowerCase(java.util.Locale.ROOT))")
-                                            .build();
-                                    break _buildEnumEncode;
+                                    var body = CodeBlock.builder();
+                                    body.addStatement("reader.beginObject()");
+                                    body.addStatement(
+                                            "if (!reader.hasNext()) throw new $T($S, path)",
+                                            CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                            "Empty object for sealed " + qname);
+                                    body.addStatement("String __tag = reader.nextName()");
+                                    body.addStatement("$L __out", qname);
+                                    body.beginControlFlow("switch (__tag)");
+                                    for (var perm : info.permittedSubclasses) {
+                                        var key = CodecEmitter.toSnakeCase(CodecEmitter.lastSegment(perm));
+                                        body.add(
+                                                "case $S -> __out = $L.decode(reader, path.field($S));\n",
+                                                key,
+                                                CodecEmitter.codecTargetFor(perm)
+                                                        .klass(),
+                                                key);
+                                    }
+                                    body.add(
+                                            "default -> throw new $T($S + __tag + $S, path);\n",
+                                            CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                            "Unknown variant '",
+                                            "' for " + qname);
+                                    body.endControlFlow();
+                                    body.addStatement(
+                                            "if (reader.hasNext()) throw new $T($S, path)",
+                                            CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                            "Sealed " + qname + " must have exactly one variant");
+                                    body.addStatement("reader.endObject()");
+                                    body.addStatement("return __out");
+                                    {
+                                        buildSealedDecode = MethodSpec.methodBuilder("decode")
+                                                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                                .returns(target)
+                                                .addParameter(CodecEmitter.JSON_READER, "reader")
+                                                .addParameter(CodecEmitter.FIELD_PATH, "path")
+                                                .addException(CodecEmitter.IO_EXCEPTION)
+                                                .addCode(body.build())
+                                                .build();
+                                        break _buildSealedDecode;
+                                    }
                                 }
-                            }
-                            cls.addMethod(buildEnumEncode);
-                            MethodSpec buildEnumDecode;
-                            _buildEnumDecode:
-                            {
-                                var body = CodeBlock.builder();
-                                body.addStatement("String __s = reader.nextString()");
-                                body.addStatement("String __u = __s.toUpperCase(java.util.Locale.ROOT)");
-                                body.beginControlFlow("for ($L __c : $L.values())", qname, qname);
-                                body.addStatement("if (__c.name().equals(__u)) return __c");
-                                body.endControlFlow();
-                                body.addStatement(
-                                        "throw new $T($S + __s + $S, path)",
-                                        CodecEmitter.DESERIALIZATION_EXCEPTION,
-                                        "Unknown enum constant '",
-                                        "' for " + qname);
+                                cls.addMethod(buildSealedDecode);
+                            } else if (info.kind == TypeKind.ENUM) {
+                                MethodSpec buildEnumEncode;
+                                _buildEnumEncode:
                                 {
-                                    buildEnumDecode = MethodSpec.methodBuilder("decode")
-                                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                                            .returns(target)
-                                            .addParameter(CodecEmitter.JSON_READER, "reader")
-                                            .addParameter(CodecEmitter.FIELD_PATH, "path")
-                                            .addException(CodecEmitter.IO_EXCEPTION)
-                                            .addCode(body.build())
-                                            .build();
-                                    break _buildEnumDecode;
+                                    {
+                                        buildEnumEncode = MethodSpec.methodBuilder("encode")
+                                                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                                .returns(void.class)
+                                                .addParameter(CodecEmitter.JSON_WRITER, "writer")
+                                                .addParameter(target, "value")
+                                                .addParameter(CodecEmitter.JSON_STYLE, "style")
+                                                .addException(CodecEmitter.IO_EXCEPTION)
+                                                .addStatement(
+                                                        "writer.value(value.name().toLowerCase(java.util.Locale.ROOT))")
+                                                .build();
+                                        break _buildEnumEncode;
+                                    }
                                 }
+                                cls.addMethod(buildEnumEncode);
+                                MethodSpec buildEnumDecode;
+                                _buildEnumDecode:
+                                {
+                                    var body = CodeBlock.builder();
+                                    body.addStatement("String __s = reader.nextString()");
+                                    body.addStatement("String __u = __s.toUpperCase(java.util.Locale.ROOT)");
+                                    body.beginControlFlow("for ($L __c : $L.values())", qname, qname);
+                                    body.addStatement("if (__c.name().equals(__u)) return __c");
+                                    body.endControlFlow();
+                                    body.addStatement(
+                                            "throw new $T($S + __s + $S, path)",
+                                            CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                            "Unknown enum constant '",
+                                            "' for " + qname);
+                                    {
+                                        buildEnumDecode = MethodSpec.methodBuilder("decode")
+                                                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                                .returns(target)
+                                                .addParameter(CodecEmitter.JSON_READER, "reader")
+                                                .addParameter(CodecEmitter.FIELD_PATH, "path")
+                                                .addException(CodecEmitter.IO_EXCEPTION)
+                                                .addCode(body.build())
+                                                .build();
+                                        break _buildEnumDecode;
+                                    }
+                                }
+                                cls.addMethod(buildEnumDecode);
+                            } else {
+                                throw new IllegalStateException("Unsupported kind: " + info.kind + " for " + qname);
                             }
-                            cls.addMethod(buildEnumDecode);
-                        } else {
-                            throw new IllegalStateException("Unsupported kind: " + info.kind + " for " + qname);
                         }
 
                         {
@@ -2062,7 +2075,7 @@ public final class GenMain {
                                     .addStatement("return fromValue(value, $T.root())", CodecEmitter.FIELD_PATH)
                                     .build());
                         }
-                        if (info.implementsMarker) {
+                        if (info.implementsStreamMarker) {
                             var body = CodeBlock.builder();
                             body.addStatement(
                                     "$T __reader = new $T(new $T(json))",

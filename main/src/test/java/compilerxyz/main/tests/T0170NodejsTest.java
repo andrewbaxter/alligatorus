@@ -491,22 +491,18 @@ public final class T0170NodejsTest {
     }
 
     private static TList<SourceExpr> implAsSelfType(TestMb mb, String targetVar, String desc, SourceExpr dispatch) {
-        return TList.of(
-                implInterface(mb, targetVar, mb.evalValue(), TList.of(rp("type", mb.scopeUse("outer")))),
-                implInterface(
-                        mb,
-                        targetVar,
-                        mb.evalType(),
-                        TList.of(
-                                rp("desc", mb.str(desc)),
-                                rp("aspect", dispatch),
-                                rp("can_cast_from", mb.bool(false)),
-                                rp(
-                                        "cast_from",
-                                        eresultOk(mb, mb.typesCve(), mb.field(mb.scopeUse("arg"), mb.str("cv")))),
-                                rp("can_cast_to", mb.bool(false)),
-                                rp("cast_to", mb.panic(mb.str(desc + ".cast_to not implemented"))),
-                                rp("is_equal", mb.bool(false)))));
+        return TList.of(implInterface(
+                mb,
+                targetVar,
+                mb.evalType(),
+                TList.of(
+                        rp("desc", mb.str(desc)),
+                        rp("aspect", dispatch),
+                        rp("can_cast_from", mb.bool(false)),
+                        rp("cast_from", eresultOk(mb, mb.typesCve(), mb.field(mb.scopeUse("arg"), mb.str("cv")))),
+                        rp("can_cast_to", mb.bool(false)),
+                        rp("cast_to", mb.panic(mb.str(desc + ".cast_to not implemented"))),
+                        rp("is_equal", mb.bool(false)))));
     }
 
     private static SourceExpr nvalueToCode(TestMb mb, SourceExpr cveExpr) {
@@ -1088,6 +1084,8 @@ public final class T0170NodejsTest {
                         rp("land", targetPanic(mb, "land")),
                         rp("exit", targetPanic(mb, "exit")),
                         rp("value_is_runtime", mb.bool(false)),
+                        rp("source_value", targetPanic(mb, "source_value")),
+                        rp("exit_value", targetPanic(mb, "exit_value")),
                         rp("guarded", targetPanic(mb, "guarded")),
                         rp("exc_cleanup", targetPanic(mb, "exc_cleanup")),
                         rp("exit_trampoline", targetPanic(mb, "exit_trampoline")),

@@ -27,7 +27,9 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.security.MessageDigest;
 import java.sql.DriverManager;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Assumptions;
@@ -398,14 +400,14 @@ public final class T0180ImportRealTest {
     }
 
     private static String git(Path dir, String... args) throws Exception {
-        var argv = new java.util.ArrayList<String>();
+        var argv = new ArrayList<String>();
         argv.add("git");
-        argv.addAll(java.util.List.of(args));
+        argv.addAll(List.of(args));
         var proc = new ProcessBuilder(argv)
                 .directory(dir.toFile())
                 .redirectErrorStream(true)
                 .start();
-        var out = new String(proc.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        var out = new String(proc.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         if (proc.waitFor() != 0) throw new AssertionError("git " + String.join(" ", args) + " failed: " + out);
         return out.trim();
     }
@@ -454,8 +456,10 @@ public final class T0180ImportRealTest {
         try (var cache = new CacheReal(tmp.resolve("cache2"))) {
             var res = Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
             assertTrue(
-                    res instanceof Result.Err<?, ?> err
-                            && err.error().toString().contains("40-digit"),
+                    switch (res) {
+                        case Result.Err<?, ?> err -> err.error().toString().contains("40-digit");
+                        case Result.Ok<?, ?> ok -> false;
+                    },
                     () -> "" + res);
         }
     }

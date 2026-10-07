@@ -111,7 +111,6 @@ final class EcoBuzzDsp {
         exprs.add(e.let("dsp_b", e.defFunc(e.v("d"), "buzz dsp")));
         var body = new TList<SourceExpr>();
         body.add(e.let("ll", e.fld(e.v("arg"), "m")));
-        body.add(e.callM(e.v("ll"), "lib", e.s("m")));
         var typeInit = new TList<EcoMb.P>();
         for (var name : EcoBuzz.TYPE_NAMES) typeInit.add(e.p(name, e.lowerV(name)));
         EcoBuzz.rebindTypes(
@@ -120,8 +119,8 @@ final class EcoBuzzDsp {
                 e.call(e.lower(e.fld(e.v("types_o"), "new")), e.rec(typeInit.toArray(EcoMb.P[]::new))),
                 e.fld(e.v("arg"), "range_i32"),
                 e.fld(e.v("arg"), "loop"));
-        body.add(e.let("exp2f", EcoBuzz.externDef(e, e.v("ll"), "exp2f", e.lowerV("exp2f_fn_t"))));
-        body.add(e.let("sinf", EcoBuzz.externDef(e, e.v("ll"), "sinf", e.lowerV("sinf_fn_t"))));
+        body.add(e.let("exp2f", EcoBuzz.externDef(e, "exp2f", e.lowerV("exp2f_fn_t"), "m")));
+        body.add(e.let("sinf", EcoBuzz.externDef(e, "sinf", e.lowerV("sinf_fn_t"), "m")));
         body.add(e.let(
                 "osctab",
                 e.call(

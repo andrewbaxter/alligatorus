@@ -105,7 +105,7 @@ final class EcoBuzzNinja {
 
         var body = new TList<SourceExpr>();
         for (var fn : new String[] {"sinf", "cosf", "tanf"}) {
-            body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("f1_fn_t"))));
+            body.add(e.let(fn, EcoBuzz.externDef(e, fn, e.lowerV("f1_fn_t"), "m")));
         }
         SourceExpr setFilterSeq;
         {

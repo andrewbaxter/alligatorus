@@ -358,22 +358,33 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
         if (key.equals(GenAspectLift.AspectId)) {
             var elementLifts = new TList<AspectLift>(elements.size());
             var elementTypes = new TList<Type>(elements.size());
+            var held = new TList<Opt<Value>>(elements.size());
             for (var e : elements) {
                 TupleElement.Dynamic d;
                 switch (e) {
                     case TupleElement.Dynamic dyn -> d = dyn;
                     case TupleElement.EvalRes r -> {
-                        return Opt.none();
+                        var inner = r.result();
+                        if (inner.hasErrors() || inner.valueOpt().optIsNone()) return Opt.none();
+                        var cv = inner.requireValue("Tuple::typeAspect lift element");
+                        if (cv.value().optIsNone()) return Opt.none();
+                        var fv = cv.value().optUnwrap();
+                        if (!(fv instanceof ValueDynamic)) {
+                            held.add(Opt.some(fv));
+                            continue;
+                        }
+                        d = new TupleElement.Dynamic(fv.valueType());
                     }
                 }
                 var elemLiftOpt = GenAspectLift.getMaybe(xx, d.type());
                 if (elemLiftOpt.optIsNone()) {
                     return Opt.none();
                 }
+                held.add(Opt.none());
                 elementLifts.add(elemLiftOpt.optUnwrap());
                 elementTypes.add(d.type());
             }
-            return Opt.some(new TupleLift(elementLifts, elementTypes));
+            return Opt.some(new TupleLift(elementLifts, elementTypes, held));
         }
         return Opt.none();
     }
@@ -719,11 +730,15 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
     public static final class TupleLift implements AspectLift {
         private final TList<AspectLift> elementLifts;
         private final TList<Type> elementTypes;
+
+        private final TList<Opt<Value>> held;
+
         private volatile Opt<Field[]> cachedFields = Opt.none();
 
-        public TupleLift(TList<AspectLift> elementLifts, TList<Type> elementTypes) {
+        public TupleLift(TList<AspectLift> elementLifts, TList<Type> elementTypes, TList<Opt<Value>> held) {
             this.elementLifts = elementLifts;
             this.elementTypes = elementTypes;
+            this.held = held;
         }
 
         @Override
@@ -755,9 +770,17 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
                 }
                 cachedFields = Opt.some(fields);
             }
-            var out = new TList<TupleElement>(elementLifts.size());
+            var out = new TList<TupleElement>(held.size());
             var errors = new TList<ExprErr>();
-            for (int i = 0; i < elementLifts.size(); i++) {
+            int dynamicIndex = 0;
+            for (int hi = 0; hi < held.size(); hi++) {
+                if (held.get(hi).optIsSome()) {
+                    out.add(new TupleElement.EvalRes(EResult.ok(new CodeValue(
+                            Code.none(loc), EvalOutcome.ofValue(held.get(hi).optUnwrap())))));
+                    continue;
+                }
+                int i = dynamicIndex;
+                dynamicIndex += 1;
                 var elemLift = elementLifts.get(i);
                 Object slotValue;
                 try {

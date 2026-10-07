@@ -7,6 +7,8 @@ import compilerxyz.prelude.util.TList;
 public final class EcoPipewire {
     private EcoPipewire() {}
 
+    public static final String LIB = "pipewire-0.3";
+
     private static final IList<EcoExtern> EXTERNS = IList.of(
             new EcoExtern("pw_init", IList.of("pv", "pv"), "void", false),
             new EcoExtern("pw_deinit", IList.of(), "void", false),
@@ -241,7 +243,7 @@ public final class EcoPipewire {
         for (var ex : EXTERNS) {
             members.add(ex.name());
             exprs.add(e.let(ex.name() + "_fn_t", ex.fnType(e, llvm)));
-            exprs.add(e.let(ex.name() + "_t", EcoExtern.globalT(e, llvm, e.v(ex.name() + "_fn_t"))));
+            exprs.add(e.let(ex.name() + "_t", ex.externT(e, llvm, e.v(ex.name() + "_fn_t"), LIB)));
         }
         exprs.add(e.let("konst_t", EcoExtern.globalT(e, llvm, e.v("t_u32"))));
         for (var k : KONSTS) {
@@ -344,8 +346,7 @@ public final class EcoPipewire {
         for (var ex : EXTERNS) {
             body.add(e.let(
                     ex.name(),
-                    ex.declare(
-                            e, e.lower(e.fld(e.v("llvm"), "extern_fn")), e.v("arg"), e.lowerV(ex.name() + "_fn_t"))));
+                    ex.declare(e, e.lower(e.fld(e.v("llvm"), "extern_fn")), e.lowerV(ex.name() + "_fn_t"), LIB)));
         }
         for (var k : KONSTS) {
             body.add(e.let(
@@ -377,7 +378,6 @@ public final class EcoPipewire {
         }
         var ctorFields = new TList<EcoMb.P>();
         for (var m : members) ctorFields.add(e.p(m, e.v(m)));
-        body.add(e.callM(e.v("arg"), "lib", e.s("pipewire-0.3")));
         body.add(e.ret(e.call(e.lower(e.fld(e.v("pw_o"), "new")), e.rec(ctorFields.toArray(EcoMb.P[]::new)))));
         exprs.add(e.funcImpl(
                 e.v("pw_builder"),

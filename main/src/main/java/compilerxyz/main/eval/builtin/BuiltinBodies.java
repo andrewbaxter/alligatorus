@@ -2,7 +2,6 @@ package compilerxyz.main.eval.builtin;
 
 import com.google.gson.stream.JsonWriter;
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -33,6 +32,7 @@ import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.main.eval.value.object.ArtifactExporterObjectConstPayload;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordField;
@@ -48,6 +48,8 @@ import compilerxyz.main.gen.ListStoreInt;
 import compilerxyz.main.gen.Target;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.langhelp.Sources;
+import compilerxyz.main.syntax.HashValue;
+import compilerxyz.main.syntax.RemoteOrigin;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.annotations.BuiltinEvalContext;
 import compilerxyz.prelude.annotations.BuiltinPath;
@@ -64,6 +66,11 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HexFormat;
 
 public final class BuiltinBodies {
     private BuiltinBodies() {}
@@ -85,9 +92,9 @@ public final class BuiltinBodies {
         return new ValueDynamic(source, type);
     }
 
-    @BuiltinPath(value = "eval.exporter_source_object_type_instance", scopeId = 5041L)
-    public static ArtifactExporter exporterSourceObjectTypeInstance() {
-        return ExporterRoot.SOURCE_OBJECT_TYPE_INSTANCE;
+    @BuiltinPath(value = "eval.exporter_object_const", scopeId = 5041L)
+    public static ArtifactExporter exporterObjectConst(Type payloadType) {
+        return new ArtifactExporterObjectConstPayload(payloadType);
     }
 
     @BuiltinPath(value = "log", scopeId = 5001L)
@@ -164,7 +171,36 @@ public final class BuiltinBodies {
     @BuiltinEvalContext
     public static FileHandle importFile(EvalContext vx, String specKey) {
         var ix = vx.ix;
-        var abs = SourceSpecAbsolute.sourceSpecAbsoluteFromKey(specKey);
+        SourceSpecAbsolute abs;
+        if (specKey.startsWith("local:")) {
+            abs = new SourceSpecAbsolute.Local(specKey.substring("local:".length()));
+        } else if (specKey.startsWith("remote:")) {
+            var rest = specKey.substring("remote:".length());
+            var subAt = rest.lastIndexOf('!');
+            if (subAt < 0) throw new IllegalArgumentException("malformed remote spec key: " + specKey);
+            var originKey = rest.substring(0, subAt);
+            RemoteOrigin origin;
+            if (originKey.startsWith("http:")) {
+                var originRest = originKey.substring("http:".length());
+                var hashAt = originRest.lastIndexOf('#');
+                if (hashAt < 0) throw new IllegalArgumentException("malformed http origin key: " + originKey);
+                var hashKey = originRest.substring(hashAt + 1);
+                if (!hashKey.startsWith("sha256:")) throw new IllegalArgumentException("unknown hash key: " + hashKey);
+                origin = new RemoteOrigin.Http(
+                        originRest.substring(0, hashAt),
+                        new HashValue.Sha256(HexFormat.of().parseHex(hashKey.substring("sha256:".length()))));
+            } else if (originKey.startsWith("git:")) {
+                var originRest = originKey.substring("git:".length());
+                var commitAt = originRest.lastIndexOf('@');
+                if (commitAt < 0) throw new IllegalArgumentException("malformed git origin key: " + originKey);
+                origin = new RemoteOrigin.Git(originRest.substring(0, commitAt), originRest.substring(commitAt + 1));
+            } else {
+                throw new IllegalArgumentException("unknown remote origin key: " + originKey);
+            }
+            abs = new SourceSpecAbsolute.Remote(origin, rest.substring(subAt + 1));
+        } else {
+            throw new IllegalArgumentException("not a local or remote spec key: " + specKey);
+        }
         Sources.SourceData data;
         switch (ix.gx.sources.sourcesGetData(abs)) {
             case Result.Ok<Sources.SourceData, String> ok -> data = ok.value();
@@ -181,12 +217,70 @@ public final class BuiltinBodies {
             TOrderedMap<String, String> env,
             TOrderedMap<String, byte[]> files,
             Opt<ListStoreInt> successCodes) {
-        return ExecRun.start(command, args, env, files, successCodes);
+        int[] success;
+        if (successCodes.optIsSome()) {
+            var store = successCodes.optUnwrap();
+            success = new int[store.size()];
+            for (int i = 0; i < success.length; i++) success[i] = store.get(i);
+        } else {
+            success = new int[] {0};
+        }
+        Path root;
+        try {
+            root = Files.createTempDirectory("allig-exec");
+        } catch (IOException e) {
+            throw new DynPanic("exec: cannot create sandbox directory: " + e.getMessage());
+        }
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (!Files.exists(root)) return;
+            try (var walk = Files.walk(root)) {
+                for (var p : walk.sorted(Comparator.reverseOrder()).toList()) {
+                    Files.deleteIfExists(p);
+                }
+            } catch (IOException e) {
+                throw new IllegalStateException("exec: cannot delete sandbox directory " + root, e);
+            }
+        }));
+        var fs = root.resolve("fs");
+        var stdoutFile = root.resolve("stdout");
+        var stderrFile = root.resolve("stderr");
+        try {
+            Files.createDirectory(fs);
+            for (var entry : files.entrySet()) {
+                var target = ExecRun.sandboxPath(fs, entry.getKey(), "exec");
+                var parent = target.getParent();
+                if (parent != null) Files.createDirectories(parent);
+                Files.write(target, entry.getValue());
+            }
+        } catch (IOException e) {
+            throw new DynPanic("exec: cannot populate sandbox directory: " + e.getMessage());
+        }
+        var argv = new ArrayList<String>(args.size() + 1);
+        argv.add(command);
+        for (var arg : args) argv.add(arg);
+        var pb = new ProcessBuilder(argv)
+                .directory(fs.toFile())
+                .redirectInput(ProcessBuilder.Redirect.from(Path.of("/dev/null").toFile()))
+                .redirectOutput(stdoutFile.toFile())
+                .redirectError(stderrFile.toFile());
+        for (var entry : env.entrySet()) pb.environment().put(entry.getKey(), entry.getValue());
+        Process process;
+        try {
+            process = pb.start();
+        } catch (IOException e) {
+            throw new DynPanic("exec: cannot start " + command + ": " + e.getMessage());
+        }
+        return new ExecRun(fs, stdoutFile, stderrFile, process, command, success);
     }
 
     @BuiltinPath(value = "app", scopeId = 5048L)
     public static App app(Opt<String> executor, byte[] bytes) {
         return new App(executor, bytes);
+    }
+
+    @BuiltinPath(value = "dir", scopeId = 5052L)
+    public static Dir dir(TOrderedMap<String, byte[]> files) {
+        return new Dir(files);
     }
 
     @BuiltinPath(value = "eval.str_utf8", scopeId = 5044L)
@@ -281,6 +375,11 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.binding_dynamic", scopeId = 5045L)
     public static Binding bindingDynamic(BindingId dynamicKey, Type type) {
         return new BindingDynamicBinding(dynamicKey, type);
+    }
+
+    @BuiltinPath(value = "eval.exit_value", scopeId = 5053L)
+    public static Target.ExitValue exitValue(boolean carries, CodeValue cv) {
+        return new Target.ExitValue(carries, cv);
     }
 
     @BuiltinPath(value = "eval.bind_result", scopeId = 5015L)

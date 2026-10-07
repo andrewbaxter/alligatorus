@@ -81,9 +81,9 @@ final class EcoBuzzKarmaFilter {
         defs.add(e.let("f1_fn_t", EcoBuzz.fnType(e, e.v("t_f32"), e.v("t_f32"))));
 
         var body = new TList<SourceExpr>();
-        body.add(e.let("sinf", EcoBuzz.externDef(e, e.v("ll"), "sinf", e.lowerV("f1_fn_t"))));
-        body.add(e.let("cosf", EcoBuzz.externDef(e, e.v("ll"), "cosf", e.lowerV("f1_fn_t"))));
-        body.add(e.let("sqrtf", EcoBuzz.externDef(e, e.v("ll"), "sqrtf", e.lowerV("f1_fn_t"))));
+        body.add(e.let("sinf", EcoBuzz.externDef(e, "sinf", e.lowerV("f1_fn_t"), "m")));
+        body.add(e.let("cosf", EcoBuzz.externDef(e, "cosf", e.lowerV("f1_fn_t"), "m")));
+        body.add(e.let("sqrtf", EcoBuzz.externDef(e, "sqrtf", e.lowerV("f1_fn_t"), "m")));
 
         var recalc = new TList<SourceExpr>();
         recalc.add(e.let("cut", pv(e, 0)));

@@ -277,6 +277,9 @@ final class EcoBuzzM4wII {
             "t_l2pw2",
             "t_iir_lastcut",
             "t_iir_lastres");
+    private static final IList<String> EXTERN_NAMES =
+            IList.of("sinf", "cosf", "sinhf", "logf", "fabsf", "floorf", "powf", "pow", "tan", "rint", "sinh");
+
     private static final IMap<String, String> FN_TYPES = IMap.ofEntries(
             new Pair<>("tables", "void0_fn_t"),
             new Pair<>("wave_at", "wave_fn_t"),
@@ -576,7 +579,10 @@ final class EcoBuzzM4wII {
         Function<String, SourceExpr> typeOf = name -> {
             if (name.equals("osc_at")) return EcoBuzz.globalT(e, e.v("osc_at_fn_t"));
             var fnType = FN_TYPES.getOpt(name);
-            if (fnType.optIsSome()) return EcoBuzz.globalT(e, e.v(fnType.optUnwrap()));
+            if (fnType.optIsSome()) {
+                var t = e.v(fnType.optUnwrap());
+                return EXTERN_NAMES.contains(name) ? EcoBuzz.externT(e, name, t) : EcoBuzz.globalT(e, t);
+            }
             var globalType = GLOBAL_TYPES.getOpt(name);
             if (globalType.optIsSome()) return EcoBuzz.globalMemT(e, e.v(globalType.optUnwrap()));
             if (GLOBAL_LISTS.contains(name)) return EcoBuzz.llvm(e, "gref_t");
@@ -587,13 +593,13 @@ final class EcoBuzzM4wII {
         var partVoice = new EcoBuzz.Part("voice", typeOf);
         var body = partTables.body;
         for (var fn : new String[] {"sinf", "cosf", "sinhf", "logf", "fabsf", "floorf"}) {
-            body.add(e.let(fn, EcoBuzz.externDef(e, e.v("ll"), fn, e.lowerV("f1_fn_t"))));
+            body.add(e.let(fn, EcoBuzz.externDef(e, fn, e.lowerV("f1_fn_t"), "m")));
         }
-        body.add(e.let("powf", EcoBuzz.externDef(e, e.v("ll"), "powf", e.lowerV("f2_fn_t"))));
-        body.add(e.let("pow", EcoBuzz.externDef(e, e.v("ll"), "pow", e.lowerV("d2_fn_t"))));
-        body.add(e.let("tan", EcoBuzz.externDef(e, e.v("ll"), "tan", e.lowerV("d1_fn_t"))));
-        body.add(e.let("rint", EcoBuzz.externDef(e, e.v("ll"), "rint", e.lowerV("d1_fn_t"))));
-        body.add(e.let("sinh", EcoBuzz.externDef(e, e.v("ll"), "sinh", e.lowerV("d1_fn_t"))));
+        body.add(e.let("powf", EcoBuzz.externDef(e, "powf", e.lowerV("f2_fn_t"), "m")));
+        body.add(e.let("pow", EcoBuzz.externDef(e, "pow", e.lowerV("d2_fn_t"), "m")));
+        body.add(e.let("tan", EcoBuzz.externDef(e, "tan", e.lowerV("d1_fn_t"), "m")));
+        body.add(e.let("rint", EcoBuzz.externDef(e, "rint", e.lowerV("d1_fn_t"), "m")));
+        body.add(e.let("sinh", EcoBuzz.externDef(e, "sinh", e.lowerV("d1_fn_t"), "m")));
         for (var g : new String[][] {
             {"coefs", "coefs_t"}, {"lfoosc", "lfoosc_t"}, {"lfovib", "lfoosc_t"}, {"nonlin", "nonlin_t"}
         }) {

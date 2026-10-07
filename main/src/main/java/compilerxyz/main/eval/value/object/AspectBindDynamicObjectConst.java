@@ -16,9 +16,6 @@ public final class AspectBindDynamicObjectConst implements AspectBindDynamic {
 
     @Override
     public EResult<Opt<BindSubDynamic>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        if (cv.value().optIsSome()) {
-            return EResult.ok(Opt.none());
-        }
         return DynUtil.bindDynamicDefault(loc, cv);
     }
 }

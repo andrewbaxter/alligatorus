@@ -1411,6 +1411,7 @@ public final class ConstEval {
                                     : "return: no enclosing control scope");
                     yield EResult.errs(erb.errors());
                 }
+                Opt<Type> argument = Opt.none();
                 if (retValue.optIsSome()) {
                     if (target.landing.resultType.optIsNone()) {
                         if (!target.landing.arrivals.isEmpty()) {
@@ -1418,28 +1419,35 @@ public final class ConstEval {
                                     "return: this return yields a value but an earlier return in the block does not");
                             yield EResult.errs(erb.errors());
                         }
-                        target.landing.resultType =
-                                Opt.some(retValue.optUnwrap().valueType());
                     } else {
                         var convOpt = erb.mustEr(
                                 Eval.typecheckConvert(xx, loc, target.landing.resultType.optUnwrap(), valCv));
                         if (convOpt.optIsNone()) yield EResult.errs(erb.errors());
-                        var converted = convOpt.optUnwrap();
-                        switch (converted.outcome()) {
-                            case EvalOutcome.HasValue hv -> retValue = Opt.some(hv.value());
-                            case EvalOutcome.NoValue nv -> throw new AssertionError("return conversion lost value");
-                            case EvalOutcome.ControlEnded ce ->
-                                throw new AssertionError("return conversion lost value");
-                        }
-                        valCv = converted;
+                        valCv = convOpt.optUnwrap();
                     }
+                    var exitOpt0 = erb.mustEr(xx.target.targetExitValue(xx, loc, valCv));
+                    if (exitOpt0.optIsNone()) yield EResult.errs(erb.errors());
+                    var exitValue = exitOpt0.optUnwrap();
+                    valCv = exitValue.cv();
+                    switch (valCv.outcome()) {
+                        case EvalOutcome.HasValue hv -> retValue = Opt.some(hv.value());
+                        case EvalOutcome.NoValue nv -> throw new AssertionError("return conversion lost value");
+                        case EvalOutcome.ControlEnded ce -> throw new AssertionError("return conversion lost value");
+                    }
+                    if (target.landing.resultType.optIsNone()) {
+                        target.landing.resultType =
+                                Opt.some(retValue.optUnwrap().valueType());
+                        target.landing.carries = exitValue.carries();
+                    } else if (target.landing.carries != exitValue.carries()) {
+                        erb.errPush("return: this return and an earlier one yield a runtime and a compile-time value;"
+                                + " cast the compile-time one to a dynamic type");
+                        yield EResult.errs(erb.errors());
+                    }
+                    if (target.landing.carries) argument = target.landing.resultType;
                 } else if (target.landing.resultType.optIsSome()) {
                     erb.errPush("return: this return yields no value but an earlier return in the block does");
                     yield EResult.errs(erb.errors());
                 }
-                Opt<Type> argument = retValue.optIsSome() && xx.target.targetValueIsRuntime(xx, retValue.optUnwrap())
-                        ? Opt.some(target.landing.resultType.optUnwrap())
-                        : Opt.none();
                 EResult<JumpKey> destRes;
                 exitDestCompute:
                 {
@@ -1650,12 +1658,6 @@ public final class ConstEval {
             }
             innerCv = fallConvRes.requireValue("labeledConsume fallthrough convert");
         }
-        Opt<Type> argument = !arrivals.isEmpty()
-                        && arrivals.get(0).value().optIsSome()
-                        && xx.target.targetValueIsRuntime(
-                                xx, arrivals.get(0).value().optUnwrap())
-                ? level.landing.resultType
-                : Opt.none();
         var blocks = level.scopeLevelEmission().blocks;
         boolean fallsThrough =
                 switch (innerCv.outcome()) {
@@ -1663,6 +1665,21 @@ public final class ConstEval {
                     case EvalOutcome.NoValue nv -> true;
                     case EvalOutcome.HasValue hv -> true;
                 };
+        if (!arrivals.isEmpty() && fallsThrough && innerCv.value().optIsSome()) {
+            var exitRes = xx.target.targetExitValue(xx, loc, innerCv);
+            if (exitRes.hasErrors()) {
+                exitRes.drainInto(erb.errors());
+                return EResult.errs(erb.errors());
+            }
+            var exitValue = exitRes.requireValue("labeledConsume fallthrough exit value");
+            innerCv = exitValue.cv();
+            if (exitValue.carries() != level.landing.carries) {
+                erb.errPush("block: the end of the block and a return site yield a runtime and a compile-time"
+                        + " value; cast the compile-time one to a dynamic type");
+                return EResult.errs(erb.errors());
+            }
+        }
+        Opt<Type> argument = !arrivals.isEmpty() && level.landing.carries ? level.landing.resultType : Opt.none();
         if (!arrivals.isEmpty()
                 && fallsThrough
                 && level.landing.resultType.optIsSome()

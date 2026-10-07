@@ -56,10 +56,6 @@ public final class T0205EcosystemWatTest {
         }
     }
 
-    static String helloBytes() {
-        return EcoHelloWasi.MESSAGE.replace("\n", "\\0a") + "\\00";
-    }
-
     static final String WASI_IMPORTS =
             """
             (import "wasi_snapshot_preview1" "fd_write" (func $fd_write (param i32) (param i32) (param i32) (param i32) (result i32)))
@@ -85,7 +81,7 @@ public final class T0205EcosystemWatTest {
                   (export "_start" (func $_start))
                 )
                 """
-                        .formatted(helloBytes());
+                        .formatted(EcoHelloWasi.MESSAGE.replace("\n", "\\0a") + "\\00");
     }
 
     @Test
@@ -108,7 +104,11 @@ public final class T0205EcosystemWatTest {
         if (onPath("wasmtime")) assertEquals(EcoHelloWasi.MESSAGE, run(tmp, "wasmtime", file.toString()));
     }
 
-    private static TList<SourceExpr> exitCodeModule(EcoMb e) {
+    @Test
+    public void test00020ControlFlow(@TempDir Path tmp) throws IOException {
+        var src = tmp.resolve("src");
+        writeTarget(src);
+        var e = new EcoMb();
         var setup = new TList<SourceExpr>();
         setup.add(e.let("wasm", e.importLocal("wasm", "wat-2.0.atz")));
         setup.add(e.let("wasi", e.importLocal("wasi", "wasi-0.1.atz")));
@@ -140,7 +140,6 @@ public final class T0205EcosystemWatTest {
                 e.call(
                         e.fld(e.v("wasm"), "import_fn"),
                         e.rec(
-                                e.p("mod", e.v("m")),
                                 e.p("module", e.fld(e.v("wasi"), "module")),
                                 e.p("name", e.s("proc_exit")),
                                 e.p("ty", e.v("proc_exit_fn_t"))))));
@@ -194,14 +193,8 @@ public final class T0205EcosystemWatTest {
                                                                 narrowed)))))))));
         top.add(e.callM(e.v("m"), "export", e.s("_start")));
         top.add(e.call(e.mb.log(), e.fld(e.callM0(e.v("m"), "render"), "wat")));
-        return top;
-    }
-
-    @Test
-    public void test00020ControlFlow(@TempDir Path tmp) throws IOException {
-        var src = tmp.resolve("src");
-        writeTarget(src);
-        writeModule(src.resolve("main.at"), exitCodeModule(new EcoMb()));
+        var exitCodeModule = top;
+        writeModule(src.resolve("main.at"), exitCodeModule);
         var ok = compileOk(src.resolve("main.at"), tmp.resolve("cache"));
         assertEquals(1, ok.logs().size());
         var wat = ok.logs().get(0).message();
@@ -276,16 +269,34 @@ public final class T0205EcosystemWatTest {
                 wat.substring(wat.indexOf("  (func $_start"), wat.indexOf("  (export")));
     }
 
-    private static TList<SourceExpr> importsModule(EcoMb e, String... names) {
+    private record Imp(String name, int nargs, int calls) {}
+
+    @Test
+    public void test00005WitxLowering(@TempDir Path tmp) throws IOException {
+        var src = tmp.resolve("src");
+        writeTarget(src);
+        var e = new EcoMb();
+        var imps = new Imp[] {
+            new Imp("args_sizes_get", 2, 1),
+            new Imp("args_get", 2, 2),
+            new Imp("fd_seek", 4, 1),
+            new Imp("path_open", 9, 1),
+            new Imp("clock_time_get", 3, 1),
+            new Imp("random_get", 2, 1),
+            new Imp("proc_exit", 1, 1),
+            new Imp("fd_prestat_get", 2, 1),
+            new Imp("sock_recv", 6, 1),
+            new Imp("fd_close", 1, 0)
+        };
         var setup = new TList<SourceExpr>();
         setup.add(e.let("wasm", e.importLocal("wasm", "wat-2.0.atz")));
         setup.add(e.let("wasi", e.importLocal("wasi", "wasi-0.1.atz")));
         setup.add(e.let("m", e.call(e.fld(e.v("wasm"), "new"), e.tup())));
         var fields = new TList<EcoMb.P>();
         fields.add(e.p("m", e.v("m")));
-        for (var n : names) {
-            setup.add(e.let(n + "_t", e.callM(e.fld(e.v("wasi"), "fn_types"), "get", e.s(n))));
-            fields.add(e.p(n + "_t", e.v(n + "_t")));
+        for (var i : imps) {
+            setup.add(e.let(i.name() + "_t", e.callM(e.fld(e.v("wasi"), "fn_types"), "get", e.s(i.name()))));
+            fields.add(e.p(i.name() + "_t", e.v(i.name() + "_t")));
         }
         setup.add(e.ret(e.rec(fields.toArray(EcoMb.P[]::new))));
         var top = new TList<SourceExpr>();
@@ -293,36 +304,46 @@ public final class T0205EcosystemWatTest {
         top.add(e.let("wasi", e.importLocal("wasi", "wasi-0.1.atz")));
         top.add(e.let("k", e.lower(e.mb.seq(setup))));
         top.add(e.let("m", e.fld(e.v("k"), "m")));
-        for (var n : names) {
+        for (var i : imps) {
+            top.add(e.let(
+                    i.name(),
+                    e.call(
+                            e.fld(e.v("wasm"), "import_fn"),
+                            e.rec(
+                                    e.p("module", e.fld(e.v("wasi"), "module")),
+                                    e.p("name", e.s(i.name())),
+                                    e.p("ty", e.fld(e.v("k"), i.name() + "_t"))))));
+        }
+        for (var i : imps) {
+            if (i.calls() == 0) continue;
+            var params = new SourceExpr[i.nargs()];
+            var args = new SourceExpr[i.nargs()];
+            for (int a = 0; a < i.nargs(); a++) {
+                params[a] = e.s("a" + a);
+                args[a] = e.v("a" + a);
+            }
+            var call = e.call(e.lower(e.v(i.name())), args.length == 1 ? args[0] : e.tup(args));
+            SourceExpr body;
+            if (i.calls() == 1) {
+                body = call;
+            } else {
+                var stmts = new TList<SourceExpr>();
+                for (int c = 0; c < i.calls() - 1; c++) stmts.add(call);
+                stmts.add(e.ret(call));
+                body = e.mb.seq(stmts);
+            }
             top.add(e.call(
-                    e.fld(e.v("wasm"), "import_fn"),
+                    e.fld(e.v("wasm"), "func_fn"),
                     e.rec(
                             e.p("mod", e.v("m")),
-                            e.p("module", e.fld(e.v("wasi"), "module")),
-                            e.p("name", e.s(n)),
-                            e.p("ty", e.fld(e.v("k"), n + "_t")))));
+                            e.p("name", e.s("use_" + i.name())),
+                            e.p("params", e.tup(params)),
+                            e.p("ty", e.fld(e.v("k"), i.name() + "_t")),
+                            e.p("body", e.stage(body)))));
         }
         top.add(e.call(e.mb.log(), e.fld(e.callM0(e.v("m"), "render"), "wat")));
-        return top;
-    }
-
-    @Test
-    public void test00005WitxLowering(@TempDir Path tmp) throws IOException {
-        var src = tmp.resolve("src");
-        writeTarget(src);
-        writeModule(
-                src.resolve("main.at"),
-                importsModule(
-                        new EcoMb(),
-                        "args_sizes_get",
-                        "args_get",
-                        "fd_seek",
-                        "path_open",
-                        "clock_time_get",
-                        "random_get",
-                        "proc_exit",
-                        "fd_prestat_get",
-                        "sock_recv"));
+        var importsModule = top;
+        writeModule(src.resolve("main.at"), importsModule);
         var ok = compileOk(src.resolve("main.at"), tmp.resolve("cache"));
         var wat = ok.logs().get(0).message();
         assertEquals(
@@ -338,9 +359,8 @@ public final class T0205EcosystemWatTest {
                   (import "wasi_snapshot_preview1" "fd_prestat_get" (func $fd_prestat_get (param i32) (param i32) (result i32)))
                   (import "wasi_snapshot_preview1" "sock_recv" (func $sock_recv (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (result i32)))
                   (memory (export "memory") 1)
-                )
                 """,
-                wat);
+                wat.substring(0, wat.indexOf("  (func $use_")));
         if (onPath("wat2wasm")) {
             var file = tmp.resolve("imports.wat");
             Files.writeString(file, wat);
@@ -351,6 +371,116 @@ public final class T0205EcosystemWatTest {
                     "-o",
                     tmp.resolve("imports.wasm").toString());
         }
+    }
+
+    @Test
+    public void test00025PointerLoad(@TempDir Path tmp) throws IOException {
+        var src = tmp.resolve("src");
+        writeTarget(src);
+        var e = new EcoMb();
+        var setup = new TList<SourceExpr>();
+        setup.add(e.let("wasm", e.importLocal("wasm", "wat-2.0.atz")));
+        setup.add(e.let("wasi", e.importLocal("wasi", "wasi-0.1.atz")));
+        setup.add(e.let("m", e.call(e.fld(e.v("wasm"), "new"), e.tup())));
+        EcoWat.bindTypes(e, setup);
+        setup.add(e.let("proc_exit_fn_t", e.callM(e.fld(e.v("wasi"), "fn_types"), "get", e.s("proc_exit"))));
+        setup.add(e.let(
+                "start_fn_t",
+                e.call(
+                        e.fld(e.v("wasm"), "fn"),
+                        e.rec(e.p("params", e.listNew(e.mb.evalType())), e.p("ret", e.v("t_void"))))));
+        setup.add(e.ret(e.rec(
+                e.p("m", e.v("m")),
+                e.p("proc_exit_fn_t", e.v("proc_exit_fn_t")),
+                e.p("start_fn_t", e.v("start_fn_t")),
+                e.p("t_u32", e.v("t_u32")))));
+        var top = new TList<SourceExpr>();
+        top.add(e.let("wasm", e.importLocal("wasm", "wat-2.0.atz")));
+        top.add(e.let("wasi", e.importLocal("wasi", "wasi-0.1.atz")));
+        top.add(e.let("k", e.lower(e.mb.seq(setup))));
+        for (var n : new String[] {"m", "proc_exit_fn_t", "start_fn_t", "t_u32"}) top.add(e.let(n, e.fld(e.v("k"), n)));
+        top.add(e.let(
+                "proc_exit",
+                e.call(
+                        e.fld(e.v("wasm"), "import_fn"),
+                        e.rec(
+                                e.p("module", e.fld(e.v("wasi"), "module")),
+                                e.p("name", e.s("proc_exit")),
+                                e.p("ty", e.v("proc_exit_fn_t"))))));
+        top.add(e.let(
+                "cell",
+                e.call(
+                        e.fld(e.v("wasm"), "data_fn"),
+                        e.rec(
+                                e.p("mod", e.v("m")),
+                                e.p("name", e.s("cell")),
+                                e.p("elem", e.v("t_u32")),
+                                e.p("values", e.tup(e.n(7), e.n(37)))))));
+        top.add(e.call(
+                e.fld(e.v("wasm"), "func_fn"),
+                e.rec(
+                        e.p("mod", e.v("m")),
+                        e.p("name", e.s("_start")),
+                        e.p("params", e.tup()),
+                        e.p("ty", e.v("start_fn_t")),
+                        e.p(
+                                "body",
+                                e.stage(e.call(
+                                        e.lower(e.v("proc_exit")), e.mb.field(e.lower(e.v("cell")), e.n(1))))))));
+        top.add(e.callM(e.v("m"), "export", e.s("_start")));
+        top.add(e.call(e.mb.log(), e.fld(e.callM0(e.v("m"), "render"), "wat")));
+        writeModule(src.resolve("main.at"), top);
+        var ok = compileOk(src.resolve("main.at"), tmp.resolve("cache"));
+        var wat = ok.logs().get(0).message();
+        assertEquals(
+                """
+                  (func $_start
+                    (local $t0 i32)
+                    i32.const 1
+                    i32.const 4
+                    i32.mul
+                    local.set $t0
+                    i32.const 8
+                    local.get $t0
+                    i32.add
+                    i32.load offset=0
+                    call $proc_exit
+                  )
+                """,
+                wat.substring(wat.indexOf("  (func $_start"), wat.indexOf("  (export")));
+        var file = tmp.resolve("load.wat");
+        Files.writeString(file, wat);
+        if (onPath("wat2wasm"))
+            run(tmp, "wat2wasm", file.toString(), "-o", tmp.resolve("load.wasm").toString());
+        if (onPath("wasmtime")) assertEquals(37, exitCode(tmp, "wasmtime", file.toString()));
+    }
+
+    @Test
+    public void test00008HelloStaticLibrary(@TempDir Path tmp) throws IOException {
+        var src = tmp.resolve("src");
+        writeHello(src, EcoHelloWasi.Mode.WAT_LIB);
+        var e = new EcoMb();
+        var setup = new TList<SourceExpr>();
+        setup.add(e.let("wasi", e.importLocal("wasi", "wasi-0.1.atz")));
+        setup.add(e.let("fd_write_fn_t", e.callM(e.fld(e.v("wasi"), "fn_types"), "get", e.s("fd_write"))));
+        setup.add(e.ret(e.rec(e.p("fd_write_fn_t", e.v("fd_write_fn_t")))));
+        var top = new TList<SourceExpr>();
+        top.add(e.let("wasm", e.importLocal("wasm", "wat-2.0.atz")));
+        top.add(e.let("wasi", e.importLocal("wasi", "wasi-0.1.atz")));
+        top.add(e.let("k", e.lower(e.mb.seq(setup))));
+        top.add(e.ret(e.rec(e.p(
+                "fd_write",
+                e.call(
+                        e.fld(e.v("wasm"), "import_fn"),
+                        e.rec(
+                                e.p("module", e.fld(e.v("wasi"), "module")),
+                                e.p("name", e.s("fd_write")),
+                                e.p("ty", e.fld(e.v("k"), "fd_write_fn_t"))))))));
+        var libModule = top;
+        writeModule(src.resolve(EcoHelloWasi.LIB_FILE), libModule);
+        var ok = compileOk(src.resolve("hello-wasi.atz"), tmp.resolve("cache"));
+        assertEquals(1, ok.logs().size());
+        assertEquals(expectedHelloWat(), ok.logs().get(0).message());
     }
 
     @Test

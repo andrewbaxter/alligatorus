@@ -474,25 +474,12 @@ final class EcoTargetMb {
             SourceExpr canCastTo,
             SourceExpr castTo,
             SourceExpr isEqual) {
-        x.add(e.implInterface(e.v(obj), e.mb.evalValue(), e.p("type", outer(e))));
         x.add(e.implInterface(e.v(obj), aspIface(e, "type"), e.p("type", body(e, e.ret(outer(e))))));
-        x.add(e.implInterface(
-                e.v(obj),
-                aspIface(e, "artifact"),
-                e.p("exporter", e.call(e.evalBuiltin("exporter_source_object_type_instance"), e.tup()))));
         x.add(e.implInterface(
                 e.v(obj),
                 e.mb.evalType(),
                 e.p("desc", desc),
-                e.p(
-                        "aspect",
-                        e.ifElse(
-                                e.mb.operatorEq(e.fld(e.v("arg"), "key"), aspId(e, "type")),
-                                e.optSome(e.mb.typesAspect(), e.v("outer")),
-                                e.ifElse(
-                                        e.mb.operatorEq(e.fld(e.v("arg"), "key"), aspId(e, "artifact")),
-                                        e.optSome(e.mb.typesAspect(), e.v("outer")),
-                                        dispatch))),
+                e.p("aspect", dispatch),
                 e.p("can_cast_from", canCastFrom),
                 e.p("cast_from", castFrom),
                 e.p("can_cast_to", canCastTo),
@@ -555,7 +542,7 @@ final class EcoTargetMb {
             e.mb.evalAspectBindDynamicId(), e.mb.evalAspectConsumeDynamicId(), e.mb.evalAspectDropDynamicId()
         };
         var branches = new TList<TestMb.Branch>();
-        for (var own : new String[] {"lift", "bind", "initial_bind_dynamic", "field_use_dynamic"}) {
+        for (var own : new String[] {"lift", "bind", "initial_bind_dynamic", "field_use_dynamic", "artifact"}) {
             branches.add(rtBranch(e, aspId(e, own), e.optSome(e.mb.typesAspect(), outer(e))));
         }
         for (var id : delegated) {
@@ -570,6 +557,21 @@ final class EcoTargetMb {
 
     static SourceExpr castFromSelf(EcoMb e) {
         return body(e, e.ret(okCve(e, a(e, "cv"))));
+    }
+
+    static EcoMb.P[] structuralExits(EcoMb e) {
+        return new EcoMb.P[] {
+            e.p("source_value", body(e, e.ret(okCve(e, a(e, "cv"))))),
+            e.p(
+                    "exit_value",
+                    body(
+                            e,
+                            e.ret(e.eresultOk(
+                                    e.mb.typesExitValue(),
+                                    e.call(
+                                            e.mb.evalExitValue(),
+                                            e.rec(e.p("carries", e.b(false)), e.p("cv", a(e, "cv"))))))))
+        };
     }
 
     static SourceExpr isRuntime(EcoMb e, SourceExpr cv) {
@@ -634,6 +636,10 @@ final class EcoTargetMb {
     }
 
     static void rtBindImpl(EcoMb e, TList<SourceExpr> x, String obj, SourceExpr underType) {
+        x.add(e.implInterface(
+                e.v(obj),
+                aspIface(e, "artifact"),
+                e.p("exporter", e.call(e.evalBuiltin("exporter_object_const"), underType))));
         x.add(e.implInterface(
                 e.v(obj),
                 e.mb.evalAspectBind(),

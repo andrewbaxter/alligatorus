@@ -27,7 +27,7 @@ public sealed interface TypeObjectCastRule {
 
         @Override
         public EResult<CodeValue> typeObjectCastRuleApply(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-            return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, destType));
+            return DynUtil.consumeThenRestamp(xx, loc, cv, destType);
         }
     }
 

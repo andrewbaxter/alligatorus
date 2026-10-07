@@ -8,12 +8,16 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.EvalRootEmitter;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.AspectTuple;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenCodegenDescriptors;
+import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.Opt;
 
@@ -65,8 +69,21 @@ public record AspectFunctionMapConstructorConst(TypeMapConstructorConst type) im
         var keyValue = keySome.value();
         var valueValue = valueSome.value();
         if (DynUtil.valueIsRuntime(keyValue) || DynUtil.valueIsRuntime(valueValue)) {
-            return DynUtil.typeConstructRuntime2(
-                    xx, loc, self, keyCv, valueCv, GenCodegenDescriptors.DYN_RUNTIME_MAP_TYPE);
+            var keyMat = DynUtil.materialize(xx, loc, keyCv);
+            if (keyMat.hasErrors()) return keyMat.reerr();
+            var valueMat = DynUtil.materialize(xx, loc, valueCv);
+            if (valueMat.hasErrors()) return valueMat.reerr();
+            var b = new JavaBytecodeBuilder(loc);
+            var carryRes = b.addCode(loc, self.code());
+            if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
+            var keyReg = b.reg(keyMat.requireValue("map constructor key"));
+            var valueReg = b.reg(valueMat.requireValue("map constructor value"));
+            var xxReg = b.getStatic(
+                    JavaInternalName.of(xx.vx.evalRootInternalName.optUnwrap()),
+                    EvalRootEmitter.EXPR_CONTEXT_FIELD,
+                    EvalRootEmitter.DESC_EXPR_CONTEXT);
+            var out = b.invokeStatic(GenCodegenDescriptors.DYN_RUNTIME_MAP_TYPE, xxReg, keyReg, valueReg);
+            return EResult.ok(DynUtil.regToValue(b.code(), out, GenType.dynamicType()));
         }
         var keyAtRes = GenAspectType.get(xx, loc, keyValue.valueType());
         if (keyAtRes.hasErrors()) return keyAtRes.reerr();
