@@ -25,6 +25,7 @@ import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.main.safejson.JsonValues;
 import compilerxyz.main.syntax.HashValue;
+import compilerxyz.main.syntax.RemoteOrigin;
 import compilerxyz.main.syntax.SourceModule;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Opt;
@@ -64,7 +65,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 24;
+    private static final int SCHEMA_VERSION = 26;
 
     private final Connection conn;
     private final Object dbLock = new Object();
@@ -283,8 +284,14 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             }
             case SourceSpecAbsolute.Local l -> {
                 var file = Path.of(l.path());
+                if (Files.isDirectory(file)) {
+                    return Result.ok(new SourceResolved.Bundle(l));
+                }
                 if (!Files.isRegularFile(file)) {
                     return Result.err("local source not found: " + l.path());
+                }
+                if (!isModulePath(l.path())) {
+                    return Result.ok(new SourceResolved.File());
                 }
                 long mtime;
                 try {
@@ -313,7 +320,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             }
             case SourceSpecAbsolute.Remote r -> {
                 byte[] bytes;
-                switch (remoteBytes(r.baseUrl(), r.hash())) {
+                switch (remoteBytes(r.origin())) {
                     case Result.Ok<byte[], String> ok -> bytes = ok.value();
                     case Result.Err<byte[], String> err -> {
                         return Result.err(err.error());
@@ -322,19 +329,34 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 var isZip = isZip(bytes);
                 if (r.subpath().isEmpty()) {
                     if (isZip) return Result.ok(new SourceResolved.Bundle(r));
+                    if (!isModulePath(r.origin().remoteOriginDesc())) return Result.ok(new SourceResolved.File());
                     var specKey = r.sourceSpecAbsoluteSpecKey();
                     return widen(sourceShared(specKey, Opt.none(), () -> {
                         SourceModule module;
                         try {
                             module = SourceModuleCodec.deserialize(moduleText(bytes));
                         } catch (IOException | RuntimeException e) {
-                            return Result.err("failed to parse remote source " + r.baseUrl() + ": " + e.getMessage());
+                            return Result.err("failed to parse remote source "
+                                    + r.origin().remoteOriginDesc() + ": " + e.getMessage());
                         }
                         return Result.ok(new SourceResolved.Module(sourceIdFor(specKey), module, Opt.none()));
                     }));
                 }
                 if (!isZip) {
                     return Result.err("remote source is not a bundle but a subpath was requested: " + r.subpath());
+                }
+                if (zipHasDirectory(bytes, r.subpath())) {
+                    return Result.ok(new SourceResolved.Bundle(r));
+                }
+                if (!isModulePath(r.subpath())) {
+                    switch (zipEntryBytes(bytes, r.subpath())) {
+                        case Result.Ok<byte[], String> ok -> {
+                            return Result.ok(new SourceResolved.File());
+                        }
+                        case Result.Err<byte[], String> err -> {
+                            return Result.err(err.error());
+                        }
+                    }
                 }
                 byte[] entryBytes;
                 switch (zipEntryBytes(bytes, r.subpath())) {
@@ -349,7 +371,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                     try {
                         module = SourceModuleCodec.deserialize(moduleText(entryBytes));
                     } catch (IOException | RuntimeException e) {
-                        return Result.err("failed to parse remote source " + r.baseUrl() + ": " + e.getMessage());
+                        return Result.err("failed to parse remote source "
+                                + r.origin().remoteOriginDesc() + ": " + e.getMessage());
                     }
                     return Result.ok(new SourceResolved.Module(sourceIdFor(entryKey), module, Opt.none()));
                 }));
@@ -357,11 +380,16 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         }
     }
 
-    private Result<byte[], String> remoteBytes(String url, HashValue hash) {
+    static boolean isModulePath(String path) {
+        return path.endsWith(".at") || path.endsWith(".atz");
+    }
+
+    private Result<byte[], String> remoteBytes(RemoteOrigin origin) {
+        var key = origin.remoteOriginKey();
         byte[] cached;
         synchronized (dbLock) {
             try (var ps = conn.prepareStatement("SELECT bytes FROM remote_bytes WHERE url = ?")) {
-                ps.setString(1, url);
+                ps.setString(1, key);
                 try (var rs = ps.executeQuery()) {
                     cached = rs.next() ? rs.getBytes(1) : null;
                 }
@@ -369,46 +397,134 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 throw new RuntimeException("CacheReal.loadRemoteBytes", e);
             }
         }
-        Result<byte[], String> bytesRes;
         if (cached != null) {
-            bytesRes = verifyHash(url, cached, hash);
-        } else {
-            byte[] fetched = null;
-            Result<byte[], String> fetchResult;
-            try {
-                var response = http.send(
-                        HttpRequest.newBuilder(URI.create(url)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
-                if (response.statusCode() != 200) {
-                    fetchResult = Result.err("remote fetch failed (" + response.statusCode() + "): " + url);
-                } else {
-                    fetched = response.body();
-                    fetchResult = verifyHash(url, fetched, hash);
-                }
-            } catch (IOException e) {
-                fetchResult = Result.err("remote fetch failed: " + url + ": " + e.getMessage());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                fetchResult = Result.err("remote fetch interrupted: " + url);
-            }
-            if (fetched != null
-                    && switch (fetchResult) {
-                        case Result.Ok<byte[], String> ok -> true;
-                        case Result.Err<byte[], String> err -> false;
-                    }) {
+            return switch (origin) {
+                case RemoteOrigin.Http h -> verifyHash(h.url(), cached, h.hash());
+                case RemoteOrigin.Git g -> Result.ok(cached);
+            };
+        }
+        var fetched =
+                switch (origin) {
+                    case RemoteOrigin.Http h -> httpBytes(h);
+                    case RemoteOrigin.Git g -> gitArchive(g);
+                };
+        switch (fetched) {
+            case Result.Ok<byte[], String> ok -> {
                 synchronized (dbLock) {
                     try (var ps =
                             conn.prepareStatement("INSERT OR REPLACE INTO remote_bytes (url, bytes) VALUES (?, ?)")) {
-                        ps.setString(1, url);
-                        ps.setBytes(2, fetched);
+                        ps.setString(1, key);
+                        ps.setBytes(2, ok.value());
                         ps.executeUpdate();
                     } catch (SQLException e) {
                         throw new RuntimeException("CacheReal.storeRemoteBytes", e);
                     }
                 }
             }
-            bytesRes = fetchResult;
+            case Result.Err<byte[], String> err -> {}
         }
-        return bytesRes;
+        return fetched;
+    }
+
+    private Result<byte[], String> httpBytes(RemoteOrigin.Http origin) {
+        var url = origin.url();
+        try {
+            var response = http.send(
+                    HttpRequest.newBuilder(URI.create(url)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() != 200) {
+                return Result.err("remote fetch failed (" + response.statusCode() + "): " + url);
+            }
+            return verifyHash(url, response.body(), origin.hash());
+        } catch (IOException e) {
+            return Result.err("remote fetch failed: " + url + ": " + e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Result.err("remote fetch interrupted: " + url);
+        }
+    }
+
+    private static Result<byte[], String> gitArchive(RemoteOrigin.Git origin) {
+        Path dir;
+        try {
+            dir = Files.createTempDirectory("allig-git");
+        } catch (IOException e) {
+            return Result.err("git fetch: cannot create a work directory: " + e.getMessage());
+        }
+        try {
+            for (var argv : new String[][] {
+                {"git", "init", "-q", "."},
+                {"git", "fetch", "-q", "--depth", "1", origin.url(), origin.commit()},
+            }) {
+                var res = runGit(dir, argv);
+                if (res.optIsSome()) return Result.err(res.optUnwrap());
+            }
+            var head = gitOutput(dir, "git", "rev-parse", "FETCH_HEAD");
+            switch (head) {
+                case Result.Ok<byte[], String> ok -> {
+                    var got = new String(ok.value(), StandardCharsets.UTF_8).trim();
+                    if (!got.equals(origin.commit())) {
+                        return Result.err("git fetch of " + origin.remoteOriginDesc() + " yielded commit " + got);
+                    }
+                }
+                case Result.Err<byte[], String> err -> {
+                    return Result.err(err.error());
+                }
+            }
+            return gitOutput(dir, "git", "archive", "--format=zip", "FETCH_HEAD");
+        } finally {
+            deleteRecursively(dir);
+        }
+    }
+
+    private static Opt<String> runGit(Path dir, String... argv) {
+        switch (gitOutput(dir, argv)) {
+            case Result.Ok<byte[], String> ok -> {
+                return Opt.none();
+            }
+            case Result.Err<byte[], String> err -> {
+                return Opt.some(err.error());
+            }
+        }
+    }
+
+    private static Result<byte[], String> gitOutput(Path dir, String... argv) {
+        try {
+            var proc = new ProcessBuilder(argv)
+                    .directory(dir.toFile())
+                    .redirectError(ProcessBuilder.Redirect.PIPE)
+                    .start();
+            var out = proc.getInputStream().readAllBytes();
+            var err = new String(proc.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+            var code = proc.waitFor();
+            if (code != 0) return Result.err(String.join(" ", argv) + " failed (" + code + "): " + err.trim());
+            return Result.ok(out);
+        } catch (IOException e) {
+            return Result.err(String.join(" ", argv) + " failed: " + e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Result.err(String.join(" ", argv) + " interrupted");
+        }
+    }
+
+    private static void deleteRecursively(Path dir) {
+        try (var walk = Files.walk(dir)) {
+            for (var p : walk.sorted(java.util.Comparator.reverseOrder()).toList()) Files.deleteIfExists(p);
+        } catch (IOException e) {
+            throw new RuntimeException("CacheReal.deleteRecursively " + dir, e);
+        }
+    }
+
+    private static boolean zipHasDirectory(byte[] bundle, String subpath) {
+        var prefix = subpath.endsWith("/") ? subpath : subpath + "/";
+        try (var zin = new ZipInputStream(new ByteArrayInputStream(bundle))) {
+            ZipEntry entry;
+            while ((entry = zin.getNextEntry()) != null) {
+                if (entry.getName().startsWith(prefix)) return true;
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("CacheReal.zipHasDirectory", e);
+        }
+        return false;
     }
 
     private static Result<byte[], String> zipEntryBytes(byte[] bundle, String subpath) {
@@ -465,7 +581,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             }
             case SourceSpecAbsolute.Remote r -> {
                 byte[] bytes;
-                switch (remoteBytes(r.baseUrl(), r.hash())) {
+                switch (remoteBytes(r.origin())) {
                     case Result.Ok<byte[], String> ok -> bytes = ok.value();
                     case Result.Err<byte[], String> err -> {
                         return Result.err(err.error());

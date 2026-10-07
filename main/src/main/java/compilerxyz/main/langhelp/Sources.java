@@ -16,6 +16,8 @@ public interface Sources {
     sealed interface SourceResolved {
         record Module(SourceId id, SourceModule module, Opt<Compiles.LocalMeta> local) implements SourceResolved {}
 
-        record Bundle(SourceSpecAbsolute.Remote base) implements SourceResolved {}
+        record Bundle(SourceSpecAbsolute base) implements SourceResolved {}
+
+        record File() implements SourceResolved {}
     }
 }

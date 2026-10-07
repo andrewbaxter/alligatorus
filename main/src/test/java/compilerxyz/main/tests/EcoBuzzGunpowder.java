@@ -298,51 +298,45 @@ final class EcoBuzzGunpowder {
             k.def(e, op + "_fn_t", e.callM(e.v("pw"), op + "_buffer_t", e.v("t_buf_audio")));
         }
         {
-            var paths = new TList<SourceExpr>();
             var frames = new TList<EcoMb.P>();
-            for (var w : EcoBuzzGunpowderData.WAVES) {
-                paths.add(e.s(w.path()));
-                frames.add(e.p(w.path(), e.intOf(w.frames())));
-            }
-            k.exprs.add(e.let("wav_paths", e.strList(paths.toArray(SourceExpr[]::new))));
+            for (var w : EcoBuzzGunpowderData.WAVES) frames.add(e.p(w.path(), e.intOf(w.frames())));
             k.exprs.add(e.let(
                     "wav_expected", e.mapNew(e.mb.typesString(), e.mb.typesIntBox(), frames.toArray(EcoMb.P[]::new))));
             for (var f : WAV_FIELDS) k.exprs.add(e.let("wav_" + f, e.mapNew(e.mb.typesString(), e.mb.typesIntBox())));
-            var path = e.v("ws");
             var hdr = e.v("h");
-            k.exprs.add(e.foreach(
-                    e.v("wav_paths"),
-                    "ws",
-                    e.seq(
-                            e.let(
-                                    "h",
-                                    e.callM(
-                                            e.call(e.mb.builtin("file", "open"), path),
-                                            "read",
-                                            e.rec(e.p("offset", e.intOf(0)), e.p("len", e.intOf(WAV_HEADER))))),
-                            check(e, eq(e, u32At(e, hdr, 0), e.n(tag("RIFF"))), path, ": not a RIFF file"),
-                            check(e, eq(e, u32At(e, hdr, 8), e.n(tag("WAVE"))), path, ": not a WAVE file"),
-                            check(e, eq(e, u32At(e, hdr, 12), e.n(tag("fmt "))), path, ": fmt chunk not first"),
-                            check(e, eq(e, u32At(e, hdr, 16), e.n(16)), path, ": fmt chunk is not 16 bytes"),
-                            check(e, eq(e, u16At(e, hdr, 20), e.n(1)), path, ": not PCM"),
-                            check(e, eq(e, u16At(e, hdr, 34), e.n(16)), path, ": not 16-bit"),
-                            check(e, eq(e, u32At(e, hdr, 36), e.n(tag("data"))), path, ": data chunk not at 36"),
-                            e.let("ch", u16At(e, hdr, 22)),
-                            e.let("rate", u32At(e, hdr, 24)),
-                            e.let("len", u32At(e, hdr, 40)),
-                            e.let("frames", div(e, e.v("len"), mul(e, e.v("ch"), e.n(2)))),
-                            check(
-                                    e,
-                                    eq(
-                                            e,
-                                            e.v("frames"),
-                                            e.mb.as(e.callM(e.v("wav_expected"), "get", path), e.mb.typesInt())),
-                                    path,
-                                    ": frame count differs from the song's wave table"),
-                            e.callM(e.v("wav_ch"), "put", e.tup(path, e.v("ch"))),
-                            e.callM(e.v("wav_rate"), "put", e.tup(path, e.v("rate"))),
-                            e.callM(e.v("wav_len"), "put", e.tup(path, e.v("len"))),
-                            e.callM(e.v("wav_frames"), "put", e.tup(path, e.v("frames"))))));
+            for (var w : EcoBuzzGunpowderData.WAVES) {
+                var path = e.s(w.path());
+                k.exprs.add(e.seq(
+                        e.let(
+                                "h",
+                                e.callM(
+                                        e.importLocal("f", w.path()),
+                                        "read",
+                                        e.rec(e.p("offset", e.intOf(0)), e.p("len", e.intOf(WAV_HEADER))))),
+                        check(e, eq(e, u32At(e, hdr, 0), e.n(tag("RIFF"))), path, ": not a RIFF file"),
+                        check(e, eq(e, u32At(e, hdr, 8), e.n(tag("WAVE"))), path, ": not a WAVE file"),
+                        check(e, eq(e, u32At(e, hdr, 12), e.n(tag("fmt "))), path, ": fmt chunk not first"),
+                        check(e, eq(e, u32At(e, hdr, 16), e.n(16)), path, ": fmt chunk is not 16 bytes"),
+                        check(e, eq(e, u16At(e, hdr, 20), e.n(1)), path, ": not PCM"),
+                        check(e, eq(e, u16At(e, hdr, 34), e.n(16)), path, ": not 16-bit"),
+                        check(e, eq(e, u32At(e, hdr, 36), e.n(tag("data"))), path, ": data chunk not at 36"),
+                        e.let("ch", u16At(e, hdr, 22)),
+                        e.let("rate", u32At(e, hdr, 24)),
+                        e.let("len", u32At(e, hdr, 40)),
+                        e.let("frames", div(e, e.v("len"), mul(e, e.v("ch"), e.n(2)))),
+                        check(
+                                e,
+                                eq(
+                                        e,
+                                        e.v("frames"),
+                                        e.mb.as(e.callM(e.v("wav_expected"), "get", path), e.mb.typesInt())),
+                                path,
+                                ": frame count differs from the song's wave table"),
+                        e.callM(e.v("wav_ch"), "put", e.tup(path, e.v("ch"))),
+                        e.callM(e.v("wav_rate"), "put", e.tup(path, e.v("rate"))),
+                        e.callM(e.v("wav_len"), "put", e.tup(path, e.v("len"))),
+                        e.callM(e.v("wav_frames"), "put", e.tup(path, e.v("frames")))));
+            }
         }
         for (var w : EcoBuzzGunpowderData.WAVES) {
             for (var f : WAV_FIELDS) {
@@ -355,7 +349,7 @@ final class EcoBuzzGunpowder {
                     e,
                     "wb_" + w.index(),
                     e.callM(
-                            e.call(e.mb.builtin("file", "open"), e.s(w.path())),
+                            e.importLocal("f", w.path()),
                             "read",
                             e.rec(e.p("offset", e.intOf(WAV_HEADER)), e.p("len", e.v("wlen_" + w.index())))));
         }

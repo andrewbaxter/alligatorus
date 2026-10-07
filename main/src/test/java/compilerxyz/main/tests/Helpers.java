@@ -152,6 +152,7 @@ public final class Helpers {
         return switch (resolved) {
             case Sources.SourceResolved.Module m -> Compile.compile(gx, entry, m);
             case Sources.SourceResolved.Bundle b -> throw new AssertionError("test entry is a bundle: " + entry);
+            case Sources.SourceResolved.File f -> throw new AssertionError("test entry is not a module: " + entry);
         };
     }
 
@@ -292,7 +293,8 @@ public final class Helpers {
                 }
                 case SourceSpecAbsolute.Local l -> Result.err("test sources do not support local imports: " + l.path());
                 case SourceSpecAbsolute.Remote r ->
-                    Result.err("test sources do not support remote imports: " + r.baseUrl());
+                    Result.err("test sources do not support remote imports: "
+                            + r.origin().remoteOriginDesc());
             };
         }
 

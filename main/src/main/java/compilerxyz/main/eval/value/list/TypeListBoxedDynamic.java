@@ -11,6 +11,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
+import compilerxyz.main.eval.aspect.AspectSetDynamicDefault;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
@@ -28,6 +29,7 @@ import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectLift;
+import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -86,6 +88,9 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicListBoxedDynamic<>(this));
+        }
+        if (key.equals(GenAspectSet.AspectId)) {
+            return Opt.some(AspectSetDynamicDefault.INSTANCE);
         }
         if (key.equals(GenAspectBindDynamic.AspectId)) {
             return Opt.some(new AspectBindDynamicListBoxedDynamic<>(this));

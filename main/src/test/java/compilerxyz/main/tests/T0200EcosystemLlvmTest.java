@@ -525,9 +525,7 @@ public final class T0200EcosystemLlvmTest {
 
     private static SourceExpr fileRead(EcoMb e, String path, int offset, int len) {
         return e.callM(
-                e.call(e.mb.builtin("file", "open"), e.s(path)),
-                "read",
-                e.rec(e.p("offset", e.intOf(offset)), e.p("len", e.intOf(len))));
+                e.importLocal("f", path), "read", e.rec(e.p("offset", e.intOf(offset)), e.p("len", e.intOf(len))));
     }
 
     @Test
@@ -859,6 +857,8 @@ public final class T0200EcosystemLlvmTest {
                     case compilerxyz.main.langhelp.Sources.SourceResolved.Module m -> m.id().value();
                     case compilerxyz.main.langhelp.Sources.SourceResolved.Bundle b ->
                         throw new AssertionError("entry is a bundle: " + entry);
+                    case compilerxyz.main.langhelp.Sources.SourceResolved.File f ->
+                        throw new AssertionError("entry is not a module: " + entry);
                 };
             case Result.Err<compilerxyz.main.langhelp.Sources.SourceResolved, String> err ->
                 throw new AssertionError("entry does not resolve: " + err.error());
@@ -1049,5 +1049,13 @@ public final class T0200EcosystemLlvmTest {
         writeIfChanged(
                 ecosystem.resolve("buzz-gunpowder-valentine-ir.atz"),
                 serializeModuleZ(EcoBuzzGunpowder.module(new EcoMb(), EcoRootMode.IR)));
+        writeIfChanged(ecosystem.resolve("wat-2.0.atz"), serializeModuleZ(EcoWat.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("wasi-0.1.atz"), serializeModuleZ(EcoWasi.module(new EcoMb())));
+        writeIfChanged(
+                ecosystem.resolve("hello-wasi.atz"),
+                serializeModuleZ(EcoHelloWasi.module(new EcoMb(), EcoHelloWasi.Mode.APP)));
+        writeIfChanged(
+                ecosystem.resolve("hello-wasi-wat.atz"),
+                serializeModuleZ(EcoHelloWasi.module(new EcoMb(), EcoHelloWasi.Mode.WAT)));
     }
 }

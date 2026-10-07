@@ -30,6 +30,7 @@ import java.sql.DriverManager;
 import java.util.Arrays;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -290,7 +291,14 @@ public final class T0180ImportRealTest {
         var modBytes = moduleBytes(TList.of(mb.return_(mb.str("from-bundle-mod"))));
         var dataModBytes = moduleBytes(TList.of(mb.return_(mb.call(
                 mb.field(
-                        mb.field(mb.call(mb.builtin("file", "open"), mb.str("data/blob.bin")), mb.str("len")),
+                        mb.field(
+                                mb.field(
+                                        mb.importRecord(
+                                                TList.of(
+                                                        new SourceExpr.RecordEntry(
+                                                                mb.str("f"), mb.sourceLocal(mb.str("data/blob.bin"))))),
+                                        mb.str("f")),
+                                mb.str("len")),
                         mb.str("to_string")),
                 mb.tupleOf()))));
         var zipOut = new ByteArrayOutputStream();
@@ -387,6 +395,69 @@ public final class T0180ImportRealTest {
             sb.append((char) c);
         }
         return sb.toString();
+    }
+
+    private static String git(Path dir, String... args) throws Exception {
+        var argv = new java.util.ArrayList<String>();
+        argv.add("git");
+        argv.addAll(java.util.List.of(args));
+        var proc = new ProcessBuilder(argv)
+                .directory(dir.toFile())
+                .redirectErrorStream(true)
+                .start();
+        var out = new String(proc.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        if (proc.waitFor() != 0) throw new AssertionError("git " + String.join(" ", args) + " failed: " + out);
+        return out.trim();
+    }
+
+    @Test
+    public void test00500GitOrigin(@TempDir Path tmp) throws Exception {
+        Assumptions.assumeTrue(T0200EcosystemLlvmTest.onPath("git"), "git not on PATH");
+        var mb = new TestMb();
+        var repo = tmp.resolve("repo");
+        Files.createDirectories(repo.resolve("lib"));
+        Files.write(repo.resolve("lib/mod.at"), moduleBytes(TList.of(mb.return_(mb.str("from-git-module")))));
+        Files.write(repo.resolve("lib/blob.bin"), new byte[] {9, 8, 7, 6});
+        git(repo, "init", "-q", "-b", "main", ".");
+        git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "add", ".");
+        git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "spec");
+        var commit = git(repo, "rev-parse", "HEAD");
+        var url = repo.toUri().toString();
+
+        var b = mb.field(
+                mb.importRecord(
+                        TList.of(new SourceExpr.RecordEntry(mb.str("b"), mb.sourceGit(mb.str(url), mb.str(commit))))),
+                mb.str("b"));
+        var mainExpr = mb.seqOf(
+                mb.call(mb.log(), mb.field(mb.field(b, mb.str("lib")), mb.str("mod"))),
+                mb.call(
+                        mb.log(),
+                        mb.call(
+                                mb.field(
+                                        mb.field(
+                                                mb.field(mb.field(b, mb.str("lib")), mb.str("blob.bin")),
+                                                mb.str("len")),
+                                        mb.str("to_string")),
+                                mb.tupleOf())));
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
+        var mainFile = src.resolve("main.at");
+        writeModule(mainFile, TList.of(mainExpr));
+        try (var cache = new CacheReal(tmp.resolve("cache"))) {
+            var ok = expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString())));
+            assertEquals("from-git-module", ok.logs().get(0).message());
+            assertEquals("4", ok.logs().get(1).message());
+        }
+        var bad = mb.importRecord(
+                TList.of(new SourceExpr.RecordEntry(mb.str("b"), mb.sourceGit(mb.str(url), mb.str("main")))));
+        writeModule(mainFile, TList.of(mb.call(mb.log(), mb.field(bad, mb.str("b")))));
+        try (var cache = new CacheReal(tmp.resolve("cache2"))) {
+            var res = Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
+            assertTrue(
+                    res instanceof Result.Err<?, ?> err
+                            && err.error().toString().contains("40-digit"),
+                    () -> "" + res);
+        }
     }
 
     private static SourceExpr hashSpec(TestMb mb, byte[] digest) {

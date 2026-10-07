@@ -1,6 +1,5 @@
 package compilerxyz.main.eval.value.source;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
@@ -16,7 +15,6 @@ import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.Value;
-import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -100,28 +98,12 @@ public record AspectFunctionImport(TypeImport type) implements AspectFunction {
                 continue;
             }
             var outcome = outcomeRes.requireValue("import outcome");
-            switch (outcome) {
-                case ImportRun.SpecOutcome.BundleOut b -> {
-                    var bundleValue = new ValueObjectConst(ValueObjectConst.plainTypeType(), new TypeBundle(b.base()));
-                    fields.put(
-                            key,
-                            new RecordField.EvalRes(
-                                    EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(bundleValue)))));
-                }
-                case ImportRun.SpecOutcome.ModuleOut m -> {
-                    switch (m.abs()) {
-                        case SourceSpecAbsolute.Local ignored -> ix.localDependencies.add(m.compileId());
-                        case SourceSpecAbsolute.Virtual v -> {}
-                        case SourceSpecAbsolute.Remote r -> {}
-                    }
-                    var valueRes = ImportRun.materialize(xx, loc, m.res());
-                    if (valueRes.hasErrors()) {
-                        valueRes.drainInto(erb.errors());
-                        continue;
-                    }
-                    fields.put(key, new RecordField.EvalRes(EResult.ok(valueRes.requireValue("import value"))));
-                }
+            var valueRes = ImportRun.outcomeValue(xx, loc, outcome);
+            if (valueRes.hasErrors()) {
+                valueRes.drainInto(erb.errors());
+                continue;
             }
+            fields.put(key, new RecordField.EvalRes(EResult.ok(valueRes.requireValue("import value"))));
         }
         if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
         Value resultRecord = new Record(IOrderedMap.from(fields));

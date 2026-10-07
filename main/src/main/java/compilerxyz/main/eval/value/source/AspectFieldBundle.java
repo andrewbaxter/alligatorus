@@ -1,22 +1,20 @@
 package compilerxyz.main.eval.value.source;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.Eval;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ImportRun;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import java.nio.file.Path;
 
 public record AspectFieldBundle(TypeBundle type) implements AspectField {
 
@@ -39,25 +37,22 @@ public record AspectFieldBundle(TypeBundle type) implements AspectField {
                 return EResult.err(loc, "bundle: field key must be a string");
             }
         }
-        var subSpec =
-                new SourceSpecAbsolute.Remote(type.base().baseUrl(), type.base().hash(), s.value() + ".at");
-        var res = ImportRun.compileAbsolute(xx, loc, subSpec);
+        EResult<ImportRun.SpecOutcome> res = EResult.err(loc, "bundle: no entry " + s.value());
+        for (var name : new String[] {s.value(), s.value() + ".at", s.value() + ".atz"}) {
+            res = ImportRun.compileAbsolute(xx, loc, entrySpec(type.base(), name));
+            if (!res.hasErrors()) break;
+        }
         if (res.hasErrors()) return res.reerr();
-        var outcome = res.requireValue("importAbsolute");
-        return switch (outcome) {
-            case ImportRun.SpecOutcome.BundleOut b ->
-                EResult.ok(new CodeValue(
-                        Code.none(loc),
-                        EvalOutcome.ofValue(
-                                new ValueObjectConst(ValueObjectConst.plainTypeType(), new TypeBundle(b.base())))));
-            case ImportRun.SpecOutcome.ModuleOut m -> {
-                switch (m.abs()) {
-                    case SourceSpecAbsolute.Local ignored -> xx.vx.ix.localDependencies.add(m.compileId());
-                    case SourceSpecAbsolute.Virtual v -> {}
-                    case SourceSpecAbsolute.Remote r -> {}
-                }
-                yield ImportRun.materialize(xx, loc, m.res());
-            }
+        return ImportRun.outcomeValue(xx, loc, res.requireValue("bundle entry"));
+    }
+
+    private static SourceSpecAbsolute entrySpec(SourceSpecAbsolute base, String name) {
+        return switch (base) {
+            case SourceSpecAbsolute.Local l ->
+                new SourceSpecAbsolute.Local(Path.of(l.path(), name).toString());
+            case SourceSpecAbsolute.Remote r ->
+                new SourceSpecAbsolute.Remote(r.origin(), r.subpath().isEmpty() ? name : r.subpath() + "/" + name);
+            case SourceSpecAbsolute.Virtual v -> throw new IllegalStateException("virtual bundle");
         };
     }
 

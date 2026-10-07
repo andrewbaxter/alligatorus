@@ -16,11 +16,11 @@ import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6161L)
-public record TypeBundle(SourceSpecAbsolute.Remote base) implements Aspect, Type {
+public record TypeBundle(SourceSpecAbsolute base) implements Aspect, Type {
 
     @Override
     public String typeDesc() {
-        return "bundle(" + base.baseUrl() + ")";
+        return "bundle(" + base.sourceSpecAbsoluteSpecKey() + ")";
     }
 
     @Override

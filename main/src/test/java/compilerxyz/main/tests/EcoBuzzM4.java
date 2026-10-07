@@ -537,7 +537,7 @@ final class EcoBuzzM4 {
         defs.add(e.let(
                 "wave_bytes",
                 e.callM(
-                        e.call(e.mb.builtin("file", "open"), e.s("buzz-m4-waves.raw")),
+                        e.importLocal("f", "buzz-m4-waves.raw"),
                         "read",
                         e.rec(e.p("offset", e.intOf(0)), e.p("len", e.intOf(WAVES_BYTES))))));
         var fields = new TList<SourceExpr>();

@@ -9,6 +9,7 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
+import compilerxyz.main.eval.aspect.AspectSetDynamicDefault;
 import compilerxyz.main.eval.dynamic.CodeDynamicReg;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
@@ -25,6 +26,7 @@ import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectLift;
+import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -96,6 +98,9 @@ public final class TypeListSpecializedDynamic<T extends Type> implements Aspect,
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicListSpecializedDynamic<>(this));
+        }
+        if (key.equals(GenAspectSet.AspectId)) {
+            return Opt.some(AspectSetDynamicDefault.INSTANCE);
         }
         if (key.equals(GenAspectBindDynamic.AspectId)) {
             return Opt.some(new AspectBindDynamicListSpecializedDynamic<>(this));

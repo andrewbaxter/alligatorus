@@ -89,6 +89,11 @@ public final class Main {
                         System.exit(1);
                         throw new IllegalStateException("unreachable");
                     }
+                    case Sources.SourceResolved.File f -> {
+                        System.err.println("error: entry point must be a module (.at or .atz): " + path);
+                        System.exit(1);
+                        throw new IllegalStateException("unreachable");
+                    }
                 }
             }
         }

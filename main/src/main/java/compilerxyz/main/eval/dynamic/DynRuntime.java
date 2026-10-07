@@ -17,7 +17,9 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.array.ValueArrayConst;
+import compilerxyz.main.eval.value.map.TypeMapDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
+import compilerxyz.main.gen.GenAspectDynamicBoxed;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenLists;
 import compilerxyz.main.gen.GenOptions;
@@ -40,6 +42,17 @@ public final class DynRuntime {
     @CodegenDescriptor
     public static Type optionType(ExprContext xx, Type elementType) {
         return GenOptions.optionDynamic(xx, elementType);
+    }
+
+    @CodegenDescriptor
+    public static Type mapType(ExprContext xx, Type keyType, Type valueType) {
+        for (var check : new Type[] {keyType, valueType}) {
+            if (GenAspectDynamicBoxed.getMaybe(xx, check).optIsSome()) {
+                throw new DynPanic("map type argument cannot be the unboxed primitive " + check.typeDesc()
+                        + "; use its boxed type (e.g. types.int_box)");
+            }
+        }
+        return new TypeMapDynamic<>(keyType, valueType);
     }
 
     @CodegenDescriptor

@@ -17,7 +17,6 @@ import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.ImportRun;
 import compilerxyz.main.eval.LogEntry;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Scope;
@@ -44,6 +43,7 @@ import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.DefinitionSetBuilder;
 import compilerxyz.main.gen.GenAspectNumericConst;
+import compilerxyz.main.gen.ListStoreByte;
 import compilerxyz.main.gen.ListStoreInt;
 import compilerxyz.main.gen.Target;
 import compilerxyz.main.gen.Value;
@@ -60,6 +60,9 @@ import compilerxyz.prelude.util.TMap;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 
 public final class BuiltinBodies {
@@ -157,19 +160,15 @@ public final class BuiltinBodies {
         }
     }
 
-    @BuiltinPath(value = "file.open", scopeId = 5046L)
+    @BuiltinPath(value = "eval.import_file", scopeId = 5046L)
     @BuiltinEvalContext
-    public static FileHandle fileOpen(EvalContext vx, String path) {
+    public static FileHandle importFile(EvalContext vx, String specKey) {
         var ix = vx.ix;
-        SourceSpecAbsolute abs;
-        switch (ImportRun.resolveRelative(ix, path)) {
-            case Result.Ok<SourceSpecAbsolute, String> ok -> abs = ok.value();
-            case Result.Err<SourceSpecAbsolute, String> err -> throw new DynPanic("file.open: " + err.error());
-        }
+        var abs = SourceSpecAbsolute.sourceSpecAbsoluteFromKey(specKey);
         Sources.SourceData data;
         switch (ix.gx.sources.sourcesGetData(abs)) {
             case Result.Ok<Sources.SourceData, String> ok -> data = ok.value();
-            case Result.Err<Sources.SourceData, String> err -> throw new DynPanic("file.open: " + err.error());
+            case Result.Err<Sources.SourceData, String> err -> throw new DynPanic("import: " + err.error());
         }
         if (data.local().optIsSome()) ix.localData.add(data.local().optUnwrap());
         return new FileHandle(data.bytes());
@@ -193,6 +192,22 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.str_utf8", scopeId = 5044L)
     public static byte[] strUtf8(String s) {
         return s.getBytes(StandardCharsets.UTF_8);
+    }
+
+    @BuiltinPath(value = "eval.str_from_utf8", scopeId = 5050L)
+    public static Opt<String> strFromUtf8(ListStoreByte bytes) {
+        var raw = new byte[bytes.size()];
+        for (int i = 0; i < raw.length; i++) raw[i] = bytes.get(i);
+        try {
+            return Opt.some(StandardCharsets.UTF_8
+                    .newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(raw))
+                    .toString());
+        } catch (CharacterCodingException e) {
+            return Opt.none();
+        }
     }
 
     @BuiltinPath(value = "eval.constkey_to_str", scopeId = 5004L)

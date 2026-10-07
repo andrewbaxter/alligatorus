@@ -5,7 +5,7 @@ import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.Binding;
 
-public record AspectInitialBindDynamicSourceRemote(TypeSourceRemote type) implements AspectInitialBindDynamic {
+public record AspectInitialBindDynamicSourceRemoteHttp(TypeSourceRemoteHttp type) implements AspectInitialBindDynamic {
 
     @Override
     public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {

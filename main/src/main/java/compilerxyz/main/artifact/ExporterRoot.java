@@ -15,21 +15,26 @@ import compilerxyz.main.eval.value.bool.TypeBoolConst;
 import compilerxyz.main.eval.value.bool.TypeBoolDynamic;
 import compilerxyz.main.eval.value.byte_.TypeByteConst;
 import compilerxyz.main.eval.value.byte_.TypeByteDynamic;
+import compilerxyz.main.eval.value.byte_.TypeByteDynamicBox;
 import compilerxyz.main.eval.value.code.TypeCodeDynamic;
 import compilerxyz.main.eval.value.double_.TypeDoubleConst;
 import compilerxyz.main.eval.value.double_.TypeDoubleDynamic;
+import compilerxyz.main.eval.value.double_.TypeDoubleDynamicBox;
 import compilerxyz.main.eval.value.eresult.TypeEResultConst;
 import compilerxyz.main.eval.value.eresult.TypeEResultDynamic;
 import compilerxyz.main.eval.value.expr.TypeExpr;
 import compilerxyz.main.eval.value.float_.TypeFloatConst;
 import compilerxyz.main.eval.value.float_.TypeFloatDynamic;
+import compilerxyz.main.eval.value.float_.TypeFloatDynamicBox;
 import compilerxyz.main.eval.value.int_.TypeIntConst;
 import compilerxyz.main.eval.value.int_.TypeIntDynamic;
+import compilerxyz.main.eval.value.int_.TypeIntDynamicBox;
 import compilerxyz.main.eval.value.jvm_object.TypeJvmObjectConst;
 import compilerxyz.main.eval.value.jvm_object.TypeJvmObjectDynamic;
 import compilerxyz.main.eval.value.list.TypeListConst;
 import compilerxyz.main.eval.value.long_.TypeLongConst;
 import compilerxyz.main.eval.value.long_.TypeLongDynamic;
+import compilerxyz.main.eval.value.long_.TypeLongDynamicBox;
 import compilerxyz.main.eval.value.map.TypeMapConst;
 import compilerxyz.main.eval.value.object.TypeObjectConst;
 import compilerxyz.main.eval.value.object.TypeObjectDynamic;
@@ -40,6 +45,7 @@ import compilerxyz.main.eval.value.option.TypeOptionVariantConstructorDynamic;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.short_.TypeShortConst;
 import compilerxyz.main.eval.value.short_.TypeShortDynamic;
+import compilerxyz.main.eval.value.short_.TypeShortDynamicBox;
 import compilerxyz.main.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.main.eval.value.source_interface.TypeInterfaceMethodDynamic;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
@@ -56,13 +62,17 @@ import compilerxyz.main.eval.value.string.TypeStringDynamic;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.ubyte.TypeUbyteConst;
 import compilerxyz.main.eval.value.ubyte.TypeUbyteDynamic;
+import compilerxyz.main.eval.value.ubyte.TypeUbyteDynamicBox;
 import compilerxyz.main.eval.value.uint.TypeUintConst;
 import compilerxyz.main.eval.value.uint.TypeUintDynamic;
+import compilerxyz.main.eval.value.uint.TypeUintDynamicBox;
 import compilerxyz.main.eval.value.ulong.TypeUlongConst;
 import compilerxyz.main.eval.value.ulong.TypeUlongDynamic;
+import compilerxyz.main.eval.value.ulong.TypeUlongDynamicBox;
 import compilerxyz.main.eval.value.unique.TypeUniqueDynamic;
 import compilerxyz.main.eval.value.ushort.TypeUshortConst;
 import compilerxyz.main.eval.value.ushort.TypeUshortDynamic;
+import compilerxyz.main.eval.value.ushort.TypeUshortDynamicBox;
 import compilerxyz.main.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
@@ -378,6 +388,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return nullaryType(TypeByteConst::new);
         }
     },
+    BYTE_DYNAMIC_BOX("byte_dynamic_box") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeByteDynamicBox::new);
+        }
+    },
     BYTE_DYNAMIC("byte_dynamic") {
         @Override
         ExporterRootDelegate delegate() {
@@ -394,6 +410,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return nullaryType(TypeDoubleConst::new);
+        }
+    },
+    DOUBLE_DYNAMIC_BOX("double_dynamic_box") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeDoubleDynamicBox::new);
         }
     },
     DOUBLE_DYNAMIC("double_dynamic") {
@@ -414,6 +436,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return nullaryType(TypeFloatConst::new);
         }
     },
+    FLOAT_DYNAMIC_BOX("float_dynamic_box") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeFloatDynamicBox::new);
+        }
+    },
     FLOAT_DYNAMIC("float_dynamic") {
         @Override
         ExporterRootDelegate delegate() {
@@ -426,6 +454,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return nullaryType(TypeIntConst::new);
         }
     },
+    INT_DYNAMIC_BOX("int_dynamic_box") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeIntDynamicBox::new);
+        }
+    },
     INT_DYNAMIC("int_dynamic") {
         @Override
         ExporterRootDelegate delegate() {
@@ -436,6 +470,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return nullaryType(TypeLongConst::new);
+        }
+    },
+    LONG_DYNAMIC_BOX("long_dynamic_box") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeLongDynamicBox::new);
         }
     },
     LONG_DYNAMIC("long_dynamic") {
@@ -462,6 +502,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return nullaryType(TypeShortConst::new);
         }
     },
+    SHORT_DYNAMIC_BOX("short_dynamic_box") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeShortDynamicBox::new);
+        }
+    },
     SHORT_DYNAMIC("short_dynamic") {
         @Override
         ExporterRootDelegate delegate() {
@@ -486,6 +532,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return nullaryType(TypeUbyteConst::new);
         }
     },
+    UBYTE_DYNAMIC_BOX("ubyte_dynamic_box") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUbyteDynamicBox::new);
+        }
+    },
     UBYTE_DYNAMIC("ubyte_dynamic") {
         @Override
         ExporterRootDelegate delegate() {
@@ -498,6 +550,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return nullaryType(TypeUintConst::new);
         }
     },
+    UINT_DYNAMIC_BOX("uint_dynamic_box") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUintDynamicBox::new);
+        }
+    },
     UINT_DYNAMIC("uint_dynamic") {
         @Override
         ExporterRootDelegate delegate() {
@@ -508,6 +566,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return nullaryType(TypeUlongConst::new);
+        }
+    },
+    ULONG_DYNAMIC_BOX("ulong_dynamic_box") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUlongDynamicBox::new);
         }
     },
     ULONG_DYNAMIC("ulong_dynamic") {
@@ -526,6 +590,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return nullaryType(TypeUshortConst::new);
+        }
+    },
+    USHORT_DYNAMIC_BOX("ushort_dynamic_box") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUshortDynamicBox::new);
         }
     },
     USHORT_DYNAMIC("ushort_dynamic") {

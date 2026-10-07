@@ -62,7 +62,11 @@ public final class TestMb {
     }
 
     public SourceExpr sourceRemote(SourceExpr url, SourceExpr hash) {
-        return call(builtin("source", "remote"), tuple(TList.of(url, hash)));
+        return call(builtin("source", "remote", "http"), tuple(TList.of(url, hash)));
+    }
+
+    public SourceExpr sourceGit(SourceExpr url, SourceExpr commit) {
+        return call(builtin("source", "remote", "git"), tuple(TList.of(url, commit)));
     }
 
     public SourceExpr importRecord(TList<SourceExpr.RecordEntry> entries) {

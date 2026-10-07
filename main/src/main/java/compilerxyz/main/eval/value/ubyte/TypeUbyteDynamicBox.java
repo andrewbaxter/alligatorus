@@ -1,6 +1,7 @@
 package compilerxyz.main.eval.value.ubyte;
 
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -23,6 +24,7 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDynamicUnboxed;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -46,6 +48,9 @@ public record TypeUbyteDynamicBox() implements Aspect, Type {
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_UBYTE_DYNAMIC_BOX_IDENTITY)) {
             return Opt.some(this);
+        }
+        if (key.equals(GenAspectLift.AspectId)) {
+            return Opt.some(AspectLiftUbyteDynamic.INSTANCE);
         }
         if (key.equals(GenAspectSet.AspectId)) {
             return Opt.some(AspectSetDynamicDefault.INSTANCE);
@@ -115,6 +120,6 @@ public record TypeUbyteDynamicBox() implements Aspect, Type {
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+        return EResult.ok(ExporterRoot.UBYTE_DYNAMIC_BOX);
     }
 }

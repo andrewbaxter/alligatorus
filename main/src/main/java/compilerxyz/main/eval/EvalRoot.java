@@ -182,6 +182,8 @@ public final class EvalRoot {
         if (cause instanceof DynException dynEx) {
             return EResult.err(at, dynEx.payload == null ? "null" : dynEx.payload.toString());
         }
-        return EResult.err(at, "uncaught " + cause);
+        var trace = new StringBuilder("uncaught ").append(cause);
+        for (var frame : cause.getStackTrace()) trace.append("\n    at ").append(frame);
+        return EResult.err(at, trace.toString());
     }
 }

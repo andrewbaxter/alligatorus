@@ -323,6 +323,92 @@ public final class T0105ExportRoundTripTest {
         assertEquals(TList.of("from-func", "inst-name"), compileLogs(e, lib, main));
     }
 
+    private static SourceExpr cellDefs(EcoMb e) {
+        return e.lower(defsetLib(
+                e,
+                e.let("obj", e.defObject(e.v("d"), "cell")),
+                e.objectImpl(
+                        e.v("obj"),
+                        e.rec(
+                                e.p("flag", e.mb.typesBool()),
+                                e.p("items", e.listType(e.mb.typesString())),
+                                e.p("counts", e.mapType(e.mb.typesString(), e.mb.typesIntBox())))),
+                e.methodImpl(
+                        e.v("obj"),
+                        "reset",
+                        e.mb.tupleOf(),
+                        e.mb.optNoneType(),
+                        e.stage(e.seq(
+                                e.mb.set(e.fld(e.v("inner"), "flag"), e.mb.as(e.b(true), e.mb.typesBool())),
+                                e.mb.set(e.fld(e.v("inner"), "items"), e.strList(e.s("reset"))),
+                                e.mb.set(
+                                        e.fld(e.v("inner"), "counts"),
+                                        e.mapNew(e.mb.typesString(), e.mb.typesIntBox(), e.p("n", e.intOf(7))))))),
+                e.methodImpl(
+                        e.v("obj"),
+                        "describe",
+                        e.mb.tupleOf(),
+                        e.retSome(e.mb.typesString()),
+                        e.stage(e.cat(
+                                e.ifElse(e.fld(e.v("inner"), "flag"), e.dstr("on"), e.dstr("off")),
+                                e.s(":"),
+                                e.join(e.fld(e.v("inner"), "items"), ","),
+                                e.s(":"),
+                                e.toStr(e.mb.as(
+                                        e.callM(e.fld(e.v("inner"), "counts"), "get", e.s("n")), e.mb.typesInt()))))),
+                e.let("mk", e.defFunc(e.v("d"), "make")),
+                e.funcImpl(
+                        e.v("mk"),
+                        e.mb.tupleOf(),
+                        e.retSome(e.fld(e.v("obj"), "type")),
+                        e.mb.optNoneType(),
+                        e.stage(e.call(
+                                e.lower(e.fld(e.v("obj"), "new")),
+                                e.rec(
+                                        e.p("flag", e.b(false)),
+                                        e.p("items", e.strList(e.s("a"), e.s("b"))),
+                                        e.p(
+                                                "counts",
+                                                e.mapNew(
+                                                        e.mb.typesString(),
+                                                        e.mb.typesIntBox(),
+                                                        e.p("n", e.intOf(1)))))))),
+                e.finish(e.v("d")),
+                e.ret(e.rec(e.p("obj_t", e.fld(e.v("obj"), "type")), e.p("make", e.fld(e.v("mk"), "func"))))));
+    }
+
+    @Test
+    public void test01250SettableBoolListMapFieldsExported() {
+        var e = new EcoMb();
+        var lib = e.seq(
+                e.let("k", cellDefs(e)),
+                e.ret(e.rec(e.p("obj_t", e.fld(e.v("k"), "obj_t")), e.p("make", e.fld(e.v("k"), "make")))));
+        var main = e.seq(
+                importLib(e),
+                e.let("c", e.call(e.fld(e.v("r"), "make"), e.tup())),
+                e.call(e.mb.log(), e.callM(e.v("c"), "describe", e.tup())),
+                e.callM(e.v("c"), "reset", e.tup()),
+                e.call(e.mb.log(), e.callM(e.v("c"), "describe", e.tup())));
+        assertEquals(TList.of("off:a,b:1", "on:reset:7"), compileLogs(e, lib, main));
+    }
+
+    @Test
+    public void test01260InstanceWithDynamicFieldsExported() {
+        var e = new EcoMb();
+        var lib = e.seq(
+                e.let("k", cellDefs(e)),
+                e.ret(e.rec(
+                        e.p("obj_t", e.fld(e.v("k"), "obj_t")),
+                        e.p("inst", e.call(e.fld(e.v("k"), "make"), e.tup())))));
+        var main = e.seq(
+                importLib(e),
+                e.let("c", e.mb.as(e.fld(e.v("r"), "inst"), e.fld(e.v("r"), "obj_t"))),
+                e.call(e.mb.log(), e.callM(e.v("c"), "describe", e.tup())),
+                e.callM(e.v("c"), "reset", e.tup()),
+                e.call(e.mb.log(), e.callM(e.v("c"), "describe", e.tup())));
+        assertEquals(TList.of("off:a,b:1", "on:reset:7"), compileLogs(e, lib, main));
+    }
+
     private static SourceExpr loweredLib(EcoMb e, SourceExpr value) {
         return e.lower(e.seq(e.let("v", value), e.ret(e.rec(e.p("v", e.v("v"))))));
     }

@@ -7,15 +7,19 @@
 # Only the files the maven build reads are staged, so unrelated changes in the
 # repository don't invalidate the build. The lint module is left out of the
 # reactor (its pom is staged only so maven can read the reactor). The wrapper puts clang on PATH (the in-language llvm `build` runs it
-# through the `exec` builtin) and libpipewire on LIBRARY_PATH so apps that
-# declare the pipewire library link and run.
+# through the `exec` builtin), wasmtime on PATH (the executor of apps built by
+# the wat target), git on PATH (git remote sources are fetched with it) and
+# libpipewire on LIBRARY_PATH so apps that declare the pipewire library link and
+# run.
 {
   lib,
   maven,
   jdk21,
   clang,
+  wasmtime,
+  git,
   pipewire,
-  runtimeShell,
+  makeWrapper,
 }:
 maven.buildMavenPackage rec {
   pname = "alligatorus";
@@ -37,7 +41,10 @@ maven.buildMavenPackage rec {
   };
 
   mvnJdk = jdk21;
-  nativeBuildInputs = [ jdk21 ];
+  nativeBuildInputs = [
+    jdk21
+    makeWrapper
+  ];
   mvnParameters = lib.escapeShellArgs [
     "-pl"
     "main"
@@ -53,13 +60,12 @@ maven.buildMavenPackage rec {
     runHook preInstall
     mkdir -p $out/share/alligatorus $out/bin
     cp main/target/allig3-main-*.jar main/target/dependency/*.jar $out/share/alligatorus/
-    cat > $out/bin/alligatorus <<WRAP
-    #!${runtimeShell}
-    export PATH="${lib.makeBinPath [ clang ]}:\$PATH"
-    export LIBRARY_PATH="${lib.makeLibraryPath [ pipewire ]}\''${LIBRARY_PATH:+:\$LIBRARY_PATH}"
-    exec ${jdk21}/bin/java -cp "$out/share/alligatorus/*" compilerxyz.main.langhelp.Main "\$@"
-    WRAP
-    chmod +x $out/bin/alligatorus
+    makeWrapper ${jdk21}/bin/java $out/bin/alligatorus \
+      --prefix PATH : ${lib.makeBinPath [ clang wasmtime git ]} \
+      --prefix LIBRARY_PATH : ${lib.makeLibraryPath [ pipewire ]} \
+      --add-flag -cp \
+      --add-flag "$out/share/alligatorus/*" \
+      --add-flag compilerxyz.main.langhelp.Main
     ln -s alligatorus $out/bin/at
     runHook postInstall
   '';

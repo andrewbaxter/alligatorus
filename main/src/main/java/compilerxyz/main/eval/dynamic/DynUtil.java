@@ -289,6 +289,30 @@ public final class DynUtil {
         return EResult.ok(regToValue(b.code(), out, GenType.dynamicType()));
     }
 
+    public static EResult<CodeValue> typeConstructRuntime2(
+            ExprContext xx,
+            QExprId loc,
+            CodeValue self,
+            CodeValue first,
+            CodeValue second,
+            JavaStaticMethodRef construct) {
+        var firstRes = materialize(xx, loc, first);
+        if (firstRes.hasErrors()) return firstRes.reerr();
+        var secondRes = materialize(xx, loc, second);
+        if (secondRes.hasErrors()) return secondRes.reerr();
+        var b = new JavaBytecodeBuilder(loc);
+        var carryRes = b.addCode(loc, self.code());
+        if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
+        var firstReg = b.reg(firstRes.requireValue("DynUtil::typeConstructRuntime2 first"));
+        var secondReg = b.reg(secondRes.requireValue("DynUtil::typeConstructRuntime2 second"));
+        var xxReg = b.getStatic(
+                JavaInternalName.of(xx.vx.evalRootInternalName.optUnwrap()),
+                EvalRootEmitter.EXPR_CONTEXT_FIELD,
+                EvalRootEmitter.DESC_EXPR_CONTEXT);
+        var out = b.invokeStatic(construct, xxReg, firstReg, secondReg);
+        return EResult.ok(regToValue(b.code(), out, GenType.dynamicType()));
+    }
+
     public static boolean valueIsRuntime(Value value) {
         return switch (value) {
             case ValueDynamic vd -> true;

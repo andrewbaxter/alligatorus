@@ -98,7 +98,8 @@ public final class DynamicTypes {
         nullary(nullary, "compilerxyz.main.eval.value.source", "TypeImport");
         nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceVirtual");
         nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceLocal");
-        nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceRemote");
+        nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceRemoteHttp");
+        nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceRemoteGit");
         nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceSha256");
         composite(
                 composites,

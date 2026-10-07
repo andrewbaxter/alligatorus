@@ -13,6 +13,7 @@ import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.AspectTuple;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenAspectType;
+import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.Opt;
 
@@ -63,6 +64,10 @@ public record AspectFunctionMapConstructorConst(TypeMapConstructorConst type) im
         }
         var keyValue = keySome.value();
         var valueValue = valueSome.value();
+        if (DynUtil.valueIsRuntime(keyValue) || DynUtil.valueIsRuntime(valueValue)) {
+            return DynUtil.typeConstructRuntime2(
+                    xx, loc, self, keyCv, valueCv, GenCodegenDescriptors.DYN_RUNTIME_MAP_TYPE);
+        }
         var keyAtRes = GenAspectType.get(xx, loc, keyValue.valueType());
         if (keyAtRes.hasErrors()) return keyAtRes.reerr();
         var keyType = keyAtRes.requireValue("TypeMapConstructorConst::call key AspectType")

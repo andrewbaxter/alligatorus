@@ -15,25 +15,25 @@ import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("source.remote")
+@BuiltinPath("source.remote.http")
 @BuiltinFull(uniqueId = 6158L)
-public record TypeSourceRemote() implements Aspect, Type {
+public record TypeSourceRemoteHttp() implements Aspect, Type {
 
     @Override
     public String typeDesc() {
-        return "source.remote";
+        return "source.remote.http";
     }
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicSourceRemote(this));
+            return Opt.some(new AspectInitialBindDynamicSourceRemoteHttp(this));
         }
-        if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_REMOTE_IDENTITY)) {
+        if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_REMOTE_HTTP_IDENTITY)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectFunction.AspectId)) {
-            return Opt.some(new AspectFunctionSourceRemote(this));
+            return Opt.some(new AspectFunctionSourceRemoteHttp(this));
         }
         return Opt.none();
     }
@@ -46,7 +46,7 @@ public record TypeSourceRemote() implements Aspect, Type {
 
     @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
-        return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_SOURCE_REMOTE_IDENTITY)
+        return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_SOURCE_REMOTE_HTTP_IDENTITY)
                 .optIsSome();
     }
 

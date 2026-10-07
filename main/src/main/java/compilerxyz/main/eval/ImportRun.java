@@ -2,7 +2,10 @@ package compilerxyz.main.eval;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.source.SourceSpecValue;
+import compilerxyz.main.eval.value.source.TypeBundle;
+import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.SourceModuleToModule;
@@ -17,9 +20,11 @@ public final class ImportRun {
     private ImportRun() {}
 
     public sealed interface SpecOutcome {
-        record BundleOut(SourceSpecAbsolute.Remote base) implements SpecOutcome {}
+        record BundleOut(SourceSpecAbsolute base) implements SpecOutcome {}
 
         record ModuleOut(CompileId compileId, SourceSpecAbsolute abs, CompileRes res) implements SpecOutcome {}
+
+        record FileOut(SourceSpecAbsolute abs) implements SpecOutcome {}
     }
 
     public static EResult<SpecOutcome> compileOne(ExprContext xx, QExprId loc, SourceSpecValue specValue) {
@@ -27,9 +32,7 @@ public final class ImportRun {
         Result<SourceSpecAbsolute, String> resolveRes =
                 switch (specValue) {
                     case SourceSpecValue.Virtual v -> Result.ok(new SourceSpecAbsolute.Virtual(v.name()));
-                    case SourceSpecValue.Remote r ->
-                        Result.ok(new SourceSpecAbsolute.Remote(
-                                r.remote().url(), r.remote().hash(), ""));
+                    case SourceSpecValue.Remote r -> Result.ok(new SourceSpecAbsolute.Remote(r.origin(), ""));
                     case SourceSpecValue.Local l -> resolveRelative(ix, l.path());
                 };
         Result.Ok<SourceSpecAbsolute, String> resolveResOk;
@@ -78,7 +81,7 @@ public final class ImportRun {
                     }
                 }
                 var resolvedPath = String.join("/", segs);
-                yield Result.ok(new SourceSpecAbsolute.Remote(cr.baseUrl(), cr.hash(), resolvedPath));
+                yield Result.ok(new SourceSpecAbsolute.Remote(cr.origin(), resolvedPath));
             }
         };
     }
@@ -97,6 +100,7 @@ public final class ImportRun {
         var resolved = resolvedResOk.value();
         return switch (resolved) {
             case Sources.SourceResolved.Bundle b -> EResult.ok(new SpecOutcome.BundleOut(b.base()));
+            case Sources.SourceResolved.File f -> EResult.ok(new SpecOutcome.FileOut(abs));
             case Sources.SourceResolved.Module m -> {
                 var compileId = new CompileId(ix.importState, m.id());
                 if (ix.compilePath.contains(compileId)) {
@@ -112,6 +116,49 @@ public final class ImportRun {
                 yield EResult.ok(new SpecOutcome.ModuleOut(compileId, abs, compileRes));
             }
         };
+    }
+
+    public static EResult<CodeValue> outcomeValue(ExprContext xx, QExprId loc, SpecOutcome outcome) {
+        return switch (outcome) {
+            case SpecOutcome.BundleOut b ->
+                EResult.ok(new CodeValue(
+                        Code.none(loc),
+                        EvalOutcome.ofValue(
+                                new ValueObjectConst(ValueObjectConst.plainTypeType(), new TypeBundle(b.base())))));
+            case SpecOutcome.ModuleOut m -> {
+                switch (m.abs()) {
+                    case SourceSpecAbsolute.Local ignored -> xx.vx.ix.localDependencies.add(m.compileId());
+                    case SourceSpecAbsolute.Virtual v -> {}
+                    case SourceSpecAbsolute.Remote r -> {}
+                }
+                yield materialize(xx, loc, m.res());
+            }
+            case SpecOutcome.FileOut f -> openFile(xx, loc, f.abs());
+        };
+    }
+
+    private static EResult<CodeValue> openFile(ExprContext xx, QExprId loc, SourceSpecAbsolute abs) {
+        var scope = new Scope(xx.vx);
+        for (var entry : Eval.bodyBuiltinScope(xx).entrySet()) scope.pushNamed(entry.getKey(), entry.getValue());
+        var sx = new ExprContext(scope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
+        var fn = new Expr(
+                loc,
+                new Expr.Field(
+                        new Expr(
+                                loc,
+                                new Expr.Field(
+                                        new Expr(loc, new Expr.ScopeUse(constString(loc, Eval.KEY_BUILTINS))),
+                                        constString(loc, "eval"))),
+                        constString(loc, "import_file")));
+        var call = new Expr(loc, new Expr.Call(fn, constString(loc, abs.sourceSpecAbsoluteSpecKey())));
+        var res = ConstEval.constEval(sx, call);
+        if (res.hasErrors()) return res.reerr();
+        return EResult.ok(res.requireValue("import file").cv());
+    }
+
+    private static Expr constString(QExprId loc, String value) {
+        return new Expr(
+                loc, new Expr.Literal(Expr.LitValue.shared(new ValueObjectConst(new TypeStringConst(), value))));
     }
 
     public static EResult<CodeValue> materialize(ExprContext xx, QExprId loc, CompileRes compileRes) {

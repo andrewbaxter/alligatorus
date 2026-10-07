@@ -225,6 +225,11 @@ public final class EcoMb {
         return mb.field(mb.importRecord(TList.of(entry)), mb.str(key));
     }
 
+    public SourceExpr importGit(String key, String url, String commit) {
+        var entry = new SourceExpr.RecordEntry(mb.str(key), mb.sourceGit(mb.str(url), mb.str(commit)));
+        return mb.field(mb.importRecord(TList.of(entry)), mb.str(key));
+    }
+
     public SourceExpr implInterface(SourceExpr objectBuilder, SourceExpr ifaceRef, P... methods) {
         var staged = new TList<TestMb.RecordPair>(methods.length);
         for (var m : methods) {

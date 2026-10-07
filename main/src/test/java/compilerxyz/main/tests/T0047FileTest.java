@@ -58,7 +58,12 @@ public final class T0047FileTest {
     }
 
     private static SourceExpr open(TestMb mb, String path) {
-        return mb.call(mb.builtin("file", "open"), mb.str(path));
+        return mb.field(importOf(mb, path), mb.str("f"));
+    }
+
+    private static SourceExpr importOf(TestMb mb, String path) {
+        var entry = new SourceExpr.RecordEntry(mb.str("f"), mb.sourceLocal(mb.str(path)));
+        return mb.importRecord(TList.of(entry));
     }
 
     private static SourceExpr logStr(TestMb mb, SourceExpr value) {
@@ -110,14 +115,39 @@ public final class T0047FileTest {
     public void test00100MissingFile(@TempDir Path tmp) throws IOException {
         var mb = new TestMb();
         var main = tmp.resolve("main.at");
-        var openCall = open(mb, "nope.bin");
-        writeModule(main, TList.of(logStr(mb, mb.field(openCall, mb.str("len")))));
+        var importCall = importOf(mb, "nope.bin");
+        writeModule(main, TList.of(logStr(mb, mb.field(mb.field(importCall, mb.str("f")), mb.str("len")))));
         var errs = expectErr(compile(tmp.resolve("cache"), main));
         assertEquals(1, errs.size(), () -> "expected one error; got: " + errs);
-        assertEquals(openCall.id().value(), errs.get(0).loc().expr().optUnwrap());
+        assertEquals(importCall.id().value(), errs.get(0).loc().expr().optUnwrap());
         assertTrue(
-                errs.get(0).message().contains("file.open: local file not found"),
+                errs.get(0).message().contains("local source not found"),
                 () -> "unexpected message: " + errs.get(0).message());
+    }
+
+    @Test
+    public void test00150ImportDirectory(@TempDir Path tmp) throws IOException {
+        var mb = new TestMb();
+        var src = tmp.resolve("src");
+        Files.createDirectories(src.resolve("data/sub"));
+        Files.write(src.resolve("data/a.bin"), new byte[] {3, 4, 5});
+        Files.write(src.resolve("data/sub/b.bin"), new byte[] {1, 2});
+        writeModule(src.resolve("data/mod.at"), TList.of(mb.return_(mb.str("from-dir-module"))));
+        var main = src.resolve("main.at");
+        writeModule(
+                main,
+                TList.of(
+                        logStr(mb, mb.field(mb.field(open(mb, "data"), mb.str("a.bin")), mb.str("len"))),
+                        logStr(
+                                mb,
+                                mb.field(
+                                        mb.field(mb.field(open(mb, "data"), mb.str("sub")), mb.str("b.bin")),
+                                        mb.str("len"))),
+                        mb.call(mb.log(), mb.field(open(mb, "data"), mb.str("mod")))));
+        var logs = expectOk(compile(tmp.resolve("cache"), main)).logs();
+        assertEquals("3", logs.get(0).message());
+        assertEquals("2", logs.get(1).message());
+        assertEquals("from-dir-module", logs.get(2).message());
     }
 
     @Test
