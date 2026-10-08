@@ -27,7 +27,7 @@ public final class T0072ReturnCrossingOperandTest {
     }
 
     private static void run(Path tmp, boolean pendingTemporary) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var strT = e.mb.typesString();
         var defs = new TList<SourceExpr>();
         defs.add(e.let("d", e.define()));
@@ -61,7 +61,7 @@ public final class T0072ReturnCrossingOperandTest {
         }
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        T0200EcosystemLlvmTest.writeModule(src.resolve("main.at"), top);
+        Helpers.writeModule(src.resolve("main.at"), top);
         try (var cache = new CacheReal(tmp.resolve("cache"))) {
             var res = Helpers.compile(
                     GlobalContext.newContext(cache, cache, cache),

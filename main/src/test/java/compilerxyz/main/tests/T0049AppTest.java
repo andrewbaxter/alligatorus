@@ -43,13 +43,13 @@ public final class T0049AppTest {
         }
     }
 
-    private static SourceExpr appOf(EcoMb e, SourceExpr executor, SourceExpr bytes) {
+    private static SourceExpr appOf(TestMbShorthand e, SourceExpr executor, SourceExpr bytes) {
         return e.call(e.mb.builtin("app"), e.rec(e.p("executor", executor), e.p("bytes", bytes)));
     }
 
     @Test
     public void test00000ExportAndRun(@TempDir Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = tmp.resolve("main.at");
         T0047FileTest.writeModule(
                 main, TList.of(e.ret(appOf(e, e.mb.optNoneString(), T0048ExecTest.bytesOf(e, SCRIPT)))));
@@ -64,7 +64,7 @@ public final class T0049AppTest {
 
     @Test
     public void test00100Executor(@TempDir Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = tmp.resolve("main.at");
         T0047FileTest.writeModule(
                 main,

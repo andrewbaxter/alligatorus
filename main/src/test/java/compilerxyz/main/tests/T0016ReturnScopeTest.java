@@ -13,11 +13,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 public final class T0016ReturnScopeTest {
-    private static SourceExpr lib(EcoMb e, SourceExpr thenValue, SourceExpr tailValue) {
+    private static SourceExpr lib(TestMbShorthand e, SourceExpr thenValue, SourceExpr tailValue) {
         return libTail(e, thenValue, e.ret(tailValue));
     }
 
-    private static SourceExpr libTail(EcoMb e, SourceExpr thenValue, SourceExpr tail) {
+    private static SourceExpr libTail(TestMbShorthand e, SourceExpr thenValue, SourceExpr tail) {
         return e.lower(e.seq(
                 e.let("d", e.define()),
                 e.let("fb", e.defFunc(e.v("d"), "f")),
@@ -36,34 +36,34 @@ public final class T0016ReturnScopeTest {
     }
 
     private static String run(SourceExpr lib, Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        T0200EcosystemLlvmTest.writeModule(src.resolve("lib.at"), TList.of(e.ret(lib)));
-        T0200EcosystemLlvmTest.writeModule(
+        Helpers.writeModule(src.resolve("lib.at"), TList.of(e.ret(lib)));
+        Helpers.writeModule(
                 src.resolve("main.at"),
                 TList.of(
                         e.let("f", e.importLocal("lib", "lib.at")),
                         e.call(e.mb.log(), e.call(e.v("f"), e.mb.as(e.n(3.), e.mb.typesInt())))));
-        var ok = T0200EcosystemLlvmTest.compileOk(src.resolve("main.at"), tmp.resolve("cache"));
+        var ok = Helpers.compileOk(src.resolve("main.at"), tmp.resolve("cache"));
         return ok.logs().get(0).message();
     }
 
     @Test
     public void test00000UnlabeledReturnSkipsIfLevel(@TempDir Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         assertEquals("lo", run(lib(e, e.cat(e.s("lo")), e.s("hi")), tmp), "return_ in if exits the enclosing block");
     }
 
     @Test
     public void test00100UnlabeledReturnSkipsIfLevelDynamic(@TempDir Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         assertEquals("lo", run(lib(e, e.cat(e.s("lo")), e.cat(e.s("hi"))), tmp), "dynamic return value through if");
     }
 
     @Test
     public void test00200ValuedReturnWithValuelessFallthroughIsError(@TempDir Path tmp) {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var err = assertThrows(
                 AssertionError.class,
                 () -> run(libTail(e, e.cat(e.s("lo")), e.cat(e.s("hi"))), tmp),

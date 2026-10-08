@@ -7,14 +7,13 @@ import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.syntax.SourceExpr;
 import compilerxyz.main.syntax.SourceModule;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
-import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 import org.junit.jupiter.api.Test;
 
 public final class T0161ReinterpretTest {
-    private static SourceExpr lib(EcoMb e) {
+    private static SourceExpr lib(TestMbShorthand e) {
         return e.lower(e.seq(
                 e.let("d", e.define()),
                 e.let("oa", e.defObject(e.v("d"), "a")),
@@ -39,7 +38,7 @@ public final class T0161ReinterpretTest {
 
     @Test
     public void test00000WrongObjectFails() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
@@ -64,7 +63,7 @@ public final class T0161ReinterpretTest {
     }
 
     private static TList<String> reinterpretLogs(String targetType) {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
@@ -75,7 +74,6 @@ public final class T0161ReinterpretTest {
                         e.matchOf(
                                 e.call(e.mb.reinterpret(), e.tup(e.v("loc"), e.v("av"), e.fld(e.v("l"), targetType))),
                                 "r",
-                                Opt.none(),
                                 e.p("ok", e.call(e.mb.log(), e.callM0(e.v("r"), "get"))),
                                 e.p(
                                         "errs",

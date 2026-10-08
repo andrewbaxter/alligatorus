@@ -1,7 +1,5 @@
 package compilerxyz.main.tests;
 
-import static compilerxyz.main.tests.EcoTargetMb.castToPanic;
-import static compilerxyz.main.tests.EcoTargetMb.noCastTo;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import compilerxyz.main.eval.ExprErr;
@@ -16,7 +14,7 @@ import org.junit.jupiter.api.Test;
 public final class T0021ObjectValueTypeTest {
     @Test
     public void test00000ValueAndTypeRejected() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
@@ -31,9 +29,9 @@ public final class T0021ObjectValueTypeTest {
                                 e.p("desc", e.s("self typed")),
                                 e.p("aspect", e.optNone(e.mb.typesAspect())),
                                 e.p("can_cast_from", e.b(false)),
-                                e.p("cast_from", castToPanic(e)),
-                                e.p("can_cast_to", noCastTo(e)),
-                                e.p("cast_to", castToPanic(e)),
+                                e.p("cast_from", e.mb.panic(e.s("cast_to unreachable"))),
+                                e.p("can_cast_to", e.mb.as(e.b(false), e.mb.typesBool())),
+                                e.p("cast_to", e.mb.panic(e.s("cast_to unreachable"))),
                                 e.p("is_equal", e.b(false))),
                         e.finish(e.v("d")))));
         var res = Helpers.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));

@@ -16,6 +16,7 @@ import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -414,7 +415,12 @@ public final class T0180ImportRealTest {
 
     @Test
     public void test00500GitOrigin(@TempDir Path tmp) throws Exception {
-        Assumptions.assumeTrue(T0200EcosystemLlvmTest.onPath("git"), "git not on PATH");
+        var gitOnPath = false;
+        var path = System.getenv("PATH");
+        if (path != null) {
+            for (var dir : path.split(File.pathSeparator)) gitOnPath |= Files.isExecutable(Path.of(dir, "git"));
+        }
+        Assumptions.assumeTrue(gitOnPath, "git not on PATH");
         var mb = new TestMb();
         var repo = tmp.resolve("repo");
         Files.createDirectories(repo.resolve("lib"));

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public final class T0105ExportRoundTripTest {
-    private static TList<String> compileLogs(EcoMb e, SourceExpr lib, SourceExpr main) {
+    private static TList<String> compileLogs(TestMbShorthand e, SourceExpr lib, SourceExpr main) {
         var modules = new TMap<String, SourceModule>();
         modules.put("lib", new SourceModule.V1(TList.of(e.ret(lib))));
         modules.put("main", new SourceModule.V1(TList.of(main)));
@@ -29,13 +29,13 @@ public final class T0105ExportRoundTripTest {
         return out;
     }
 
-    private static SourceExpr importLib(EcoMb e) {
+    private static SourceExpr importLib(TestMbShorthand e) {
         return e.let("r", e.mb.importExpr(e.s("lib")));
     }
 
     @Test
     public void test00000ConstStringField() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.rec(e.p("s", e.s("from-field")));
         var main = e.seq(importLib(e), e.call(e.mb.log(), e.fld(e.v("r"), "s")));
         assertEquals(TList.of("from-field"), compileLogs(e, lib, main));
@@ -43,7 +43,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test00050ConstStringFieldLowered() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.lower(e.seq(
                 e.let("x", e.listNew(e.mb.typesString(), e.s("effect"))),
                 e.push(e.v("x"), e.s("more")),
@@ -52,7 +52,7 @@ public final class T0105ExportRoundTripTest {
         assertEquals(TList.of("from-lowered"), compileLogs(e, lib, main));
     }
 
-    private static SourceExpr defsetLib(EcoMb e, SourceExpr... extra) {
+    private static SourceExpr defsetLib(TestMbShorthand e, SourceExpr... extra) {
         var exprs = new TList<SourceExpr>();
         exprs.add(e.let("d", e.define()));
         for (var x : extra) exprs.add(x);
@@ -61,7 +61,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test00100FuncField() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.lower(defsetLib(
                 e,
                 e.let("fb", e.defFunc(e.v("d"), "greet")),
@@ -79,7 +79,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test00200ObjectTypeAndConstructor() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.lower(defsetLib(
                 e,
                 e.let("obj", e.defObject(e.v("d"), "thing")),
@@ -108,7 +108,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test00300UnionCtorField() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.lower(defsetLib(
                 e,
                 e.let("uni", e.callM0(e.v("d"), "union")),
@@ -133,7 +133,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test00400UnionTypeField() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.lower(defsetLib(
                 e,
                 e.let("uni", e.callM0(e.v("d"), "union")),
@@ -152,11 +152,11 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test00500InterfaceTypeField() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.lower(defsetLib(
                 e,
                 e.let("iface", e.callM0(e.v("d"), "interface")),
-                e.interfaceImpl(e.v("iface"), false),
+                e.interfaceImpl(e.v("iface")),
                 e.callM(
                         e.v("iface"),
                         "func",
@@ -173,7 +173,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test00600AllMembersCombined() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.lower(defsetLib(
                 e,
                 e.let("obj", e.defObject(e.v("d"), "thing")),
@@ -192,7 +192,7 @@ public final class T0105ExportRoundTripTest {
                                 "variant",
                                 e.rec(e.p("tag", e.s("a")), e.p("type_ref", e.mb.typesString())))),
                 e.let("iface", e.callM0(e.v("d"), "interface")),
-                e.interfaceImpl(e.v("iface"), false),
+                e.interfaceImpl(e.v("iface")),
                 e.callM(
                         e.v("iface"),
                         "func",
@@ -229,7 +229,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test00700CodeInSignatureRoundTrips() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.lower(defsetLib(
                 e,
                 e.let("fb", e.defFunc(e.v("d"), "takes_code")),
@@ -247,13 +247,13 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test00800TypeValueFieldRoundTrips() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.rec(e.p("t", e.mb.typesInt()));
         var main = e.seq(importLib(e), e.call(e.mb.log(), e.toStr(e.mb.as(e.n(3.), e.fld(e.v("r"), "t")))));
         assertEquals(TList.of("3"), compileLogs(e, lib, main));
     }
 
-    private static SourceExpr thingDefs(EcoMb e) {
+    private static SourceExpr thingDefs(TestMbShorthand e) {
         return e.lower(defsetLib(
                 e,
                 e.let("obj", e.defObject(e.v("d"), "thing")),
@@ -280,7 +280,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test00900LoweredFuncReexported() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.seq(e.let("k", thingDefs(e)), e.ret(e.rec(e.p("f", e.fld(e.v("k"), "f")))));
         var main = e.seq(importLib(e), e.call(e.mb.log(), e.call(e.fld(e.v("r"), "f"), e.tup())));
         assertEquals(TList.of("from-func"), compileLogs(e, lib, main));
@@ -288,7 +288,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test01000LoweredObjectTypeReexported() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.seq(e.let("k", thingDefs(e)), e.ret(e.rec(e.p("obj_t", e.fld(e.v("k"), "obj_t")))));
         var main =
                 e.seq(importLib(e), e.let("t", e.fld(e.v("r"), "obj_t")), e.call(e.mb.log(), e.s("obj-type-imported")));
@@ -297,7 +297,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test01050LoweredObjectCtorReexported() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.seq(e.let("k", thingDefs(e)), e.ret(e.rec(e.p("obj_new", e.fld(e.v("k"), "obj_new")))));
         var main = e.seq(
                 importLib(e),
@@ -308,7 +308,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test01100InstanceBuiltFromLoweredCtor() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.seq(
                 e.let("k", thingDefs(e)),
                 e.ret(e.rec(e.p("inst", e.call(e.fld(e.v("k"), "obj_new"), e.rec(e.p("name", e.s("inst-name"))))))));
@@ -318,7 +318,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test01200LoweredDefsAndInstanceReexported() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.seq(
                 e.let("k", thingDefs(e)),
                 e.ret(e.rec(
@@ -334,7 +334,7 @@ public final class T0105ExportRoundTripTest {
         assertEquals(TList.of("from-func", "inst-name"), compileLogs(e, lib, main));
     }
 
-    private static SourceExpr cellDefs(EcoMb e) {
+    private static SourceExpr cellDefs(TestMbShorthand e) {
         return e.lower(defsetLib(
                 e,
                 e.let("obj", e.defObject(e.v("d"), "cell")),
@@ -390,7 +390,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test01250SettableBoolListMapFieldsExported() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.seq(
                 e.let("k", cellDefs(e)),
                 e.ret(e.rec(e.p("obj_t", e.fld(e.v("k"), "obj_t")), e.p("make", e.fld(e.v("k"), "make")))));
@@ -405,7 +405,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test01260InstanceWithDynamicFieldsExported() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = e.seq(
                 e.let("k", cellDefs(e)),
                 e.ret(e.rec(
@@ -420,13 +420,13 @@ public final class T0105ExportRoundTripTest {
         assertEquals(TList.of("off:a,b:1", "on:reset:7"), compileLogs(e, lib, main));
     }
 
-    private static SourceExpr loweredLib(EcoMb e, SourceExpr value) {
+    private static SourceExpr loweredLib(TestMbShorthand e, SourceExpr value) {
         return e.lower(e.seq(e.let("v", value), e.ret(e.rec(e.p("v", e.v("v"))))));
     }
 
     @Test
     public void test01300LoweredListRoundTrips() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = loweredLib(e, e.listNew(e.mb.typesString(), e.dstr("a"), e.dstr("b")));
         var main = e.seq(importLib(e), e.foreach(e.fld(e.v("r"), "v"), "x", e.call(e.mb.log(), e.v("x"))));
         assertEquals(TList.of("a", "b"), compileLogs(e, lib, main));
@@ -434,24 +434,20 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test01400LoweredMapRoundTrips() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = loweredLib(e, e.mapNew(e.mb.typesString(), e.mb.typesString(), e.p("k", e.dstr("map-value"))));
         var main = e.seq(importLib(e), e.call(e.mb.log(), e.callM(e.fld(e.v("r"), "v"), "get", e.dstr("k"))));
         assertEquals(TList.of("map-value"), compileLogs(e, lib, main));
     }
 
-    private static SourceExpr optionArms(EcoMb e, SourceExpr base) {
+    private static SourceExpr optionArms(TestMbShorthand e, SourceExpr base) {
         return e.matchOf(
-                base,
-                "x",
-                Opt.none(),
-                e.p("some", e.call(e.mb.log(), e.v("x"))),
-                e.p("none", e.call(e.mb.log(), e.s("none"))));
+                base, "x", e.p("some", e.call(e.mb.log(), e.v("x"))), e.p("none", e.call(e.mb.log(), e.s("none"))));
     }
 
     @Test
     public void test01500LoweredOptionSomeRoundTrips() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = loweredLib(e, e.optSome(e.mb.typesString(), e.dstr("opt-value")));
         var main = e.seq(importLib(e), optionArms(e, e.fld(e.v("r"), "v")));
         assertEquals(TList.of("opt-value"), compileLogs(e, lib, main));
@@ -459,7 +455,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test01600LoweredOptionNoneRoundTrips() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = loweredLib(e, e.optNone(e.mb.typesString()));
         var main = e.seq(importLib(e), optionArms(e, e.fld(e.v("r"), "v")));
         assertEquals(TList.of("none"), compileLogs(e, lib, main));
@@ -467,14 +463,13 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test01700LoweredSpecializedOptionRoundTrips() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = loweredLib(e, e.optSome(e.mb.typesInt(), e.intOf(7)));
         var main = e.seq(
                 importLib(e),
                 e.matchOf(
                         e.fld(e.v("r"), "v"),
                         "x",
-                        Opt.none(),
                         e.p("some", e.call(e.mb.log(), e.toStr(e.v("x")))),
                         e.p("none", e.call(e.mb.log(), e.s("none")))));
         assertEquals(TList.of("7"), compileLogs(e, lib, main));
@@ -482,14 +477,13 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test01800LoweredEResultRoundTrips() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = loweredLib(e, e.eresultOk(e.mb.typesString(), e.dstr("ok-value")));
         var main = e.seq(
                 importLib(e),
                 e.matchOf(
                         e.fld(e.v("r"), "v"),
                         "x",
-                        Opt.none(),
                         e.p("ok", e.call(e.mb.log(), e.v("x"))),
                         e.p("errs", e.call(e.mb.log(), e.s("errs")))));
         assertEquals(TList.of("ok-value"), compileLogs(e, lib, main));
@@ -497,7 +491,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test01850LoweredEResultErrsRoundTrips() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = loweredLib(
                 e,
                 e.eresultErr(
@@ -509,7 +503,6 @@ public final class T0105ExportRoundTripTest {
                 e.matchOf(
                         e.fld(e.v("r"), "v"),
                         "x",
-                        Opt.none(),
                         e.p("ok", e.call(e.mb.log(), e.v("x"))),
                         e.p(
                                 "errs",
@@ -524,7 +517,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test01900LoweredArrayRoundTrips() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = loweredLib(e, e.call(e.mb.evalStrUtf8(), e.dstr("hé")));
         var main = e.seq(
                 importLib(e),
@@ -535,7 +528,7 @@ public final class T0105ExportRoundTripTest {
 
     @Test
     public void test02000InstanceWithContainerFieldsRoundTrips() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var strT = e.mb.typesString();
         var fields = e.rec(
                 e.p("l", e.listType(strT)),

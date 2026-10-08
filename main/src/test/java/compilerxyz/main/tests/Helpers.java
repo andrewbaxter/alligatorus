@@ -1,5 +1,6 @@
 package compilerxyz.main.tests;
 
+import com.google.gson.stream.JsonWriter;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
@@ -8,11 +9,14 @@ import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.CompileRes;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.SourceId;
+import compilerxyz.main.gen.codec.SourceModuleCodec;
 import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.langhelp.Compile.CompileResult;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.GlobalContext;
 import compilerxyz.main.langhelp.Sources;
+import compilerxyz.main.langhelp.cache.CacheReal;
+import compilerxyz.main.safejson.Json;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueBoolean;
@@ -20,6 +24,7 @@ import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
+import compilerxyz.main.syntax.SourceExpr;
 import compilerxyz.main.syntax.SourceModule;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.main.syntax.SourceSpecAbsolute.Virtual;
@@ -29,8 +34,11 @@ import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 import compilerxyz.prelude.util.TOrderedMap;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import org.objectweb.asm.ClassReader;
@@ -181,6 +189,29 @@ public final class Helpers {
                 new TraceClassVisitor(null, new Textifier(), new PrintWriter(writer)),
                 ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
         return writer.toString();
+    }
+
+    public static void writeModule(Path file, TList<SourceExpr> exprs) throws IOException {
+        var sw = new StringWriter();
+        var writer = new JsonWriter(sw);
+        writer.setSerializeNulls(true);
+        writer.setIndent("  ");
+        SourceModuleCodec.encode(writer, new SourceModule.V1(exprs), Json.Style.PRETTY);
+        writer.close();
+        Files.writeString(file, sw.toString());
+    }
+
+    public static Compile.CompileResult compileOk(Path entry, Path cacheDir) {
+        try (var cache = new CacheReal(cacheDir)) {
+            var res = compile(
+                    GlobalContext.newContext(cache, cache, cache), new SourceSpecAbsolute.Local(entry.toString()));
+            Result.Ok<Compile.CompileResult, ?> ok;
+            switch (res) {
+                case Result.Ok<Compile.CompileResult, ?> o -> ok = o;
+                case Result.Err<Compile.CompileResult, ?> err -> throw new AssertionError("compile failed: " + res);
+            }
+            return ok.value();
+        }
     }
 
     public static GlobalContext newGx(TMap<String, SourceModule> modules) {

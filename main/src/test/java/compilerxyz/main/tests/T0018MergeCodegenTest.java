@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 public final class T0018MergeCodegenTest {
-    private static SourceExpr lib(EcoMb e, SourceExpr retType, SourceExpr body) {
+    private static SourceExpr lib(TestMbShorthand e, SourceExpr retType, SourceExpr body) {
         return e.lower(e.seq(
                 e.let("ta", e.mb.typesString()),
                 e.let("tb", e.mb.typesInt()),
@@ -25,21 +25,21 @@ public final class T0018MergeCodegenTest {
     }
 
     private static String run(SourceExpr lib, SourceExpr use, Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        T0200EcosystemLlvmTest.writeModule(src.resolve("lib.at"), TList.of(e.ret(lib)));
-        T0200EcosystemLlvmTest.writeModule(
+        Helpers.writeModule(src.resolve("lib.at"), TList.of(e.ret(lib)));
+        Helpers.writeModule(
                 src.resolve("main.at"),
                 TList.of(
                         e.let("f", e.importLocal("lib", "lib.at")),
                         e.let("r", e.call(e.v("f"), e.mb.as(e.n(3.), e.mb.typesInt()))),
                         e.call(e.mb.log(), use)));
-        var ok = T0200EcosystemLlvmTest.compileOk(src.resolve("main.at"), tmp.resolve("cache"));
+        var ok = Helpers.compileOk(src.resolve("main.at"), tmp.resolve("cache"));
         return ok.logs().get(0).message();
     }
 
-    private static SourceExpr lt5(EcoMb e) {
+    private static SourceExpr lt5(TestMbShorthand e) {
         return e.mb.operatorLt(e.v("arg"), e.mb.as(e.n(5.), e.mb.typesInt()));
     }
 
@@ -50,7 +50,7 @@ public final class T0018MergeCodegenTest {
 
     @Test
     public void test00000ConstTypesThroughIfIsError(@TempDir Path tmp) {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = lib(
                 e,
                 e.mb.evalType(),
@@ -61,7 +61,7 @@ public final class T0018MergeCodegenTest {
 
     @Test
     public void test00010SameConstThroughIfIsError(@TempDir Path tmp) {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = lib(
                 e,
                 e.mb.evalType(),
@@ -72,7 +72,7 @@ public final class T0018MergeCodegenTest {
 
     @Test
     public void test00020ConstDoublesThroughIfIsError(@TempDir Path tmp) {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = lib(e, e.typesDouble(), e.ret(e.ifElse(lt5(e), e.n(1.5), e.n(2.5))));
         var message = failure(lib, e.s("ok"), tmp);
         assertTrue(message.contains("Incompatible types"), message);
@@ -80,19 +80,19 @@ public final class T0018MergeCodegenTest {
 
     @Test
     public void test00030ConstDoublesAtReturnSitesIsError(@TempDir Path tmp) {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = lib(e, e.typesDouble(), e.seq(e.ifOnly(lt5(e), e.ret(e.n(1.5))), e.ret(e.n(2.5))));
         var message = failure(lib, e.s("ok"), tmp);
         assertTrue(message.contains("Incompatible types"), message);
     }
 
-    private static SourceExpr partialRecord(EcoMb e, SourceExpr a) {
+    private static SourceExpr partialRecord(TestMbShorthand e, SourceExpr a) {
         return e.rec(e.p("a", a), e.p("b", e.cat(a, e.s("!"))));
     }
 
     @Test
     public void test00100RecordFromForeachAndTail(@TempDir Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = lib(
                 e,
                 e.rec(e.p("a", e.mb.typesString()), e.p("b", e.mb.typesString())),
@@ -107,7 +107,7 @@ public final class T0018MergeCodegenTest {
 
     @Test
     public void test00110RecordFromSingleSite(@TempDir Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = lib(
                 e,
                 e.rec(e.p("a", e.mb.typesString()), e.p("b", e.mb.typesString())),
@@ -117,7 +117,7 @@ public final class T0018MergeCodegenTest {
 
     @Test
     public void test00120RecordsWithDifferingHeldConstsIsError(@TempDir Path tmp) {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var lib = lib(
                 e,
                 e.rec(e.p("k", e.typesDouble()), e.p("v", e.mb.typesString())),

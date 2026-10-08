@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.langhelp.GlobalContext;
+import compilerxyz.main.langhelp.Sources;
 import compilerxyz.main.langhelp.cache.CacheReal;
 import compilerxyz.main.syntax.SourceExpr;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
@@ -17,20 +18,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 public final class T0071TryInForeachTest {
-    private static SourceExpr tryCall(EcoMb e, SourceExpr errsT, SourceExpr boxT) {
+    private static SourceExpr tryCall(TestMbShorthand e, SourceExpr errsT, SourceExpr boxT) {
         return e.matchOf(
                 e.mb.tryCatchFinally(
                         e.eresultOk(boxT, e.call(e.lower(e.fld(e.v("fb"), "func")), e.v("arg"))),
                         Opt.some(new TestMb.Catch("__errs", errsT, e.eresultErrs(boxT, e.v("__errs")))),
                         Opt.none()),
                 "__r",
-                Opt.none(),
                 e.p("ok", e.v("__r")),
                 e.p("errs", e.mb.return_("m", e.eresultErrs(boxT, e.v("__r")))));
     }
 
     private static void run(Path tmp, String label, boolean inLoop) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var errsT = e.listType(e.mb.builtin("types", "expr_err"));
         var intT = e.mb.typesInt();
         var boxT = e.mb.typesIntBox();
@@ -51,7 +51,6 @@ public final class T0071TryInForeachTest {
                                 e.matchOf(
                                         e.eresultErr(boxT, e.v("loc"), e.s("boom")),
                                         "__x",
-                                        Opt.none(),
                                         e.p("ok", e.mb.panic(e.s("unreachable"))),
                                         e.p("errs", e.mb.throw_(e.v("__x"))))),
                         e.ret(e.mb.as(e.n(7), intT))))));
@@ -83,7 +82,6 @@ public final class T0071TryInForeachTest {
             top.add(e.matchOf(
                     e.call(e.v("g"), e.b(flag)),
                     "__u",
-                    Opt.none(),
                     e.p("ok", e.call(e.mb.log(), e.cat(e.s("ok "), e.toStr(e.v("__u"))))),
                     e.p(
                             "errs",
@@ -92,7 +90,7 @@ public final class T0071TryInForeachTest {
         }
         var src = tmp.resolve("src_" + label);
         Files.createDirectories(src);
-        T0200EcosystemLlvmTest.writeModule(src.resolve("main.at"), top);
+        Helpers.writeModule(src.resolve("main.at"), top);
         try (var cache = new CacheReal(tmp.resolve("cache_" + label))) {
             var res = Helpers.compile(
                     GlobalContext.newContext(cache, cache, cache),
@@ -104,7 +102,19 @@ public final class T0071TryInForeachTest {
             }
             var messages = new TList<String>();
             for (var entry : ok.value().logs()) messages.add(entry.message());
-            var sourceId = T0200EcosystemLlvmTest.mainSourceId(cache, src.resolve("main.at"));
+            var sourceId =
+                    switch (cache.sourcesGet(
+                            new SourceSpecAbsolute.Local(src.resolve("main.at").toString()))) {
+                        case Result.Ok<Sources.SourceResolved, String> resolved ->
+                            switch (resolved.value()) {
+                                case Sources.SourceResolved.Module m -> m.id().value();
+                                case Sources.SourceResolved.Bundle b -> throw new AssertionError("main.at is a bundle");
+                                case Sources.SourceResolved.File f ->
+                                    throw new AssertionError("main.at is not a module");
+                            };
+                        case Result.Err<Sources.SourceResolved, String> err ->
+                            throw new AssertionError("main.at does not resolve: " + err.error());
+                    };
             assertEquals(TList.of("ok 1", "[" + sourceId + ":" + locExpr.id().value() + "] boom"), messages);
         }
     }

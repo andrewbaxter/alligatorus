@@ -12,7 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 public final class T0017DefineConstFuncTest {
 
-    private static SourceExpr constFuncImpl(EcoMb e, SourceExpr builder, SourceExpr body) {
+    private static SourceExpr constFuncImpl(TestMbShorthand e, SourceExpr builder, SourceExpr body) {
         return e.callM(
                 builder,
                 "impl",
@@ -26,8 +26,8 @@ public final class T0017DefineConstFuncTest {
     public void test00000ConstFuncCallAndImport(@TempDir Path tmp) throws IOException {
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        var le = new EcoMb();
-        T0200EcosystemLlvmTest.writeModule(
+        var le = new TestMbShorthand();
+        Helpers.writeModule(
                 src.resolve("lib.at"),
                 TList.of(le.ret(le.lower(le.seq(
                         le.let("d", le.define()),
@@ -48,14 +48,14 @@ public final class T0017DefineConstFuncTest {
                         le.ret(le.rec(
                                 le.p("ident", le.fld(le.v("ident"), "func")),
                                 le.p("via", le.fld(le.v("via"), "func")))))))));
-        var e = new EcoMb();
-        T0200EcosystemLlvmTest.writeModule(
+        var e = new TestMbShorthand();
+        Helpers.writeModule(
                 src.resolve("main.at"),
                 TList.of(
                         e.let("m", e.importLocal("lib", "lib.at")),
                         e.call(e.mb.log(), e.call(e.fld(e.v("m"), "ident"), e.s("direct"))),
                         e.call(e.mb.log(), e.call(e.fld(e.v("m"), "via"), e.s("nested")))));
-        var ok = T0200EcosystemLlvmTest.compileOk(src.resolve("main.at"), tmp.resolve("cache"));
+        var ok = Helpers.compileOk(src.resolve("main.at"), tmp.resolve("cache"));
         var messages = new TList<String>();
         for (var entry : ok.logs()) {
             messages.add(entry.message());

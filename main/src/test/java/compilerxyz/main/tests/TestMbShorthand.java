@@ -3,11 +3,8 @@ package compilerxyz.main.tests;
 import compilerxyz.main.syntax.SourceExpr;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import compilerxyz.prelude.util.TMap;
 
-public final class EcoMb {
-    public final TMap<String, SourceExpr[]> fnSigs = new TMap<>();
-
+public final class TestMbShorthand {
     public final TestMb mb = new TestMb();
 
     public SourceExpr v(String name) {
@@ -124,10 +121,6 @@ public final class EcoMb {
         return mb.ifOf(TList.of(new TestMb.Branch(condition, then)), Opt.none());
     }
 
-    public SourceExpr incr(SourceExpr base) {
-        return mb.set(base, mb.operatorAdd(base, mb.num(1.)));
-    }
-
     public SourceExpr optSome(SourceExpr elementType, SourceExpr value) {
         return callM(mb.call(mb.typesOption(), elementType), "some", value);
     }
@@ -138,26 +131,6 @@ public final class EcoMb {
 
     public SourceExpr retSome(SourceExpr typeExpr) {
         return mb.optSomeType(typeExpr);
-    }
-
-    public SourceExpr optionTypeLet() {
-        return let("option_type", mb.call(mb.typesOption(), mb.evalType()));
-    }
-
-    public SourceExpr optionTypeSome(SourceExpr typeExpr) {
-        return callM(v("option_type"), "some", typeExpr);
-    }
-
-    public SourceExpr optionTypeNone() {
-        return callM(v("option_type"), "none", mb.tupleOf());
-    }
-
-    public SourceExpr optionTypeLoweredSome(SourceExpr typeExpr) {
-        return callM(lowerV("option_type"), "some", typeExpr);
-    }
-
-    public SourceExpr optionTypeLoweredNone() {
-        return callM(lowerV("option_type"), "none", mb.tupleOf());
     }
 
     public SourceExpr stage(SourceExpr expr) {
@@ -213,20 +186,13 @@ public final class EcoMb {
         return callM(objectBuilder, "impl", rec(p("inner", inner), p("description", optNone(mb.typesString()))));
     }
 
-    public SourceExpr interfaceImpl(SourceExpr interfaceBuilder, boolean isAspect) {
+    public SourceExpr interfaceImpl(SourceExpr interfaceBuilder) {
         return callM(
-                interfaceBuilder,
-                "impl",
-                rec(p("is_aspect", b(isAspect)), p("description", optNone(mb.typesString()))));
+                interfaceBuilder, "impl", rec(p("is_aspect", b(false)), p("description", optNone(mb.typesString()))));
     }
 
     public SourceExpr importLocal(String key, String path) {
         var entry = new SourceExpr.RecordEntry(mb.str(key), mb.sourceLocal(mb.str(path)));
-        return mb.field(mb.importRecord(TList.of(entry)), mb.str(key));
-    }
-
-    public SourceExpr importGit(String key, String url, String commit) {
-        var entry = new SourceExpr.RecordEntry(mb.str(key), mb.sourceGit(mb.str(url), mb.str(commit)));
         return mb.field(mb.importRecord(TList.of(entry)), mb.str(key));
     }
 
@@ -257,22 +223,6 @@ public final class EcoMb {
         return mb.builtin("types", "double");
     }
 
-    public SourceExpr typesFloat() {
-        return mb.builtin("types", "float");
-    }
-
-    public SourceExpr typesExprContext() {
-        return mb.builtin("types", "expr_context");
-    }
-
-    public SourceExpr typesLoc() {
-        return mb.builtin("types", "qexpr_id");
-    }
-
-    public SourceExpr typesJumpKey() {
-        return mb.builtin("types", "jump_key");
-    }
-
     public SourceExpr evalBuiltin(String name) {
         return mb.builtin("eval", name);
     }
@@ -281,12 +231,12 @@ public final class EcoMb {
         return mb.as(mb.str(value), mb.typesString());
     }
 
-    public SourceExpr matchOf(SourceExpr base, String key, Opt<SourceExpr> fallback, P... branches) {
+    public SourceExpr matchOf(SourceExpr base, String key, P... branches) {
         var out = new TList<TestMb.Branch>(branches.length);
         for (var b : branches) {
             out.add(new TestMb.Branch(mb.str(b.key()), b.value()));
         }
-        return mb.matchOf(base, mb.str(key), out, fallback);
+        return mb.matchOf(base, mb.str(key), out, Opt.none());
     }
 
     public SourceExpr mapType(SourceExpr keyType, SourceExpr valueType) {
@@ -295,22 +245,5 @@ public final class EcoMb {
 
     public SourceExpr mapNew(SourceExpr keyType, SourceExpr valueType, P... entries) {
         return callM(mapType(keyType, valueType), "new", rec(entries));
-    }
-
-    public SourceExpr not(SourceExpr a) {
-        return mb.operatorBitNot(a);
-    }
-
-    public SourceExpr eq(SourceExpr a, SourceExpr b) {
-        return mb.operatorEq(a, b);
-    }
-
-    public SourceExpr aspectDispatch(SourceExpr... aspectIds) {
-        var branches = new TList<TestMb.Branch>(aspectIds.length);
-        for (var id : aspectIds) {
-            branches.add(
-                    new TestMb.Branch(mb.operatorEq(fld(v("arg"), "key"), id), optSome(mb.typesAspect(), v("outer"))));
-        }
-        return mb.ifOf(branches, Opt.some(optNone(mb.typesAspect())));
     }
 }

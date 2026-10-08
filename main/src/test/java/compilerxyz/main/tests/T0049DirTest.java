@@ -25,7 +25,7 @@ public final class T0049DirTest {
 
     @Test
     public void test00000ExportAndWrite(@TempDir Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = tmp.resolve("main.at");
         T0047FileTest.writeModule(
                 main,

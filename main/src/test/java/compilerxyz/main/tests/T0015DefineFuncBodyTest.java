@@ -15,8 +15,8 @@ public final class T0015DefineFuncBodyTest {
     public void test00000StatementSeqBodiesExecute(@TempDir Path tmp) throws IOException {
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        var le = new EcoMb();
-        T0200EcosystemLlvmTest.writeModule(
+        var le = new TestMbShorthand();
+        Helpers.writeModule(
                 src.resolve("lib.at"),
                 TList.of(le.ret(le.lower(le.seq(
                         le.let("d", le.define()),
@@ -81,8 +81,8 @@ public final class T0015DefineFuncBodyTest {
                                         le.rec(le.p("out", le.listNew(le.mb.typesString(), le.s("start"))))))),
                         le.finish(le.v("d")),
                         le.ret(le.fld(le.v("mk"), "func")))))));
-        var e = new EcoMb();
-        T0200EcosystemLlvmTest.writeModule(
+        var e = new TestMbShorthand();
+        Helpers.writeModule(
                 src.resolve("main.at"),
                 TList.of(
                         e.let("mk", e.importLocal("lib", "lib.at")),
@@ -95,7 +95,7 @@ public final class T0015DefineFuncBodyTest {
                         e.callM(e.v("o"), "poke_ret_str", e.tup()),
                         e.callM(e.v("o"), "poke_arg_str", e.s("poked_as")),
                         e.call(e.mb.log(), e.callM(e.v("o"), "show", e.tup()))));
-        var ok = T0200EcosystemLlvmTest.compileOk(src.resolve("main.at"), tmp.resolve("cache"));
+        var ok = Helpers.compileOk(src.resolve("main.at"), tmp.resolve("cache"));
         assertEquals(
                 "start,poked,poked2,poked2,poked4,poked5a,poked5b,poked_rs,poked_as",
                 ok.logs().get(0).message(),

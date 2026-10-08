@@ -16,11 +16,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 public final class T0031InterfaceCrossSetTest {
-    private static SourceExpr twoSets(EcoMb e) {
+    private static SourceExpr twoSets(TestMbShorthand e) {
         return e.lower(e.seq(
                 e.let("da", e.define()),
                 e.let("iface", e.callM0(e.v("da"), "interface")),
-                e.interfaceImpl(e.v("iface"), false),
+                e.interfaceImpl(e.v("iface")),
                 e.callM(
                         e.v("iface"),
                         "func",
@@ -48,13 +48,13 @@ public final class T0031InterfaceCrossSetTest {
                         e.p("make_upper", e.fld(e.v("mk"), "func")), e.p("iface_t", e.fld(e.v("iface"), "type"))))));
     }
 
-    private static SourceExpr callViaInterface(EcoMb e, SourceExpr lib, SourceExpr value) {
+    private static SourceExpr callViaInterface(TestMbShorthand e, SourceExpr lib, SourceExpr value) {
         return e.call(e.fld(lib, "iface_t", "to_string"), value);
     }
 
     @Test
     public void test00000CrossSetInterfaceCallInModule() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
@@ -74,17 +74,17 @@ public final class T0031InterfaceCrossSetTest {
 
     @Test
     public void test00100CrossSetInterfaceCallThroughImport(@TempDir Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var src = tmp.resolve("src");
         Files.createDirectories(src);
-        T0200EcosystemLlvmTest.writeModule(src.resolve("lib.at"), TList.of(e.ret(twoSets(e))));
-        T0200EcosystemLlvmTest.writeModule(
+        Helpers.writeModule(src.resolve("lib.at"), TList.of(e.ret(twoSets(e))));
+        Helpers.writeModule(
                 src.resolve("main.at"),
                 TList.of(
                         e.let("lib", e.importLocal("lib", "lib.at")),
                         e.let("u", e.call(e.fld(e.v("lib"), "make_upper"), e.s("hello"))),
                         e.call(e.mb.log(), callViaInterface(e, e.v("lib"), e.v("u")))));
-        var ok = T0200EcosystemLlvmTest.compileOk(src.resolve("main.at"), tmp.resolve("cache"));
+        var ok = Helpers.compileOk(src.resolve("main.at"), tmp.resolve("cache"));
         assertEquals("HELLO", ok.logs().get(0).message());
     }
 }

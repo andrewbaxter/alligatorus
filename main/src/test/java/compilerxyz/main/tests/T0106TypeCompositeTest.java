@@ -26,13 +26,13 @@ public final class T0106TypeCompositeTest {
         return out;
     }
 
-    private static SourceExpr elem(EcoMb e, SourceExpr tuple, double index) {
+    private static SourceExpr elem(TestMbShorthand e, SourceExpr tuple, double index) {
         return e.mb.field(tuple, e.mb.num(index));
     }
 
     @Test
     public void test00000AsRecordType() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = e.seq(
                 e.let("r", e.mb.as(e.rec(e.p("a", e.dstr("y"))), e.rec(e.p("a", e.mb.typesString())))),
                 e.call(e.mb.log(), e.fld(e.v("r"), "a")));
@@ -41,7 +41,7 @@ public final class T0106TypeCompositeTest {
 
     @Test
     public void test00100AsNestedRecordType() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = e.seq(
                 e.let(
                         "r",
@@ -54,7 +54,7 @@ public final class T0106TypeCompositeTest {
 
     @Test
     public void test00300FunctionRecordArgType() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = e.seq(
                 e.let(
                         "g",
@@ -73,7 +73,7 @@ public final class T0106TypeCompositeTest {
         assertEquals(TList.of("args"), compileLogs(main));
     }
 
-    private static SourceExpr tupleConcatFn(EcoMb e, SourceExpr argType) {
+    private static SourceExpr tupleConcatFn(TestMbShorthand e, SourceExpr argType) {
         return e.let(
                 "g",
                 e.lower(e.seq(
@@ -91,7 +91,7 @@ public final class T0106TypeCompositeTest {
 
     @Test
     public void test00400AsTupleType() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var tupT = e.tup(e.mb.typesString(), e.mb.typesString());
         var main = e.seq(
                 tupleConcatFn(e, tupT),
@@ -101,7 +101,7 @@ public final class T0106TypeCompositeTest {
 
     @Test
     public void test00500FunctionTupleArgType() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = e.seq(
                 tupleConcatFn(e, e.tup(e.mb.typesString(), e.mb.typesString())),
                 e.call(e.mb.log(), e.call(e.v("g"), e.tup(e.dstr("tu"), e.dstr("ple")))));
@@ -110,7 +110,7 @@ public final class T0106TypeCompositeTest {
 
     @Test
     public void test00600RecordValueHoldingTypes() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = e.seq(
                 e.let("types_rec", e.rec(e.p("t", e.mb.typesInt()))),
                 e.call(e.mb.log(), e.toStr(e.mb.as(e.n(5.), e.fld(e.v("types_rec"), "t")))));
@@ -119,7 +119,7 @@ public final class T0106TypeCompositeTest {
 
     @Test
     public void test00700RecordTypeFromMap() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = e.seq(
                 e.let(
                         "t",
@@ -140,7 +140,7 @@ public final class T0106TypeCompositeTest {
 
     @Test
     public void test00800TupleTypeFromList() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = e.seq(
                 e.let(
                         "t",

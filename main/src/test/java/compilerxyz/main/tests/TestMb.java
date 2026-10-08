@@ -334,16 +334,8 @@ public final class TestMb {
         return builtin("eval", "aspect_initial_bind_dynamic");
     }
 
-    public SourceExpr evalAspectLift() {
-        return builtin("eval", "aspect_lift");
-    }
-
     public SourceExpr evalAspectInt() {
         return builtin("eval", "aspect_int");
-    }
-
-    public SourceExpr evalAspectStringConst() {
-        return builtin("eval", "aspect_string_const");
     }
 
     public SourceExpr evalStrUtf8() {
@@ -376,14 +368,6 @@ public final class TestMb {
 
     public SourceExpr evalOperatorAddId() {
         return builtin("eval", "aspect_operator_add_id");
-    }
-
-    public SourceExpr evalExitValue() {
-        return builtin("eval", "exit_value");
-    }
-
-    public SourceExpr typesExitValue() {
-        return builtin("types", "exit_value");
     }
 
     public SourceExpr evalBindResult() {

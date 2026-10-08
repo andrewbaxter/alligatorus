@@ -19,7 +19,7 @@ public final class T0057FieldUseMatrixTest {
 
     @Test
     public void test00000PrimitiveRecordFieldUse() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var exprs = new TList<SourceExpr>();
         var expected = new TList<String>();
 

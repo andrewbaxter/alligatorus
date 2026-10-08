@@ -33,15 +33,20 @@ public final class T0048ExecTest {
         };
     }
 
-    static SourceExpr bytesOf(EcoMb e, String text) {
+    static SourceExpr bytesOf(TestMbShorthand e, String text) {
         return e.call(e.mb.evalStrUtf8(), e.s(text));
     }
 
-    static SourceExpr exec(EcoMb e, String script, EcoMb.P[] env, EcoMb.P[] files) {
+    static SourceExpr exec(TestMbShorthand e, String script, TestMbShorthand.P[] env, TestMbShorthand.P[] files) {
         return exec(e, script, env, files, e.optNone(e.listType(e.mb.typesInt())));
     }
 
-    static SourceExpr exec(EcoMb e, String script, EcoMb.P[] env, EcoMb.P[] files, SourceExpr successCodes) {
+    static SourceExpr exec(
+            TestMbShorthand e,
+            String script,
+            TestMbShorthand.P[] env,
+            TestMbShorthand.P[] files,
+            SourceExpr successCodes) {
         return e.call(
                 e.mb.builtin("exec"),
                 e.rec(
@@ -52,13 +57,13 @@ public final class T0048ExecTest {
                         e.p("success_codes", successCodes)));
     }
 
-    private static SourceExpr log(EcoMb e, SourceExpr value) {
+    private static SourceExpr log(TestMbShorthand e, SourceExpr value) {
         return e.call(e.mb.log(), value);
     }
 
     @Test
     public void test00000RunWithFilesAndEnv(@TempDir Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = tmp.resolve("main.at");
         T0047FileTest.writeModule(
                 main,
@@ -68,8 +73,8 @@ public final class T0048ExecTest {
                                 exec(
                                         e,
                                         "cat in/a.txt; printf '%s' \"$GREETING\"; printf 'world\\n' > out/b.txt; exit 3",
-                                        new EcoMb.P[] {e.p("GREETING", e.s("hi"))},
-                                        new EcoMb.P[] {
+                                        new TestMbShorthand.P[] {e.p("GREETING", e.s("hi"))},
+                                        new TestMbShorthand.P[] {
                                             e.p("in/a.txt", bytesOf(e, "hello ")), e.p("out/.keep", bytesOf(e, ""))
                                         },
                                         e.optSome(
@@ -98,9 +103,9 @@ public final class T0048ExecTest {
 
     @Test
     public void test00050NonzeroExitIsAnError(@TempDir Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = tmp.resolve("main.at");
-        var call = exec(e, "echo oops >&2; exit 3", new EcoMb.P[] {}, new EcoMb.P[] {});
+        var call = exec(e, "echo oops >&2; exit 3", new TestMbShorthand.P[] {}, new TestMbShorthand.P[] {});
         T0047FileTest.writeModule(main, TList.of(log(e, e.callM0(call, "stdout"))));
         var errs = expectErr(compile(tmp.resolve("cache"), main));
         assertEquals(1, errs.size(), () -> "expected one error; got: " + errs);
@@ -111,9 +116,9 @@ public final class T0048ExecTest {
 
     @Test
     public void test00100FileEscapesSandbox(@TempDir Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = tmp.resolve("main.at");
-        var call = exec(e, "true", new EcoMb.P[] {}, new EcoMb.P[] {e.p("../x", bytesOf(e, "x"))});
+        var call = exec(e, "true", new TestMbShorthand.P[] {}, new TestMbShorthand.P[] {e.p("../x", bytesOf(e, "x"))});
         T0047FileTest.writeModule(main, TList.of(log(e, e.callM0(call, "stdout"))));
         var errs = expectErr(compile(tmp.resolve("cache"), main));
         assertEquals(1, errs.size(), () -> "expected one error; got: " + errs);
@@ -125,9 +130,12 @@ public final class T0048ExecTest {
 
     @Test
     public void test00200MissingOutput(@TempDir Path tmp) throws IOException {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = tmp.resolve("main.at");
-        var open = e.callM(e.callM0(exec(e, "true", new EcoMb.P[] {}, new EcoMb.P[] {}), "dir"), "open", e.s("gone"));
+        var open = e.callM(
+                e.callM0(exec(e, "true", new TestMbShorthand.P[] {}, new TestMbShorthand.P[] {}), "dir"),
+                "open",
+                e.s("gone"));
         T0047FileTest.writeModule(main, TList.of(log(e, e.toStr(e.fld(open, "len")))));
         var errs = expectErr(compile(tmp.resolve("cache"), main));
         assertEquals(1, errs.size(), () -> "expected one error; got: " + errs);

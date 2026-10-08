@@ -6,7 +6,6 @@ import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.syntax.SourceExpr;
 import compilerxyz.main.syntax.SourceModule;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
-import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
@@ -27,11 +26,11 @@ public final class T0107CompositeRuntimeTest {
         return out;
     }
 
-    private static SourceExpr elem(EcoMb e, SourceExpr tuple, double index) {
+    private static SourceExpr elem(TestMbShorthand e, SourceExpr tuple, double index) {
         return e.mb.field(tuple, e.mb.num(index));
     }
 
-    private static SourceExpr concatFn(EcoMb e, SourceExpr argType, SourceExpr first, SourceExpr second) {
+    private static SourceExpr concatFn(TestMbShorthand e, SourceExpr argType, SourceExpr first, SourceExpr second) {
         return e.let(
                 "g",
                 e.lower(e.seq(
@@ -49,14 +48,14 @@ public final class T0107CompositeRuntimeTest {
 
     @Test
     public void test00000TupleElementOfBoundTuple() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = e.seq(e.let("t", e.tup(e.dstr("t0"), e.dstr("t1"))), e.call(e.mb.log(), elem(e, e.v("t"), 1)));
         assertEquals(TList.of("t1"), compileLogs(main));
     }
 
     @Test
     public void test00100BoundTuplePassedToFunction() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = e.seq(
                 concatFn(
                         e,
@@ -70,7 +69,7 @@ public final class T0107CompositeRuntimeTest {
 
     @Test
     public void test00200BoundRecordPassedToFunction() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = e.seq(
                 concatFn(
                         e,
@@ -84,7 +83,7 @@ public final class T0107CompositeRuntimeTest {
 
     @Test
     public void test00300OptionOfRecordValueField() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var recT = e.rec(e.p("a", e.mb.typesString()));
         var main = e.seq(
                 e.let("o", e.optSome(recT, e.rec(e.p("a", e.dstr("via-value"))))),
@@ -94,7 +93,7 @@ public final class T0107CompositeRuntimeTest {
 
     @Test
     public void test00400ForeachListOfRecords() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var recT = e.rec(e.p("a", e.mb.typesString()));
         var main = e.seq(
                 e.let("l", e.listNew(recT, e.rec(e.p("a", e.dstr("x"))), e.rec(e.p("a", e.dstr("y"))))),
@@ -104,13 +103,12 @@ public final class T0107CompositeRuntimeTest {
 
     @Test
     public void test00500MatchOptionOfString() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var main = e.seq(
                 e.let("o", e.optSome(e.mb.typesString(), e.dstr("some-s"))),
                 e.matchOf(
                         e.v("o"),
                         "x",
-                        Opt.none(),
                         e.p("some", e.call(e.mb.log(), e.v("x"))),
                         e.p("none", e.call(e.mb.log(), e.s("none")))));
         assertEquals(TList.of("some-s"), compileLogs(main));
@@ -118,14 +116,13 @@ public final class T0107CompositeRuntimeTest {
 
     @Test
     public void test00600MatchOptionOfRecord() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var recT = e.rec(e.p("a", e.mb.typesString()));
         var main = e.seq(
                 e.let("o", e.optNone(recT)),
                 e.matchOf(
                         e.v("o"),
                         "x",
-                        Opt.none(),
                         e.p("some", e.call(e.mb.log(), e.fld(e.v("x"), "a"))),
                         e.p("none", e.call(e.mb.log(), e.s("none")))));
         assertEquals(TList.of("none"), compileLogs(main));
@@ -133,14 +130,12 @@ public final class T0107CompositeRuntimeTest {
 
     @Test
     public void test00700MatchSpecializedOptionOfInt() {
-        var e = new EcoMb();
+        var e = new TestMbShorthand();
         var intT = e.mb.typesInt();
-        var arms = new EcoMb.P[] {
+        var arms = new TestMbShorthand.P[] {
             e.p("some", e.call(e.mb.log(), e.toStr(e.v("x")))), e.p("none", e.call(e.mb.log(), e.s("none")))
         };
-        var main = e.seq(
-                e.matchOf(e.optSome(intT, e.intOf(7)), "x", Opt.none(), arms),
-                e.matchOf(e.optNone(intT), "x", Opt.none(), arms));
+        var main = e.seq(e.matchOf(e.optSome(intT, e.intOf(7)), "x", arms), e.matchOf(e.optNone(intT), "x", arms));
         assertEquals(TList.of("7", "none"), compileLogs(main));
     }
 }
