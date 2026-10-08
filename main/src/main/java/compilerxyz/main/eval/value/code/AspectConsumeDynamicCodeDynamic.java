@@ -33,7 +33,6 @@ public record AspectConsumeDynamicCodeDynamic(TypeCodeDynamic type) implements A
             return EResult.err(loc, "TypeCodeDynamic::toDynamic: value is not a compile-time Code");
         }
         var entry = new EvalContext.ExternalEntry(new BindingId(), type, new External(Code.class, codeObj));
-        xx.vx.externals.add(entry);
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
         if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());

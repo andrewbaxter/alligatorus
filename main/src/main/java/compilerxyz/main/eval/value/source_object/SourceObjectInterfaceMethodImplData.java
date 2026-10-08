@@ -212,11 +212,6 @@ public final class SourceObjectInterfaceMethodImplData {
             bodyResult = Opt.none();
         }
 
-        dtData.set.absorbBodyContext(xx, innerVx);
-
-        var captured = innerVx.externals;
-        capturedExternals.addAll(captured);
-
         compiledBodyCode = Opt.some(bodyCode);
         compiledBodyLoc = Opt.some(bodyLoc);
         compiledBodyResult = bodyResult;

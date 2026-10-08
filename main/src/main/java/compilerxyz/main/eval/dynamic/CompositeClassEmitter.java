@@ -116,7 +116,7 @@ public final class CompositeClassEmitter {
         b.retVoid();
         var seq = new JavaBytecodeSequence();
         seq.add(b.code());
-        JavaBytecodeUtils.renderMethod(seq, ctor, TList.of(), locTable);
+        JavaBytecodeUtils.renderMethod(seq, ctor, TList.of(), ownName, locTable);
 
         cw.visitEnd();
         return cw.toByteArray();

@@ -204,11 +204,6 @@ public final class SourceDataMethodData {
             bodyResult = Opt.none();
         }
 
-        outerType.set.absorbBodyContext(xx, innerVx);
-
-        var captured = innerVx.externals;
-        capturedExternals.addAll(captured);
-
         compiledBodyCode = Opt.some(bodyCode);
         compiledBodyResult = bodyResult;
         compiledArgSlots = argSlotsOut;

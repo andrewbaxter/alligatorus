@@ -1,6 +1,7 @@
 package compilerxyz.main.eval.value.source_object_new;
 
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -108,6 +109,6 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type) implement
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+        return EResult.ok(ExporterRoot.SOURCE_OBJECT_NEW_CONST);
     }
 }

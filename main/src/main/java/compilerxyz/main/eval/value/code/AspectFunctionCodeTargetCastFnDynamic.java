@@ -13,6 +13,7 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.value.eresult.TypeEResultDynamic;
+import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectType;
@@ -45,8 +46,8 @@ public record AspectFunctionCodeTargetCastFnDynamic(TypeCodeTargetCastFnDynamic 
         if (selfRes.hasErrors()) return selfRes.reerr();
         var locEntry = new EvalContext.ExternalEntry(
                 new BindingId(), GenQExprId.dynamicType(), new External(QExprId.class, loc));
-        xx.vx.externals.add(locEntry);
         var b = new JavaBytecodeBuilder(loc);
+        if (destType instanceof TypeSourceObjectDynamic destObject && destObject.set != null) b.defSet(destObject.set);
         var selfReg = b.reg(selfRes.requireValue("selfDyn"));
         var argRes = b.addCode(loc, argument.code());
         if (argRes.optIsSome()) return EResult.errs(argRes.optUnwrap());

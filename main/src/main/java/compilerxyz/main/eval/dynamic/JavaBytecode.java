@@ -9,4 +9,5 @@ public sealed interface JavaBytecode
                 JavaBytecodeBranch,
                 JavaBytecodeReturn,
                 JavaBytecodeThrow,
-                JavaBytecodeGuarded {}
+                JavaBytecodeGuarded,
+                JavaBytecodeDefSet {}

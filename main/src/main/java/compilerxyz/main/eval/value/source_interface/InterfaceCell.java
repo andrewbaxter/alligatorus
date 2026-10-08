@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.source_interface;
 
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.eval.DefinitionSet;
-import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.object.ObjectAspectSource;
@@ -133,13 +132,6 @@ public final class InterfaceCell {
         };
     }
 
-    public JavaInternalName jvmInternalName(ExprContext xx) {
-        if (set.optIsSome()) {
-            xx.vx.definitionSets.putIfAbsent(set.optUnwrap().defSetId, set.optUnwrap());
-        }
-        return internalName();
-    }
-
     public JavaInternalName jvmInternalNameForSet(DefinitionSet dependent) {
         if (set.optIsSome()) {
             dependent.addDependency(set.optUnwrap());
@@ -147,7 +139,7 @@ public final class InterfaceCell {
         return internalName();
     }
 
-    private JavaInternalName internalName() {
+    public JavaInternalName internalName() {
         return JavaInternalName.of(binaryName.replace('.', '/'));
     }
 

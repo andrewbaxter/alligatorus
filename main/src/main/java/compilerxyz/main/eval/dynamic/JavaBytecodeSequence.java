@@ -87,7 +87,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
     void renderInternal(
             MethodVisitor out,
             TList<InitialSlot> initialSlots,
-            TMap<BindingId, JavaStaticFieldRef> externalFields,
+            JavaBytecodeRenderRefs refs,
             JavaBytecodeLocTable locTable) {
 
         var flat = new TList<Item>();
@@ -173,6 +173,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                     flat.add(new Item.Throw(n));
                     realCount[0] += 1;
                 }
+                case JavaBytecodeDefSet d -> refs.defSet(d.set());
                 case JavaBytecodeGuarded g -> {
                     runs.boundary(Opt.some(g.dest));
                     destStack.add(g.dest);
@@ -440,7 +441,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                     var consumer = flat.get(p.consumer());
                     switch (consumer) {
                         case Item.Insn ins -> {
-                            for (var n : segmentsOf(segments, p.consumer(), ins.n(), slots, externalFields)
+                            for (var n : segmentsOf(segments, p.consumer(), ins.n(), slots, refs)
                                     .get(p.arg())) {
                                 node.instructions.add(n);
                             }
@@ -466,7 +467,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                         }
                         case DEFER -> {
                             var def = ((Item.Insn) flat.get(info.def)).n();
-                            for (var pn : segmentsOf(segments, info.def, def, slots, externalFields)
+                            for (var pn : segmentsOf(segments, info.def, def, slots, refs)
                                     .get(0)) node.instructions.add(pn);
                         }
                         case DEAD -> throw new AssertionError("dead register used");
@@ -496,9 +497,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                             }) {
                         break;
                     }
-                    for (var pn :
-                            segmentsOf(segments, i, n, slots, externalFields).get(args.size()))
-                        node.instructions.add(pn);
+                    for (var pn : segmentsOf(segments, i, n, slots, refs).get(args.size())) node.instructions.add(pn);
                     if (outInfo != null) {
                         var o = n.out.optUnwrap();
                         switch (outInfo.kind) {
@@ -623,7 +622,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
             int index,
             JavaBytecodeInsn n,
             SlotAllocator slots,
-            TMap<BindingId, JavaStaticFieldRef> externalFields) {
+            JavaBytecodeRenderRefs refs) {
         var existingOpt = cache.getOpt(index);
         if (existingOpt.optIsSome()) {
             var existing = existingOpt.optUnwrap();
@@ -644,12 +643,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
             }
             case JavaBytecodeInsnBody.VarIndexed v -> segs.get(argc).add(new VarInsnNode(v.opcode(), v.index()));
             case JavaBytecodeInsnBody.External e -> {
-                var fieldOpt = externalFields.getOpt(e.entry().key());
-                if (fieldOpt.optIsNone()) {
-                    throw new IllegalStateException("external is not a static field of the class being rendered: "
-                            + e.entry().external().externalHostClass().getSimpleName());
-                }
-                var field = fieldOpt.optUnwrap();
+                var field = refs.external(e.entry());
                 segs.get(argc).add(new FieldInsnNode(GETSTATIC, field.owner.value, field.name, field.descriptor.value));
             }
             case JavaBytecodeInsnBody.New nw -> {

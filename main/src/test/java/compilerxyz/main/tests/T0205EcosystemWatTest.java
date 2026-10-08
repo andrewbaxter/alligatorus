@@ -6,6 +6,7 @@ import static compilerxyz.main.tests.T0200EcosystemLlvmTest.writeModule;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import compilerxyz.main.syntax.SourceExpr;
+import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.io.TempDir;
 public final class T0205EcosystemWatTest {
     static void writeTarget(Path src) throws IOException {
         Files.createDirectories(src);
+        writeModule(src.resolve(EcoMeta.FILE), EcoMeta.module(new EcoMb()));
         writeModule(src.resolve("wat-2.0.atz"), EcoWat.module(new EcoMb()));
         writeModule(src.resolve("wasi-0.1.atz"), EcoWasi.module(new EcoMb()));
     }
@@ -494,5 +496,123 @@ public final class T0205EcosystemWatTest {
         var exe = tmp.resolve("hello");
         Files.write(exe, app.bytes());
         assertEquals(EcoHelloWasi.MESSAGE, run(tmp, app.executor().optUnwrap(), exe.toString()));
+    }
+
+    @Test
+    public void test00030OtherMeta(@TempDir Path tmp) throws IOException {
+        var src = tmp.resolve("src");
+        writeTarget(src);
+        var e = new EcoMb();
+        var top = new TList<SourceExpr>();
+        top.add(e.let("wasm", e.importLocal("wasm", "wat-2.0.atz")));
+        top.add(e.let("meta", e.importLocal("meta", EcoMeta.FILE)));
+        top.add(e.let("jv", e.fld(e.v("meta"), "value_t")));
+        top.add(e.let("m", e.call(e.fld(e.v("wasm"), "new"), e.tup())));
+        for (var bucket : new String[] {"alpha", "beta"}) {
+            var tags = e.listNew(
+                    e.v("jv"),
+                    e.call(e.fld(e.v("meta"), "bool"), e.b(true)),
+                    e.call(e.fld(e.v("meta"), "int"), e.intOf(3)));
+            var value = e.mapNew(
+                    e.mb.typesString(),
+                    e.v("jv"),
+                    e.p("bucket", e.call(e.fld(e.v("meta"), "str"), e.s(bucket))),
+                    e.p("tags", e.call(e.fld(e.v("meta"), "list"), tags)));
+            var other = e.call(
+                    e.fld(e.v("wasm"), "meta_other"),
+                    e.rec(e.p("type", e.s("iam_read")), e.p("value", e.call(e.fld(e.v("meta"), "map"), value))));
+            top.add(e.callM(e.v("m"), "meta", e.call(e.fld(e.v("wasm"), "meta_new"), e.rec(e.p("k", other)))));
+        }
+        top.add(e.let("r", e.callM0(e.v("m"), "render")));
+        top.add(e.call(e.mb.log(), e.fld(e.v("r"), "wat")));
+        top.add(
+                e.foreach(
+                        e.fld(e.v("r"), "meta"),
+                        "m0",
+                        e.matchOf(
+                                e.callM0(e.v("m0"), "k"),
+                                "mk",
+                                Opt.none(),
+                                e.p("dep", e.seq()),
+                                e.p(
+                                        "other",
+                                        e.seq(
+                                                e.call(e.mb.log(), e.fld(e.v("mk"), "type")),
+                                                e.matchOf(
+                                                        e.fld(e.v("mk"), "value"),
+                                                        "v",
+                                                        Opt.some(e.call(e.mb.log(), e.s("not a map"))),
+                                                        e.p(
+                                                                "map",
+                                                                e.seq(
+                                                                        e.matchOf(
+                                                                                e.callM(e.v("v"), "get", e.s("bucket")),
+                                                                                "s",
+                                                                                Opt.some(
+                                                                                        e.call(
+                                                                                                e.mb.log(),
+                                                                                                e.s("not a str"))),
+                                                                                e.p(
+                                                                                        "str",
+                                                                                        e.call(e.mb.log(), e.v("s")))),
+                                                                        e.matchOf(
+                                                                                e.callM(e.v("v"), "get", e.s("tags")),
+                                                                                "l",
+                                                                                Opt.some(
+                                                                                        e.call(
+                                                                                                e.mb.log(),
+                                                                                                e.s("not a list"))),
+                                                                                e.p(
+                                                                                        "list",
+                                                                                        e.foreach(
+                                                                                                e.v("l"),
+                                                                                                "x",
+                                                                                                e.matchOf(
+                                                                                                        e.v("x"),
+                                                                                                        "y",
+                                                                                                        Opt.some(
+                                                                                                                e.call(
+                                                                                                                        e
+                                                                                                                                .mb
+                                                                                                                                .log(),
+                                                                                                                        e
+                                                                                                                                .s(
+                                                                                                                                        "other"))),
+                                                                                                        e.p(
+                                                                                                                "bool",
+                                                                                                                e.call(
+                                                                                                                        e
+                                                                                                                                .mb
+                                                                                                                                .log(),
+                                                                                                                        e
+                                                                                                                                .s(
+                                                                                                                                        "bool"))),
+                                                                                                        e.p(
+                                                                                                                "int",
+                                                                                                                e.call(
+                                                                                                                        e
+                                                                                                                                .mb
+                                                                                                                                .log(),
+                                                                                                                        e
+                                                                                                                                .toStr(
+                                                                                                                                        e
+                                                                                                                                                .v(
+                                                                                                                                                        "y"))))))))))))))));
+        writeModule(src.resolve("main.at"), top);
+        var ok = compileOk(src.resolve("main.at"), tmp.resolve("cache"));
+        var logs = new TList<String>();
+        for (var l : ok.logs()) logs.add(l.message());
+        assertEquals(
+                TList.of(
+                        "(module\n  (memory (export \"memory\") 1)\n)\n",
+                        "iam_read",
+                        "alpha",
+                        "bool",
+                        "3",
+                        "iam_read",
+                        "beta",
+                        "bool",
+                        "3"),
+                logs);
     }
 }

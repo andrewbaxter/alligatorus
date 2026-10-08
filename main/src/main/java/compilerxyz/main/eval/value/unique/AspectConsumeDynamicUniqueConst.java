@@ -36,7 +36,6 @@ public record AspectConsumeDynamicUniqueConst(TypeUniqueConst type) implements A
         }
         var u = MustCast.mustCast(Unique.class, hostValue);
         var entry = new EvalContext.ExternalEntry(new BindingId(), type, new External(Unique.class, u));
-        xx.vx.externals.add(entry);
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
         if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());

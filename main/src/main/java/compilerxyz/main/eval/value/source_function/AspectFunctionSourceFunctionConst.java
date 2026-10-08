@@ -24,7 +24,6 @@ public record AspectFunctionSourceFunctionConst(TypeSourceFunctionConst type) im
         if (set == null) {
             return EResult.err(loc, "TypeSourceFunctionConst::call: definition set function has no set reference");
         }
-        xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
         if (type.data().argType.optIsNone()) {
             return EResult.err(loc, "TypeSourceFunctionConst::call: definition set function missing arg type");
         }
@@ -42,6 +41,7 @@ public record AspectFunctionSourceFunctionConst(TypeSourceFunctionConst type) im
         var descRes = TypeFunctionConst.descriptorFor(xx, loc, argType, retType, false);
         if (descRes.hasErrors()) return descRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
+        b.defSet(set);
         var carryAdd = b.addCode(loc, positional.carry());
         if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
         var invocation = DynUtil.invokeStaticFunction(

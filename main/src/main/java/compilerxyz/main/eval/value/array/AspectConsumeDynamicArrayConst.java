@@ -42,7 +42,6 @@ public record AspectConsumeDynamicArrayConst<T extends Type>(TypeArrayConst<T> t
             var cell = new StagedExprCell(cv.value().optUnwrap());
             var entry = new EvalContext.ExternalEntry(
                     new BindingId(), new TypeExpr(), new External(StagedExprCell.class, cell));
-            xx.vx.externals.add(entry);
             var loaded = b.external(entry);
             var desc = b.constString(elementDesc.value());
             var converted = b.invokeStatic(GenCodegenDescriptors.DYN_RUNTIME_ARRAY_CONST, loaded, desc);

@@ -296,6 +296,17 @@ public final class T0105ExportRoundTripTest {
     }
 
     @Test
+    public void test01050LoweredObjectCtorReexported() {
+        var e = new EcoMb();
+        var lib = e.seq(e.let("k", thingDefs(e)), e.ret(e.rec(e.p("obj_new", e.fld(e.v("k"), "obj_new")))));
+        var main = e.seq(
+                importLib(e),
+                e.let("inst", e.call(e.fld(e.v("r"), "obj_new"), e.rec(e.p("name", e.s("via-ctor"))))),
+                e.call(e.mb.log(), e.callM(e.v("inst"), "name", e.tup())));
+        assertEquals(TList.of("via-ctor"), compileLogs(e, lib, main));
+    }
+
+    @Test
     public void test01100InstanceBuiltFromLoweredCtor() {
         var e = new EcoMb();
         var lib = e.seq(

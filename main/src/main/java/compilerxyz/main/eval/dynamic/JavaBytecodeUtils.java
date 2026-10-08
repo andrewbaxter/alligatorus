@@ -1,10 +1,8 @@
 package compilerxyz.main.eval.dynamic;
 
 import compilerxyz.main.eval.BindingId;
-import compilerxyz.main.eval.EvalContext;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import compilerxyz.prelude.util.TMap;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.MethodNode;
@@ -44,29 +42,21 @@ public final class JavaBytecodeUtils {
         };
     }
 
-    public static TMap<BindingId, JavaStaticFieldRef> externalFields(
-            JavaInternalName owner, String prefix, TList<EvalContext.ExternalEntry> externals) {
-        var out = new TMap<BindingId, JavaStaticFieldRef>();
-        for (int i = 0; i < externals.size(); i++) {
-            var entry = externals.get(i);
-            out.put(
-                    entry.key(),
-                    new JavaStaticFieldRef(
-                            owner,
-                            prefix + Prefixes.EXTERNAL_PREFIX + i,
-                            JavaDataDescriptor.fromClass(entry.external().externalHostClass())));
-        }
-        return out;
-    }
-
     public static void renderMethod(
             JavaBytecodeSequence seq,
             MethodVisitor mv,
             TList<BindingId> initialIndexes,
+            JavaInternalName owner,
             JavaBytecodeLocTable locTable) {
         var slots = new TList<JavaBytecodeSequence.InitialSlot>(initialIndexes.size());
         for (var k : initialIndexes) slots.add(new JavaBytecodeSequence.InitialSlot(k));
-        seq.renderInternal(mv, slots, new TMap<>(), locTable);
+        var refs = new JavaBytecodeRenderRefs(owner, "");
+        seq.renderInternal(mv, slots, refs, locTable);
+        if (!refs.isEmpty()) {
+            throw new IllegalStateException(
+                    "method body references externals or definition sets but its class declares none: "
+                            + owner.value());
+        }
         mv.visitMaxs(0, 0);
         mv.visitEnd();
     }
@@ -77,24 +67,23 @@ public final class JavaBytecodeUtils {
             TList<JavaBytecodeSequence.InitialSlot> initialSlots,
             String context,
             JavaMethodDescriptor descriptor,
-            TMap<BindingId, JavaStaticFieldRef> externalFields,
+            JavaBytecodeRenderRefs refs,
             JavaBytecodeLocTable locTable) {
         try {
-            seq.renderInternal(mv, initialSlots, externalFields, locTable);
+            seq.renderInternal(mv, initialSlots, refs, locTable);
             mv.visitMaxs(0, 0);
             mv.visitEnd();
         } catch (RuntimeException e) {
             throw new IllegalStateException(
                     "bytecode rendering failed for " + context + ":\n"
-                            + dumpMethod(seq, initialSlots, descriptor, externalFields),
+                            + dumpMethod(seq, initialSlots, descriptor, refs),
                     e);
         }
         if (DUMP_BYTECODE) {
-            System.err.println(
-                    "bytecode for " + context + ":\n" + dumpMethod(seq, initialSlots, descriptor, externalFields));
+            System.err.println("bytecode for " + context + ":\n" + dumpMethod(seq, initialSlots, descriptor, refs));
         }
         if (VERIFY_BYTECODE) {
-            var dump = dumpMethod(seq, initialSlots, descriptor, externalFields);
+            var dump = dumpMethod(seq, initialSlots, descriptor, refs);
             if (!dump.startsWith("analyzer: ok")) {
                 throw new IllegalStateException("bytecode verification failed for " + context + ":\n" + dump);
             }
@@ -105,11 +94,11 @@ public final class JavaBytecodeUtils {
             JavaBytecodeSequence seq,
             TList<JavaBytecodeSequence.InitialSlot> initialSlots,
             JavaMethodDescriptor descriptor,
-            TMap<BindingId, JavaStaticFieldRef> externalFields) {
+            JavaBytecodeRenderRefs refs) {
         var node = new MethodNode(Opcodes.ASM9, Opcodes.ACC_PUBLIC, "dump", descriptor.value(), null, null);
         var sb = new StringBuilder();
         try {
-            seq.renderInternal(node, initialSlots, externalFields, new JavaBytecodeLocTable());
+            seq.renderInternal(node, initialSlots, refs, new JavaBytecodeLocTable());
         } catch (RuntimeException e) {
             sb.append("render: ").append(e.getMessage()).append('\n');
         }

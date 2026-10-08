@@ -31,7 +31,6 @@ public record AspectFunctionSourceUnionNewDynamic(TypeSourceUnionNewDynamic type
         if (underlyingType == null) {
             return EResult.err(loc, "TypeSourceUnionNewDynamic::call: variant payload type not finalised");
         }
-        xx.vx.definitionSets.putIfAbsent(type.type().set.defSetId, type.type().set);
         var variantBinaryName =
                 SourceUnionEmitter.variantBinaryNameFor(type.type().baseBinaryName, type.variantIndex());
         var erb = new Erb(loc);
@@ -47,6 +46,7 @@ public record AspectFunctionSourceUnionNewDynamic(TypeSourceUnionNewDynamic type
         var payloadDesc = SourceUnionEmitter.payloadDescriptor(xx, underlyingType);
         var ctorDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(payloadDesc));
         var b = new JavaBytecodeBuilder(loc);
+        b.defSet(type.type().set);
         var out = b.newInstance(
                 variantInternal,
                 ctorDesc,

@@ -24,7 +24,7 @@ public record AspectFunctionInterfaceMethodDynamic(TypeInterfaceMethodDynamic ty
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
         var argType = type.method().argType;
         var retType = type.method().retType;
-        var ifaceInternalName = type.iface().jvmInternalName(xx);
+        var ifaceInternalName = type.iface().internalName();
 
         var splitRes = DynUtil.methodRefSplitArgument(
                 xx, loc, argType, argument, "interface method '" + type.method().name + "'");
@@ -47,6 +47,7 @@ public record AspectFunctionInterfaceMethodDynamic(TypeInterfaceMethodDynamic ty
         var methodDesc = JavaMethodDescriptor.fromParts(descObject, TList.of(descObject));
 
         var b = new JavaBytecodeBuilder(loc);
+        if (type.iface().set.optIsSome()) b.defSet(type.iface().set.optUnwrap());
         var receiver = b.checkcast(
                 JavaDataDescriptor.fromInternalName(ifaceInternalName),
                 b.reg(receiverDynRes.requireValue("TypeInterfaceMethodDynamic receiver toDynamic")));

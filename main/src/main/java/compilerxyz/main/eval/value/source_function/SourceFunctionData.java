@@ -209,11 +209,6 @@ public final class SourceFunctionData {
             bodyResult = Opt.none();
         }
 
-        set.absorbBodyContext(xx, innerVx);
-
-        var captured = innerVx.externals;
-        capturedExternals.addAll(captured);
-
         JavaDataDescriptor retDesc;
         if (retT.optIsNone()) {
             retDesc = JavaDataDescriptor.DESC_VOID;
@@ -225,8 +220,8 @@ public final class SourceFunctionData {
                 retDesc = JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
             }
         }
-        functionSpec = Opt.some(new DefSetFunctionsEmitter.FunctionSpec(
-                jvmMethodName, argSlots, retDesc, bodyCode, bodyResult, TList.from(captured)));
+        functionSpec = Opt.some(
+                new DefSetFunctionsEmitter.FunctionSpec(jvmMethodName, argSlots, retDesc, bodyCode, bodyResult));
         return Opt.none();
     }
 

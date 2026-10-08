@@ -74,9 +74,6 @@ public record AspectFieldSourceObjectDynamic(TypeSourceObjectDynamic type) imple
             return EResult.err(loc, "TypeSourceObjectDynamic::field: receiver is not a ValueDynamic");
         }
 
-        if (type.set != null) {
-            xx.vx.definitionSets.putIfAbsent(type.set.defSetId, type.set);
-        }
         JavaDataDescriptor retJvmDesc;
         if (retType.optIsSome()) {
             var retConsume = GenAspectConsumeDynamic.getMaybe(xx, retType.optUnwrap());
@@ -103,7 +100,8 @@ public record AspectFieldSourceObjectDynamic(TypeSourceObjectDynamic type) imple
                 fieldName,
                 descObjObj,
                 false,
-                false);
+                false,
+                type.set != null ? Opt.some(type.set) : Opt.none());
         if (self.value().optIsNone() || !(self.value().optUnwrap() instanceof ValueDynamic selfMethodVd)) {
             return EResult.err(loc, "TypeSourceObjectDynamic::field: method receiver has no dynamic source");
         }

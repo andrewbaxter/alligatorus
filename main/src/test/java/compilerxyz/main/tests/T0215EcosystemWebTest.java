@@ -31,6 +31,7 @@ public final class T0215EcosystemWebTest {
         Assumptions.assumeTrue(onPath("wat2wasm"), "wat2wasm not on PATH");
         var src = tmp.resolve("src");
         Files.createDirectories(src);
+        writeModule(src.resolve(EcoMeta.FILE), EcoMeta.module(new EcoMb()));
         writeModule(src.resolve("wat-2.0.atz"), EcoWat.module(new EcoMb()));
         writeModule(src.resolve("webidl.atz"), EcoWebidl.module(new EcoMb()));
         writeModule(src.resolve("js-es2020.atz"), EcoJs.module(new EcoMb()));

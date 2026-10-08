@@ -8,19 +8,16 @@ import compilerxyz.main.eval.dynamic.DynPanic;
 import compilerxyz.main.eval.dynamic.EvalRootEmitter;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeLocTable;
+import compilerxyz.main.eval.dynamic.JavaBytecodeRenderRefs;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
-import compilerxyz.main.eval.dynamic.Prefixes;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
-import compilerxyz.prelude.util.TSet;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayDeque;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
@@ -33,47 +30,7 @@ public final class EvalRoot {
         return binaryName;
     }
 
-    public static EResult<TList<DefinitionSetClassLoader>> installDefinitionSets(ExprContext xx, QExprId loc) {
-        var dependencyLoaders = new TList<DefinitionSetClassLoader>();
-        var seenSets = new TSet<DefSetId>();
-        var toVisit = new ArrayDeque<DefinitionSet>();
-        for (var ds : xx.vx.definitionSets.values()) {
-            toVisit.push(ds);
-        }
-        while (true) {
-            while (!toVisit.isEmpty()) {
-                var ds = toVisit.pop();
-                if (!seenSets.add(ds.defSetId)) {
-                    continue;
-                }
-                var installRes = ds.install(xx, loc);
-                if (installRes.hasErrors()) return installRes.reerr();
-                dependencyLoaders.add(installRes.requireValue("EvalRoot::installDefinitionSets install"));
-                for (var dep : ds.dependencies.values()) {
-                    if (!seenSets.contains(dep.defSetId)) {
-                        toVisit.push(dep);
-                    }
-                }
-            }
-            boolean foundNew = false;
-            for (var ds : xx.vx.definitionSets.values()) {
-                if (!seenSets.contains(ds.defSetId)) {
-                    toVisit.push(ds);
-                    foundNew = true;
-                }
-            }
-            if (!foundNew) {
-                return EResult.ok(dependencyLoaders);
-            }
-        }
-    }
-
-    public static EResult<Object> run(
-            ExprContext xx,
-            QExprId loc,
-            String binaryName,
-            CodeDynamicReg code,
-            TList<DefinitionSetClassLoader> dependencyLoaders) {
+    public static EResult<Object> run(ExprContext xx, QExprId loc, String binaryName, CodeDynamicReg code) {
         var vx = xx.vx;
         var internalName = EvalRootEmitter.toInternalName(binaryName);
         var locTable = new JavaBytecodeLocTable();
@@ -90,30 +47,18 @@ public final class EvalRoot {
                 null,
                 JvmConstants.INTNAME_OBJECT.value(),
                 null);
-        var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
-        fieldDescriptors.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, EvalRootEmitter.DESC_EXPR_CONTEXT);
-        var externalFieldNames = new TList<String>(vx.externals.size());
-        for (int i = 0; i < vx.externals.size(); i++) {
-            var fieldName = Prefixes.EXTERNAL_PREFIX + i;
-            externalFieldNames.add(fieldName);
-            fieldDescriptors.put(
-                    fieldName,
-                    JavaDataDescriptor.fromClass(vx.externals.get(i).external().externalHostClass()));
-        }
-        for (var fieldEntry : fieldDescriptors.entrySet()) {
-            cw.visitField(
-                            Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
-                            fieldEntry.getKey(),
-                            fieldEntry.getValue().value(),
-                            null,
-                            null)
-                    .visitEnd();
-        }
+        cw.visitField(
+                        Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+                        EvalRootEmitter.EXPR_CONTEXT_FIELD,
+                        EvalRootEmitter.DESC_EXPR_CONTEXT.value(),
+                        null,
+                        null)
+                .visitEnd();
         var mdescRun = JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, TList.of());
         var mv = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "run", mdescRun.value(), null, null);
         var seq = new JavaBytecodeSequence();
         var ownerInternal = JavaInternalName.of(internalName);
-        var externalFields = JavaBytecodeUtils.externalFields(ownerInternal, "", vx.externals);
+        var refs = new JavaBytecodeRenderRefs(ownerInternal, "");
         seq.add(code.code());
         {
             var rb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
@@ -125,9 +70,17 @@ public final class EvalRoot {
             seq.add(rb.code());
         }
         JavaBytecodeUtils.renderMethodTyped(
-                seq, mv, TList.of(), ownerInternal.value() + ".run", mdescRun, externalFields, locTable);
+                seq, mv, TList.of(), ownerInternal.value() + ".run", mdescRun, refs, locTable);
+        var rootStaticFields = new TOrderedMap<String, Object>();
+        refs.declareFields(cw, rootStaticFields);
         cw.visitEnd();
         var bytecode = cw.toByteArray();
+        var dependencyLoaders = new TList<DefinitionSetClassLoader>();
+        for (var ds : refs.defSets().values()) {
+            var installRes = ds.install(xx, loc);
+            if (installRes.hasErrors()) return installRes.reerr();
+            dependencyLoaders.add(installRes.requireValue("EvalRoot::run install"));
+        }
         if (vx.ix.classLoader.optIsNone()) {
             vx.ix.classLoader = Opt.some(new DefinitionSetClassLoader(
                     vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders));
@@ -135,11 +88,6 @@ public final class EvalRoot {
         var loader = vx.ix.classLoader.optUnwrap();
         loader.registerClass(binaryName, bytecode);
         loader.registerLocs(binaryName, locTable.locs());
-        var rootStaticFields = new TOrderedMap<String, Object>();
-        for (int i = 0; i < vx.externals.size(); i++) {
-            rootStaticFields.put(
-                    externalFieldNames.get(i), vx.externals.get(i).external().externalHostValue());
-        }
         rootStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
         loader.registerExternals(binaryName, rootStaticFields);
         Class<?> rootClass;

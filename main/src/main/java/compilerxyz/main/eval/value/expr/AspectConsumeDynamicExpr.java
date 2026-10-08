@@ -49,7 +49,6 @@ public record AspectConsumeDynamicExpr(TypeExpr type) implements AspectConsumeDy
         }
         var cell = new StagedExprCell(cv.value().optUnwrap());
         var entry = new EvalContext.ExternalEntry(new BindingId(), type, new External(StagedExprCell.class, cell));
-        xx.vx.externals.add(entry);
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
         if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());

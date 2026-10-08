@@ -185,6 +185,7 @@ public final class T0220EcosystemWebidlTest {
         var src = tmp.resolve("src");
         Files.createDirectories(src);
         writeModule(src.resolve("webidl.atz"), EcoWebidl.module(new EcoMb()));
+        writeModule(src.resolve(EcoMeta.FILE), EcoMeta.module(new EcoMb()));
         writeModule(src.resolve("wat-2.0.atz"), EcoWat.module(new EcoMb()));
         writeModule(src.resolve("webidl-wasm.atz"), EcoWebidlWasm.module(new EcoMb()));
         var e = new EcoMb();

@@ -27,13 +27,13 @@ public record AspectUnionSourceUnionDynamic(TypeSourceUnionDynamic type) impleme
 
     @Override
     public Opt<TList<ExprErr>> aspectUnionPrepare(ExprContext xx) {
-        xx.vx.definitionSets.putIfAbsent(type.set.defSetId, type.set);
         return Opt.none();
     }
 
     @Override
     public EResult<CodeDynamicReg> aspectUnionTest(QExprId loc, JavaBytecodeReg base, int variantIndex) {
         var b = new JavaBytecodeBuilder(loc);
+        b.defSet(type.set);
         return EResult.ok(b.code(b.instanceOf(type.variantInternal(variantIndex), base)));
     }
 

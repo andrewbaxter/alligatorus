@@ -33,7 +33,6 @@ public record AspectConsumeDynamicObjectConst(TypeObjectConst type) implements A
         }
         var entry =
                 new EvalContext.ExternalEntry(new BindingId(), type, new External(type.externalHostClass(), hostValue));
-        xx.vx.externals.add(entry);
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
         if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());

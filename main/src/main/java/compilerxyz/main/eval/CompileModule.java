@@ -140,25 +140,11 @@ public final class CompileModule {
                     stage1Code = Opt.some(dynamicRes.requireValue("Eval::eval materialize"));
                     fallbackValue = Opt.none();
                 }
-                if (stage1Code.optIsNone() && evalVx.definitionSets.isEmpty()) {
+                if (stage1Code.optIsNone()) {
                     evalResult = new EvalOutcome.Ok(fallbackValue, new TList<>());
                     break evalBlock;
                 }
-                var installRes = EvalRoot.installDefinitionSets(evalXx, evalRootLoc);
-                if (installRes.hasErrors()) {
-                    evalResult = new EvalOutcome.Err(installRes.errorsOpt().optUnwrap());
-                    break evalBlock;
-                }
-                if (stage1Code.optIsNone()) {
-                    evalResult = new EvalOutcome.Ok(fallbackValue, evalVx.logs);
-                    break evalBlock;
-                }
-                var runRes = EvalRoot.run(
-                        evalXx,
-                        evalRootLoc,
-                        evalBinaryName,
-                        stage1Code.optUnwrap(),
-                        installRes.requireValue("Eval::eval installDefinitionSets"));
+                var runRes = EvalRoot.run(evalXx, evalRootLoc, evalBinaryName, stage1Code.optUnwrap());
                 if (runRes.hasErrors()) {
                     evalResult = new EvalOutcome.Err(runRes.errorsOpt().optUnwrap());
                     break evalBlock;

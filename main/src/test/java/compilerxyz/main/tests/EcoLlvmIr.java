@@ -38,8 +38,10 @@ public final class EcoLlvmIr {
         return e.call(e.mb.typesOption(), t(e, "lmod"));
     }
 
-    private static SourceExpr renderT(EcoMb e) {
-        return e.rec(e.p("ir", str(e)), e.p("libs", e.listType(str(e))));
+    private static final IList<String> META_EXPORTS = IList.of("meta_t", "meta_other", "meta_new");
+
+    private static SourceExpr renderT(EcoMb e, SourceExpr metaT) {
+        return e.rec(e.p("ir", str(e)), e.p("libs", e.listType(str(e))), e.p("meta", e.listType(metaT)));
     }
 
     private static SourceExpr initFn(EcoMb e, SourceExpr ty, SourceExpr cv) {
@@ -328,6 +330,12 @@ public final class EcoLlvmIr {
 
     private static SourceExpr inst(EcoMb e, String variant, EcoMb.P... fields) {
         return mk(e, "linst", e.p("k", e.call(e.lowerV("li_" + variant), e.rec(fields))));
+    }
+
+    private static SourceExpr depInst(EcoMb e, String variant, EcoMb.P... fields) {
+        var dep = mk(e, "ldep", e.p("k", e.call(e.lowerV(variant), e.rec(fields))));
+        var meta = mk(e, "lmeta", e.p("k", e.call(e.lowerV("lm_dep"), e.rec(e.p("dep", dep)))));
+        return inst(e, "meta", e.p("meta", meta));
     }
 
     private static SourceExpr appendCode(EcoMb e, SourceExpr out, SourceExpr codeTP) {
@@ -691,48 +699,15 @@ public final class EcoLlvmIr {
                                     push(
                                             e,
                                             e.v("out"),
-                                            inst(
+                                            depInst(
                                                     e,
-                                                    "dep",
-                                                    e.p(
-                                                            "dep",
-                                                            mk(
-                                                                    e,
-                                                                    "ldep",
-                                                                    e.p(
-                                                                            "k",
-                                                                            e.call(
-                                                                                    e.lowerV("ld_extern"),
-                                                                                    e.rec(
-                                                                                            e.p("name", in(e, "name")),
-                                                                                            e.p(
-                                                                                                    "ty",
-                                                                                                    in(
-                                                                                                            e,
-                                                                                                            "base"))))))))),
+                                                    "ld_extern",
+                                                    e.p("name", in(e, "name")),
+                                                    e.p("ty", in(e, "base")))),
                                     e.foreach(
                                             in(e, "libs"),
                                             "l",
-                                            push(
-                                                    e,
-                                                    e.v("out"),
-                                                    inst(
-                                                            e,
-                                                            "dep",
-                                                            e.p(
-                                                                    "dep",
-                                                                    mk(
-                                                                            e,
-                                                                            "ldep",
-                                                                            e.p(
-                                                                                    "k",
-                                                                                    e.call(
-                                                                                            e.lowerV("ld_lib"),
-                                                                                            e.rec(
-                                                                                                    e.p(
-                                                                                                            "name",
-                                                                                                            e.v(
-                                                                                                                    "l")))))))))),
+                                            push(e, e.v("out"), depInst(e, "ld_lib", e.p("name", e.v("l"))))),
                                     e.let(
                                             "rv",
                                             unwrapCveM(
@@ -761,6 +736,161 @@ public final class EcoLlvmIr {
                                     e.ret(okCve(e, cvNo(e, codeOf(e, e.v("out"))))))),
                     e.p("exception_type", e.optionTypeLoweredNone())));
         }
+    }
+
+    SourceExpr lmodMetaMethod() {
+        return e.methodImpl(
+                e.v("lmod"),
+                "meta",
+                t(e, "lmeta"),
+                e.optionTypeNone(),
+                e.stage(e.matchOf(
+                        e.callM(e.v("arg"), "k", e.tup()),
+                        "m",
+                        Opt.none(),
+                        e.p(
+                                "dep",
+                                e.seq(
+                                        e.let(
+                                                "key",
+                                                e.matchOf(
+                                                        e.callM(e.fld(e.v("m"), "dep"), "k", e.tup()),
+                                                        "p",
+                                                        Opt.none(),
+                                                        e.p(
+                                                                "extern",
+                                                                e.cat(
+                                                                        e.s("extern "),
+                                                                        p(e, "name"),
+                                                                        e.s(" "),
+                                                                        irOf(
+                                                                                e,
+                                                                                im0(
+                                                                                        e,
+                                                                                        "lfn",
+                                                                                        "ret",
+                                                                                        asp(
+                                                                                                e,
+                                                                                                in(e, "xx", "value"),
+                                                                                                p(e, "ty"),
+                                                                                                "lfn"))),
+                                                                        e.s("("),
+                                                                        e.callM(outer(e), "params_ir", p(e, "ty")),
+                                                                        e.s(")"))),
+                                                        e.p("lib", e.cat(e.s("lib "), p(e, "name"))))),
+                                        e.let("dup", e.rec(e.p("v", e.intOf(0)))),
+                                        e.foreach(
+                                                in(e, "dep_keys"),
+                                                "k0",
+                                                e.ifOnly(
+                                                        e.eq(e.v("k0"), e.v("key")),
+                                                        e.mb.set(e.fld(e.v("dup"), "v"), num(e, 1)))),
+                                        e.ifOnly(
+                                                e.eq(e.fld(e.v("dup"), "v"), num(e, 0)),
+                                                e.seq(
+                                                        push(e, in(e, "dep_keys"), e.v("key")),
+                                                        push(e, in(e, "meta"), e.v("arg")))))),
+                        e.p("other", push(e, in(e, "meta"), e.v("arg"))))));
+    }
+
+    void lmodRender(TList<SourceExpr> x) {
+        method(
+                e,
+                x,
+                "lmod",
+                "render",
+                e.tup(),
+                renderT(e, t(e, "lmeta")),
+                e.seq(
+                        e.let("out", e.listNew(str(e))),
+                        e.let("libs", e.listNew(str(e))),
+                        e.foreach(
+                                in(e, "meta"),
+                                "m0",
+                                e.matchOf(
+                                        e.callM(e.v("m0"), "k", e.tup()),
+                                        "m",
+                                        Opt.none(),
+                                        e.p(
+                                                "dep",
+                                                e.matchOf(
+                                                        e.callM(e.fld(e.v("m"), "dep"), "k", e.tup()),
+                                                        "p",
+                                                        Opt.none(),
+                                                        e.p(
+                                                                "extern",
+                                                                push(
+                                                                        e,
+                                                                        e.v("out"),
+                                                                        e.cat(
+                                                                                e.s("declare "),
+                                                                                irOf(
+                                                                                        e,
+                                                                                        im0(
+                                                                                                e,
+                                                                                                "lfn",
+                                                                                                "ret",
+                                                                                                asp(
+                                                                                                        e,
+                                                                                                        in(
+                                                                                                                e, "xx",
+                                                                                                                "value"),
+                                                                                                        p(e, "ty"),
+                                                                                                        "lfn"))),
+                                                                                e.s(" @"),
+                                                                                p(e, "name"),
+                                                                                e.s("("),
+                                                                                e.callM(
+                                                                                        outer(e),
+                                                                                        "params_ir",
+                                                                                        p(e, "ty")),
+                                                                                e.s(")")))),
+                                                        e.p("lib", push(e, e.v("libs"), p(e, "name"))))),
+                                        e.p("other", e.seq()))),
+                        e.foreach(
+                                in(e, "globals"),
+                                "g0",
+                                push(
+                                        e,
+                                        e.v("out"),
+                                        e.cat(
+                                                e.callM(e.v("g0"), "name", e.tup()),
+                                                e.s(" = global "),
+                                                irOf(e, e.callM(e.v("g0"), "ty", e.tup())),
+                                                e.s(" "),
+                                                e.callM(e.v("g0"), "init", e.tup())))),
+                        e.foreach(
+                                in(e, "constants"),
+                                "g0",
+                                push(
+                                        e,
+                                        e.v("out"),
+                                        e.cat(
+                                                e.callM(e.v("g0"), "name", e.tup()),
+                                                e.s(" = constant "),
+                                                irOf(e, e.callM(e.v("g0"), "ty", e.tup())),
+                                                e.s(" "),
+                                                e.callM(e.v("g0"), "init", e.tup())))),
+                        e.foreach(
+                                in(e, "slots"),
+                                "g0",
+                                push(
+                                        e,
+                                        e.v("out"),
+                                        e.cat(
+                                                e.callM(e.v("g0"), "name", e.tup()),
+                                                e.s(" = internal global "),
+                                                irOf(e, e.callM(e.v("g0"), "ty", e.tup())),
+                                                e.s(" "),
+                                                e.callM(e.v("g0"), "init", e.tup())))),
+                        e.foreach(in(e, "funcs"), "f", push(e, e.v("out"), e.v("f"))),
+                        e.let("all", e.listNew(str(e))),
+                        e.foreach(in(e, "struct_lines"), "l", push(e, e.v("all"), e.v("l"))),
+                        e.foreach(e.v("out"), "l", push(e, e.v("all"), e.v("l"))),
+                        e.ret(e.rec(
+                                e.p("ir", e.cat(e.join(e.v("all"), "\n"), e.s("\n"))),
+                                e.p("libs", e.v("libs")),
+                                e.p("meta", in(e, "meta"))))));
     }
 
     SourceExpr externFnBody() {
@@ -814,6 +944,7 @@ public final class EcoLlvmIr {
 
     public static TList<SourceExpr> module(EcoMb e) {
         var x = new TList<SourceExpr>();
+        x.add(e.let("meta", e.importLocal("meta", EcoMeta.FILE)));
         x.add(e.let("d", e.define()));
         x.add(e.optionTypeLet());
         {
@@ -916,7 +1047,22 @@ public final class EcoLlvmIr {
                             e.rec(e.p("tag", e.s("lib")), e.p("type_ref", e.rec(e.p("name", str(e))))))));
             defObj(e, x, "ldep", "llvm dependency", e.rec(e.p("k", t(e, "ldep_u"))));
             accessor(e, x, "ldep", "k", t(e, "ldep_u"));
-            defVariant(e, x, "dep", e.rec(e.p("dep", t(e, "ldep"))));
+            x.add(e.let("lmeta_u", e.callM0(e.v("d"), "union")));
+            x.add(e.let(
+                    "lm_dep",
+                    e.callM(
+                            e.v("lmeta_u"),
+                            "variant",
+                            e.rec(e.p("tag", e.s("dep")), e.p("type_ref", e.rec(e.p("dep", t(e, "ldep"))))))));
+            x.add(e.let(
+                    "lm_other",
+                    e.callM(
+                            e.v("lmeta_u"),
+                            "variant",
+                            e.rec(e.p("tag", e.s("other")), e.p("type_ref", e.fld(e.v("meta"), "other_t"))))));
+            defObj(e, x, "lmeta", "llvm metadata", e.rec(e.p("k", t(e, "lmeta_u"))));
+            accessor(e, x, "lmeta", "k", t(e, "lmeta_u"));
+            defVariant(e, x, "meta", e.rec(e.p("meta", t(e, "lmeta"))));
 
             defObj(e, x, "linst", "llvm instruction", e.rec(e.p("k", t(e, "linst_u"))));
             defIface(e, x, "linst_m");
@@ -938,7 +1084,7 @@ public final class EcoLlvmIr {
                             e.p("xx", e.call(e.mb.typesOption(), e.typesExprContext())),
                             e.p("structs", e.listType(ty(e))),
                             e.p("struct_lines", e.listType(str(e))),
-                            e.p("deps", e.listType(t(e, "ldep"))),
+                            e.p("meta", e.listType(t(e, "lmeta"))),
                             e.p("dep_keys", e.listType(str(e))),
                             e.p("globals", e.listType(t(e, "lglobal"))),
                             e.p("constants", e.listType(t(e, "lglobal"))),
@@ -2699,7 +2845,7 @@ public final class EcoLlvmIr {
                                                     e.v("k"),
                                                     "p",
                                                     Opt.none(),
-                                                    e.p("dep", e.seq()),
+                                                    e.p("meta", e.seq()),
                                                     e.p(
                                                             "label",
                                                             e.seq(
@@ -2896,132 +3042,8 @@ public final class EcoLlvmIr {
                                     e.mb.panic(e.s("llvm: function body does not end in a terminator"))),
                             e.ret(e.v("out"))));
 
-            method(
-                    e,
-                    x,
-                    "lmod",
-                    "render",
-                    e.tup(),
-                    renderT(e),
-                    e.seq(
-                            e.let("out", e.listNew(str(e))),
-                            e.let("libs", e.listNew(str(e))),
-                            e.foreach(
-                                    in(e, "deps"),
-                                    "d0",
-                                    e.matchOf(
-                                            e.callM(e.v("d0"), "k", e.tup()),
-                                            "p",
-                                            Opt.none(),
-                                            e.p(
-                                                    "extern",
-                                                    push(
-                                                            e,
-                                                            e.v("out"),
-                                                            e.cat(
-                                                                    e.s("declare "),
-                                                                    irOf(
-                                                                            e,
-                                                                            im0(
-                                                                                    e,
-                                                                                    "lfn",
-                                                                                    "ret",
-                                                                                    asp(
-                                                                                            e,
-                                                                                            in(e, "xx", "value"),
-                                                                                            p(e, "ty"),
-                                                                                            "lfn"))),
-                                                                    e.s(" @"),
-                                                                    p(e, "name"),
-                                                                    e.s("("),
-                                                                    e.callM(outer(e), "params_ir", p(e, "ty")),
-                                                                    e.s(")")))),
-                                            e.p("lib", push(e, e.v("libs"), p(e, "name"))))),
-                            e.foreach(
-                                    in(e, "globals"),
-                                    "g0",
-                                    push(
-                                            e,
-                                            e.v("out"),
-                                            e.cat(
-                                                    e.callM(e.v("g0"), "name", e.tup()),
-                                                    e.s(" = global "),
-                                                    irOf(e, e.callM(e.v("g0"), "ty", e.tup())),
-                                                    e.s(" "),
-                                                    e.callM(e.v("g0"), "init", e.tup())))),
-                            e.foreach(
-                                    in(e, "constants"),
-                                    "g0",
-                                    push(
-                                            e,
-                                            e.v("out"),
-                                            e.cat(
-                                                    e.callM(e.v("g0"), "name", e.tup()),
-                                                    e.s(" = constant "),
-                                                    irOf(e, e.callM(e.v("g0"), "ty", e.tup())),
-                                                    e.s(" "),
-                                                    e.callM(e.v("g0"), "init", e.tup())))),
-                            e.foreach(
-                                    in(e, "slots"),
-                                    "g0",
-                                    push(
-                                            e,
-                                            e.v("out"),
-                                            e.cat(
-                                                    e.callM(e.v("g0"), "name", e.tup()),
-                                                    e.s(" = internal global "),
-                                                    irOf(e, e.callM(e.v("g0"), "ty", e.tup())),
-                                                    e.s(" "),
-                                                    e.callM(e.v("g0"), "init", e.tup())))),
-                            e.foreach(in(e, "funcs"), "f", push(e, e.v("out"), e.v("f"))),
-                            e.let("all", e.listNew(str(e))),
-                            e.foreach(in(e, "struct_lines"), "l", push(e, e.v("all"), e.v("l"))),
-                            e.foreach(e.v("out"), "l", push(e, e.v("all"), e.v("l"))),
-                            e.ret(e.rec(
-                                    e.p("ir", e.cat(e.join(e.v("all"), "\n"), e.s("\n"))), e.p("libs", e.v("libs"))))));
-            x.add(e.methodImpl(
-                    e.v("lmod"),
-                    "dep",
-                    t(e, "ldep"),
-                    e.optionTypeNone(),
-                    e.stage(e.seq(
-                            e.let(
-                                    "key",
-                                    e.matchOf(
-                                            e.callM(e.v("arg"), "k", e.tup()),
-                                            "p",
-                                            Opt.none(),
-                                            e.p(
-                                                    "extern",
-                                                    e.cat(
-                                                            e.s("extern "),
-                                                            p(e, "name"),
-                                                            e.s(" "),
-                                                            irOf(
-                                                                    e,
-                                                                    im0(
-                                                                            e,
-                                                                            "lfn",
-                                                                            "ret",
-                                                                            asp(
-                                                                                    e,
-                                                                                    in(e, "xx", "value"),
-                                                                                    p(e, "ty"),
-                                                                                    "lfn"))),
-                                                            e.s("("),
-                                                            e.callM(outer(e), "params_ir", p(e, "ty")),
-                                                            e.s(")"))),
-                                            e.p("lib", e.cat(e.s("lib "), p(e, "name"))))),
-                            e.let("dup", e.rec(e.p("v", e.intOf(0)))),
-                            e.foreach(
-                                    in(e, "dep_keys"),
-                                    "k0",
-                                    e.ifOnly(e.eq(e.v("k0"), e.v("key")), e.mb.set(e.fld(e.v("dup"), "v"), num(e, 1)))),
-                            e.ifOnly(
-                                    e.eq(e.fld(e.v("dup"), "v"), num(e, 0)),
-                                    e.seq(
-                                            push(e, in(e, "dep_keys"), e.v("key")),
-                                            push(e, in(e, "deps"), e.v("arg"))))))));
+            new EcoLlvmIr(e).lmodRender(x);
+            x.add(new EcoLlvmIr(e).lmodMetaMethod());
             method(
                     e,
                     x,
@@ -3221,7 +3243,7 @@ public final class EcoLlvmIr {
                                             e.callM(e.v("d0"), "k", e.tup()),
                                             "p",
                                             Opt.some(e.seq()),
-                                            e.p("dep", e.callM(outer(e), "dep", p(e, "dep"))))),
+                                            e.p("meta", e.callM(outer(e), "meta", p(e, "meta"))))),
                             e.let("lines", e.callM(outer(e), "render_insts", e.v("out"))),
                             push(
                                     e,
@@ -5365,7 +5387,7 @@ public final class EcoLlvmIr {
                                         e.p("xx", e.optNone(e.typesExprContext())),
                                         e.p("structs", e.listNew(ty(e))),
                                         e.p("struct_lines", e.listNew(str(e))),
-                                        e.p("deps", e.listNew(lt(e, "ldep"))),
+                                        e.p("meta", e.listNew(lt(e, "lmeta"))),
                                         e.p("dep_keys", e.listNew(str(e))),
                                         e.p("globals", e.listNew(lt(e, "lglobal"))),
                                         e.p("constants", e.listNew(lt(e, "lglobal"))),
@@ -5713,6 +5735,9 @@ public final class EcoLlvmIr {
         var defs = new TList<EcoMb.P>();
         defs.add(e.p("new", e.fld(e.v("llvm_b"), "func")));
         defs.add(e.p("mod_t", t(e, "lmod")));
+        defs.add(e.p("meta_t", t(e, "lmeta")));
+        defs.add(e.p("meta_other", e.v("lm_other")));
+        defs.add(e.p("meta_new", e.fld(e.v("lmeta"), "new")));
         defs.add(e.p("field_t", t(e, "lfield")));
         defs.add(e.p("describe", e.v("c_describe")));
         defs.add(e.p("gref_obj_t", t(e, "lgref")));
@@ -5777,10 +5802,16 @@ public final class EcoLlvmIr {
                 e.v("mod_o"),
                 "render",
                 e.tup(),
-                e.optionTypeSome(renderT(e)),
+                e.optionTypeSome(renderT(e, e.fld(e.v("k"), "meta_t"))),
                 e.stage(e.callM(in(e, "m"), "render", e.tup()))));
         y.add(e.methodImpl(
                 e.v("mod_o"), "m", e.tup(), e.optionTypeSome(e.fld(e.v("k"), "mod_t")), e.stage(in(e, "m"))));
+        y.add(e.methodImpl(
+                e.v("mod_o"),
+                "meta",
+                e.fld(e.v("k"), "meta_t"),
+                e.optionTypeNone(),
+                e.stage(e.callM(in(e, "m"), "meta", e.v("arg")))));
         y.add(e.methodImpl(
                 e.v("mod_o"),
                 "null",
@@ -5992,7 +6023,7 @@ public final class EcoLlvmIr {
         y.add(e.let("build_b", e.defFunc(e.v("d"), "build")));
         y.add(e.funcImpl(
                 e.v("build_b"),
-                renderT(e),
+                renderT(e, e.fld(e.v("k"), "meta_t")),
                 e.optionTypeSome(e.mb.builtin("types", "app")),
                 e.mb.optNoneType(),
                 e.stage(e.seq(
@@ -6032,6 +6063,7 @@ public final class EcoLlvmIr {
         ydefs.add(e.p("build", e.fld(e.v("build_b"), "func")));
         for (var factory : DATA_FACTORIES) ydefs.add(e.p(factory, e.fld(e.v(factory + "_b"), "func")));
         ydefs.add(e.p("mod_t", e.fld(e.v("mod_o"), "type")));
+        for (var name : META_EXPORTS) ydefs.add(e.p(name, e.fld(e.v("k"), name)));
         for (var name : passthrough) ydefs.add(e.p(name, e.fld(e.v("k"), name)));
 
         for (var name : exported) ydefs.add(e.p(name, e.v(name)));
@@ -6041,6 +6073,7 @@ public final class EcoLlvmIr {
         top.add(e.let("k", e.lower(e.mb.seq(y))));
         var exports = new TList<EcoMb.P>();
         for (var name : new String[] {"new", "build", "mod_t"}) exports.add(e.p(name, e.fld(e.v("k"), name)));
+        for (var name : META_EXPORTS) exports.add(e.p(name, e.fld(e.v("k"), name)));
         for (var factory : DATA_FACTORIES) exports.add(e.p(factory, e.fld(e.v("k"), factory)));
         for (var name : passthrough) exports.add(e.p(name, e.fld(e.v("k"), name)));
         for (var name : exported) exports.add(e.p(name, e.fld(e.v("k"), name)));

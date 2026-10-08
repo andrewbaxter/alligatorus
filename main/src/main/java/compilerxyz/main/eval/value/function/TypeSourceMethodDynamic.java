@@ -2,6 +2,7 @@ package compilerxyz.main.eval.value.function;
 
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.CodeValue;
+import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
@@ -30,7 +31,8 @@ public record TypeSourceMethodDynamic(
         String methodName,
         JavaMethodDescriptor descriptor,
         boolean isInterface,
-        boolean needsEvalContext)
+        boolean needsEvalContext,
+        Opt<DefinitionSet> set)
         implements Aspect, Type {
 
     @Override

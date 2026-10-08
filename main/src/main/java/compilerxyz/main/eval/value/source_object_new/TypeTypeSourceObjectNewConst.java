@@ -74,6 +74,9 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+            if (self instanceof TypeSourceObjectNewDynamic dyn) {
+                self = new TypeTypeSourceObjectNewConst(dyn.type());
+            }
             if (!(self instanceof TypeTypeSourceObjectNewConst oc)) {
                 return EResult.err(
                         loc,

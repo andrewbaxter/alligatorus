@@ -22,7 +22,6 @@ public record AspectConsumeDynamicSourceObjectDynamic(TypeSourceObjectDynamic ty
         if (type.set == null) {
             return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
         }
-        xx.vx.definitionSets.putIfAbsent(type.set.defSetId, type.set);
         return JavaDataDescriptor.fromInternalName(JavaInternalName.of(type.internalName()));
     }
 
@@ -41,12 +40,9 @@ public record AspectConsumeDynamicSourceObjectDynamic(TypeSourceObjectDynamic ty
                             + cv.value().optUnwrap().getClass().getName());
         }
         Object hostValue = voc.data();
-        if (type.set != null) {
-            xx.vx.definitionSets.putIfAbsent(type.set.defSetId, type.set);
-        }
         var entry = new EvalContext.ExternalEntry(new BindingId(), type, new External(hostValue.getClass(), hostValue));
-        xx.vx.externals.add(entry);
         var b = new JavaBytecodeBuilder(loc);
+        if (type.set != null) b.defSet(type.set);
         var carryRes = b.addCode(loc, cv.code());
         if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
         var loaded = b.external(entry);

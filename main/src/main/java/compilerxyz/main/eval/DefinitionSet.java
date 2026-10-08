@@ -19,6 +19,7 @@ import compilerxyz.main.eval.dynamic.EvalRootEmitter;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeLocTable;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
+import compilerxyz.main.eval.dynamic.JavaBytecodeRenderRefs;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaClassCompiled;
@@ -27,7 +28,6 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.JvmSort;
-import compilerxyz.main.eval.dynamic.Prefixes;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.main.eval.dynamic.SourceUnionEmitter;
 import compilerxyz.main.eval.value.source_function.SourceFunctionData;
@@ -207,11 +207,15 @@ public final class DefinitionSet implements Artifactable {
         dependencies.putIfAbsent(other.defSetId, other);
     }
 
-    public void absorbBodyContext(ExprContext xx, EvalContext innerVx) {
-        for (var entry : innerVx.definitionSets.entrySet()) {
-            xx.vx.definitionSets.putIfAbsent(entry.getKey(), entry.getValue());
-            addDependency(entry.getValue());
-        }
+    private void absorbRender(
+            JavaBytecodeRenderRefs refs,
+            ClassWriter cw,
+            TOrderedMap<String, Object> staticFieldValues,
+            TList<EvalContext.ExternalEntry> capturedExternals) {
+        refs.declareFields(cw, staticFieldValues);
+        capturedExternals.clear();
+        capturedExternals.addAll(refs.externals());
+        for (var dep : refs.defSets().values()) addDependency(dep);
     }
 
     private boolean objectImplements(TypeSourceObjectDynamic obj, Class<?> iface) {
@@ -361,7 +365,7 @@ public final class DefinitionSet implements Artifactable {
                     cb.retVoid();
                     ctorSeq.add(cb.code());
                 }
-                JavaBytecodeUtils.renderMethod(ctorSeq, ctor, TList.of(), soeLocTable);
+                JavaBytecodeUtils.renderMethod(ctorSeq, ctor, TList.of(), soeInternalName, soeLocTable);
                 var realCtorDesc =
                         JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(dataFieldDesc));
                 var realCtor = soeCw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", realCtorDesc.value(), null, null);
@@ -378,64 +382,15 @@ public final class DefinitionSet implements Artifactable {
                     cb.retVoid();
                     realCtorSeq.add(cb.code());
                 }
-                JavaBytecodeUtils.renderMethod(realCtorSeq, realCtor, TList.of(), soeLocTable);
-                var allFieldNames = new TOrderedSet<String>();
+                JavaBytecodeUtils.renderMethod(realCtorSeq, realCtor, TList.of(), soeInternalName, soeLocTable);
                 var staticFieldValues = new TOrderedMap<String, Object>();
-                var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
-                for (int implIdx = 0; implIdx < obj.interfaceImpls.size(); implIdx++) {
-                    var impl = obj.interfaceImpls.get(implIdx);
-                    for (int mIdx = 0; mIdx < impl.methodImpls.size(); mIdx++) {
-                        var soeM = impl.methodImpls.get(mIdx);
-                        if (soeM.compiledBodyCode.optIsNone()) {
-                            continue;
-                        }
-                        var prefix = soeM.jvmMethodName + "_";
-                        for (int i = 0; i < soeM.capturedExternals.size(); i++) {
-                            var entry = soeM.capturedExternals.get(i);
-                            var cmfName = prefix + Prefixes.EXTERNAL_PREFIX + i;
-                            if (allFieldNames.add(cmfName)) {
-                                fieldDescriptors.put(
-                                        cmfName,
-                                        JavaDataDescriptor.fromClass(
-                                                entry.external().externalHostClass()));
-                                staticFieldValues.put(cmfName, entry.external().externalHostValue());
-                            }
-                        }
-                    }
-                }
-                for (long methodIdx = 0; methodIdx < obj.methods.size(); methodIdx++) {
-                    var soeMethod = obj.methods.get((int) methodIdx);
-                    var bodyCode = soeMethod.compiledBodyCode;
-                    if (bodyCode == null) {
-                        continue;
-                    }
-                    var soePrefix = soeMethod.jvmMethodName + "_";
-                    for (int soeI = 0; soeI < soeMethod.capturedExternals.size(); soeI++) {
-                        var soeEntry = soeMethod.capturedExternals.get(soeI);
-                        var soeName = soePrefix + Prefixes.EXTERNAL_PREFIX + soeI;
-                        if (allFieldNames.add(soeName)) {
-                            fieldDescriptors.put(
-                                    soeName,
-                                    JavaDataDescriptor.fromClass(
-                                            soeEntry.external().externalHostClass()));
-                            staticFieldValues.put(soeName, soeEntry.external().externalHostValue());
-                        }
-                    }
-                }
-                for (var name : allFieldNames) {
-                    var desc = fieldDescriptors.getOpt(name).optUnwrapOr(JvmConstants.DESC_OBJECT);
-                    soeCw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, name, desc.value(), null, null)
-                            .visitEnd();
-                }
-                if (allFieldNames.add(SourceObjectEmitter.SOURCE_OBJECT_DATA_FIELD)) {
-                    soeCw.visitField(
-                                    Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
-                                    SourceObjectEmitter.SOURCE_OBJECT_DATA_FIELD,
-                                    JvmConstants.DESC_OBJECT.value(),
-                                    null,
-                                    null)
-                            .visitEnd();
-                }
+                soeCw.visitField(
+                                Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+                                SourceObjectEmitter.SOURCE_OBJECT_DATA_FIELD,
+                                JvmConstants.DESC_OBJECT.value(),
+                                null,
+                                null)
+                        .visitEnd();
                 staticFieldValues.put(SourceObjectEmitter.SOURCE_OBJECT_DATA_FIELD, obj);
                 soeCw.visitField(
                                 Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
@@ -515,14 +470,16 @@ public final class DefinitionSet implements Artifactable {
                             }
                             seq.add(rb.code());
                         }
+                        var emmRefs = new JavaBytecodeRenderRefs(soeInternalName, emmPrefix);
                         JavaBytecodeUtils.renderMethodTyped(
                                 seq,
                                 mv,
                                 initialSlots,
                                 obj.typeDesc() + "." + methodName,
                                 descriptor,
-                                JavaBytecodeUtils.externalFields(soeInternalName, emmPrefix, method.capturedExternals),
+                                emmRefs,
                                 soeLocTable);
+                        absorbRender(emmRefs, soeCw, staticFieldValues, method.capturedExternals);
                     }
                 }
                 for (int soeImplIdx = 0; soeImplIdx < obj.interfaceImpls.size(); soeImplIdx++) {
@@ -609,14 +566,16 @@ public final class DefinitionSet implements Artifactable {
                                 }
                                 eimSeq.add(rb.code());
                             }
+                            var eimRefs = new JavaBytecodeRenderRefs(soeInternalName, eimPrefix);
                             JavaBytecodeUtils.renderMethodTyped(
                                     eimSeq,
                                     eimMv,
                                     eimInitialSlots,
                                     obj.typeDesc() + "." + eimMethodName,
                                     eimDescriptor,
-                                    JavaBytecodeUtils.externalFields(soeInternalName, eimPrefix, m.capturedExternals),
+                                    eimRefs,
                                     soeLocTable);
+                            absorbRender(eimRefs, soeCw, staticFieldValues, m.capturedExternals);
                         }
                     }
                 }
@@ -713,7 +672,7 @@ public final class DefinitionSet implements Artifactable {
                                     eb.ret(calleeRet.optUnwrap());
                                 }
                                 ehaSeq.add(eb.code());
-                                JavaBytecodeUtils.renderMethod(ehaSeq, ehaMv, TList.of(), soeLocTable);
+                                JavaBytecodeUtils.renderMethod(ehaSeq, ehaMv, TList.of(), soeInternalName, soeLocTable);
                             }
                         }
                     }
@@ -740,7 +699,7 @@ public final class DefinitionSet implements Artifactable {
                             ab.ret(ab.invokeStatic(GenCodegenDescriptors.DYN_RUNTIME_SOURCE_OBJECT_TYPE_EXPORTER));
                         }
                         aeSeq.add(ab.code());
-                        JavaBytecodeUtils.renderMethod(aeSeq, aeMv, TList.of(), soeLocTable);
+                        JavaBytecodeUtils.renderMethod(aeSeq, aeMv, TList.of(), soeInternalName, soeLocTable);
                     }
                 }
                 soeCw.visitEnd();
@@ -828,6 +787,8 @@ public final class DefinitionSet implements Artifactable {
         finishFunctions();
         finished = true;
         for (var dep : dependencies.values()) {
+            var incompleteDep = dep.incomplete();
+            if (incompleteDep.optIsSome()) throw new IllegalStateException(incompleteDep.optUnwrap());
             var r = dep.finish(xx);
             if (r.optIsSome()) return r;
         }
@@ -867,32 +828,7 @@ public final class DefinitionSet implements Artifactable {
                 null,
                 JvmConstants.INTNAME_OBJECT.value(),
                 null);
-        var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
         var staticFieldValues = new TOrderedMap<String, Object>();
-        for (var dsfSpec : specs) {
-            var prefix = DefSetFunctionsEmitter.functionFieldPrefix(dsfSpec.methodName());
-            for (int i = 0; i < dsfSpec.externals().size(); i++) {
-                var entry = dsfSpec.externals().get(i);
-                var name = prefix + Prefixes.EXTERNAL_PREFIX + i;
-                var external = entry.external();
-                var desc = JavaDataDescriptor.fromClass(external.externalHostClass());
-                var prev = fieldDescriptors.getOpt(name);
-                if (prev.optIsSome() && !prev.optUnwrap().value().equals(desc.value())) {
-                    throw new AssertionError("DefSetFunctionsEmitter::emit: descriptor conflict for " + name);
-                }
-                fieldDescriptors.put(name, desc);
-                staticFieldValues.put(name, external.externalHostValue());
-            }
-        }
-        for (var fdEntry : fieldDescriptors.entrySet()) {
-            cw.visitField(
-                            Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
-                            fdEntry.getKey(),
-                            fdEntry.getValue().value(),
-                            null,
-                            null)
-                    .visitEnd();
-        }
         cw.visitField(
                         Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
                         EvalRootEmitter.EXPR_CONTEXT_FIELD,
@@ -900,7 +836,8 @@ public final class DefinitionSet implements Artifactable {
                         null,
                         null)
                 .visitEnd();
-        for (var spec : specs) {
+        for (int specI = 0; specI < specs.size(); specI++) {
+            var spec = specs.get(specI);
             var methodName = spec.methodName();
             var efmPrefix = DefSetFunctionsEmitter.functionFieldPrefix(spec.methodName());
             var argDescs = new TList<JavaDataDescriptor>(spec.argSlots().size());
@@ -930,14 +867,16 @@ public final class DefinitionSet implements Artifactable {
                 initialSlots.add(new JavaBytecodeSequence.InitialSlot(
                         efmSlot.id(), efmSlot.jvmDesc().isWide()));
             }
+            var efmRefs = new JavaBytecodeRenderRefs(ownerInternal, efmPrefix);
             JavaBytecodeUtils.renderMethodTyped(
                     seq,
                     mv,
                     initialSlots,
                     internalName + "." + spec.methodName(),
                     JavaMethodDescriptor.fromParts(spec.retDesc(), argDescs),
-                    JavaBytecodeUtils.externalFields(ownerInternal, efmPrefix, spec.externals()),
+                    efmRefs,
                     locTable);
+            absorbRender(efmRefs, cw, staticFieldValues, contributors.get(specI).capturedExternals);
         }
         cw.visitEnd();
         var emitted = new DefSetFunctionsEmitter.EmittedFunctions(

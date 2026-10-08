@@ -3,13 +3,10 @@ package compilerxyz.main.eval;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import compilerxyz.prelude.util.TMap;
 
 @BuiltinFull(uniqueId = 6025L)
 public final class EvalContext {
 
-    public final TMap<DefSetId, DefinitionSet> definitionSets = new TMap<>();
-    public final TList<ExternalEntry> externals = new TList<>();
     public final CompileImportContext ix;
 
     public final Counter dropStateCounter = new Counter();

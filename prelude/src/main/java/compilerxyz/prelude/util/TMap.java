@@ -37,16 +37,8 @@ public final class TMap<K, V> {
         return backing.size();
     }
 
-    public boolean isEmpty() {
-        return backing.isEmpty();
-    }
-
     public void put(K key, V value) {
         backing.put(key, value);
-    }
-
-    public void putIfAbsent(K key, V value) {
-        backing.putIfAbsent(key, value);
     }
 
     public void remove(K key) {

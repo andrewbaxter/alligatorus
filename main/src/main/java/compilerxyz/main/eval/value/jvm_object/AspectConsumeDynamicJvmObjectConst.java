@@ -31,7 +31,6 @@ public final class AspectConsumeDynamicJvmObjectConst implements AspectConsumeDy
                 .data();
         var dynamicType = new TypeJvmObjectDynamic();
         var entry = new EvalContext.ExternalEntry(new BindingId(), dynamicType, new External(Object.class, hostValue));
-        xx.vx.externals.add(entry);
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
         if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());

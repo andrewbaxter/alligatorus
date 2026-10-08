@@ -59,30 +59,18 @@ public final class EcoWebWasm {
                 "imports",
                 e.call(e.lower(e.fld(e.v("js"), "var_fn")), e.rec(e.p("mod", e.v("m")), e.p("name", e.s("imports"))))));
         body.add(e.callM(e.v("m"), "run", e.stage(e.mb.set(e.lower(e.v("imports")), e.rec(e.p("webidl", e.rec()))))));
+        var define =
+                e.call(e.lower(e.fld(e.v("webidl"), "define")), e.rec(e.p("mod", e.v("m")), e.p("name", p(e, "name"))));
+        var assign = e.callM(
+                e.v("m"),
+                "assign_index",
+                e.rec(e.p("target", e.s("imports.webidl")), e.p("key", p(e, "name")), e.p("value", define)));
+        var onImport = e.ifOnly(e.eq(p(e, "module"), e.s(EcoWebidlWasm.MODULE)), assign);
+        var onDep = e.matchOf(e.callM0(e.fld(e.v("mk"), "dep"), "k"), "p", Opt.none(), e.p("import", onImport));
         body.add(e.foreach(
-                e.fld(e.v("arg"), "deps"),
-                "dep",
-                e.matchOf(
-                        e.callM0(e.v("dep"), "k"),
-                        "p",
-                        Opt.none(),
-                        e.p(
-                                "import",
-                                e.ifOnly(
-                                        e.eq(p(e, "module"), e.s(EcoWebidlWasm.MODULE)),
-                                        e.callM(
-                                                e.v("m"),
-                                                "assign_index",
-                                                e.rec(
-                                                        e.p("target", e.s("imports.webidl")),
-                                                        e.p("key", p(e, "name")),
-                                                        e.p(
-                                                                "value",
-                                                                e.call(
-                                                                        e.lower(e.fld(e.v("webidl"), "define")),
-                                                                        e.rec(
-                                                                                e.p("mod", e.v("m")),
-                                                                                e.p("name", p(e, "name"))))))))))));
+                e.fld(e.v("arg"), "meta"),
+                "m0",
+                e.matchOf(e.callM0(e.v("m0"), "k"), "mk", Opt.none(), e.p("dep", onDep), e.p("other", e.seq()))));
         body.add(e.let(
                 "ready",
                 e.call(
@@ -121,7 +109,7 @@ public final class EcoWebWasm {
                         e.p("main.wasm", e.v("wasm_bytes"))))));
         top.add(e.funcImpl(
                 e.v("build_b"),
-                e.rec(e.p("wat", e.mb.typesString()), e.p("deps", e.listType(e.fld(e.v("wasm"), "dep_t")))),
+                e.rec(e.p("wat", e.mb.typesString()), e.p("meta", e.listType(e.fld(e.v("wasm"), "meta_t")))),
                 e.optionTypeSome(e.mb.builtin("types", "dir")),
                 e.mb.optNoneType(),
                 e.stage(e.mb.seq(body))));

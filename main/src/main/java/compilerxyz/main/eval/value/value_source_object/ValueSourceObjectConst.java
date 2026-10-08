@@ -201,14 +201,8 @@ public final class ValueSourceObjectConst {
         var instanceCodeRes = DynUtil.materialize(
                 evalXx, loc, instanceCvRes.requireValue("ValueSourceObjectConst::finalizer new call"));
         if (instanceCodeRes.hasErrors()) return instanceCodeRes.reerr();
-        var installRes = EvalRoot.installDefinitionSets(evalXx, loc);
-        if (installRes.hasErrors()) return installRes.reerr();
-        var instanceRes = EvalRoot.run(
-                evalXx,
-                loc,
-                binaryName,
-                instanceCodeRes.requireValue("ValueSourceObjectConst::finalizer materialize"),
-                installRes.requireValue("ValueSourceObjectConst::finalizer installDefinitionSets"));
+        var instanceCode = instanceCodeRes.requireValue("ValueSourceObjectConst::finalizer materialize");
+        var instanceRes = EvalRoot.run(evalXx, loc, binaryName, instanceCode);
         if (instanceRes.hasErrors()) return instanceRes.reerr();
         var instance = instanceRes.requireValue("ValueSourceObjectConst::finalizer run");
         return EResult.ok(new ImportedInstance(dt, instance));

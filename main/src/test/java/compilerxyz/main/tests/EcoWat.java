@@ -32,8 +32,10 @@ public final class EcoWat {
         return t(e, "wmod");
     }
 
-    private static SourceExpr renderT(EcoMb e, SourceExpr depT) {
-        return e.rec(e.p("wat", str(e)), e.p("deps", e.listType(depT)));
+    private static final IList<String> META_EXPORTS = IList.of("meta_t", "meta_other", "meta_new");
+
+    private static SourceExpr renderT(EcoMb e, SourceExpr metaT) {
+        return e.rec(e.p("wat", str(e)), e.p("meta", e.listType(metaT)));
     }
 
     private static SourceExpr instsT(EcoMb e) {
@@ -1176,6 +1178,7 @@ public final class EcoWat {
         }
         var printableBytesMap = e.mapNew(str(e), str(e), entries.toArray(EcoMb.P[]::new));
         var x = new TList<SourceExpr>();
+        x.add(e.let("meta", e.importLocal("meta", EcoMeta.FILE)));
         x.add(e.let("d", e.define()));
         x.add(e.optionTypeLet());
         {
@@ -1230,6 +1233,20 @@ public final class EcoWat {
                                             "type_ref",
                                             e.rec(e.p("module", str(e)), e.p("name", str(e)), e.p("ty", ty(e))))))));
             defObj(e, x, "wdep", "wasm dependency", e.rec(e.p("k", t(e, "wdep_u"))));
+            x.add(e.let("wmeta_u", e.callM0(e.v("d"), "union")));
+            x.add(e.let(
+                    "wm_dep",
+                    e.callM(
+                            e.v("wmeta_u"),
+                            "variant",
+                            e.rec(e.p("tag", e.s("dep")), e.p("type_ref", e.rec(e.p("dep", t(e, "wdep"))))))));
+            x.add(e.let(
+                    "wm_other",
+                    e.callM(
+                            e.v("wmeta_u"),
+                            "variant",
+                            e.rec(e.p("tag", e.s("other")), e.p("type_ref", e.fld(e.v("meta"), "other_t"))))));
+            defObj(e, x, "wmeta", "wasm metadata", e.rec(e.p("k", t(e, "wmeta_u"))));
 
             x.add(e.let("winst_u", e.callM0(e.v("d"), "union")));
             for (var v : new String[][] {
@@ -1268,11 +1285,11 @@ public final class EcoWat {
                             "variant",
                             e.rec(e.p("tag", e.s("setl")), e.p("type_ref", e.rec(e.p("name", str(e))))))));
             x.add(e.let(
-                    "wi_dep",
+                    "wi_meta",
                     e.callM(
                             e.v("winst_u"),
                             "variant",
-                            e.rec(e.p("tag", e.s("dep")), e.p("type_ref", e.rec(e.p("dep", t(e, "wdep"))))))));
+                            e.rec(e.p("tag", e.s("meta")), e.p("type_ref", e.rec(e.p("meta", t(e, "wmeta"))))))));
             for (var tag : new String[] {"else", "end"}) {
                 x.add(e.let(
                         "wi_" + tag,
@@ -1379,7 +1396,7 @@ public final class EcoWat {
                     e.rec(
                             e.p("n", intT(e)),
                             e.p("xx", e.call(e.mb.typesOption(), e.typesExprContext())),
-                            e.p("deps", e.listType(t(e, "wdep"))),
+                            e.p("meta", e.listType(t(e, "wmeta"))),
                             e.p("dep_keys", e.listType(str(e))),
                             e.p("data", e.listType(t(e, "wdata"))),
                             e.p("data_end", intT(e)),
@@ -1965,6 +1982,7 @@ public final class EcoWat {
             accessor(e, x, "wirctx", "xx", xxT(e));
             accessor(e, x, "winst", "k", t(e, "winst_u"));
             accessor(e, x, "wdep", "k", t(e, "wdep_u"));
+            accessor(e, x, "wmeta", "k", t(e, "wmeta_u"));
             for (var vo : new String[] {"wlocal", "wlabel", "winst", "wmod", "wdata", "wblock"}) {
                 markerType(e, x, vo, vo, vo + "_m", e.aspectDispatch(lv(e, vo + "_m_id")));
                 x.add(e.implInterface(e.v(vo), t(e, vo + "_m")));
@@ -2268,34 +2286,43 @@ public final class EcoWat {
                                             e.p("bytes", e.v("bytes")))))));
             x.add(e.methodImpl(
                     e.v("wmod"),
-                    "dep",
-                    t(e, "wdep"),
+                    "meta",
+                    t(e, "wmeta"),
                     e.optionTypeNone(),
-                    e.stage(e.seq(
-                            e.let(
-                                    "key",
-                                    e.matchOf(
-                                            e.callM(e.v("arg"), "k", e.tup()),
-                                            "p",
-                                            Opt.none(),
-                                            e.p(
-                                                    "import",
-                                                    e.cat(
-                                                            e.s("import "),
-                                                            p(e, "module"),
-                                                            e.s(" "),
-                                                            p(e, "name"),
-                                                            e.callM(outer(e), "sig_ir", p(e, "ty")))))),
-                            e.let("dup", e.rec(e.p("v", e.intOf(0)))),
-                            e.foreach(
-                                    in(e, "dep_keys"),
-                                    "k0",
-                                    e.ifOnly(e.eq(e.v("k0"), e.v("key")), e.mb.set(e.fld(e.v("dup"), "v"), num(e, 1)))),
-                            e.ifOnly(
-                                    e.eq(e.fld(e.v("dup"), "v"), num(e, 0)),
+                    e.stage(e.matchOf(
+                            e.callM(e.v("arg"), "k", e.tup()),
+                            "m",
+                            Opt.none(),
+                            e.p(
+                                    "dep",
                                     e.seq(
-                                            push(e, in(e, "dep_keys"), e.v("key")),
-                                            push(e, in(e, "deps"), e.v("arg"))))))));
+                                            e.let(
+                                                    "key",
+                                                    e.matchOf(
+                                                            e.callM(e.fld(e.v("m"), "dep"), "k", e.tup()),
+                                                            "p",
+                                                            Opt.none(),
+                                                            e.p(
+                                                                    "import",
+                                                                    e.cat(
+                                                                            e.s("import "),
+                                                                            p(e, "module"),
+                                                                            e.s(" "),
+                                                                            p(e, "name"),
+                                                                            e.callM(outer(e), "sig_ir", p(e, "ty")))))),
+                                            e.let("dup", e.rec(e.p("v", e.intOf(0)))),
+                                            e.foreach(
+                                                    in(e, "dep_keys"),
+                                                    "k0",
+                                                    e.ifOnly(
+                                                            e.eq(e.v("k0"), e.v("key")),
+                                                            e.mb.set(e.fld(e.v("dup"), "v"), num(e, 1)))),
+                                            e.ifOnly(
+                                                    e.eq(e.fld(e.v("dup"), "v"), num(e, 0)),
+                                                    e.seq(
+                                                            push(e, in(e, "dep_keys"), e.v("key")),
+                                                            push(e, in(e, "meta"), e.v("arg")))))),
+                            e.p("other", push(e, in(e, "meta"), e.v("arg")))))));
             x.add(e.methodImpl(
                     e.v("wmod"),
                     "export",
@@ -2477,7 +2504,7 @@ public final class EcoWat {
                                                     e.seq(rsOps(e, p(e, "val")), rs(e, "set_local", p(e, "name")))),
                                             e.p("push", rsOps(e, p(e, "val"))),
                                             e.p("setl", rs(e, "set_local", p(e, "name"))),
-                                            e.p("dep", e.seq()),
+                                            e.p("meta", e.seq()),
                                             e.p(
                                                     "call",
                                                     e.seq(
@@ -2515,31 +2542,41 @@ public final class EcoWat {
                     "wmod",
                     "render",
                     e.tup(),
-                    renderT(e, t(e, "wdep")),
+                    renderT(e, t(e, "wmeta")),
                     e.seq(
                             e.let("out", e.listNew(str(e))),
                             push(e, e.v("out"), e.s("(module")),
                             e.foreach(
-                                    in(e, "deps"),
-                                    "d0",
+                                    in(e, "meta"),
+                                    "m0",
                                     e.matchOf(
-                                            e.callM(e.v("d0"), "k", e.tup()),
-                                            "p",
+                                            e.callM(e.v("m0"), "k", e.tup()),
+                                            "m",
                                             Opt.none(),
                                             e.p(
-                                                    "import",
-                                                    push(
-                                                            e,
-                                                            e.v("out"),
-                                                            e.cat(
-                                                                    e.s("  (import \""),
-                                                                    p(e, "module"),
-                                                                    e.s("\" \""),
-                                                                    p(e, "name"),
-                                                                    e.s("\" (func $"),
-                                                                    p(e, "name"),
-                                                                    e.callM(outer(e), "sig_ir", p(e, "ty")),
-                                                                    e.s("))")))))),
+                                                    "dep",
+                                                    e.matchOf(
+                                                            e.callM(e.fld(e.v("m"), "dep"), "k", e.tup()),
+                                                            "p",
+                                                            Opt.none(),
+                                                            e.p(
+                                                                    "import",
+                                                                    push(
+                                                                            e,
+                                                                            e.v("out"),
+                                                                            e.cat(
+                                                                                    e.s("  (import \""),
+                                                                                    p(e, "module"),
+                                                                                    e.s("\" \""),
+                                                                                    p(e, "name"),
+                                                                                    e.s("\" (func $"),
+                                                                                    p(e, "name"),
+                                                                                    e.callM(
+                                                                                            outer(e),
+                                                                                            "sig_ir",
+                                                                                            p(e, "ty")),
+                                                                                    e.s("))")))))),
+                                            e.p("other", e.seq()))),
                             push(
                                     e,
                                     e.v("out"),
@@ -2578,7 +2615,7 @@ public final class EcoWat {
                             push(e, e.v("out"), e.s(")")),
                             e.ret(e.rec(
                                     e.p("wat", e.cat(e.join(e.v("out"), "\n"), e.s("\n"))),
-                                    e.p("deps", in(e, "deps"))))));
+                                    e.p("meta", in(e, "meta"))))));
             method(
                     e,
                     x,
@@ -2727,7 +2764,7 @@ public final class EcoWat {
                                             e.callM(e.v("d0"), "k", e.tup()),
                                             "p",
                                             Opt.some(e.seq()),
-                                            e.p("dep", e.callM(outer(e), "dep", p(e, "dep"))))),
+                                            e.p("meta", e.callM(outer(e), "meta", p(e, "meta"))))),
                             e.let(
                                     "rendered",
                                     e.callM(
@@ -3844,6 +3881,23 @@ public final class EcoWat {
                 rtLiftImpl(e, x, "wt_import");
                 rtBindImpl(e, x, "wt_import", e.mb.typesString());
                 rtUseImpl(e, x, "wt_import");
+                var importDep = mk(
+                        e,
+                        "wdep",
+                        e.p(
+                                "k",
+                                e.call(
+                                        e.lowerV("wd_import"),
+                                        e.rec(
+                                                e.p("module", in(e, "module")),
+                                                e.p("name", in(e, "name")),
+                                                e.p("ty", in(e, "base"))))));
+                var importMeta = inst(
+                        e,
+                        "meta",
+                        e.p(
+                                "meta",
+                                mk(e, "wmeta", e.p("k", e.call(e.lowerV("wm_dep"), e.rec(e.p("dep", importDep)))))));
                 x.add(e.implInterface(
                         e.v("wt_import"),
                         aspIface(e, "function"),
@@ -3852,35 +3906,7 @@ public final class EcoWat {
                                 body(
                                         e,
                                         e.let("out", instsNew(e)),
-                                        push(
-                                                e,
-                                                e.v("out"),
-                                                inst(
-                                                        e,
-                                                        "dep",
-                                                        e.p(
-                                                                "dep",
-                                                                mk(
-                                                                        e,
-                                                                        "wdep",
-                                                                        e.p(
-                                                                                "k",
-                                                                                e.call(
-                                                                                        e.lowerV("wd_import"),
-                                                                                        e.rec(
-                                                                                                e.p(
-                                                                                                        "module",
-                                                                                                        in(
-                                                                                                                e,
-                                                                                                                "module")),
-                                                                                                e.p(
-                                                                                                        "name",
-                                                                                                        in(e, "name")),
-                                                                                                e.p(
-                                                                                                        "ty",
-                                                                                                        in(
-                                                                                                                e,
-                                                                                                                "base"))))))))),
+                                        push(e, e.v("out"), importMeta),
                                         e.let(
                                                 "rv",
                                                 unwrapCveM(
@@ -4458,7 +4484,7 @@ public final class EcoWat {
                                         "wmod",
                                         e.p("n", num(e, 0)),
                                         e.p("xx", e.optNone(e.typesExprContext())),
-                                        e.p("deps", e.listNew(lt(e, "wdep"))),
+                                        e.p("meta", e.listNew(lt(e, "wmeta"))),
                                         e.p("dep_keys", e.listNew(str(e))),
                                         e.p("data", e.listNew(lt(e, "wdata"))),
                                         e.p("data_end", e.intOf(8)),
@@ -4491,7 +4517,9 @@ public final class EcoWat {
         var defs = new TList<EcoMb.P>();
         defs.add(e.p("new", e.fld(e.v("wasm_b"), "func")));
         defs.add(e.p("mod_t", t(e, "wmod")));
-        defs.add(e.p("dep_t", t(e, "wdep")));
+        defs.add(e.p("meta_t", t(e, "wmeta")));
+        defs.add(e.p("meta_other", e.v("wm_other")));
+        defs.add(e.p("meta_new", e.fld(e.v("wmeta"), "new")));
         for (var name : passthrough) defs.add(e.p(name, e.v("c_" + name)));
         for (var obj : new String[] {"wt_int", "wt_float", "wt_void", "wgfn_t", "wt_ptr", "wt_global"}) {
             defs.add(e.p(obj + "_new", e.fld(e.v(obj), "new")));
@@ -4534,10 +4562,16 @@ public final class EcoWat {
                 e.v("mod_o"),
                 "render",
                 e.tup(),
-                e.optionTypeSome(renderT(e, e.fld(e.v("k"), "dep_t"))),
+                e.optionTypeSome(renderT(e, e.fld(e.v("k"), "meta_t"))),
                 e.stage(e.callM(in(e, "m"), "render", e.tup()))));
         y.add(e.methodImpl(
                 e.v("mod_o"), "m", e.tup(), e.optionTypeSome(e.fld(e.v("k"), "mod_t")), e.stage(in(e, "m"))));
+        y.add(e.methodImpl(
+                e.v("mod_o"),
+                "meta",
+                e.fld(e.v("k"), "meta_t"),
+                e.optionTypeNone(),
+                e.stage(e.callM(in(e, "m"), "meta", e.v("arg")))));
         y.add(e.methodImpl(
                 e.v("mod_o"),
                 "export",
@@ -4560,7 +4594,7 @@ public final class EcoWat {
         y.add(e.let("build_b", e.defFunc(e.v("d"), "build")));
         y.add(e.funcImpl(
                 e.v("build_b"),
-                renderT(e, e.fld(e.v("k"), "dep_t")),
+                renderT(e, e.fld(e.v("k"), "meta_t")),
                 e.optionTypeSome(e.mb.builtin("types", "app")),
                 e.mb.optNoneType(),
                 e.stage(e.call(
@@ -4573,7 +4607,7 @@ public final class EcoWat {
         ydefs.add(e.p("new", e.fld(e.v("wasm_b"), "func")));
         ydefs.add(e.p("build", e.fld(e.v("build_b"), "func")));
         ydefs.add(e.p("mod_t", e.fld(e.v("mod_o"), "type")));
-        ydefs.add(e.p("dep_t", e.fld(e.v("k"), "dep_t")));
+        for (var name : META_EXPORTS) ydefs.add(e.p(name, e.fld(e.v("k"), name)));
         for (var name : passthrough) ydefs.add(e.p(name, e.fld(e.v("k"), name)));
         for (var name : exported) ydefs.add(e.p(name, e.v(name)));
         y.add(e.ret(e.rec(ydefs.toArray(EcoMb.P[]::new))));
@@ -4581,7 +4615,10 @@ public final class EcoWat {
         var top = new TList<SourceExpr>();
         top.add(e.let("k", e.lower(e.mb.seq(y))));
         var exports = new TList<EcoMb.P>();
-        for (var name : new String[] {"new", "build", "mod_t", "dep_t"}) {
+        for (var name : new String[] {"new", "build", "mod_t"}) {
+            exports.add(e.p(name, e.fld(e.v("k"), name)));
+        }
+        for (var name : META_EXPORTS) {
             exports.add(e.p(name, e.fld(e.v("k"), name)));
         }
         for (var name : passthrough) exports.add(e.p(name, e.fld(e.v("k"), name)));

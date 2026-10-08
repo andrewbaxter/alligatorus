@@ -108,9 +108,7 @@ public final class BuiltinBodies {
     public static DefinitionSetBuilder define(EvalContext vx) {
         var compileId = new CompileId(vx.ix.importState, vx.ix.sourceId);
         var defSetId = new DefSetId(compileId, vx.ix.defSetCounter.next());
-        var inner = new DefinitionSet(defSetId);
-        vx.definitionSets.put(defSetId, inner);
-        return new DefinitionSetBuilder(inner);
+        return new DefinitionSetBuilder(new DefinitionSet(defSetId));
     }
 
     @BuiltinPath(value = "types.record", scopeId = 5042L)

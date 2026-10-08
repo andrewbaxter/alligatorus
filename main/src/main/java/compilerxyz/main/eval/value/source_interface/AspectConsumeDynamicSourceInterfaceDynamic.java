@@ -12,7 +12,7 @@ public record AspectConsumeDynamicSourceInterfaceDynamic(TypeSourceInterfaceDyna
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-        return JavaDataDescriptor.fromInternalName(type.cell().jvmInternalName(xx));
+        return JavaDataDescriptor.fromInternalName(type.cell().internalName());
     }
 
     @Override

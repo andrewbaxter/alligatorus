@@ -72,7 +72,6 @@ public record AspectFunctionFunctionAspectConst(TypeFunctionAspectConst type) im
         if (xxDynRes.hasErrors()) return xxDynRes.reerr();
 
         var uniqueEntry = new EvalContext.ExternalEntry(new BindingId(), type, new External(Unique.class, auq));
-        xx.vx.externals.add(uniqueEntry);
 
         var b = new JavaBytecodeBuilder(loc);
         var argumentAdd = b.addCode(loc, argument.code());

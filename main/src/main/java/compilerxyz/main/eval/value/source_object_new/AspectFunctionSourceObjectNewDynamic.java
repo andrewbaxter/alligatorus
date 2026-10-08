@@ -24,7 +24,6 @@ public record AspectFunctionSourceObjectNewDynamic(TypeSourceObjectNewDynamic ty
         if (set == null) {
             return EResult.err(loc, "TypeSourceObjectNewDynamic::call: object has no definition set reference");
         }
-        xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
         if (type.type().underlyingType.optIsNone()) {
             return EResult.err(loc, "TypeSourceObjectNewDynamic::call: object underlying type not finalised");
         }
@@ -42,6 +41,7 @@ public record AspectFunctionSourceObjectNewDynamic(TypeSourceObjectNewDynamic ty
         var underlyingDesc = JvmSort.descriptor(xx, underlyingType);
         var ctorDesc = JavaMethodDescriptor.fromConstructorParts(TList.of(underlyingDesc));
         var b = new JavaBytecodeBuilder(loc);
+        b.defSet(set);
         var out = b.newInstance(
                 klass, ctorDesc, b.reg(underlyingRes.requireValue("TypeSourceObjectNewDynamic::call underlying")));
         return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));

@@ -131,6 +131,7 @@ public final class T0200EcosystemLlvmTest {
     public void test00000HelloWorldIr(@TempDir Path tmp) throws IOException {
         var src = tmp.resolve("src");
         Files.createDirectories(src);
+        writeModule(src.resolve(EcoMeta.FILE), EcoMeta.module(new EcoMb()));
         writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
         var e = new EcoMb();
         var hello = "hello ecosys!\n".getBytes(StandardCharsets.UTF_8);
@@ -222,6 +223,7 @@ public final class T0200EcosystemLlvmTest {
             throws IOException {
         var src = tmp.resolve("src");
         Files.createDirectories(src);
+        writeModule(src.resolve(EcoMeta.FILE), EcoMeta.module(new EcoMb()));
         writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
         var setup = new TList<SourceExpr>();
         setup.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.atz")));
@@ -326,6 +328,7 @@ public final class T0200EcosystemLlvmTest {
         var e = new EcoMb();
         var src = tmp.resolve("src");
         Files.createDirectories(src);
+        writeModule(src.resolve(EcoMeta.FILE), EcoMeta.module(new EcoMb()));
         writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
         var ubyte = e.mb.builtin("types", "ubyte");
         var setup = new TList<SourceExpr>();
@@ -591,6 +594,7 @@ public final class T0200EcosystemLlvmTest {
     public void test00090Cstr(@TempDir Path tmp) throws IOException {
         var src = tmp.resolve("src");
         Files.createDirectories(src);
+        writeModule(src.resolve(EcoMeta.FILE), EcoMeta.module(new EcoMb()));
         writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
         var e = new EcoMb();
         var setup = new TList<SourceExpr>();
@@ -638,6 +642,7 @@ public final class T0200EcosystemLlvmTest {
             """;
 
     private static void writeStagedModule(Path src, EcoMb e, String name, SourceExpr body) throws IOException {
+        writeModule(src.resolve(EcoMeta.FILE), EcoMeta.module(new EcoMb()));
         writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
         writeModule(src.resolve("libc-2.42.atz"), EcoLibc.module(new EcoMb()));
         var setup = new TList<SourceExpr>();
@@ -776,6 +781,7 @@ public final class T0200EcosystemLlvmTest {
     public void test00200Synth(@TempDir Path tmp) throws IOException {
         var src = tmp.resolve("src");
         Files.createDirectories(src);
+        writeModule(src.resolve(EcoMeta.FILE), EcoMeta.module(new EcoMb()));
         writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
         writeModule(src.resolve("libc-2.42.atz"), EcoLibc.module(new EcoMb()));
         writeModule(src.resolve("spa-pod-1.6.atz"), EcoSpaPod.module(new EcoMb()));
@@ -869,6 +875,7 @@ public final class T0200EcosystemLlvmTest {
         Assumptions.assumeTrue(canLink, "clang cannot link libpipewire-0.3 and libm");
         var src = tmp.resolve("src");
         Files.createDirectories(src);
+        writeModule(src.resolve(EcoMeta.FILE), EcoMeta.module(new EcoMb()));
         writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
         writeModule(src.resolve("libc-2.42.atz"), EcoLibc.module(new EcoMb()));
         writeModule(src.resolve("spa-pod-1.6.atz"), EcoSpaPod.module(new EcoMb()));
@@ -896,6 +903,7 @@ public final class T0200EcosystemLlvmTest {
         var src = repoRoot.resolve("tmp-buzz-test");
         Files.createDirectories(src);
         try {
+            writeModule(src.resolve(EcoMeta.FILE), EcoMeta.module(new EcoMb()));
             writeModule(src.resolve("llvm-ir-22.atz"), EcoLlvmIr.module(new EcoMb()));
             writeModule(src.resolve("libc-2.42.atz"), EcoLibc.module(new EcoMb()));
             writeModule(src.resolve("spa-pod-1.6.atz"), EcoSpaPod.module(new EcoMb()));
@@ -983,6 +991,7 @@ public final class T0200EcosystemLlvmTest {
         if (repoRoot == null) throw new IllegalStateException("test working directory has no parent");
         var ecosystem = repoRoot.resolve("ecosystem");
         Assumptions.assumeTrue(Files.exists(repoRoot.resolve("pom.xml")) && Files.isDirectory(ecosystem));
+        writeIfChanged(ecosystem.resolve(EcoMeta.FILE), serializeModuleZ(EcoMeta.module(new EcoMb())));
         writeIfChanged(ecosystem.resolve("llvm-ir-22.atz"), serializeModuleZ(EcoLlvmIr.module(new EcoMb())));
         writeIfChanged(ecosystem.resolve("libc-2.42.atz"), serializeModuleZ(EcoLibc.module(new EcoMb())));
         writeIfChanged(ecosystem.resolve("spa-pod-1.6.atz"), serializeModuleZ(EcoSpaPod.module(new EcoMb())));

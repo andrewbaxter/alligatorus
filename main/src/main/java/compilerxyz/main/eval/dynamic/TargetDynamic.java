@@ -621,7 +621,6 @@ public final class TargetDynamic implements Target {
         var treeCell = new StagedExprCell(tree);
         var treeEntry = new EvalContext.ExternalEntry(
                 new BindingId(), new TypeExpr(), new External(StagedExprCell.class, treeCell));
-        xx.vx.externals.add(treeEntry);
         var b = new JavaBytecodeBuilder(loc);
         var treeReg = b.external(treeEntry);
         var restElements = new TList<JavaBytecodeReg>();
@@ -633,7 +632,6 @@ public final class TargetDynamic implements Target {
                 var cell = new StagedExprCell(cv.value().optUnwrap());
                 var entry = new EvalContext.ExternalEntry(
                         new BindingId(), new TypeExpr(), new External(StagedExprCell.class, cell));
-                xx.vx.externals.add(entry);
                 restElements.add(b.constNull());
                 restElements.add(b.external(entry));
             } else {
@@ -645,7 +643,6 @@ public final class TargetDynamic implements Target {
                         new StageLiftCell(loc, xx.vx, xx.importState, xx.scope, vtype, xx.currentExceptionType, this);
                 var liftEntry = new EvalContext.ExternalEntry(
                         new BindingId(), vtype, new External(StageLiftCell.class, liftCell));
-                xx.vx.externals.add(liftEntry);
                 CodeValue hostCv;
                 switch (GenAspectDynamicBoxed.getMaybe(xx, vtype)) {
                     case Opt.Some<AspectDynamicBoxed> boxed -> {
@@ -668,7 +665,6 @@ public final class TargetDynamic implements Target {
                 var graftType = cv.value().optUnwrap().valueType();
                 var entry = new EvalContext.ExternalEntry(
                         new BindingId(), graftType, new External(CodeValue.class, graftCv));
-                xx.vx.externals.add(entry);
                 restElements.add(b.external(entry));
             } else {
                 if (cv.value().optIsNone()) {
