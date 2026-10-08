@@ -458,6 +458,146 @@ public final class T0205EcosystemWatTest {
     }
 
     @Test
+    public void test00027AllocStore(@TempDir Path tmp) throws IOException {
+        var src = tmp.resolve("src");
+        writeTarget(src);
+        var e = new EcoMb();
+        var setup = new TList<SourceExpr>();
+        setup.add(e.let("wasm", e.importLocal("wasm", "wat-2.0.atz")));
+        setup.add(e.let("wasi", e.importLocal("wasi", "wasi-0.1.atz")));
+        setup.add(e.let("m", e.call(e.fld(e.v("wasm"), "new"), e.tup())));
+        EcoWat.bindTypes(e, setup);
+        setup.add(e.let("t_pi32", e.call(e.fld(e.v("wasm"), "ptr"), e.v("t_i32"))));
+        setup.add(e.let("t_pf32", e.call(e.fld(e.v("wasm"), "ptr"), e.v("t_f32"))));
+        setup.add(e.let("proc_exit_fn_t", e.callM(e.fld(e.v("wasi"), "fn_types"), "get", e.s("proc_exit"))));
+        setup.add(e.let(
+                "start_fn_t",
+                e.call(
+                        e.fld(e.v("wasm"), "fn"),
+                        e.rec(e.p("params", e.listNew(e.mb.evalType())), e.p("ret", e.v("t_void"))))));
+        setup.add(e.ret(e.rec(
+                e.p("m", e.v("m")),
+                e.p("proc_exit_fn_t", e.v("proc_exit_fn_t")),
+                e.p("start_fn_t", e.v("start_fn_t")),
+                e.p("t_pi32", e.v("t_pi32")),
+                e.p("t_pf32", e.v("t_pf32")),
+                e.p("t_i32", e.v("t_i32")),
+                e.p("t_u32", e.v("t_u32")))));
+        var top = new TList<SourceExpr>();
+        top.add(e.let("wasm", e.importLocal("wasm", "wat-2.0.atz")));
+        top.add(e.let("wasi", e.importLocal("wasi", "wasi-0.1.atz")));
+        top.add(e.let("k", e.lower(e.mb.seq(setup))));
+        for (var n : new String[] {"m", "proc_exit_fn_t", "start_fn_t", "t_pi32", "t_pf32", "t_i32", "t_u32"}) {
+            top.add(e.let(n, e.fld(e.v("k"), n)));
+        }
+        top.add(e.let(
+                "proc_exit",
+                e.call(
+                        e.fld(e.v("wasm"), "import_fn"),
+                        e.rec(
+                                e.p("module", e.fld(e.v("wasi"), "module")),
+                                e.p("name", e.s("proc_exit")),
+                                e.p("ty", e.v("proc_exit_fn_t"))))));
+        top.add(e.let(
+                "block",
+                e.call(
+                        e.fld(e.v("wasm"), "alloc_fn"),
+                        e.rec(e.p("mod", e.v("m")), e.p("name", e.s("block")), e.p("size", e.n(16))))));
+        var ints = e.mb.as(e.lower(e.v("block")), e.lower(e.v("t_pi32")));
+        var floats = e.mb.as(e.lower(e.v("block")), e.lower(e.v("t_pf32")));
+        top.add(e.call(
+                e.fld(e.v("wasm"), "func_fn"),
+                e.rec(
+                        e.p("mod", e.v("m")),
+                        e.p("name", e.s("_start")),
+                        e.p("params", e.tup()),
+                        e.p("ty", e.v("start_fn_t")),
+                        e.p(
+                                "body",
+                                e.stage(e.seq(
+                                        e.mb.set(e.mb.field(floats, e.n(2)), e.n(2.5)),
+                                        e.mb.set(e.mb.field(ints, e.n(1)), e.n(30)),
+                                        e.let(
+                                                "f",
+                                                e.call(
+                                                        e.lower(e.v("t_i32")),
+                                                        e.mb.operatorMul(e.mb.field(floats, e.n(2)), e.n(2)))),
+                                        e.call(
+                                                e.lower(e.v("proc_exit")),
+                                                e.call(
+                                                        e.lower(e.v("t_u32")),
+                                                        e.mb.operatorAdd(e.mb.field(ints, e.n(1)), e.v("f"))))))))));
+        top.add(e.callM(e.v("m"), "export", e.s("_start")));
+        top.add(e.call(e.mb.log(), e.fld(e.callM0(e.v("m"), "render"), "wat")));
+        writeModule(src.resolve("main.at"), top);
+        var ok = compileOk(src.resolve("main.at"), tmp.resolve("cache"));
+        var wat = ok.logs().get(0).message();
+        assertEquals(
+                """
+                  (memory (export "memory") 1)
+                  (func $_start
+                    (local $t0 i32)
+                    (local $t2 i32)
+                    (local $t4 i32)
+                    (local $s9 i32)
+                    (local $t10 i32)
+                    i32.const 2
+                    i32.const 4
+                    i32.mul
+                    local.set $t0
+                    i32.const 16
+                    local.get $t0
+                    i32.add
+                    f32.const 2.5
+                    f32.store offset=0
+                    i32.const 1
+                    i32.const 4
+                    i32.mul
+                    local.set $t2
+                    i32.const 16
+                    local.get $t2
+                    i32.add
+                    i32.const 30
+                    i32.store offset=0
+                    i32.const 2
+                    i32.const 4
+                    i32.mul
+                    local.set $t4
+                    i32.const 16
+                    local.get $t4
+                    i32.add
+                    f32.load offset=0
+                    f32.const 2.0
+                    f32.mul
+                    i32.trunc_f32_s
+                    local.set $s9
+                    i32.const 1
+                    i32.const 4
+                    i32.mul
+                    local.set $t10
+                    i32.const 16
+                    local.get $t10
+                    i32.add
+                    i32.load offset=0
+                    local.get $s9
+                    i32.add
+                    call $proc_exit
+                  )
+                """,
+                wat.substring(wat.indexOf("  (memory"), wat.indexOf("  (export")));
+        var file = tmp.resolve("alloc.wat");
+        Files.writeString(file, wat);
+        if (onPath("wat2wasm"))
+            run(
+                    tmp,
+                    "wat2wasm",
+                    file.toString(),
+                    "-o",
+                    tmp.resolve("alloc.wasm").toString());
+        if (onPath("wasmtime")) assertEquals(35, exitCode(tmp, "wasmtime", file.toString()));
+    }
+
+    @Test
     public void test00008HelloStaticLibrary(@TempDir Path tmp) throws IOException {
         var src = tmp.resolve("src");
         writeHello(src, EcoHelloWasi.Mode.WAT_LIB);

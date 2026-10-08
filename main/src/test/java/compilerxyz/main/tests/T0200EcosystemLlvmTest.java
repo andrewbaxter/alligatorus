@@ -1036,6 +1036,9 @@ public final class T0200EcosystemLlvmTest {
         writeIfChanged(ecosystem.resolve("webidl-js.atz"), serializeModuleZ(EcoWebidlJs.module(new EcoMb())));
         writeIfChanged(ecosystem.resolve("web-wasm.atz"), serializeModuleZ(EcoWebWasm.module(new EcoMb())));
         writeIfChanged(ecosystem.resolve("hello-web.atz"), serializeModuleZ(EcoHelloWeb.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("glsl-es-3.00.atz"), serializeModuleZ(EcoGlsl.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("webgl-uniforms.atz"), serializeModuleZ(EcoWebglUniforms.module(new EcoMb())));
+        writeIfChanged(ecosystem.resolve("web-wiggle.atz"), serializeModuleZ(EcoWebWiggle.module(new EcoMb())));
         writeIfChanged(ecosystem.resolve("wasi-0.1.atz"), serializeModuleZ(EcoWasi.module(new EcoMb())));
         writeIfChanged(
                 ecosystem.resolve("hello-wasi.atz"),

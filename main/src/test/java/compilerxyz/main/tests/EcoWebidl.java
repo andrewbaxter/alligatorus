@@ -14,7 +14,8 @@ public final class EcoWebidl {
 
     public static final String SPEC_COMMIT = "8a9e087aee12097e86b036b8560b6b0217f784eb";
 
-    public static final IList<String> SPEC_FILES = IList.of("dom.idl", "html.idl");
+    public static final IList<String> SPEC_FILES =
+            IList.of("dom.idl", "html.idl", "cssom-view.idl", "webgl1.idl", "webgl2.idl");
 
     private static SourceExpr fnDef(EcoMb e, TList<SourceExpr> out, String name, SourceExpr argType, SourceExpr ret) {
         return EcoTargetMb.fnDef(e, out, "webidl", name, argType, ret);
@@ -86,6 +87,7 @@ public final class EcoWebidl {
                 e.p("err", e.fld(e.v("st"), "err")),
                 e.p("iface", e.fld(e.v("st"), "iface")),
                 e.p("member", e.fld(e.v("st"), "member")),
+                e.p("base", e.fld(e.v("st"), "base")),
                 e.p("kind", a(e, "kind")),
                 e.p("self", e.eq(e.fld(e.v("st"), "self"), num(e, 1))),
                 e.p("args", e.v("args")),
@@ -133,6 +135,19 @@ public final class EcoWebidl {
             SourceExpr readonly,
             SourceExpr static_,
             SourceExpr special) {
+        return imember(e, kind, name, ty, args, readonly, static_, special, e.dstr(""));
+    }
+
+    private static SourceExpr imember(
+            EcoMb e,
+            SourceExpr kind,
+            SourceExpr name,
+            SourceExpr ty,
+            SourceExpr args,
+            SourceExpr readonly,
+            SourceExpr static_,
+            SourceExpr special,
+            SourceExpr value) {
         return mk(
                 e,
                 "imember",
@@ -142,8 +157,34 @@ public final class EcoWebidl {
                 e.p("args", args),
                 e.p("readonly", readonly),
                 e.p("static_", static_),
-                e.p("special", special));
+                e.p("special", special),
+                e.p("value", value));
     }
+
+    private static SourceExpr ifound(EcoMb e, SourceExpr found, SourceExpr iface, SourceExpr member, SourceExpr count) {
+        return mk(e, "ifound", e.p("found", found), e.p("iface", iface), e.p("member", member), e.p("count", count));
+    }
+
+    private static SourceExpr noMember(EcoMb e) {
+        return imember(
+                e, e.dstr(""), e.dstr(""), noType(e), e.listNew(lt(e, "iarg")), e.b(false), e.b(false), e.dstr(""));
+    }
+
+    static final IList<String> BUF_NAMES = IList.of(
+            "BufferSource",
+            "AllowSharedBufferSource",
+            "ArrayBuffer",
+            "ArrayBufferView",
+            "Int8Array",
+            "Uint8Array",
+            "Uint8ClampedArray",
+            "Int16Array",
+            "Uint16Array",
+            "Int32Array",
+            "Uint32Array",
+            "Float32Array",
+            "Float64Array",
+            "DataView");
 
     private static SourceExpr noType(EcoMb e) {
         return itype(e, e.dstr("undefined"), e.b(false), e.listNew(lt(e, "itype")));
@@ -226,7 +267,9 @@ public final class EcoWebidl {
                         e.p("args", e.listType(t(e, "iarg"))),
                         e.p("readonly", boolT(e)),
                         e.p("static_", boolT(e)),
-                        e.p("special", str(e))));
+                        e.p("special", str(e)),
+                        e.p("value", str(e))));
+        accessor(e, x, "imember", "value", str(e));
         accessor(e, x, "imember", "kind", str(e));
         accessor(e, x, "imember", "name", str(e));
         accessor(e, x, "imember", "ty", t(e, "itype"));
@@ -267,10 +310,15 @@ public final class EcoWebidl {
                 x,
                 "ifound",
                 "webidl member lookup",
-                e.rec(e.p("found", boolT(e)), e.p("iface", str(e)), e.p("member", t(e, "imember"))));
+                e.rec(
+                        e.p("found", boolT(e)),
+                        e.p("iface", str(e)),
+                        e.p("member", t(e, "imember")),
+                        e.p("count", intT(e))));
         accessor(e, x, "ifound", "found", boolT(e));
         accessor(e, x, "ifound", "iface", str(e));
         accessor(e, x, "ifound", "member", t(e, "imember"));
+        accessor(e, x, "ifound", "count", intT(e));
         defObj(
                 e,
                 x,
@@ -290,13 +338,16 @@ public final class EcoWebidl {
                         e.p("err", str(e)),
                         e.p("iface", str(e)),
                         e.p("member", str(e)),
+                        e.p("base", str(e)),
                         e.p("kind", str(e)),
                         e.p("self", boolT(e)),
                         e.p("args", e.listType(t(e, "iparam"))),
                         e.p("ret_out", boolT(e)),
                         e.p("ret_kind", str(e))));
         for (var f : new String[] {"ok", "self", "ret_out"}) accessor(e, x, "isig", f, boolT(e));
-        for (var f : new String[] {"err", "iface", "member", "kind", "ret_kind"}) accessor(e, x, "isig", f, str(e));
+        for (var f : new String[] {"err", "iface", "member", "base", "kind", "ret_kind"}) {
+            accessor(e, x, "isig", f, str(e));
+        }
         accessor(e, x, "isig", "args", e.listType(t(e, "iparam")));
         for (var vo : new String[] {
             "tok", "lex", "cur", "itype", "iarg", "imember", "idef", "itable", "ifound", "iparam", "isig"
@@ -393,9 +444,22 @@ public final class EcoWebidl {
                 e,
                 x,
                 "h_find",
-                e.rec(e.p("table", t(e, "itable")), e.p("iface", str(e)), e.p("member", str(e)), e.p("kind", str(e))),
+                e.rec(
+                        e.p("table", t(e, "itable")),
+                        e.p("iface", str(e)),
+                        e.p("member", str(e)),
+                        e.p("kind", str(e)),
+                        e.p("index", intT(e))),
                 t(e, "ifound"));
         fnDef(e, x, "h_mangle", e.rec(e.p("iface", str(e)), e.p("member", str(e)), e.p("kind", str(e))), str(e));
+        fnDef(e, x, "h_number", str(e), e.typesDouble());
+        fnDef(
+                e,
+                x,
+                "h_const_value",
+                e.rec(e.p("table", t(e, "itable")), e.p("iface", str(e)), e.p("member", str(e))),
+                e.typesDouble());
+        fnDef(e, x, "h_split_overload", str(e), e.rec(e.p("base", str(e)), e.p("index", intT(e))));
 
         {
             var emit = e.seq(e.ifOnly(
@@ -782,15 +846,32 @@ public final class EcoWebidl {
                         e.ifOnly(accept(e, "getter"), e.mb.set(e.fld(e.v("st"), "special"), e.dstr("getter"))),
                         e.ifOnly(accept(e, "setter"), e.mb.set(e.fld(e.v("st"), "special"), e.dstr("setter"))),
                         e.ifOnly(accept(e, "deleter"), e.mb.set(e.fld(e.v("st"), "special"), e.dstr("deleter"))),
+                        e.ifOnly(
+                                accept(e, "const"),
+                                e.seq(
+                                        e.let("cty", parseType(e)),
+                                        e.let("cname", nextText(e)),
+                                        expect(e, "="),
+                                        e.let("cvalue", nextText(e)),
+                                        expect(e, ";"),
+                                        retM(
+                                                e,
+                                                imember(
+                                                        e,
+                                                        e.dstr("const"),
+                                                        e.v("cname"),
+                                                        e.v("cty"),
+                                                        e.listNew(lt(e, "iarg")),
+                                                        e.b(true),
+                                                        e.b(true),
+                                                        e.dstr(""),
+                                                        e.v("cvalue"))))),
                         e.let("p", peek(e)),
                         e.ifOnly(
                                 orB(
                                         e,
                                         e.eq(e.v("p"), e.s("iterable")),
-                                        orB(
-                                                e,
-                                                e.eq(e.v("p"), e.s("maplike")),
-                                                orB(e, e.eq(e.v("p"), e.s("setlike")), e.eq(e.v("p"), e.s("const"))))),
+                                        orB(e, e.eq(e.v("p"), e.s("maplike")), e.eq(e.v("p"), e.s("setlike")))),
                                 e.seq(
                                         e.let("kw", nextText(e)),
                                         hf(e, "h_skip_to_semi", lcArgs(e)),
@@ -1131,14 +1212,38 @@ public final class EcoWebidl {
             };
             var kindEntries = new TList<EcoMb.P>();
             for (var sc : scalars) kindEntries.add(e.p(sc[0], e.s(sc[1])));
+            var bufEntries = new TList<EcoMb.P>();
+            for (var name : BUF_NAMES) bufEntries.add(e.p(name, e.s("buf")));
             fnImpl(
                     e,
                     x,
                     "h_kind",
                     body(
                             e,
+                            e.let("bufs", e.mapNew(str(e), str(e), bufEntries.toArray(EcoMb.P[]::new))),
+                            e.ifOnly(
+                                    e.callM(e.v("bufs"), "has", e.callM(a(e, "ty"), "name", e.tup())),
+                                    retM(e, e.dstr("buf"))),
                             e.let("r", hf(e, "h_resolve", e.rec(e.p("table", a(e, "table")), e.p("ty", a(e, "ty"))))),
                             e.let("name", e.callM(e.v("r"), "name", e.tup())),
+                            e.ifOnly(e.callM(e.v("bufs"), "has", e.v("name")), retM(e, e.dstr("buf"))),
+                            e.ifOnly(
+                                    e.eq(e.v("name"), e.s("union")),
+                                    e.seq(
+                                            e.foreach(
+                                                    e.callM(e.v("r"), "args", e.tup()),
+                                                    "ua",
+                                                    e.ifOnly(
+                                                            e.eq(
+                                                                    hf(
+                                                                            e,
+                                                                            "h_kind",
+                                                                            e.rec(
+                                                                                    e.p("table", a(e, "table")),
+                                                                                    e.p("ty", e.v("ua")))),
+                                                                    e.s("str")),
+                                                            retM(e, e.dstr("str")))),
+                                            retM(e, e.dstr("handle")))),
                             e.let("scalars", e.mapNew(str(e), str(e), kindEntries.toArray(EcoMb.P[]::new))),
                             e.foreach(
                                     e.v("scalars"),
@@ -1171,7 +1276,7 @@ public final class EcoWebidl {
                                 e.p("nullable", e.callM(e.v("r"), "nullable", e.tup())),
                                 e.p(
                                         "kind",
-                                        hf(e, "h_kind", e.rec(e.p("table", a(e, "table")), e.p("ty", e.v("r")))))))));
+                                        hf(e, "h_kind", e.rec(e.p("table", a(e, "table")), e.p("ty", a(e, "ty")))))))));
         fnImpl(
                 e,
                 x,
@@ -1179,7 +1284,7 @@ public final class EcoWebidl {
                 body(
                         e,
                         e.let("r", hf(e, "h_resolve", e.rec(e.p("table", a(e, "table")), e.p("ty", a(e, "ty"))))),
-                        e.let("k", hf(e, "h_kind", e.rec(e.p("table", a(e, "table")), e.p("ty", e.v("r"))))),
+                        e.let("k", hf(e, "h_kind", e.rec(e.p("table", a(e, "table")), e.p("ty", a(e, "ty"))))),
                         e.ret(e.rec(e.p("out", e.callM(e.v("r"), "nullable", e.tup())), e.p("kind", e.v("k"))))));
         fnImpl(
                 e,
@@ -1188,28 +1293,12 @@ public final class EcoWebidl {
                 body(
                         e,
                         e.let("defs", e.callM(a(e, "table"), "defs", e.tup())),
-                        e.let(
-                                "none",
-                                mk(
-                                        e,
-                                        "ifound",
-                                        e.p("found", e.b(false)),
-                                        e.p("iface", e.dstr("")),
-                                        e.p(
-                                                "member",
-                                                imember(
-                                                        e,
-                                                        e.dstr(""),
-                                                        e.dstr(""),
-                                                        noType(e),
-                                                        e.listNew(lt(e, "iarg")),
-                                                        e.b(false),
-                                                        e.b(false),
-                                                        e.dstr(""))))),
+                        e.let("none", ifound(e, e.b(false), e.dstr(""), noMember(e), e.intOf(0))),
                         e.ifOnly(
                                 e.not(hf(e, "h_has", e.rec(e.p("defs", e.v("defs")), e.p("name", a(e, "iface"))))),
                                 retM(e, e.v("none"))),
                         e.let("def", e.callM(e.v("defs"), "get", a(e, "iface"))),
+                        e.let("hits", e.listNew(lt(e, "imember"))),
                         e.foreach(
                                 e.callM(e.v("def"), "members", e.tup()),
                                 "m",
@@ -1218,23 +1307,185 @@ public final class EcoWebidl {
                                                 e,
                                                 e.eq(e.callM(e.v("m"), "name", e.tup()), a(e, "member")),
                                                 e.eq(e.callM(e.v("m"), "kind", e.tup()), a(e, "kind"))),
+                                        push(e, e.v("hits"), e.v("m")))),
+                        countLet(e, "nh"),
+                        countLoop(e, "nh", e.v("hits")),
+                        e.let("count", e.fld(e.v("nh"), "v")),
+                        e.ifOnly(
+                                e.eq(e.v("count"), num(e, 0)),
+                                e.seq(
+                                        e.ifOnly(
+                                                e.eq(e.callM(e.v("def"), "parent", e.tup()), e.s("")),
+                                                retM(e, e.v("none"))),
                                         retM(
                                                 e,
-                                                mk(
+                                                hf(
                                                         e,
-                                                        "ifound",
-                                                        e.p("found", e.b(true)),
-                                                        e.p("iface", a(e, "iface")),
-                                                        e.p("member", e.v("m")))))),
-                        e.ifOnly(e.eq(e.callM(e.v("def"), "parent", e.tup()), e.s("")), retM(e, e.v("none"))),
-                        e.ret(hf(
-                                e,
-                                "h_find",
+                                                        "h_find",
+                                                        e.rec(
+                                                                e.p("table", a(e, "table")),
+                                                                e.p("iface", e.callM(e.v("def"), "parent", e.tup())),
+                                                                e.p("member", a(e, "member")),
+                                                                e.p("kind", a(e, "kind")),
+                                                                e.p("index", a(e, "index"))))))),
+                        e.let(
+                                "want",
+                                e.ifElse(
+                                        andB(
+                                                e,
+                                                e.mb.operatorLt(a(e, "index"), num(e, 0)),
+                                                e.eq(e.v("count"), num(e, 1))),
+                                        e.intOf(0),
+                                        a(e, "index"))),
+                        e.let("i", e.rec(e.p("v", e.intOf(0)))),
+                        e.foreach(
+                                e.v("hits"),
+                                "h",
+                                e.seq(
+                                        e.ifOnly(
+                                                e.eq(e.fld(e.v("i"), "v"), e.v("want")),
+                                                retM(e, ifound(e, e.b(true), a(e, "iface"), e.v("h"), e.v("count")))),
+                                        e.incr(e.fld(e.v("i"), "v")))),
+                        e.ret(ifound(e, e.b(false), a(e, "iface"), noMember(e), e.v("count")))));
+        fnImpl(
+                e,
+                x,
+                "h_number",
+                body(
+                        e,
+                        e.let(
+                                "st",
                                 e.rec(
-                                        e.p("table", a(e, "table")),
-                                        e.p("iface", e.callM(e.v("def"), "parent", e.tup())),
-                                        e.p("member", a(e, "member")),
-                                        e.p("kind", a(e, "kind")))))));
+                                        e.p("v", e.mb.as(e.n(0), e.typesDouble())),
+                                        e.p("neg", e.intOf(0)),
+                                        e.p("hex", e.intOf(0)),
+                                        e.p("i", e.intOf(0)))),
+                        e.foreach(
+                                e.call(e.mb.evalStrUtf8(), e.v("arg")),
+                                "b",
+                                e.seq(
+                                        e.let("n", e.mb.as(e.v("b"), intT(e))),
+                                        e.let("i", e.fld(e.v("st"), "i")),
+                                        e.let(
+                                                "digit",
+                                                e.ifElse(
+                                                        inRange(e, e.v("n"), '0', '9'),
+                                                        e.mb.operatorSub(e.v("n"), e.intOf('0')),
+                                                        e.ifElse(
+                                                                inRange(e, e.v("n"), 'a', 'f'),
+                                                                e.mb.operatorSub(e.v("n"), e.intOf('a' - 10)),
+                                                                e.ifElse(
+                                                                        inRange(e, e.v("n"), 'A', 'F'),
+                                                                        e.mb.operatorSub(e.v("n"), e.intOf('A' - 10)),
+                                                                        e.intOf(-1))))),
+                                        e.ifElse(
+                                                andB(e, e.eq(e.v("i"), num(e, 0)), byteIs(e, e.v("n"), '-')),
+                                                e.mb.set(e.fld(e.v("st"), "neg"), e.intOf(1)),
+                                                e.ifElse(
+                                                        andB(
+                                                                e,
+                                                                e.eq(e.v("i"), num(e, 1)),
+                                                                orB(
+                                                                        e,
+                                                                        byteIs(e, e.v("n"), 'x'),
+                                                                        byteIs(e, e.v("n"), 'X'))),
+                                                        e.mb.set(e.fld(e.v("st"), "hex"), e.intOf(1)),
+                                                        e.ifElse(
+                                                                orB(
+                                                                        e,
+                                                                        e.mb.operatorLt(e.v("digit"), num(e, 0)),
+                                                                        andB(
+                                                                                e,
+                                                                                e.eq(
+                                                                                        e.fld(e.v("st"), "hex"),
+                                                                                        num(e, 0)),
+                                                                                e.mb.operatorGt(
+                                                                                        e.v("digit"), num(e, 9)))),
+                                                                e.mb.panic(
+                                                                        e.cat(
+                                                                                e.s("webidl: malformed number "),
+                                                                                e.v("arg"))),
+                                                                e.mb.set(
+                                                                        e.fld(e.v("st"), "v"),
+                                                                        e.mb.operatorAdd(
+                                                                                e.mb.operatorMul(
+                                                                                        e.fld(e.v("st"), "v"),
+                                                                                        e.ifElse(
+                                                                                                e.eq(
+                                                                                                        e.fld(
+                                                                                                                e.v(
+                                                                                                                        "st"),
+                                                                                                                "hex"),
+                                                                                                        num(e, 1)),
+                                                                                                e.mb.as(
+                                                                                                        e.n(16),
+                                                                                                        e
+                                                                                                                .typesDouble()),
+                                                                                                e.mb.as(
+                                                                                                        e.n(10),
+                                                                                                        e
+                                                                                                                .typesDouble()))),
+                                                                                e.mb.as(
+                                                                                        e.v("digit"),
+                                                                                        e.typesDouble())))))),
+                                        e.incr(e.fld(e.v("st"), "i")))),
+                        e.ret(e.ifElse(
+                                e.eq(e.fld(e.v("st"), "neg"), num(e, 1)),
+                                e.mb.operatorSub(e.mb.as(e.n(0), e.typesDouble()), e.fld(e.v("st"), "v")),
+                                e.fld(e.v("st"), "v")))));
+        fnImpl(
+                e,
+                x,
+                "h_const_value",
+                body(
+                        e,
+                        e.let(
+                                "f",
+                                hf(
+                                        e,
+                                        "h_find",
+                                        e.rec(
+                                                e.p("table", a(e, "table")),
+                                                e.p("iface", a(e, "iface")),
+                                                e.p("member", a(e, "member")),
+                                                e.p("kind", e.s("const")),
+                                                e.p("index", e.intOf(-1))))),
+                        e.ifOnly(
+                                e.not(e.callM(e.v("f"), "found", e.tup())),
+                                e.mb.panic(
+                                        e.cat(e.s("webidl: no const "), a(e, "member"), e.s(" on "), a(e, "iface")))),
+                        e.ret(hf(e, "h_number", e.callM(e.callM(e.v("f"), "member", e.tup()), "value", e.tup())))));
+        fnImpl(
+                e,
+                x,
+                "h_split_overload",
+                body(
+                        e,
+                        e.let(
+                                "st",
+                                e.rec(
+                                        e.p("hash", e.intOf(0)),
+                                        e.p("a", e.listNew(e.mb.typesByte())),
+                                        e.p("b", e.listNew(e.mb.typesByte())))),
+                        e.foreach(
+                                e.call(e.mb.evalStrUtf8(), e.v("arg")),
+                                "b",
+                                e.ifElse(
+                                        andB(
+                                                e,
+                                                e.eq(e.fld(e.v("st"), "hash"), num(e, 0)),
+                                                byteIs(e, e.mb.as(e.v("b"), intT(e)), '#')),
+                                        e.mb.set(e.fld(e.v("st"), "hash"), e.intOf(1)),
+                                        e.ifElse(
+                                                e.eq(e.fld(e.v("st"), "hash"), num(e, 0)),
+                                                push(e, e.fld(e.v("st"), "a"), e.v("b")),
+                                                push(e, e.fld(e.v("st"), "b"), e.v("b"))))),
+                        e.ifOnly(
+                                e.eq(e.fld(e.v("st"), "hash"), num(e, 0)),
+                                retM(e, e.rec(e.p("base", e.v("arg")), e.p("index", e.intOf(-1))))),
+                        e.ret(e.rec(
+                                e.p("base", utf8(e, e.fld(e.v("st"), "a"))),
+                                e.p("index", e.mb.as(hf(e, "h_number", utf8(e, e.fld(e.v("st"), "b"))), intT(e)))))));
         fnImpl(
                 e,
                 x,
@@ -1242,6 +1493,7 @@ public final class EcoWebidl {
                 body(
                         e,
                         e.let("args", e.listNew(lt(e, "iparam"))),
+                        e.let("sp", hf(e, "h_split_overload", a(e, "member"))),
                         e.let(
                                 "st",
                                 e.rec(
@@ -1249,6 +1501,7 @@ public final class EcoWebidl {
                                         e.p("err", e.dstr("")),
                                         e.p("iface", a(e, "iface")),
                                         e.p("member", a(e, "member")),
+                                        e.p("base", e.fld(e.v("sp"), "base")),
                                         e.p("self", e.intOf(0)),
                                         e.p("ret_out", e.intOf(0)),
                                         e.p("ret_kind", e.dstr("void")))),
@@ -1256,8 +1509,24 @@ public final class EcoWebidl {
                                 e.eq(a(e, "kind"), e.s("global")),
                                 e.seq(e.mb.set(e.fld(e.v("st"), "ret_kind"), e.dstr("handle")), retM(e, sigOf(e)))),
                         e.ifOnly(
+                                e.eq(a(e, "kind"), e.s("callback")),
+                                e.seq(
+                                        e.mb.set(e.fld(e.v("st"), "ret_kind"), e.dstr("handle")),
+                                        push(
+                                                e,
+                                                e.v("args"),
+                                                mk(
+                                                        e,
+                                                        "iparam",
+                                                        e.p("optional", e.b(false)),
+                                                        e.p("nullable", e.b(false)),
+                                                        e.p("kind", e.dstr("str")))),
+                                        retM(e, sigOf(e)))),
+                        e.ifOnly(
                                 e.eq(a(e, "kind"), e.s("ctor")),
-                                e.mb.set(e.fld(e.v("st"), "member"), e.dstr("constructor"))),
+                                e.seq(
+                                        e.mb.set(e.fld(e.v("st"), "member"), e.dstr("constructor")),
+                                        e.mb.set(e.fld(e.v("st"), "base"), e.dstr("constructor")))),
                         e.let(
                                 "mkind",
                                 e.ifElse(
@@ -1272,8 +1541,25 @@ public final class EcoWebidl {
                                         e.rec(
                                                 e.p("table", a(e, "table")),
                                                 e.p("iface", a(e, "iface")),
-                                                e.p("member", e.fld(e.v("st"), "member")),
-                                                e.p("kind", e.v("mkind"))))),
+                                                e.p("member", e.fld(e.v("st"), "base")),
+                                                e.p("kind", e.v("mkind")),
+                                                e.p("index", e.fld(e.v("sp"), "index"))))),
+                        e.ifOnly(
+                                andB(
+                                        e,
+                                        e.not(e.callM(e.v("f"), "found", e.tup())),
+                                        e.mb.operatorGt(e.callM(e.v("f"), "count", e.tup()), num(e, 1))),
+                                sigErr(
+                                        e,
+                                        e.cat(
+                                                toStr(e, e.callM(e.v("f"), "count", e.tup())),
+                                                e.s(" overloads of "),
+                                                e.fld(e.v("st"), "base"),
+                                                e.s(" on "),
+                                                e.callM(e.v("f"), "iface", e.tup()),
+                                                e.s("; select one as "),
+                                                e.fld(e.v("st"), "base"),
+                                                e.s("#<index> (declaration order from 0)")))),
                         e.ifOnly(
                                 e.not(e.callM(e.v("f"), "found", e.tup())),
                                 sigErr(
@@ -1352,6 +1638,9 @@ public final class EcoWebidl {
                                                 e.fld(e.v("ar"), "out"),
                                                 e.mb.set(e.fld(e.v("st"), "ret_out"), e.intOf(1))),
                                         e.mb.set(e.fld(e.v("st"), "ret_kind"), e.fld(e.v("ar"), "kind")))),
+                        e.ifOnly(
+                                e.eq(e.fld(e.v("st"), "ret_kind"), e.s("buf")),
+                                sigErr(e, e.cat(e.s("buffer-typed return of "), e.fld(e.v("st"), "base")))),
                         e.ret(sigOf(e))));
         fnImpl(
                 e,
@@ -1362,6 +1651,9 @@ public final class EcoWebidl {
                         e.ifOnly(
                                 e.eq(a(e, "name"), e.s("global")),
                                 retM(e, sigCall(e, e.dstr(""), e.dstr(""), "global"))),
+                        e.ifOnly(
+                                e.eq(a(e, "name"), e.s("callback")),
+                                retM(e, sigCall(e, e.dstr(""), e.dstr(""), "callback"))),
                         e.let(
                                 "st",
                                 e.rec(
@@ -1539,7 +1831,9 @@ public final class EcoWebidl {
         var defs = new TList<EcoMb.P>();
         defs.add(e.p("parse", e.v("h_parse")));
         defs.add(e.p("table", e.v("h_table")));
-        for (var fn : new String[] {"has", "resolve", "kind", "abi_ret", "find", "mangle", "sig", "sig_name"}) {
+        for (var fn :
+                new String[] {"has", "resolve", "kind", "abi_ret", "find", "mangle", "sig", "sig_name", "const_value"
+                }) {
             defs.add(e.p(fn, e.v("h_" + fn)));
         }
         for (var obj : new String[] {"itype", "iarg", "imember", "idef", "itable", "ifound", "iparam", "isig"}) {
@@ -1577,6 +1871,7 @@ public final class EcoWebidl {
             "mangle",
             "sig",
             "sig_name",
+            "const_value",
             "itype_t",
             "iarg_t",
             "imember_t",

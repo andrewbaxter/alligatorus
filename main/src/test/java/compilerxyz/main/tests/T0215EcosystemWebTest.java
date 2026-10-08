@@ -87,9 +87,9 @@ public final class T0215EcosystemWebTest {
                   const r = recv.document;
                   return h_new(r);
                 }
-                function wi$9(self, a0p, a0l, o1, a1) {
+                function wi$9(self, a0p, a0l, o1, a1p, a1l) {
                   const recv = h_get(self);
-                  const r = recv.createElement(str(a0p, a0l), (o1 !== 0 ? h_get(a1) : undefined));
+                  const r = recv.createElement(str(a0p, a0l), (o1 !== 0 ? str(a1p, a1l) : undefined));
                   return h_new(r);
                 }
                 function wi$10(self, n0, a0p, a0l) {
@@ -152,6 +152,49 @@ public final class T0215EcosystemWebTest {
                 throw new AssertionError(ex);
             }
         }
+    }
+
+    @Test
+    public void test00010Wiggle(@TempDir Path tmp) throws IOException {
+        Assumptions.assumeTrue(onPath("wat2wasm"), "wat2wasm not on PATH");
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
+        writeModule(src.resolve(EcoMeta.FILE), EcoMeta.module(new EcoMb()));
+        writeModule(src.resolve("wat-2.0.atz"), EcoWat.module(new EcoMb()));
+        writeModule(src.resolve("webidl.atz"), EcoWebidl.module(new EcoMb()));
+        writeModule(src.resolve("js-es2020.atz"), EcoJs.module(new EcoMb()));
+        writeModule(src.resolve("webidl-wasm.atz"), EcoWebidlWasm.module(new EcoMb()));
+        writeModule(src.resolve("webidl-js.atz"), EcoWebidlJs.module(new EcoMb()));
+        writeModule(src.resolve("web-wasm.atz"), EcoWebWasm.module(new EcoMb()));
+        writeModule(src.resolve("glsl-es-3.00.atz"), EcoGlsl.module(new EcoMb()));
+        writeModule(src.resolve("webgl-uniforms.atz"), EcoWebglUniforms.module(new EcoMb()));
+        writeModule(src.resolve("web-wiggle.atz"), EcoWebWiggle.module(new EcoMb()));
+        Dir dir;
+        try (var cache = new CacheReal(tmp.resolve("cache"))) {
+            var res = Helpers.compile(
+                    GlobalContext.newContext(cache, cache, cache),
+                    new SourceSpecAbsolute.Local(src.resolve("web-wiggle.atz").toString()));
+            Compile.CompileResult out =
+                    switch (res) {
+                        case Result.Ok<Compile.CompileResult, TList<ExprErr>> ok -> ok.value();
+                        case Result.Err<Compile.CompileResult, TList<ExprErr>> err ->
+                            throw new AssertionError("compile failed: " + err.error());
+                    };
+            dir = switch (ArtifactResolve.artifactResolveDir(
+                    cache, out.artifact().optUnwrap())) {
+                case Result.Ok<Dir, String> ok -> ok.value();
+                case Result.Err<Dir, String> err -> throw new AssertionError("not a dir: " + err.error());
+            };
+        }
+        assertEquals(3, dir.files().size());
+        var js = new String(dir.files().getOpt("main.js").optUnwrap(), StandardCharsets.UTF_8);
+        assertTrue(js.contains("imports.webidl[\"WebGL2RenderingContext.bufferData#1\"]"), js);
+        assertTrue(js.contains("new Uint8Array(instance.exports.memory.buffer, a1p, a1l)"), js);
+        assertTrue(js.contains("imports.webidl[\"callback\"]"), js);
+        var site = tmp.resolve("site");
+        Main.writeDir(dir, site);
+        var keep = System.getenv("WIGGLE_SITE");
+        if (keep != null) Main.writeDir(dir, Path.of(keep));
     }
 
     private static final String NODE_CHECK =

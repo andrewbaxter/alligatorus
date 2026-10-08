@@ -11,7 +11,7 @@ public final class EcoWebidlWasm {
 
     public static final String MODULE = "webidl";
 
-    public static final IList<String> KINDS = IList.of("op", "get", "set", "ctor");
+    public static final IList<String> KINDS = IList.of("op", "get", "set", "ctor", "const");
 
     private static int kindOf(String kind) {
         for (int i = 0; i < KINDS.size(); i++) {
@@ -25,7 +25,7 @@ public final class EcoWebidlWasm {
     }
 
     private static SourceExpr kindStr(EcoMb e) {
-        var expr = e.dstr("ctor");
+        var expr = e.dstr(KINDS.get(KINDS.size() - 1));
         for (int i = KINDS.size() - 2; i >= 0; i--) {
             expr = e.ifElse(kindIs(e, KINDS.get(i)), e.dstr(KINDS.get(i)), expr);
         }
@@ -206,6 +206,34 @@ public final class EcoWebidlWasm {
                                                                 cveT(e))),
                                                 e.mb.set(e.fld(e.v("mcell"), "v"), e.v("mname")))),
                                 e.let("member", e.fld(e.v("mcell"), "v")),
+                                e.ifOnly(
+                                        kindIs(e, "const"),
+                                        e.seq(
+                                                e.let(
+                                                        "value",
+                                                        e.call(
+                                                                webidl(e, "const_value"),
+                                                                e.rec(
+                                                                        e.p(
+                                                                                "table",
+                                                                                e.lower(e.fld(e.v("webidl"), "spec"))),
+                                                                        e.p("iface", e.v("iface")),
+                                                                        e.p("member", e.v("member"))))),
+                                                retM(
+                                                        e,
+                                                        okCve(
+                                                                e,
+                                                                unwrapCveM(
+                                                                        e,
+                                                                        constEvalIn(
+                                                                                e,
+                                                                                xx(e),
+                                                                                e.stage(
+                                                                                        e.lower(
+                                                                                                e.mb.as(
+                                                                                                        e.v("value"),
+                                                                                                        intT(
+                                                                                                                e)))))))))),
                                 e.let(
                                         "sig",
                                         e.call(
@@ -236,7 +264,10 @@ public final class EcoWebidlWasm {
                                                         e.callM(e.v("ap"), "nullable", e.tup()),
                                                         push(e, e.v("kinds"), e.dstr("flag"))),
                                                 e.ifElse(
-                                                        e.eq(e.callM(e.v("ap"), "kind", e.tup()), e.s("str")),
+                                                        orB(
+                                                                e,
+                                                                e.eq(e.callM(e.v("ap"), "kind", e.tup()), e.s("str")),
+                                                                e.eq(e.callM(e.v("ap"), "kind", e.tup()), e.s("buf"))),
                                                         e.seq(
                                                                 push(e, e.v("kinds"), e.dstr("ptr")),
                                                                 push(e, e.v("kinds"), e.dstr("len"))),
@@ -293,6 +324,13 @@ public final class EcoWebidlWasm {
                 e.call(
                         e.fld(e.v("wasm"), "fn"),
                         e.rec(e.p("params", e.listNew(e.mb.evalType())), e.p("ret", e.v("t_i32"))))));
+        defs.add(e.p(
+                "callback_t",
+                e.call(
+                        e.fld(e.v("wasm"), "fn"),
+                        e.rec(
+                                e.p("params", e.listNew(e.mb.evalType(), e.v("t_pu8"), e.v("t_u32"))),
+                                e.p("ret", e.v("t_i32"))))));
         x.add(e.ret(e.rec(defs.toArray(EcoMb.P[]::new))));
 
         var top = new TList<SourceExpr>();
@@ -305,14 +343,16 @@ public final class EcoWebidlWasm {
                     kind,
                     e.mb.as(e.call(e.fld(e.v("k"), "wop_t_new"), e.rec(e.p("kind", e.intOf(kindOf(kind))))), ty(e))));
         }
-        exports.add(e.p(
-                "global",
-                e.call(
-                        e.fld(e.v("wasm"), "import_fn"),
-                        e.rec(
-                                e.p("module", e.s(MODULE)),
-                                e.p("name", e.s("global")),
-                                e.p("ty", e.fld(e.v("k"), "global_t"))))));
+        for (var special : new String[] {"global", "callback"}) {
+            exports.add(e.p(
+                    special,
+                    e.call(
+                            e.fld(e.v("wasm"), "import_fn"),
+                            e.rec(
+                                    e.p("module", e.s(MODULE)),
+                                    e.p("name", e.s(special)),
+                                    e.p("ty", e.fld(e.v("k"), special + "_t"))))));
+        }
         top.add(e.ret(e.rec(exports.toArray(EcoMb.P[]::new))));
         return top;
     }

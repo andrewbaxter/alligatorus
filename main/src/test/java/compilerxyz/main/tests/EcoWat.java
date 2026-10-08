@@ -102,6 +102,10 @@ public final class EcoWat {
         return e.eq(e.callM(wvalTP, "is_mem", e.tup()), num(e, 1));
     }
 
+    private static SourceExpr wvIsAddr(EcoMb e, SourceExpr wvalTP) {
+        return e.eq(e.callM(wvalTP, "is_addr", e.tup()), num(e, 1));
+    }
+
     private static SourceExpr wvTy(EcoMb e, SourceExpr wvalTP) {
         return e.callM(wvalTP, "ty", e.tup());
     }
@@ -379,7 +383,7 @@ public final class EcoWat {
                 e.ifOnly(e.not(cveEnded(e, e.v(cvVar))), e.mb.set(e.fld(e.v("st"), "ended"), num(e, 0))));
     }
 
-    private static final IList<String> WGFN_KINDS = IList.of("import_fn", "func_fn", "data_fn", "cstr_fn");
+    private static final IList<String> WGFN_KINDS = IList.of("import_fn", "func_fn", "data_fn", "cstr_fn", "alloc_fn");
 
     private static int wgfnKind(String kind) {
         for (int i = 0; i < WGFN_KINDS.size(); i++) {
@@ -552,6 +556,42 @@ public final class EcoWat {
                                                                         "get",
                                                                         toStr(e, e.fld(e.v("fi"), "i"))))))))),
                 retM(e, tagValue(e, e.v("refcv"), wgfnGlobalT(e, mk(e, "wt_ptr", e.p("pointee", e.v("elem")))))));
+    }
+
+    SourceExpr allocFnBody() {
+        return e.seq(
+                e.let("sizecv", wgfnStaged(e, graft(e, wgfnField(e, "size")))),
+                e.ifOnly(
+                        orB(e, isRuntime(e, e.v("sizecv")), e.not(isConst(e, xx(e), cveType(e, e.v("sizecv"))))),
+                        retM(e, errCve(e, loc(e), "wasm alloc size must be a constant integer"))),
+                e.let(
+                        "size",
+                        e.call(
+                                e.evalBuiltin("const_numeric_to_double"),
+                                e.rec(e.p("xx", xx(e)), e.p("value", cveValue(e, e.v("sizecv")))))),
+                e.ifOnly(
+                        orB(
+                                e,
+                                e.not(e.eq(e.mb.as(e.mb.as(e.v("size"), intT(e)), e.typesDouble()), e.v("size"))),
+                                e.mb.operatorLt(e.v("size"), num(e, 0))),
+                        retM(e, errCve(e, loc(e), "wasm alloc size must be a non-negative integer"))),
+                e.let("namecv", wgfnField(e, "name")),
+                e.let(
+                        "refcv",
+                        wgfnStaged(
+                                e,
+                                e.callM(
+                                        wgfnMod(e),
+                                        "alloc",
+                                        e.rec(
+                                                e.p("name", graft(e, e.v("namecv"))),
+                                                e.p("size", e.lower(e.mb.as(e.v("size"), intT(e)))))))),
+                retM(
+                        e,
+                        tagValue(
+                                e,
+                                e.v("refcv"),
+                                wgfnGlobalT(e, mk(e, "wt_ptr", e.p("pointee", mkArg(e, "wt_void", e.tup())))))));
     }
 
     private static SourceExpr constTypeOf(EcoMb e, String cvVar, String what) {
@@ -1001,6 +1041,11 @@ public final class EcoWat {
                                                                 "slot",
                                                                 e.mb.panic(e.s("wasm: slot pushed without a load"))),
                                                         e.p(
+                                                                "mem",
+                                                                e.mb.panic(
+                                                                        e.s(
+                                                                                "wasm: memory place pushed without a load"))),
+                                                        e.p(
                                                                 "func",
                                                                 e.mb.panic(e.s("wasm: function pushed as a value"))))),
                                         e.incr(e.fld(e.v("k"), "v"))))));
@@ -1205,6 +1250,14 @@ public final class EcoWat {
                         "ws_" + tag,
                         e.callM(e.v("wsrc_u"), "variant", e.rec(e.p("tag", e.s(tag)), e.p("type_ref", str(e))))));
             }
+            x.add(e.let(
+                    "ws_mem",
+                    e.callM(
+                            e.v("wsrc_u"),
+                            "variant",
+                            e.rec(
+                                    e.p("tag", e.s("mem")),
+                                    e.p("type_ref", e.rec(e.p("addr", str(e)), e.p("offset", intT(e))))))));
             defObj(e, x, "wval", "wasm value", e.rec(e.p("ty", ty(e)), e.p("source", t(e, "wsrc_u"))));
             defObj(
                     e,
@@ -1355,6 +1408,20 @@ public final class EcoWat {
                             e.rec(
                                     e.p("tag", e.s("store")),
                                     e.p("type_ref", e.rec(e.p("val", wvalT(e)), e.p("name", str(e))))))));
+            x.add(e.let(
+                    "wi_mstore",
+                    e.callM(
+                            e.v("winst_u"),
+                            "variant",
+                            e.rec(
+                                    e.p("tag", e.s("mstore")),
+                                    e.p(
+                                            "type_ref",
+                                            e.rec(
+                                                    e.p("val", wvalT(e)),
+                                                    e.p("ty", ty(e)),
+                                                    e.p("addr", str(e)),
+                                                    e.p("offset", intT(e))))))));
             x.add(e.let(
                     "wi_call",
                     e.callM(
@@ -1706,6 +1773,34 @@ public final class EcoWat {
                     body(
                             e,
                             e.let("lv", wvalOf(e, a(e, "cv"))),
+                            e.ifOnly(
+                                    wvIsAddr(e, e.v("lv")),
+                                    e.seq(
+                                            e.let("out", instsNew(e)),
+                                            appendCode(e, e.v("out"), cveCode(e, a(e, "cv"))),
+                                            e.let("r", fresh(e, a(e, "mod"), wvTy(e, e.v("lv")))),
+                                            e.let("place", e.callM(e.v("lv"), "addr", e.tup())),
+                                            push(
+                                                    e,
+                                                    e.v("out"),
+                                                    inst(
+                                                            e,
+                                                            "mload",
+                                                            e.p("res", e.v("r")),
+                                                            e.p("ty", wvTy(e, e.v("lv"))),
+                                                            e.p(
+                                                                    "addr",
+                                                                    wvalLocal(
+                                                                            e,
+                                                                            intTy(e, "i32"),
+                                                                            e.fld(e.v("place"), "addr"))),
+                                                            e.p("offset", e.fld(e.v("place"), "offset")))),
+                                            retM(
+                                                    e,
+                                                    cvOf(
+                                                            e,
+                                                            codeOf(e, e.v("out")),
+                                                            wvalLocal(e, wvTy(e, e.v("lv")), e.v("r")))))),
                             e.ifOnly(e.not(wvIsMem(e, e.v("lv"))), retM(e, a(e, "cv"))),
                             e.let("out", instsNew(e)),
                             appendCode(e, e.v("out"), cveCode(e, a(e, "cv"))),
@@ -1728,6 +1823,27 @@ public final class EcoWat {
                     body(
                             e,
                             e.let("sl", wvalOf(e, a(e, "self"))),
+                            e.ifOnly(
+                                    wvIsAddr(e, e.v("sl")),
+                                    e.seq(
+                                            e.let(
+                                                    "v",
+                                                    operand(e, xx(e), loc(e), a(e, "mod"), a(e, "ty"), a(e, "value"))),
+                                            e.let("out", instsNew(e)),
+                                            appendCode(e, e.v("out"), cveCode(e, a(e, "self"))),
+                                            appendCode(e, e.v("out"), cveCode(e, e.v("v"))),
+                                            e.let("place", e.callM(e.v("sl"), "addr", e.tup())),
+                                            push(
+                                                    e,
+                                                    e.v("out"),
+                                                    inst(
+                                                            e,
+                                                            "mstore",
+                                                            e.p("val", wvalOf(e, e.v("v"))),
+                                                            e.p("ty", wvTy(e, e.v("sl"))),
+                                                            e.p("addr", e.fld(e.v("place"), "addr")),
+                                                            e.p("offset", e.fld(e.v("place"), "offset")))),
+                                            retM(e, cvNo(e, codeOf(e, e.v("out")))))),
                             e.ifOnly(e.not(wvIsMem(e, e.v("sl"))), throwErr(e, loc(e), "value is not assignable")),
                             e.let("v", operand(e, xx(e), loc(e), a(e, "mod"), a(e, "ty"), a(e, "value"))),
                             e.let("out", instsNew(e)),
@@ -1953,7 +2069,8 @@ public final class EcoWat {
                             e.p("local", e.v("s")),
                             e.p("konst", e.v("s")),
                             e.p("func", e.v("s")),
-                            e.p("slot", e.mb.panic(e.s("wasm: value in a slot used as an operand")))));
+                            e.p("slot", e.mb.panic(e.s("wasm: value in a slot used as an operand"))),
+                            e.p("mem", e.mb.panic(e.s("wasm: memory place used as an operand")))));
             method(
                     e,
                     x,
@@ -1968,7 +2085,8 @@ public final class EcoWat {
                             e.p("slot", e.v("s")),
                             e.p("local", e.mb.panic(e.s("wasm: temporary has no slot"))),
                             e.p("konst", e.mb.panic(e.s("wasm: constant has no slot"))),
-                            e.p("func", e.mb.panic(e.s("wasm: function has no slot")))));
+                            e.p("func", e.mb.panic(e.s("wasm: function has no slot"))),
+                            e.p("mem", e.mb.panic(e.s("wasm: memory place has no slot")))));
             method(
                     e,
                     x,
@@ -1977,6 +2095,30 @@ public final class EcoWat {
                     e.tup(),
                     e.mb.typesInt(),
                     e.matchOf(in(e, "source"), "s", Opt.some(e.intOf(0)), e.p("slot", e.intOf(1))));
+            method(
+                    e,
+                    x,
+                    "wval",
+                    "is_addr",
+                    e.tup(),
+                    e.mb.typesInt(),
+                    e.matchOf(in(e, "source"), "s", Opt.some(e.intOf(0)), e.p("mem", e.intOf(1))));
+            method(
+                    e,
+                    x,
+                    "wval",
+                    "addr",
+                    e.tup(),
+                    e.rec(e.p("addr", str(e)), e.p("offset", intT(e))),
+                    e.matchOf(
+                            in(e, "source"),
+                            "s",
+                            Opt.some(e.mb.panic(e.s("wasm: value is not a memory place"))),
+                            e.p(
+                                    "mem",
+                                    e.rec(
+                                            e.p("addr", e.fld(e.v("s"), "addr")),
+                                            e.p("offset", e.fld(e.v("s"), "offset"))))));
             x.add(e.implInterface(e.v("wval"), e.mb.evalValue(), e.p("type", in(e, "ty"))));
             accessor(e, x, "wtarget", "mod", wmodT(e));
             accessor(e, x, "wirctx", "xx", xxT(e));
@@ -2131,6 +2273,62 @@ public final class EcoWat {
                             e.ifOnly(e.eq(e.v("bits"), num(e, 32)), e.ret(e.dstr("i32.load"))),
                             e.ifOnly(e.eq(e.v("bits"), num(e, 16)), e.ret(e.cat(e.s("i32.load16"), e.v("sx")))),
                             e.ret(e.cat(e.s("i32.load8"), e.v("sx")))));
+            method(
+                    e,
+                    x,
+                    "wmod",
+                    "store_op",
+                    ty(e),
+                    str(e),
+                    e.seq(
+                            e.ifOnly(has(e, in(e, "xx", "value"), e.v("arg"), "wptr"), e.ret(e.dstr("i32.store"))),
+                            e.ifOnly(
+                                    has(e, in(e, "xx", "value"), e.v("arg"), "wfloat"),
+                                    e.ret(e.ifElse(
+                                            e.eq(
+                                                    acc(e, in(e, "xx", "value"), e.v("arg"), "wfloat", "bits"),
+                                                    num(e, 32)),
+                                            e.dstr("f32.store"),
+                                            e.dstr("f64.store")))),
+                            e.ifOnly(
+                                    e.not(has(e, in(e, "xx", "value"), e.v("arg"), "wint")),
+                                    e.mb.panic(e.cat(e.s("wasm: no memory store for "), tyDesc(e, e.v("arg"))))),
+                            e.let("bits", acc(e, in(e, "xx", "value"), e.v("arg"), "wint", "bits")),
+                            e.ifOnly(e.eq(e.v("bits"), num(e, 64)), e.ret(e.dstr("i64.store"))),
+                            e.ifOnly(e.eq(e.v("bits"), num(e, 32)), e.ret(e.dstr("i32.store"))),
+                            e.ifOnly(e.eq(e.v("bits"), num(e, 16)), e.ret(e.dstr("i32.store16"))),
+                            e.ret(e.dstr("i32.store8"))));
+            method(
+                    e,
+                    x,
+                    "wmod",
+                    "alloc",
+                    e.rec(e.p("name", str(e)), e.p("size", intT(e))),
+                    str(e),
+                    e.seq(
+                            e.foreach(
+                                    in(e, "data"),
+                                    "d0",
+                                    e.ifOnly(
+                                            e.eq(e.callM(e.v("d0"), "name", e.tup()), a(e, "name")),
+                                            e.mb.panic(e.cat(e.s("wasm: duplicate data segment "), a(e, "name"))))),
+                            e.let(
+                                    "addr",
+                                    e.mb.operatorMul(
+                                            e.mb.operatorDiv(
+                                                    e.mb.operatorAdd(in(e, "data_end"), e.intOf(15)), e.intOf(16)),
+                                            e.intOf(16))),
+                            push(
+                                    e,
+                                    in(e, "data"),
+                                    mk(
+                                            e,
+                                            "wdata",
+                                            e.p("name", a(e, "name")),
+                                            e.p("addr", e.v("addr")),
+                                            e.p("bytes", e.listNew(intT(e))))),
+                            e.mb.set(in(e, "data_end"), e.mb.operatorAdd(e.v("addr"), a(e, "size"))),
+                            e.ret(a(e, "name"))));
             method(
                     e,
                     x,
@@ -2391,6 +2589,7 @@ public final class EcoWat {
                                             e.p("load", countName(e, p(e, "name"))),
                                             e.p("mload", countUse(e, p(e, "addr"))),
                                             e.p("store", countUse(e, p(e, "val"))),
+                                            e.p("mstore", e.seq(countName(e, p(e, "addr")), countUse(e, p(e, "val")))),
                                             e.p("push", countUse(e, p(e, "val"))),
                                             e.p("call", e.foreach(p(e, "args"), "ax", countUse(e, e.v("ax")))),
                                             e.p(
@@ -2502,6 +2701,19 @@ public final class EcoWat {
                                             e.p(
                                                     "store",
                                                     e.seq(rsOps(e, p(e, "val")), rs(e, "set_local", p(e, "name")))),
+                                            e.p(
+                                                    "mstore",
+                                                    e.seq(
+                                                            rsOps(
+                                                                    e,
+                                                                    wvalLocal(e, intTy(e, "i32"), p(e, "addr")),
+                                                                    p(e, "val")),
+                                                            rsLine(
+                                                                    e,
+                                                                    -2,
+                                                                    e.callM(outer(e), "store_op", p(e, "ty")),
+                                                                    e.s(" offset="),
+                                                                    toStr(e, p(e, "offset"))))),
                                             e.p("push", rsOps(e, p(e, "val"))),
                                             e.p("setl", rs(e, "set_local", p(e, "name"))),
                                             e.p("meta", e.seq()),
@@ -2601,15 +2813,19 @@ public final class EcoWat {
                                                             e,
                                                             e.v("parts"),
                                                             e.callM(e.v("printable"), "get", toStr(e, e.v("b"))))),
-                                            push(
-                                                    e,
-                                                    e.v("out"),
-                                                    e.cat(
-                                                            e.s("  (data (i32.const "),
-                                                            toStr(e, e.callM(e.v("d0"), "addr", e.tup())),
-                                                            e.s(") \""),
-                                                            e.join(e.v("parts"), ""),
-                                                            e.s("\")"))))),
+                                            countLet(e, "nb"),
+                                            countLoop(e, "nb", e.v("parts")),
+                                            e.ifOnly(
+                                                    e.mb.operatorGt(e.fld(e.v("nb"), "v"), num(e, 0)),
+                                                    push(
+                                                            e,
+                                                            e.v("out"),
+                                                            e.cat(
+                                                                    e.s("  (data (i32.const "),
+                                                                    toStr(e, e.callM(e.v("d0"), "addr", e.tup())),
+                                                                    e.s(") \""),
+                                                                    e.join(e.v("parts"), ""),
+                                                                    e.s("\")")))))),
                             e.foreach(in(e, "funcs"), "f", push(e, e.v("out"), e.v("f"))),
                             e.foreach(in(e, "exports"), "l", push(e, e.v("out"), e.cat(e.s("  "), e.v("l")))),
                             push(e, e.v("out"), e.s(")")),
@@ -3273,14 +3489,57 @@ public final class EcoWat {
                             e.ret(orB(
                                     e,
                                     isEqual(e, xx(e), outer(e), srcType(e)),
-                                    andB(
+                                    orB(
                                             e,
-                                            has(e, xx(e), srcType(e), "wptr"),
-                                            has(e, xx(e), in(e, "pointee"), "wvoid"))))),
+                                            isConst(e, xx(e), srcType(e)),
+                                            andB(
+                                                    e,
+                                                    has(e, xx(e), srcType(e), "wptr"),
+                                                    orB(
+                                                            e,
+                                                            has(e, xx(e), in(e, "pointee"), "wvoid"),
+                                                            has(
+                                                                    e,
+                                                                    xx(e),
+                                                                    acc(e, xx(e), srcType(e), "wptr", "pointee"),
+                                                                    "wvoid"))))))),
                     body(
                             e,
                             e.let("st", cveType(e, a(e, "cv"))),
                             e.ifOnly(isEqual(e, xx(e), outer(e), e.v("st")), retM(e, okCve(e, a(e, "cv")))),
+                            e.ifOnly(
+                                    isConst(e, xx(e), e.v("st")),
+                                    e.seq(
+                                            e.let(
+                                                    "d",
+                                                    e.call(
+                                                            e.evalBuiltin("const_numeric_to_double"),
+                                                            e.rec(
+                                                                    e.p("xx", xx(e)),
+                                                                    e.p("value", cveValue(e, a(e, "cv")))))),
+                                            e.let("l", e.mb.as(e.v("d"), e.mb.typesLong())),
+                                            e.ifOnly(
+                                                    orB(
+                                                            e,
+                                                            e.not(e.eq(e.mb.as(e.v("l"), e.typesDouble()), e.v("d"))),
+                                                            orB(
+                                                                    e,
+                                                                    e.mb.operatorLt(e.v("d"), num(e, 0)),
+                                                                    e.mb.operatorGt(e.v("d"), num(e, 4294967295.0)))),
+                                                    retM(
+                                                            e,
+                                                            errCve(
+                                                                    e,
+                                                                    loc(e),
+                                                                    "pointer literal is not a 32 bit address"))),
+                                            retM(
+                                                    e,
+                                                    okCve(
+                                                            e,
+                                                            cvOf(
+                                                                    e,
+                                                                    cveCode(e, a(e, "cv")),
+                                                                    wvalKonst(e, outer(e), toStr(e, e.v("l")))))))),
                             e.ret(retag(e, a(e, "cv"), outer(e)))),
                     noCastTo(e),
                     castToPanic(e),
@@ -3377,25 +3636,30 @@ public final class EcoWat {
                                                                     e.p("b", e.v("scaled")),
                                                                     e.p("res", e.v("i32"))),
                                                             cveT(e)))),
-                                    e.let("out", instsNew(e)),
-                                    appendCode(e, e.v("out"), cveCode(e, e.v("addr"))),
-                                    e.let("r", fresh(e, xmod(e), in(e, "pointee"))),
-                                    push(
-                                            e,
-                                            e.v("out"),
-                                            inst(
-                                                    e,
-                                                    "mload",
-                                                    e.p("res", e.v("r")),
-                                                    e.p("ty", in(e, "pointee")),
-                                                    e.p("addr", wvalOf(e, e.v("addr"))),
-                                                    e.p("offset", e.intOf(0)))),
                                     e.ret(okCve(
                                             e,
                                             cvOf(
                                                     e,
-                                                    codeOf(e, e.v("out")),
-                                                    wvalLocal(e, in(e, "pointee"), e.v("r"))))))),
+                                                    cveCode(e, e.v("addr")),
+                                                    mk(
+                                                            e,
+                                                            "wval",
+                                                            e.p("ty", in(e, "pointee")),
+                                                            e.p(
+                                                                    "source",
+                                                                    e.call(
+                                                                            e.lowerV("ws_mem"),
+                                                                            e.rec(
+                                                                                    e.p(
+                                                                                            "addr",
+                                                                                            e.callM(
+                                                                                                    wvalOf(
+                                                                                                            e,
+                                                                                                            e.v(
+                                                                                                                    "addr")),
+                                                                                                    "ref",
+                                                                                                    e.tup())),
+                                                                                    e.p("offset", e.intOf(0))))))))))),
                     e.p("type_opt", e.optionTypeLoweredNone()),
                     e.p("keys", e.listNew(e.mb.typesConstkey()))));
 
@@ -4026,12 +4290,19 @@ public final class EcoWat {
                                                                             e.s("params"),
                                                                             e.s("ty"),
                                                                             e.s("body")),
-                                                                    e.listNew(
-                                                                            str(e),
-                                                                            e.s("mod"),
-                                                                            e.s("name"),
-                                                                            e.s("elem"),
-                                                                            e.s("values")))))),
+                                                                    e.ifElse(
+                                                                            wgfnIs(e, "alloc_fn"),
+                                                                            e.listNew(
+                                                                                    str(e),
+                                                                                    e.s("mod"),
+                                                                                    e.s("name"),
+                                                                                    e.s("size")),
+                                                                            e.listNew(
+                                                                                    str(e),
+                                                                                    e.s("mod"),
+                                                                                    e.s("name"),
+                                                                                    e.s("elem"),
+                                                                                    e.s("values"))))))),
                                     e.let("kc", e.rec(e.p("n", e.intOf(0)), e.p("bad", e.dstr("")))),
                                     e.foreach(
                                             bim0(e, aspIface(e, "record"), "field_types", e.fld(e.v("rk"), "value")),
@@ -4154,6 +4425,7 @@ public final class EcoWat {
                                                                                             "pointee",
                                                                                             intTy(e, "u8")))))))),
                                     e.ifOnly(wgfnIs(e, "data_fn"), new EcoWat(e).dataFnBody()),
+                                    e.ifOnly(wgfnIs(e, "alloc_fn"), new EcoWat(e).allocFnBody()),
                                     e.let("tycv", wgfnField(e, "ty")),
                                     e.let("tyv", constTypeOf(e, "tycv", "wasm ty")),
                                     e.ifOnly(

@@ -148,7 +148,7 @@ public final class T0220EcosystemWebidlTest {
         assertEquals(
                 """
                 interface Node : EventTarget
-                 other const() : undefined
+                static readonly  const ELEMENT_NODE() : unsigned short
                 readonly  attr nodeName() : DOMString
                  attr textContent() : DOMString?
                  op appendChild(Node node) : Node
@@ -242,7 +242,13 @@ public final class T0220EcosystemWebidlTest {
                                                 "h1",
                                                 e.call(
                                                         e.lower(e.v("create")),
-                                                        e.tup(e.v("g"), e.lower(e.v("tag")), e.n(2), e.n(0), e.n(0)))),
+                                                        e.tup(
+                                                                e.v("g"),
+                                                                e.lower(e.v("tag")),
+                                                                e.n(2),
+                                                                e.n(0),
+                                                                e.n(0),
+                                                                e.n(0)))),
                                         e.call(e.lower(e.v("body")), e.tup(e.v("g"), e.lower(e.v("cell")))),
                                         e.call(
                                                 e.lower(e.v("text")),
@@ -256,7 +262,7 @@ public final class T0220EcosystemWebidlTest {
                 """
                 (module
                   (import "webidl" "global" (func $global (result i32)))
-                  (import "webidl" "Document.createElement" (func $Document.createElement (param i32) (param i32) (param i32) (param i32) (param i32) (result i32)))
+                  (import "webidl" "Document.createElement" (func $Document.createElement (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (result i32)))
                   (import "webidl" "Document.body" (func $Document.body (param i32) (param i32)))
                   (import "webidl" "Node.textContent=" (func $Node.textContent= (param i32) (param i32) (param i32) (param i32)))
                 """,

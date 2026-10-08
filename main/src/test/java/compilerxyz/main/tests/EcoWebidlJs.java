@@ -107,7 +107,7 @@ public final class EcoWebidlJs {
         define.add(e.ifOnly(e.not(sig(e, "ok")), e.mb.panic(e.cat(e.s("webidl-js: "), sig(e, "err")))));
         define.add(e.let("fname", e.cat(e.s("wi"), e.callM0(e.v("m"), "fresh"))));
         define.add(e.let("kind", sig(e, "kind")));
-        define.add(e.let("member", sig(e, "member")));
+        define.add(e.let("member", sig(e, "base")));
         define.add(e.let("params", e.listNew(e.mb.typesString())));
         define.add(e.let("lines", e.listNew(e.mb.typesString())));
         define.add(e.let("exprs", e.listNew(e.mb.typesString())));
@@ -127,7 +127,7 @@ public final class EcoWebidlJs {
                         e.ifOnly(e.v("optional"), param(e, e.s("o"), e.v("n"))),
                         e.ifOnly(e.v("nullable"), param(e, e.s("n"), e.v("n"))),
                         e.ifElse(
-                                e.eq(e.v("ak"), e.s("str")),
+                                kindIs(e, e.v("ak"), "str", "buf"),
                                 e.seq(param(e, e.s("a"), e.v("n"), e.s("p")), param(e, e.s("a"), e.v("n"), e.s("l"))),
                                 param(e, e.s("a"), e.v("n"))),
                         e.let("x", e.rec(e.p("v", e.dstr("")))),
@@ -140,16 +140,28 @@ public final class EcoWebidlJs {
                                                 e.fld(e.v("x"), "v"),
                                                 e.cat(e.s("str(a"), e.v("n"), e.s("p, a"), e.v("n"), e.s("l)"))),
                                         e.ifElse(
-                                                kindIs(e, e.v("ak"), "bool"),
+                                                kindIs(e, e.v("ak"), "buf"),
                                                 e.mb.set(
                                                         e.fld(e.v("x"), "v"),
-                                                        e.cat(e.s("(a"), e.v("n"), e.s(" !== 0)"))),
+                                                        e.cat(
+                                                                e.s("new Uint8Array(instance.exports.memory.buffer, a"),
+                                                                e.v("n"),
+                                                                e.s("p, a"),
+                                                                e.v("n"),
+                                                                e.s("l)"))),
                                                 e.ifElse(
-                                                        kindIs(e, e.v("ak"), "i64", "u64"),
+                                                        kindIs(e, e.v("ak"), "bool"),
                                                         e.mb.set(
                                                                 e.fld(e.v("x"), "v"),
-                                                                e.cat(e.s("Number(a"), e.v("n"), e.s(")"))),
-                                                        e.mb.set(e.fld(e.v("x"), "v"), e.cat(e.s("a"), e.v("n"))))))),
+                                                                e.cat(e.s("(a"), e.v("n"), e.s(" !== 0)"))),
+                                                        e.ifElse(
+                                                                kindIs(e, e.v("ak"), "i64", "u64"),
+                                                                e.mb.set(
+                                                                        e.fld(e.v("x"), "v"),
+                                                                        e.cat(e.s("Number(a"), e.v("n"), e.s(")"))),
+                                                                e.mb.set(
+                                                                        e.fld(e.v("x"), "v"),
+                                                                        e.cat(e.s("a"), e.v("n")))))))),
                         e.ifOnly(
                                 e.v("nullable"),
                                 e.mb.set(
@@ -186,7 +198,14 @@ public final class EcoWebidlJs {
                                 e.ifElse(
                                         e.eq(e.v("kind"), e.s("ctor")),
                                         line(e, e.s("const r = new recv("), e.v("argv"), e.s(");")),
-                                        line(e, e.s("const r = globalThis;")))))));
+                                        e.ifElse(
+                                                e.eq(e.v("kind"), e.s("callback")),
+                                                line(
+                                                        e,
+                                                        e.s("const r = function() { return instance.exports["),
+                                                        e.v("argv"),
+                                                        e.s("].apply(null, arguments); };")),
+                                                line(e, e.s("const r = globalThis;"))))))));
         define.add(e.let("rk", sig(e, "ret_kind")));
         define.add(e.let("rx", e.rec(e.p("v", e.dstr("")))));
         define.add(e.ifElse(
