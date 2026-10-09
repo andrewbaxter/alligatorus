@@ -14,16 +14,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import spoon.reflect.CtModel;
+import spoon.reflect.code.BinaryOperatorKind;
+import spoon.reflect.code.CtAbstractInvocation;
+import spoon.reflect.code.CtBinaryOperator;
+import spoon.reflect.code.CtCase;
 import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtExecutableReferenceExpression;
+import spoon.reflect.code.CtExpression;
+import spoon.reflect.code.CtFieldAccess;
 import spoon.reflect.code.CtFieldRead;
 import spoon.reflect.code.CtFieldWrite;
 import spoon.reflect.code.CtInvocation;
+import spoon.reflect.code.CtLiteral;
 import spoon.reflect.code.CtNewClass;
+import spoon.reflect.code.CtSwitch;
+import spoon.reflect.code.CtSwitchExpression;
+import spoon.reflect.code.CtTypeAccess;
 import spoon.reflect.declaration.CtAnonymousExecutable;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtEnumValue;
 import spoon.reflect.declaration.CtExecutable;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtMethod;
@@ -31,6 +42,7 @@ import spoon.reflect.declaration.CtRecord;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.CtTypeMember;
 import spoon.reflect.declaration.ModifierKind;
+import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtExecutableReference;
 import spoon.reflect.reference.CtTypeParameterReference;
 import spoon.reflect.reference.CtTypeReference;
@@ -62,6 +74,7 @@ public final class ReachabilityMain {
     private final Set<String> reachable = new HashSet<>();
     private final Map<String, Integer> callCounts = new HashMap<>();
     private final Map<String, Integer> fieldReads = new HashMap<>();
+    private final Map<String, Integer> producingReads = new HashMap<>();
     private final Map<String, Integer> fieldWrites = new HashMap<>();
     private final Set<String> referencedTypes = new HashSet<>();
     private final Set<String> genReferenced = new HashSet<>();
@@ -135,11 +148,7 @@ public final class ReachabilityMain {
                                 onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
                             }
                             scanMethodRefs(abAcc.executableRefs, work, fromGenerated);
-                            for (CtFieldRead<?> fr : abAcc.fieldReads) {
-                                if (fr.getVariable() != null) {
-                                    fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
-                                }
-                            }
+                            for (CtFieldRead<?> fr : abAcc.fieldReads) countFieldRead(fr);
                             for (CtFieldWrite<?> fw : abAcc.fieldWrites) {
                                 if (fw.getVariable() != null) {
                                     fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
@@ -150,11 +159,7 @@ public final class ReachabilityMain {
                             }
                         }
                     }
-                    for (CtFieldRead<?> fr : acc.fieldReads) {
-                        if (fr.getVariable() != null) {
-                            fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
-                        }
-                    }
+                    for (CtFieldRead<?> fr : acc.fieldReads) countFieldRead(fr);
                     for (CtFieldWrite<?> fw : acc.fieldWrites) {
                         if (fw.getVariable() != null) {
                             fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
@@ -176,11 +181,7 @@ public final class ReachabilityMain {
                 onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
             }
             scanMethodRefs(wlAcc.executableRefs, work, fromGenerated);
-            for (CtFieldRead<?> fr : wlAcc.fieldReads) {
-                if (fr.getVariable() != null) {
-                    fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
-                }
-            }
+            for (CtFieldRead<?> fr : wlAcc.fieldReads) countFieldRead(fr);
             for (CtFieldWrite<?> fw : wlAcc.fieldWrites) {
                 if (fw.getVariable() != null) {
                     fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
@@ -218,11 +219,85 @@ public final class ReachabilityMain {
             }
         }
 
+        Set<String> enumTypes = new HashSet<>();
+        for (CtType<?> t : types) {
+            if (t.isEnum()) enumTypes.add(t.getQualifiedName());
+        }
+        Set<String> enumsAllProduced = new HashSet<>();
+        Set<String> enumsDiscriminated = new HashSet<>();
+        List<CtElement> liveCode = new ArrayList<>();
+        for (String k : reachable) {
+            CtExecutable<?> ex = execByKey.get(k);
+            if (ex != null) liveCode.add(ex);
+        }
+        for (CtType<?> t : types) {
+            if (!liveTypes.contains(t.getQualifiedName())) continue;
+            for (CtField<?> f : t.getFields()) {
+                if (f.getDefaultExpression() != null) liveCode.add(f.getDefaultExpression());
+            }
+            if (t instanceof CtRecord rec) {
+                for (var rc : rec.getRecordComponents()) {
+                    if (rc.getType() != null && enumTypes.contains(rc.getType().getQualifiedName())) {
+                        enumsDiscriminated.add(rc.getType().getQualifiedName());
+                    }
+                }
+            }
+        }
+        for (CtElement code : liveCode) {
+            for (CtTypeReference<?> tr : code.getElements(new TypeFilter<>(CtTypeReference.class))) {
+                if (tr.getRoleInParent() == CtRole.TYPE_ARGUMENT && enumTypes.contains(tr.getQualifiedName())) {
+                    enumsDiscriminated.add(tr.getQualifiedName());
+                }
+            }
+            for (CtExpression<?> x : code.getElements(new TypeFilter<>(CtExpression.class))) {
+                if (x instanceof CtInvocation<?> inv && inv.getExecutable().getDeclaringType() != null) {
+                    String owner = inv.getExecutable().getDeclaringType().getQualifiedName();
+                    String name = inv.getExecutable().getSimpleName();
+                    if (enumTypes.contains(owner) && (name.equals("values") || name.equals("valueOf"))) {
+                        enumsAllProduced.add(owner);
+                    }
+                }
+                if (x instanceof CtTypeAccess<?> || x.getType() == null) continue;
+                String et = x.getType().getQualifiedName();
+                if (!enumTypes.contains(et) || !x.isParentInitialized()) continue;
+                CtElement parent = x.getParent();
+                boolean discriminating = (parent instanceof CtBinaryOperator<?> bo
+                                && !(bo.getLeftHandOperand() instanceof CtLiteral<?> l && l.getValue() == null)
+                                && !(bo.getRightHandOperand() instanceof CtLiteral<?> r && r.getValue() == null))
+                        || parent instanceof CtCase<?>
+                        || (parent instanceof CtSwitch<?> sw && sw.getSelector() == x)
+                        || (parent instanceof CtSwitchExpression<?, ?> swe && swe.getSelector() == x)
+                        || (x.getRoleInParent() == CtRole.TARGET
+                                && (parent instanceof CtInvocation<?> || parent instanceof CtFieldAccess<?>));
+                if (!discriminating
+                        && parent instanceof CtAbstractInvocation<?> call
+                        && x.getRoleInParent() == CtRole.ARGUMENT) {
+                    int idx = -1;
+                    for (int i = 0; i < call.getArguments().size(); i++) {
+                        if (call.getArguments().get(i) == x) idx = i;
+                    }
+                    CtExecutable<?> decl = call.getExecutable().getExecutableDeclaration();
+                    if (decl == null || decl.getParameters().isEmpty()) {
+                        discriminating = true;
+                    } else {
+                        var params = decl.getParameters();
+                        var param = params.get(Math.min(idx, params.size() - 1));
+                        discriminating = param.getType() == null
+                                || !et.equals(param.getType().getQualifiedName());
+                    }
+                }
+                if (discriminating) enumsDiscriminated.add(et);
+            }
+        }
+
         List<String> deadClasses = new ArrayList<>();
         List<String> deadMethods = new ArrayList<>();
         List<String> deadFields = new ArrayList<>();
         List<String> singleUseMethods = new ArrayList<>();
         List<String> singleUseFields = new ArrayList<>();
+        List<String> deadConstants = new ArrayList<>();
+        List<String> unproducedEnumConstants = new ArrayList<>();
+        List<String> undiscriminatedEnums = new ArrayList<>();
 
         for (CtType<?> t : types) {
             String qn = t.getQualifiedName();
@@ -269,9 +344,24 @@ public final class ReachabilityMain {
                     singleUseMethods.add(qn + "#" + sig(ex));
                 }
             }
-            boolean recordOrEnum = t.isEnum() || (t instanceof CtRecord);
-            if (!recordOrEnum) {
-                for (CtField<?> f : t.getFields()) {
+            if (t.isEnum() && !rooted && referencedTypes.contains(qn) && !enumsDiscriminated.contains(qn)) {
+                undiscriminatedEnums.add(qn);
+            }
+            for (CtField<?> f : t.getFields()) {
+                if (t instanceof CtRecord && !f.hasModifier(ModifierKind.STATIC)) continue;
+                String fk = fieldKey(f.getReference().getQualifiedName());
+                boolean enumConstant = f instanceof CtEnumValue<?>;
+                boolean constant =
+                        enumConstant || (f.hasModifier(ModifierKind.STATIC) && f.hasModifier(ModifierKind.FINAL));
+                if (constant && !rooted && !f.hasModifier(ModifierKind.PRIVATE)) {
+                    boolean produced = enumConstant && enumsAllProduced.contains(qn);
+                    if (fieldReads.getOrDefault(fk, 0) == 0 && !produced) {
+                        deadConstants.add(qn + "#" + f.getSimpleName());
+                    } else if (enumConstant && !produced && producingReads.getOrDefault(fk, 0) == 0) {
+                        unproducedEnumConstants.add(qn + "#" + f.getSimpleName());
+                    }
+                }
+                {
                     if (f.getModifiers().contains(ModifierKind.PRIVATE)
                             && !rooted
                             && !f.getSimpleName().equals("serialVersionUID")
@@ -295,6 +385,9 @@ public final class ReachabilityMain {
         deadMethods.sort(Comparator.naturalOrder());
         singleUseMethods.sort(Comparator.naturalOrder());
         singleUseFields.sort(Comparator.naturalOrder());
+        deadConstants.sort(Comparator.naturalOrder());
+        unproducedEnumConstants.sort(Comparator.naturalOrder());
+        undiscriminatedEnums.sort(Comparator.naturalOrder());
 
         StringBuilder out = new StringBuilder();
         line(out, "=== Reachability / single-use analysis (Spoon, source-level) ===");
@@ -305,7 +398,13 @@ public final class ReachabilityMain {
         section(out, "#2 SINGLE-USE METHODS (inline candidates: private/static, 1 caller)", singleUseMethods);
         section(out, "#1 DEAD PRIVATE FIELDS (0 reads; write-only counts as dead)", deadFields);
         section(out, "#2 SINGLE-USE PRIVATE FIELDS (1 read)", singleUseFields);
+        section(out, "#1 DEAD CONSTANTS (static final or enum constant, 0 reads)", deadConstants);
+        section(out, "#1 UNPRODUCED ENUM CONSTANTS (only compared or matched, never passed)", unproducedEnumConstants);
+        section(out, "#1 UNDISCRIMINATED ENUMS (no value is compared, matched or inspected)", undiscriminatedEnums);
         int total = deadClasses.size()
+                + deadConstants.size()
+                + unproducedEnumConstants.size()
+                + undiscriminatedEnums.size()
                 + deadMethods.size()
                 + deadFields.size()
                 + singleUseMethods.size()
@@ -314,12 +413,16 @@ public final class ReachabilityMain {
                 out,
                 String.format(
                         "TOT:  dead classes=%d  dead methods=%d  dead fields=%d  single-use methods=%d"
-                                + "  single-use fields=%d",
+                                + "  single-use fields=%d  dead constants=%d  unproduced enum constants=%d"
+                                + "  undiscriminated enums=%d",
                         deadClasses.size(),
                         deadMethods.size(),
                         deadFields.size(),
                         singleUseMethods.size(),
-                        singleUseFields.size()));
+                        singleUseFields.size(),
+                        deadConstants.size(),
+                        unproducedEnumConstants.size(),
+                        undiscriminatedEnums.size()));
 
         System.out.print(out);
         Path reportPath = Path.of("lint/target/reachability-report.txt");
@@ -327,6 +430,19 @@ public final class ReachabilityMain {
         Files.writeString(reportPath, out.toString());
         System.out.println("(report written to " + reportPath + ")");
         return total;
+    }
+
+    private void countFieldRead(CtFieldRead<?> fr) {
+        if (fr.getVariable() == null) return;
+        String k = fieldKey(fr.getVariable().getQualifiedName());
+        fieldReads.merge(k, 1, Integer::sum);
+        CtElement parent = fr.isParentInitialized() ? fr.getParent() : null;
+        boolean comparedOnly = (parent instanceof CtBinaryOperator<?> bo
+                        && (bo.getKind() == BinaryOperatorKind.EQ || bo.getKind() == BinaryOperatorKind.NE))
+                || parent instanceof CtCase<?>
+                || (parent instanceof CtInvocation<?> inv
+                        && inv.getExecutable().getSimpleName().equals("equals"));
+        if (!comparedOnly) producingReads.merge(k, 1, Integer::sum);
     }
 
     private void scanMethodRefs(

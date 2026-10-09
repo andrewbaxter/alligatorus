@@ -9,7 +9,6 @@ import compilerxyz.main.gen.codec.SourceModuleCodec;
 import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.langhelp.GlobalContext;
 import compilerxyz.main.langhelp.cache.CacheReal;
-import compilerxyz.main.safejson.Json;
 import compilerxyz.main.syntax.SourceExpr;
 import compilerxyz.main.syntax.SourceModule;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
@@ -44,7 +43,7 @@ public final class T0180ImportRealTest {
         var writer = new JsonWriter(sw);
         writer.setSerializeNulls(true);
         writer.setIndent("");
-        SourceModuleCodec.encode(writer, new SourceModule.V1(exprs), Json.Style.COMPACT);
+        SourceModuleCodec.encode(writer, new SourceModule.V1(exprs));
         writer.close();
         return sw.toString();
     }

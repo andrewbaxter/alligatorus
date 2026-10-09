@@ -16,12 +16,12 @@ import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.GlobalContext;
 import compilerxyz.main.langhelp.Sources;
 import compilerxyz.main.langhelp.cache.CacheReal;
-import compilerxyz.main.safejson.Json;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueBoolean;
 import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
+import compilerxyz.main.safejson.JsonValueNumberInt;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.main.syntax.SourceExpr;
@@ -146,8 +146,8 @@ public final class Helpers {
         return new JsonValueString(value);
     }
 
-    public static JsonValueNumber jsonNum(double value) {
-        return new JsonValueNumber(value);
+    public static JsonValueNumberInt jsonNum(long value) {
+        return new JsonValueNumberInt(value);
     }
 
     public static Result<CompileResult, TList<ExprErr>> compile(GlobalContext gx, SourceSpecAbsolute entry) {
@@ -196,7 +196,7 @@ public final class Helpers {
         var writer = new JsonWriter(sw);
         writer.setSerializeNulls(true);
         writer.setIndent("  ");
-        SourceModuleCodec.encode(writer, new SourceModule.V1(exprs), Json.Style.PRETTY);
+        SourceModuleCodec.encode(writer, new SourceModule.V1(exprs));
         writer.close();
         Files.writeString(file, sw.toString());
     }
@@ -272,7 +272,8 @@ public final class Helpers {
         public void compilesPrepare(CompileId root) {}
 
         @Override
-        public CompileRes compilesGetOrCompute(CompileId id, Supplier<Compiles.CompileProduct> compute) {
+        public CompileRes compilesGetOrCompute(
+                CompileId id, SourceSpecAbsolute spec, Supplier<Compiles.CompileProduct> compute) {
             Entry e;
             mapLock.lock();
             try {

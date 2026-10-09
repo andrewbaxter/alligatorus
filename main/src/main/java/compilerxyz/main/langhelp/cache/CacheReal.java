@@ -22,7 +22,7 @@ import compilerxyz.main.langhelp.Sources;
 import compilerxyz.main.safejson.Json;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
-import compilerxyz.main.safejson.JsonValueNumber;
+import compilerxyz.main.safejson.JsonValueNumberInt;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.main.safejson.JsonValues;
@@ -56,6 +56,9 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -69,7 +72,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 27;
+    private static final int SCHEMA_VERSION = 31;
 
     private final Connection conn;
     private final Object dbLock = new Object();
@@ -174,11 +177,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         synchronized (dbLock) {
             var existing = readSchemaVersion();
             if (existing.optIsSome() && existing.optUnwrap() != SCHEMA_VERSION) {
-                System.err.println("warning: allig cache schema version "
-                        + existing.optUnwrap()
-                        + " does not match expected "
-                        + SCHEMA_VERSION
-                        + "; rebuilding cache");
+                System.err.println("cache cleared: schema version " + existing.optUnwrap() + " -> " + SCHEMA_VERSION);
                 try (var st = conn.createStatement()) {
                     st.executeUpdate("DROP TABLE IF EXISTS schema_version");
                     st.executeUpdate("DROP TABLE IF EXISTS artifact_seq");
@@ -420,6 +419,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 case RemoteOrigin.Git g -> Result.ok(cached);
             };
         }
+        System.err.println("pull start " + origin.remoteOriginDesc());
+        var pullStartMs = System.currentTimeMillis();
         Result<byte[], String> fetched =
                 switch (origin) {
                     case RemoteOrigin.Http h -> {
@@ -485,6 +486,13 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                         }
                     }
                 };
+        var pullEndMs = System.currentTimeMillis();
+        System.err.println("pull end " + origin.remoteOriginDesc() + " " + logTime(pullStartMs) + " -> "
+                + logTime(pullEndMs) + " (" + (pullEndMs - pullStartMs) + " ms)"
+                + switch (fetched) {
+                    case Result.Ok<byte[], String> ok -> "";
+                    case Result.Err<byte[], String> err -> " failed";
+                });
         switch (fetched) {
             case Result.Ok<byte[], String> ok -> {
                 synchronized (dbLock) {
@@ -694,10 +702,10 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                             var arr = (JsonValueArray) parseJson(s);
                             for (var e : arr.elements()) {
                                 var o = (JsonValueObject) e;
-                                var s0 = (long) ((JsonValueNumber)
+                                var s0 = ((JsonValueNumberInt)
                                                 o.entries().getOpt("s").optUnwrap())
                                         .value();
-                                var i0 = (long) ((JsonValueNumber)
+                                var i0 = ((JsonValueNumberInt)
                                                 o.entries().getOpt("i").optUnwrap())
                                         .value();
                                 deps.add(new CompileId(new ImportStateId(s0), new SourceId(i0)));
@@ -714,7 +722,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                 var path = ((JsonValueString)
                                                 o.entries().getOpt("p").optUnwrap())
                                         .value();
-                                var t = (long) ((JsonValueNumber)
+                                var t = ((JsonValueNumberInt)
                                                 o.entries().getOpt("t").optUnwrap())
                                         .value();
                                 data.add(new Compiles.LocalMeta(path, t));
@@ -733,9 +741,15 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             return false;
         }
         var stale = false;
-        if (row.localPath != null && mtimeChanged(row.localPath, row.localMtime)) stale = true;
+        if (row.localPath != null && mtimeChanged(row.localPath, row.localMtime)) {
+            System.err.println("dirty: " + row.localPath);
+            stale = true;
+        }
         for (var data : row.localData) {
-            if (mtimeChanged(data.path(), data.timestampMs())) stale = true;
+            if (mtimeChanged(data.path(), data.timestampMs())) {
+                System.err.println("dirty: " + data.path() + " (data of " + row.localPath + ")");
+                stale = true;
+            }
         }
         for (var dep : row.localDeps) {
             if (staleWalk(dep, memo, visiting)) stale = true;
@@ -760,6 +774,12 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         return stale;
     }
 
+    private static String logTime(long ms) {
+        return DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+                .withZone(ZoneId.systemDefault())
+                .format(Instant.ofEpochMilli(ms));
+    }
+
     private static boolean mtimeChanged(String path, long recorded) {
         var file = Path.of(path);
         if (!Files.isRegularFile(file)) return true;
@@ -774,7 +794,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             String localPath, long localMtime, TList<CompileId> localDeps, TList<Compiles.LocalMeta> localData) {}
 
     @Override
-    public CompileRes compilesGetOrCompute(CompileId id, Supplier<CompileProduct> compute) {
+    public CompileRes compilesGetOrCompute(CompileId id, SourceSpecAbsolute spec, Supplier<CompileProduct> compute) {
         CompileSlot slot;
         compileMapLock.lock();
         try {
@@ -798,12 +818,18 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                 fromDb = Opt.none();
                             } else {
                                 var obj = (JsonValueObject) parseJson(rs.getString(1));
+                                var startMs = ((JsonValueNumberInt)
+                                                obj.entries().getOpt("start").optUnwrap())
+                                        .value();
+                                var endMs = ((JsonValueNumberInt)
+                                                obj.entries().getOpt("end").optUnwrap())
+                                        .value();
                                 var logsArr = (JsonValueArray)
                                         obj.entries().getOpt("logs").optUnwrap();
                                 var logs = new TList<LogEntry>();
                                 for (var e : logsArr.elements()) {
                                     var lo = (JsonValueObject) e;
-                                    var t = (long) ((JsonValueNumber)
+                                    var t = ((JsonValueNumberInt)
                                                     lo.entries().getOpt("t").optUnwrap())
                                             .value();
                                     var m = ((JsonValueString)
@@ -818,12 +844,12 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                     var arr = (JsonValueArray) errorsJson;
                                     for (var e : arr.elements()) {
                                         var eo = (JsonValueObject) e;
-                                        var source = (long) ((JsonValueNumber)
+                                        var source = ((JsonValueNumberInt)
                                                         eo.entries().getOpt("s").optUnwrap())
                                                 .value();
                                         var exprJson = eo.entries().getOpt("e");
                                         Opt<Long> expr = exprJson.optIsSome()
-                                                ? Opt.some((long) ((JsonValueNumber) exprJson.optUnwrap()).value())
+                                                ? Opt.some(((JsonValueNumberInt) exprJson.optUnwrap()).value())
                                                 : Opt.none();
                                         var msgs = new TList<ExprSubErr>();
                                         for (var mv : ((JsonValueArray)
@@ -833,14 +859,16 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                         }
                                         out.add(new ExprErr(new QExprId(new SourceId(source), expr), msgs));
                                     }
-                                    fromDb = Opt.some(new CompileRes(logs, new CompileResResult.Err(out)));
+                                    fromDb = Opt.some(
+                                            new CompileRes(startMs, endMs, logs, new CompileResResult.Err(out)));
                                 } else {
                                     var artifactJson = obj.entries().getOpt("artifact");
                                     Opt<Artifact> art = Opt.none();
                                     if (artifactJson.optIsSome()) {
                                         art = Opt.some(ArtifactJson.decodeArtifact(artifactJson.optUnwrap()));
                                     }
-                                    fromDb = Opt.some(new CompileRes(logs, new CompileResResult.Ok(art)));
+                                    fromDb = Opt.some(
+                                            new CompileRes(startMs, endMs, logs, new CompileResResult.Ok(art)));
                                 }
                             }
                         }
@@ -853,7 +881,18 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 slot.value = fromDb;
                 return fromDb.optUnwrap();
             }
+            var module = spec.sourceSpecAbsoluteSpecKey() + " (import state "
+                    + id.importState().value() + ")";
+            System.err.println("compile start " + module);
             var product = compute.get();
+            for (var log : product.res().logs()) {
+                System.err.println("log " + module + ": " + log.message());
+            }
+            System.err.println("compile end " + module + " "
+                    + logTime(product.res().startMs())
+                    + " -> "
+                    + logTime(product.res().endMs())
+                    + " (" + (product.res().endMs() - product.res().startMs()) + " ms)");
             slot.value = Opt.some(product.res());
             {
                 TMap<ArtifactIdSource, ArtifactBody> artifacts;
@@ -887,10 +926,12 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                 {
                                     var res = product.res();
                                     var obj = new TOrderedMap<String, JsonValue>();
+                                    obj.put("start", new JsonValueNumberInt(res.startMs()));
+                                    obj.put("end", new JsonValueNumberInt(res.endMs()));
                                     var logsArr = new TList<JsonValue>();
                                     for (var log : res.logs()) {
                                         var lm = new TOrderedMap<String, JsonValue>();
-                                        lm.put("t", new JsonValueNumber(log.timestampMs()));
+                                        lm.put("t", new JsonValueNumberInt(log.timestampMs()));
                                         lm.put("m", new JsonValueString(log.message()));
                                         logsArr.add(new JsonValueObject(lm));
                                     }
@@ -910,13 +951,13 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                                 var em = new TOrderedMap<String, JsonValue>();
                                                 em.put(
                                                         "s",
-                                                        new JsonValueNumber(err2.loc()
+                                                        new JsonValueNumberInt(err2.loc()
                                                                 .source()
                                                                 .value()));
                                                 if (err2.loc().expr().optIsSome()) {
                                                     em.put(
                                                             "e",
-                                                            new JsonValueNumber(err2.loc()
+                                                            new JsonValueNumberInt(err2.loc()
                                                                     .expr()
                                                                     .optUnwrap()));
                                                 }
@@ -949,11 +990,11 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                         var mv = new TOrderedMap<String, JsonValue>();
                                         mv.put(
                                                 "s",
-                                                new JsonValueNumber(
+                                                new JsonValueNumberInt(
                                                         depId.importState().value()));
                                         mv.put(
                                                 "i",
-                                                new JsonValueNumber(
+                                                new JsonValueNumberInt(
                                                         depId.source().value()));
                                         arr.add(new JsonValueObject(mv));
                                     }
@@ -964,7 +1005,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                     for (var data : product.localData()) {
                                         var mv = new TOrderedMap<String, JsonValue>();
                                         mv.put("p", new JsonValueString(data.path()));
-                                        mv.put("t", new JsonValueNumber(data.timestampMs()));
+                                        mv.put("t", new JsonValueNumberInt(data.timestampMs()));
                                         arr.add(new JsonValueObject(mv));
                                     }
                                     ps.setString(7, JsonValues.serialize(new JsonValueArray(arr)));

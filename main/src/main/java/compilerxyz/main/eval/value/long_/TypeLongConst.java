@@ -66,7 +66,7 @@ import compilerxyz.main.gen.GenAspectOperatorXor;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNumber;
+import compilerxyz.main.safejson.JsonValueNumberInt;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
@@ -179,7 +179,7 @@ public record TypeLongConst() implements Aspect, Type {
             var dv = MustCast.mustCast(
                     Number.class,
                     MustCast.mustCast(ValueObjectConst.class, self).data());
-            JsonValue data = new JsonValueNumber(dv.doubleValue());
+            JsonValue data = new JsonValueNumberInt(dv.longValue());
             return EResult.ok(new Artifact.Body(makeBody.apply(data)));
         }
 
@@ -187,7 +187,7 @@ public record TypeLongConst() implements Aspect, Type {
         public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
-                case JsonValueNumber n -> EResult.ok(new ValueObjectConst(new TypeLongConst(), (long) n.value()));
+                case JsonValueNumberInt n -> EResult.ok(new ValueObjectConst(new TypeLongConst(), (long) n.value()));
                 default ->
                     EResult.err(loc, "TypeLongConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
             };

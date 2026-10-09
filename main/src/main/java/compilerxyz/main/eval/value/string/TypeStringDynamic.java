@@ -16,9 +16,6 @@ import compilerxyz.main.eval.aspect.AspectSetDynamicDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -37,15 +34,10 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.IMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
-import compilerxyz.prelude.util.TList;
 
 @BuiltinPath("types.string")
 @BuiltinFull(uniqueId = 6145L)
 public record TypeStringDynamic() implements Aspect, Type {
-
-    private static final JavaInternalName JAVA_STRING = JavaInternalName.fromClass(String.class);
-    private static final JavaMethodDescriptor DESC_TO_STR =
-            JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(String.class), TList.of());
 
     static final IMap<ConstKey, TypeStringMethodDynamic> METHOD_FIELDS = IMap.ofEntries(
             new Pair<>(new ConstKey.Str("toLowerCase"), new TypeStringMethodDynamic("toLowerCase")),

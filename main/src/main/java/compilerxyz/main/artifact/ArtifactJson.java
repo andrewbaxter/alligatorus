@@ -8,6 +8,8 @@ import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueBoolean;
 import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
+import compilerxyz.main.safejson.JsonValueNumberFloat;
+import compilerxyz.main.safejson.JsonValueNumberInt;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.util.TList;
@@ -68,10 +70,12 @@ public final class ArtifactJson {
     public static JsonValue encodeArtifactIdSource(ArtifactIdSource id) {
         var m = new TOrderedMap<String, JsonValue>();
         var ci = new TOrderedMap<String, JsonValue>();
-        ci.put("import_state", new JsonValueNumber(id.compileId().importState().value()));
-        ci.put("source", new JsonValueNumber(id.compileId().source().value()));
+        ci.put(
+                "import_state",
+                new JsonValueNumberInt(id.compileId().importState().value()));
+        ci.put("source", new JsonValueNumberInt(id.compileId().source().value()));
         m.put("compile_id", new JsonValueObject(ci));
-        m.put("index", new JsonValueNumber(id.index()));
+        m.put("index", new JsonValueNumberInt(id.index()));
         return new JsonValueObject(m);
     }
 
@@ -135,7 +139,8 @@ public final class ArtifactJson {
 
     private static long number(JsonValueObject obj, String key, String what) {
         return switch (field(obj, key, what)) {
-            case JsonValueNumber n -> (long) n.value();
+            case JsonValueNumberInt n -> n.value();
+            case JsonValueNumberFloat n -> throw new IllegalStateException(what + ": expected number at '" + key + "'");
             case JsonValueNull n -> throw new IllegalStateException(what + ": expected number at '" + key + "'");
             case JsonValueBoolean b -> throw new IllegalStateException(what + ": expected number at '" + key + "'");
             case JsonValueString s -> throw new IllegalStateException(what + ": expected number at '" + key + "'");

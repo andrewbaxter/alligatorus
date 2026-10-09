@@ -311,12 +311,8 @@ public final class T0100ImportTest {
                                                 jsonField(
                                                         "compile_id",
                                                         jsonObj(
-                                                                jsonField(
-                                                                        "import_state",
-                                                                        jsonObj(jsonField("value", jsonNum(0)))),
-                                                                jsonField(
-                                                                        "source",
-                                                                        jsonObj(jsonField("value", jsonNum(0)))))),
+                                                                jsonField("import_state", jsonNum(0)),
+                                                                jsonField("source", jsonNum(0)))),
                                                 jsonField("id", jsonNum(0)))))),
                         jsonField("underlying_type", typeArtifact("string_dynamic")),
                         jsonField(
@@ -413,10 +409,7 @@ public final class T0100ImportTest {
     private static JsonValue defSetIdJson() {
         return jsonObj(
                 jsonField(
-                        "compile_id",
-                        jsonObj(
-                                jsonField("import_state", jsonObj(jsonField("value", jsonNum(0)))),
-                                jsonField("source", jsonObj(jsonField("value", jsonNum(0)))))),
+                        "compile_id", jsonObj(jsonField("import_state", jsonNum(0)), jsonField("source", jsonNum(0)))),
                 jsonField("index", jsonNum(0)));
     }
 
@@ -439,14 +432,11 @@ public final class T0100ImportTest {
     }
 
     private static JsonValue externalUnique(long builtinId) {
-        return jsonObj(jsonField(
-                "unique_ref",
-                jsonObj(jsonField(
-                        "unique", jsonObj(jsonField("builtin", jsonObj(jsonField("id", jsonNum(builtinId)))))))));
+        return jsonObj(jsonField("unique_ref", builtinUnique(builtinId)));
     }
 
     private static JsonValue builtinUnique(long identityId) {
-        return jsonObj(jsonField("builtin", jsonObj(jsonField("id", jsonNum(identityId)))));
+        return jsonObj(jsonField("builtin", jsonNum(identityId)));
     }
 
     private static JsonValue bodyArtifact(String tag, JsonValue data) {
@@ -484,9 +474,7 @@ public final class T0100ImportTest {
                 jsonField(
                         "iface",
                         bodyArtifact(
-                                "source_interface_dynamic",
-                                jsonObj(jsonField(
-                                        "builtin", jsonObj(jsonField("identity", builtinUnique(identityId))))))),
+                                "source_interface_dynamic", jsonObj(jsonField("builtin", builtinUnique(identityId))))),
                 jsonField("method_impls", jsonArr(methodImpls)));
     }
 

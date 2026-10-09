@@ -16,19 +16,21 @@ final class CodecEmitter {
 
     public static final ClassName JSON_READER = ClassName.get("com.google.gson.stream", "JsonReader");
     public static final ClassName JSON_WRITER = ClassName.get("com.google.gson.stream", "JsonWriter");
-    public static final ClassName JSON = ClassName.get("compilerxyz.main.safejson", "Json");
     public static final ClassName JSON_VALUE = ClassName.get("compilerxyz.main.safejson", "JsonValue");
     public static final ClassName JSON_VALUES = ClassName.get("compilerxyz.main.safejson", "JsonValues");
     public static final ClassName JSON_VALUE_NULL = ClassName.get("compilerxyz.main.safejson", "JsonValueNull");
     public static final ClassName JSON_VALUE_BOOLEAN = ClassName.get("compilerxyz.main.safejson", "JsonValueBoolean");
-    public static final ClassName JSON_VALUE_NUMBER = ClassName.get("compilerxyz.main.safejson", "JsonValueNumber");
+    public static final ClassName JSON_VALUE_NUMBER_INT =
+            ClassName.get("compilerxyz.main.safejson", "JsonValueNumberInt");
+    public static final ClassName JSON_DESERIALIZATION_EXCEPTION =
+            ClassName.get("compilerxyz.main.safejson", "Json", "DeserializationException");
+    public static final ClassName JSON_VALUE_NUMBER_FLOAT =
+            ClassName.get("compilerxyz.main.safejson", "JsonValueNumberFloat");
     public static final ClassName JSON_VALUE_STRING = ClassName.get("compilerxyz.main.safejson", "JsonValueString");
     public static final ClassName JSON_VALUE_ARRAY = ClassName.get("compilerxyz.main.safejson", "JsonValueArray");
     public static final ClassName JSON_VALUE_OBJECT = ClassName.get("compilerxyz.main.safejson", "JsonValueObject");
 
     public static final ClassName STRING_READER = ClassName.get("java.io", "StringReader");
-    public static final ClassName STRING_WRITER = ClassName.get("java.io", "StringWriter");
-    public static final ClassName JSON_STYLE = ClassName.get("compilerxyz.main.safejson", "Json", "Style");
     public static final ClassName FIELD_PATH = ClassName.get("compilerxyz.main.safejson", "Json", "FieldPath");
     public static final ClassName DESERIALIZATION_EXCEPTION =
             ClassName.get("compilerxyz.main.safejson", "Json", "DeserializationException");
@@ -67,12 +69,8 @@ final class CodecEmitter {
         }
     }
 
-    public static CodeBlock encodeFieldBlock(Component c) {
-        var key = toSnakeCase(c.name);
-        var b = CodeBlock.builder();
-        b.addStatement("writer.name($S)", key);
-        b.add(encodeStmts(c.type, CodeBlock.of("value.$L()", c.name)));
-        return b.build();
+    public static CodeBlock encodeComponentValue(Component c) {
+        return encodeStmts(c.type, CodeBlock.of("value.$L()", c.name));
     }
 
     private static CodeBlock encodeStmts(ParsedType type, CodeBlock valueExpr) {
@@ -80,8 +78,7 @@ final class CodecEmitter {
         if (type.kind == ParsedTypeKind.PRIMITIVE) {
             switch (type.name) {
                 case "int", "long", "short", "byte" -> b.addStatement("writer.value($L)", valueExpr);
-                case "double", "float" ->
-                    b.addStatement("$T.serializeDouble(writer, (double) $L, style)", JSON, valueExpr);
+                case "double", "float" -> b.addStatement("writer.value((double) $L)", valueExpr);
                 case "boolean" -> b.addStatement("writer.value($L)", valueExpr);
                 case "char" -> b.addStatement("writer.value(String.valueOf($L))", valueExpr);
                 default -> throw new IllegalStateException("Unsupported primitive: " + type.name);
@@ -165,7 +162,7 @@ final class CodecEmitter {
                 || qn.equals("java.lang.Double")
                 || qn.equals("Float")
                 || qn.equals("java.lang.Float")) {
-            b.addStatement("$T.serializeDouble(writer, $L.doubleValue(), style)", JSON, valueExpr);
+            b.addStatement("writer.value($L.doubleValue())", valueExpr);
             return b.build();
         }
         if (qn.equals("Boolean") || qn.equals("java.lang.Boolean")) {
@@ -174,7 +171,7 @@ final class CodecEmitter {
         }
 
         var codecTarget = codecTargetFor(qn);
-        b.addStatement("$L.encode(writer, $L, style)", codecTarget.klass(), valueExpr);
+        b.addStatement("$L.encode(writer, $L)", codecTarget.klass(), valueExpr);
         return b.build();
     }
 
@@ -326,9 +323,11 @@ final class CodecEmitter {
         if (type.kind == ParsedTypeKind.PRIMITIVE) {
             switch (type.name) {
                 case "int", "long", "short", "byte" ->
-                    b.addStatement("$T $L = new $T((long) $L)", JSON_VALUE, targetVar, JSON_VALUE_NUMBER, valueExpr);
+                    b.addStatement(
+                            "$T $L = new $T((long) $L)", JSON_VALUE, targetVar, JSON_VALUE_NUMBER_INT, valueExpr);
                 case "double", "float" ->
-                    b.addStatement("$T $L = new $T((double) $L)", JSON_VALUE, targetVar, JSON_VALUE_NUMBER, valueExpr);
+                    b.addStatement(
+                            "$T $L = new $T((double) $L)", JSON_VALUE, targetVar, JSON_VALUE_NUMBER_FLOAT, valueExpr);
                 case "boolean" ->
                     b.addStatement("$T $L = new $T($L)", JSON_VALUE, targetVar, JSON_VALUE_BOOLEAN, valueExpr);
                 case "char" ->
@@ -421,14 +420,15 @@ final class CodecEmitter {
                 || qn.equals("java.lang.Short")
                 || qn.equals("Byte")
                 || qn.equals("java.lang.Byte")) {
-            b.addStatement("$T $L = new $T($L.longValue())", JSON_VALUE, targetVar, JSON_VALUE_NUMBER, valueExpr);
+            b.addStatement("$T $L = new $T($L.longValue())", JSON_VALUE, targetVar, JSON_VALUE_NUMBER_INT, valueExpr);
             return b.build();
         }
         if (qn.equals("Double")
                 || qn.equals("java.lang.Double")
                 || qn.equals("Float")
                 || qn.equals("java.lang.Float")) {
-            b.addStatement("$T $L = new $T($L.doubleValue())", JSON_VALUE, targetVar, JSON_VALUE_NUMBER, valueExpr);
+            b.addStatement(
+                    "$T $L = new $T($L.doubleValue())", JSON_VALUE, targetVar, JSON_VALUE_NUMBER_FLOAT, valueExpr);
             return b.build();
         }
         if (qn.equals("Boolean") || qn.equals("java.lang.Boolean")) {
@@ -445,16 +445,26 @@ final class CodecEmitter {
         if (type.kind == ParsedTypeKind.PRIMITIVE) {
             switch (type.name) {
                 case "int" ->
-                    b.addStatement("$L = (int) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+                    b.addStatement("$L = (int) $T.numberInt($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
                 case "long" ->
-                    b.addStatement("$L = (long) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+                    b.addStatement("$L = (long) $T.numberInt($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
                 case "short" ->
-                    b.addStatement("$L = (short) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+                    b.addStatement("$L = (short) $T.numberInt($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
                 case "byte" ->
-                    b.addStatement("$L = (byte) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
-                case "double" -> b.addStatement("$L = $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
-                case "float" ->
-                    b.addStatement("$L = (float) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+                    b.addStatement("$L = (byte) $T.numberInt($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+                case "double", "float" ->
+                    b.addStatement(
+                            "$L = ($L) switch ($L) {\n"
+                                    + "case $T __n -> __n.value();\n"
+                                    + "default -> throw new $T(\"Expected float, got \" + $L.getClass().getSimpleName(), $L);\n"
+                                    + "}",
+                            targetVar,
+                            type.name,
+                            jsonExpr,
+                            JSON_VALUE_NUMBER_FLOAT,
+                            JSON_DESERIALIZATION_EXCEPTION,
+                            jsonExpr,
+                            pathExpr);
                 case "boolean" -> b.addStatement("$L = $T.bool($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
                 case "char" -> {
                     var sv = targetVar + "_s";
@@ -589,19 +599,41 @@ final class CodecEmitter {
             return b.build();
         }
         if (qn.equals("Integer") || qn.equals("java.lang.Integer")) {
-            b.addStatement("$L = (int) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+            b.addStatement("$L = (int) $T.numberInt($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
             return b.build();
         }
         if (qn.equals("Long") || qn.equals("java.lang.Long")) {
-            b.addStatement("$L = (long) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+            b.addStatement("$L = (long) $T.numberInt($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
             return b.build();
         }
         if (qn.equals("Double") || qn.equals("java.lang.Double")) {
-            b.addStatement("$L = $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+            b.addStatement(
+                    "$L = ($L) switch ($L) {\n"
+                            + "case $T __n -> __n.value();\n"
+                            + "default -> throw new $T(\"Expected float, got \" + $L.getClass().getSimpleName(), $L);\n"
+                            + "}",
+                    targetVar,
+                    "double",
+                    jsonExpr,
+                    JSON_VALUE_NUMBER_FLOAT,
+                    JSON_DESERIALIZATION_EXCEPTION,
+                    jsonExpr,
+                    pathExpr);
             return b.build();
         }
         if (qn.equals("Float") || qn.equals("java.lang.Float")) {
-            b.addStatement("$L = (float) $T.number($L, $L)", targetVar, JSON_VALUES, jsonExpr, pathExpr);
+            b.addStatement(
+                    "$L = ($L) switch ($L) {\n"
+                            + "case $T __n -> __n.value();\n"
+                            + "default -> throw new $T(\"Expected float, got \" + $L.getClass().getSimpleName(), $L);\n"
+                            + "}",
+                    targetVar,
+                    "float",
+                    jsonExpr,
+                    JSON_VALUE_NUMBER_FLOAT,
+                    JSON_DESERIALIZATION_EXCEPTION,
+                    jsonExpr,
+                    pathExpr);
             return b.build();
         }
         if (qn.equals("Boolean") || qn.equals("java.lang.Boolean")) {

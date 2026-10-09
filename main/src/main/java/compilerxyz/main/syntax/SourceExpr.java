@@ -10,7 +10,7 @@ public record SourceExpr(ExprId id, Variant variant) implements SafeJsonSerializ
 
     public record As(SourceExpr base, SourceExpr target) implements Variant {}
 
-    public record Bind(String name, SourceExpr value) implements Variant {}
+    public record Bind(SourceExpr name, SourceExpr value) implements Variant {}
 
     public record Call(SourceExpr func, SourceExpr arg) implements Variant {}
 

@@ -52,13 +52,8 @@ public final class SourceModuleToModule {
                         for (var sub : s.exprs()) exprs.add(sourceExprToExpr(sourceId, sub));
                         yield new Expr.Seq(exprs);
                     }
-                    case SourceExpr.Bind b -> {
-                        var nameLiteral = new Expr(
-                                loc,
-                                new Expr.Literal(
-                                        Expr.LitValue.shared(new ValueObjectConst(new TypeStringConst(), b.name()))));
-                        yield new Expr.Bind(nameLiteral, sourceExprToExpr(sourceId, b.value()));
-                    }
+                    case SourceExpr.Bind b ->
+                        new Expr.Bind(sourceExprToExpr(sourceId, b.name()), sourceExprToExpr(sourceId, b.value()));
                     case SourceExpr.Stage s -> new Expr.Stage(sourceExprToExpr(sourceId, s.expr()));
                     case SourceExpr.Lower l -> new Expr.Lower(sourceExprToExpr(sourceId, l.expr()));
                     case SourceExpr.Graft g -> new Expr.Graft.Pending(sourceExprToExpr(sourceId, g.expr()));

@@ -32,7 +32,7 @@ public final class TestMb {
     }
 
     public SourceExpr bind(String key, SourceExpr value) {
-        return new SourceExpr(id(), new SourceExpr.Bind(key, value));
+        return new SourceExpr(id(), new SourceExpr.Bind(str(key), value));
     }
 
     public SourceExpr call(SourceExpr func, SourceExpr arg) {

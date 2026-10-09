@@ -34,6 +34,8 @@ import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueBoolean;
 import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
+import compilerxyz.main.safejson.JsonValueNumberFloat;
+import compilerxyz.main.safejson.JsonValueNumberInt;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -124,7 +126,7 @@ public record TypeUniqueDynamic() implements Aspect, Type {
         switch (u) {
             case Unique.Builtin b -> {
                 var inner = new TOrderedMap<String, JsonValue>();
-                inner.put("id", new JsonValueNumber(b.id()));
+                inner.put("id", new JsonValueNumberInt(b.id()));
                 m.put("builtin", new JsonValueObject(inner));
             }
             case Unique.Source s -> {
@@ -132,10 +134,10 @@ public record TypeUniqueDynamic() implements Aspect, Type {
                 var ci = new TOrderedMap<String, JsonValue>();
                 ci.put(
                         "import_state",
-                        new JsonValueNumber(s.compileId().importState().value()));
-                ci.put("source", new JsonValueNumber(s.compileId().source().value()));
+                        new JsonValueNumberInt(s.compileId().importState().value()));
+                ci.put("source", new JsonValueNumberInt(s.compileId().source().value()));
                 inner.put("compile_id", new JsonValueObject(ci));
-                inner.put("id", new JsonValueNumber(s.id()));
+                inner.put("id", new JsonValueNumberInt(s.id()));
                 m.put("source", new JsonValueObject(inner));
             }
         }
@@ -171,7 +173,8 @@ public record TypeUniqueDynamic() implements Aspect, Type {
                 if (idRawOpt.optIsNone()) yield EResult.err(loc, "builtin: missing id");
                 var idRaw = idRawOpt.optUnwrap();
                 yield switch (idRaw) {
-                    case JsonValueNumber n -> EResult.ok(new Unique.Builtin((long) n.value()));
+                    case JsonValueNumberInt n -> EResult.ok(new Unique.Builtin(n.value()));
+                    case JsonValueNumberFloat n -> EResult.err(loc, "builtin: missing id");
                     case JsonValueNull jn -> EResult.err(loc, "builtin: missing id");
                     case JsonValueBoolean b -> EResult.err(loc, "builtin: missing id");
                     case JsonValueString s -> EResult.err(loc, "builtin: missing id");
@@ -207,7 +210,10 @@ public record TypeUniqueDynamic() implements Aspect, Type {
                 }
                 long nVal;
                 switch (idRaw) {
-                    case JsonValueNumber n -> nVal = (long) n.value();
+                    case JsonValueNumberInt n -> nVal = n.value();
+                    case JsonValueNumberFloat n -> {
+                        yield EResult.err(loc, "source: malformed compile_id/id");
+                    }
                     case JsonValueNull jn -> {
                         yield EResult.err(loc, "source: malformed compile_id/id");
                     }
@@ -232,7 +238,10 @@ public record TypeUniqueDynamic() implements Aspect, Type {
                 var srcRaw = srcRawOpt.optUnwrap();
                 long isVal;
                 switch (isRaw) {
-                    case JsonValueNumber n -> isVal = (long) n.value();
+                    case JsonValueNumberInt n -> isVal = n.value();
+                    case JsonValueNumberFloat n -> {
+                        yield EResult.err(loc, "source: malformed compile_id/id");
+                    }
                     case JsonValueNull jn -> {
                         yield EResult.err(loc, "source: malformed compile_id/id");
                     }
@@ -251,7 +260,10 @@ public record TypeUniqueDynamic() implements Aspect, Type {
                 }
                 long srcVal;
                 switch (srcRaw) {
-                    case JsonValueNumber n -> srcVal = (long) n.value();
+                    case JsonValueNumberInt n -> srcVal = n.value();
+                    case JsonValueNumberFloat n -> {
+                        yield EResult.err(loc, "source: malformed compile_id/id");
+                    }
                     case JsonValueNull jn -> {
                         yield EResult.err(loc, "source: malformed compile_id/id");
                     }

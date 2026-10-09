@@ -21,7 +21,7 @@ public final class Compile {
         var rootImportState = new ImportStateId(0);
         var rootCompileId = new CompileId(rootImportState, lookup.id());
         gx.compiles.compilesPrepare(rootCompileId);
-        var res = gx.compiles.compilesGetOrCompute(rootCompileId, () -> {
+        var res = gx.compiles.compilesGetOrCompute(rootCompileId, entry, () -> {
             var module = SourceModuleToModule.sourceModuleToModule(lookup.id(), lookup.module());
             var cir = CompileModule.compileModuleId(gx, rootImportState, module, new TList<>(), entry);
             return new Compiles.CompileProduct(cir.res(), lookup.local(), cir.localDeps(), cir.localData());
@@ -43,12 +43,8 @@ public final class Compile {
                     case CompileResResult.Err err ->
                         throw new IllegalStateException("root compile errors not collected");
                 };
-        return Result.ok(new CompileResult(res.logs(), gx.capturedBytecode, rootCompileId, artifact));
+        return Result.ok(new CompileResult(res.logs(), gx.capturedBytecode, artifact));
     }
 
-    public record CompileResult(
-            TList<LogEntry> logs,
-            TOrderedMap<String, byte[]> bytecode,
-            CompileId rootCompileId,
-            Opt<Artifact> artifact) {}
+    public record CompileResult(TList<LogEntry> logs, TOrderedMap<String, byte[]> bytecode, Opt<Artifact> artifact) {}
 }

@@ -6,40 +6,29 @@ import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.Comparator;
-import java.util.TreeMap;
 
 public final class JsonValues {
     private JsonValues() {}
 
-    public static void encode(JsonWriter writer, JsonValue value, Json.Style style) throws IOException {
+    public static void encode(JsonWriter writer, JsonValue value) throws IOException {
         switch (value) {
             case JsonValueNull ignored -> writer.nullValue();
             case JsonValueBoolean b -> writer.value(b.value());
-            case JsonValueNumber n -> Json.serializeDouble(writer, n.value(), style);
+            case JsonValueNumberInt n -> writer.value(n.value());
+            case JsonValueNumberFloat n -> writer.value(n.value());
             case JsonValueString s -> writer.value(s.value());
             case JsonValueArray a -> {
                 writer.beginArray();
                 for (var element : a.elements()) {
-                    encode(writer, element, style);
+                    encode(writer, element);
                 }
                 writer.endArray();
             }
             case JsonValueObject o -> {
                 writer.beginObject();
-                var entries = o.entries();
-                if (style == Json.Style.CANONICAL) {
-                    var sorted = new TreeMap<String, JsonValue>(Comparator.naturalOrder());
-                    for (var e : entries.entrySet()) sorted.put(e.getKey(), e.getValue());
-                    for (var entry : sorted.entrySet()) {
-                        writer.name(entry.getKey());
-                        encode(writer, entry.getValue(), style);
-                    }
-                } else {
-                    for (var entry : entries.entrySet()) {
-                        writer.name(entry.getKey());
-                        encode(writer, entry.getValue(), style);
-                    }
+                for (var entry : o.entries().entrySet()) {
+                    writer.name(entry.getKey());
+                    encode(writer, entry.getValue());
                 }
                 writer.endObject();
             }
@@ -53,7 +42,13 @@ public final class JsonValues {
                 yield new JsonValueNull();
             }
             case BOOLEAN -> new JsonValueBoolean(reader.nextBoolean());
-            case NUMBER -> new JsonValueNumber(reader.nextDouble());
+            case NUMBER -> {
+                var text = reader.nextString();
+                if (text.contains(".") || text.contains("e") || text.contains("E")) {
+                    yield new JsonValueNumberFloat(Double.parseDouble(text));
+                }
+                yield new JsonValueNumberInt(Long.parseLong(text));
+            }
             case STRING -> new JsonValueString(reader.nextString());
             case BEGIN_ARRAY -> {
                 reader.beginArray();
@@ -79,12 +74,12 @@ public final class JsonValues {
         };
     }
 
-    public static double number(JsonValue value, Json.FieldPath path) {
+    public static long numberInt(JsonValue value, Json.FieldPath path) {
         return switch (value) {
-            case JsonValueNumber n -> n.value();
+            case JsonValueNumberInt n -> n.value();
             default ->
                 throw new Json.DeserializationException(
-                        "Expected number, got " + value.getClass().getSimpleName(), path);
+                        "Expected integer, got " + value.getClass().getSimpleName(), path);
         };
     }
 
@@ -130,7 +125,7 @@ public final class JsonValues {
             var jsonWriter = new JsonWriter(writer);
             jsonWriter.setSerializeNulls(true);
             jsonWriter.setIndent("");
-            encode(jsonWriter, value, Json.Style.COMPACT);
+            encode(jsonWriter, value);
             jsonWriter.close();
             return writer.toString();
         } catch (IOException e) {

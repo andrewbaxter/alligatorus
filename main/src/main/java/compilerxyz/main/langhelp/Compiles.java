@@ -2,6 +2,7 @@ package compilerxyz.main.langhelp;
 
 import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.CompileRes;
+import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Supplier;
@@ -9,7 +10,7 @@ import java.util.function.Supplier;
 public interface Compiles {
     void compilesPrepare(CompileId root);
 
-    CompileRes compilesGetOrCompute(CompileId id, Supplier<CompileProduct> compute);
+    CompileRes compilesGetOrCompute(CompileId id, SourceSpecAbsolute spec, Supplier<CompileProduct> compute);
 
     TList<CompileRes> compilesResults();
 

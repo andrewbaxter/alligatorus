@@ -54,6 +54,7 @@ public final class CompileModule {
             }
         }
 
+        var startMs = System.currentTimeMillis();
         var allLogs = new TList<LogEntry>();
         while (true) {
             boolean isStage =
@@ -174,7 +175,11 @@ public final class CompileModule {
             switch (evalResult) {
                 case EvalOutcome.Err err -> {
                     return new CompileModuleResult(
-                            new CompileRes(allLogs, new CompileResResult.Err(err.errors())),
+                            new CompileRes(
+                                    startMs,
+                                    System.currentTimeMillis(),
+                                    allLogs,
+                                    new CompileResResult.Err(err.errors())),
                             cix.localDependencies,
                             cix.localData);
                 }
@@ -187,7 +192,11 @@ public final class CompileModule {
                         var xx = new ExprContext(rootScope, target, vx, importState, Opt.some(new TypeStringDynamic()));
                         if (ok.value().optIsNone()) {
                             return new CompileModuleResult(
-                                    new CompileRes(allLogs, new CompileResResult.Ok(Opt.none())),
+                                    new CompileRes(
+                                            startMs,
+                                            System.currentTimeMillis(),
+                                            allLogs,
+                                            new CompileResResult.Ok(Opt.none())),
                                     cix.localDependencies,
                                     cix.localData);
                         }
@@ -197,19 +206,29 @@ public final class CompileModule {
                         if (exportArt.hasErrors()) {
                             exportArt.drainInto(exportErrors);
                             return new CompileModuleResult(
-                                    new CompileRes(allLogs, new CompileResResult.Err(exportErrors)),
+                                    new CompileRes(
+                                            startMs,
+                                            System.currentTimeMillis(),
+                                            allLogs,
+                                            new CompileResResult.Err(exportErrors)),
                                     cix.localDependencies,
                                     cix.localData);
                         }
                         var artifact = exportArt.requireValue("ArtifactSupport::exportArtifact artifact");
                         return new CompileModuleResult(
-                                new CompileRes(allLogs, new CompileResResult.Ok(Opt.some(artifact))),
+                                new CompileRes(
+                                        startMs,
+                                        System.currentTimeMillis(),
+                                        allLogs,
+                                        new CompileResResult.Ok(Opt.some(artifact))),
                                 cix.localDependencies,
                                 cix.localData);
                     }
                     if (ok.value().optIsNone()) {
                         return new CompileModuleResult(
                                 new CompileRes(
+                                        startMs,
+                                        System.currentTimeMillis(),
                                         allLogs,
                                         new CompileResResult.Err(TList.of(new ExprErr(
                                                 rootLoc,

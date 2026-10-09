@@ -20,10 +20,6 @@ public final class SourceObjectEmitter {
 
     public static final String DATA_INSTANCE_FIELD = "_data";
 
-    public static final String DATA_CTOR_DESCRIPTOR = JvmConstants.DESC_OBJECT.value();
-
-    public static final String SOURCE_KEY_MAP_FIELD = "_sourceKeyMap";
-
     public static final String SOURCE_OBJECT_DATA_FIELD = "_sourceObjectData";
 
     public static TOrderedMap<String, Object> rebuildStaticFieldValues(TypeSourceObjectDynamic data) {

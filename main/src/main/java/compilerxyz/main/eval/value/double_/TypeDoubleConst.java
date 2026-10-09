@@ -66,7 +66,7 @@ import compilerxyz.main.gen.GenAspectOperatorXor;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNumber;
+import compilerxyz.main.safejson.JsonValueNumberFloat;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
@@ -179,7 +179,7 @@ public record TypeDoubleConst() implements Aspect, Type {
             var dv = MustCast.mustCast(
                     Number.class,
                     MustCast.mustCast(ValueObjectConst.class, self).data());
-            JsonValue data = new JsonValueNumber(dv.doubleValue());
+            JsonValue data = new JsonValueNumberFloat(dv.doubleValue());
             return EResult.ok(new Artifact.Body(makeBody.apply(data)));
         }
 
@@ -187,7 +187,8 @@ public record TypeDoubleConst() implements Aspect, Type {
         public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
-                case JsonValueNumber n -> EResult.ok(new ValueObjectConst(new TypeDoubleConst(), (double) n.value()));
+                case JsonValueNumberFloat n ->
+                    EResult.ok(new ValueObjectConst(new TypeDoubleConst(), (double) n.value()));
                 default ->
                     EResult.err(loc, "TypeDoubleConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
             };

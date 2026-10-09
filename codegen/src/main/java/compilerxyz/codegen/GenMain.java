@@ -19,7 +19,6 @@ import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
-import compilerxyz.codegen.CodecsGen.Component;
 import compilerxyz.codegen.CodecsGen.TypeKind;
 import compilerxyz.codegen.experimental.BuiltinIdentityScanner;
 import compilerxyz.codegen.experimental.BuiltinPathScanner;
@@ -1656,36 +1655,22 @@ public final class GenMain {
                                 _buildRecordEncode:
                                 {
                                     var body = CodeBlock.builder();
-                                    body.addStatement("writer.beginObject()");
-                                    body.beginControlFlow("if (style == $T.CANONICAL)", CodecEmitter.JSON_STYLE);
-                                    TList<Component> cs = info.components;
-                                    TList<Component> sortedBySnake;
-                                    _sortedBySnake:
-                                    {
-                                        var out = TList.from(cs);
-                                        out.sort((a, b) -> CodecEmitter.toSnakeCase(a.name)
-                                                .compareTo(CodecEmitter.toSnakeCase(b.name)));
-                                        {
-                                            sortedBySnake = out;
-                                            break _sortedBySnake;
+                                    if (info.components.size() == 1) {
+                                        body.add(CodecEmitter.encodeComponentValue(info.components.get(0)));
+                                    } else {
+                                        body.addStatement("writer.beginObject()");
+                                        for (var c : info.components) {
+                                            body.addStatement("writer.name($S)", CodecEmitter.toSnakeCase(c.name));
+                                            body.add(CodecEmitter.encodeComponentValue(c));
                                         }
+                                        body.addStatement("writer.endObject()");
                                     }
-                                    for (var c : sortedBySnake) {
-                                        body.add(CodecEmitter.encodeFieldBlock(c));
-                                    }
-                                    body.nextControlFlow("else");
-                                    for (var c : info.components) {
-                                        body.add(CodecEmitter.encodeFieldBlock(c));
-                                    }
-                                    body.endControlFlow();
-                                    body.addStatement("writer.endObject()");
                                     {
                                         buildRecordEncode = MethodSpec.methodBuilder("encode")
                                                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                                                 .returns(void.class)
                                                 .addParameter(CodecEmitter.JSON_WRITER, "writer")
                                                 .addParameter(target, "value")
-                                                .addParameter(CodecEmitter.JSON_STYLE, "style")
                                                 .addException(CodecEmitter.IO_EXCEPTION)
                                                 .addCode(body.build())
                                                 .build();
@@ -1697,66 +1682,74 @@ public final class GenMain {
                                 _buildRecordDecode:
                                 {
                                     var body = CodeBlock.builder();
-                                    for (var c : info.components) {
-                                        var boxed = c.type.kind != CodecsGen.ParsedTypeKind.PRIMITIVE
-                                                ? CodecEmitter.javaTypeOf(c.type)
-                                                : switch (c.type.name) {
-                                                    case "boolean" -> "Boolean";
-                                                    case "char" -> "Character";
-                                                    case "float" -> "Float";
-                                                    case "double" -> "Double";
-                                                    case "long" -> "Long";
-                                                    case "int" -> "Integer";
-                                                    case "short" -> "Short";
-                                                    case "byte" -> "Byte";
-                                                    default ->
-                                                        throw new IllegalStateException(
-                                                                "Unsupported primitive: " + c.type.name);
-                                                };
-                                        body.addStatement(
-                                                "$T<$L> __$L = $T.none()",
-                                                CodecEmitter.OPT,
-                                                boxed,
-                                                c.name,
-                                                CodecEmitter.OPT);
-                                    }
-                                    body.addStatement("reader.beginObject()");
-                                    body.beginControlFlow("while (reader.hasNext())");
-                                    body.addStatement("String __fname = reader.nextName()");
-                                    body.beginControlFlow("switch (__fname)");
-                                    for (var c : info.components) {
-                                        var key = CodecEmitter.toSnakeCase(c.name);
-                                        body.beginControlFlow("case $S ->", key);
-                                        body.addStatement("$T __p = path.field($S)", CodecEmitter.FIELD_PATH, key);
-                                        body.addStatement("$L __v", CodecEmitter.javaTypeOf(c.type));
+                                    if (info.components.size() == 1) {
+                                        var only = info.components.get(0);
+                                        body.addStatement("$L __v", CodecEmitter.javaTypeOf(only.type));
+                                        body.add(CodecEmitter.decodeStmts(
+                                                only.type, "reader", CodeBlock.of("path"), "__v"));
+                                        body.addStatement("return new $L(__v)", qname);
+                                    } else {
+                                        for (var c : info.components) {
+                                            var boxed = c.type.kind != CodecsGen.ParsedTypeKind.PRIMITIVE
+                                                    ? CodecEmitter.javaTypeOf(c.type)
+                                                    : switch (c.type.name) {
+                                                        case "boolean" -> "Boolean";
+                                                        case "char" -> "Character";
+                                                        case "float" -> "Float";
+                                                        case "double" -> "Double";
+                                                        case "long" -> "Long";
+                                                        case "int" -> "Integer";
+                                                        case "short" -> "Short";
+                                                        case "byte" -> "Byte";
+                                                        default ->
+                                                            throw new IllegalStateException(
+                                                                    "Unsupported primitive: " + c.type.name);
+                                                    };
+                                            body.addStatement(
+                                                    "$T<$L> __$L = $T.none()",
+                                                    CodecEmitter.OPT,
+                                                    boxed,
+                                                    c.name,
+                                                    CodecEmitter.OPT);
+                                        }
+                                        body.addStatement("reader.beginObject()");
+                                        body.beginControlFlow("while (reader.hasNext())");
+                                        body.addStatement("String __fname = reader.nextName()");
+                                        body.beginControlFlow("switch (__fname)");
+                                        for (var c : info.components) {
+                                            var key = CodecEmitter.toSnakeCase(c.name);
+                                            body.beginControlFlow("case $S ->", key);
+                                            body.addStatement("$T __p = path.field($S)", CodecEmitter.FIELD_PATH, key);
+                                            body.addStatement("$L __v", CodecEmitter.javaTypeOf(c.type));
+                                            body.add(CodecEmitter.decodeStmts(
+                                                    c.type, "reader", CodeBlock.of("__p"), "__v"));
+                                            body.addStatement("__$L = $T.some(__v)", c.name, CodecEmitter.OPT);
+                                            body.endControlFlow();
+                                        }
                                         body.add(
-                                                CodecEmitter.decodeStmts(c.type, "reader", CodeBlock.of("__p"), "__v"));
-                                        body.addStatement("__$L = $T.some(__v)", c.name, CodecEmitter.OPT);
-                                        body.endControlFlow();
-                                    }
-                                    body.add(
-                                            "default -> throw new $T($S + __fname + $S, path.field(__fname));\n",
-                                            CodecEmitter.DESERIALIZATION_EXCEPTION,
-                                            "Unknown field '",
-                                            "' in " + qname);
-                                    body.endControlFlow();
-                                    body.endControlFlow();
-                                    body.addStatement("reader.endObject()");
-                                    for (var c : info.components) {
-                                        var key = CodecEmitter.toSnakeCase(c.name);
-                                        body.addStatement(
-                                                "if (__$L.optIsNone()) throw new $T($S, path.field($S))",
-                                                c.name,
+                                                "default -> throw new $T($S + __fname + $S, path.field(__fname));\n",
                                                 CodecEmitter.DESERIALIZATION_EXCEPTION,
-                                                "Missing required field '" + c.name + "'",
-                                                key);
+                                                "Unknown field '",
+                                                "' in " + qname);
+                                        body.endControlFlow();
+                                        body.endControlFlow();
+                                        body.addStatement("reader.endObject()");
+                                        for (var c : info.components) {
+                                            var key = CodecEmitter.toSnakeCase(c.name);
+                                            body.addStatement(
+                                                    "if (__$L.optIsNone()) throw new $T($S, path.field($S))",
+                                                    c.name,
+                                                    CodecEmitter.DESERIALIZATION_EXCEPTION,
+                                                    "Missing required field '" + c.name + "'",
+                                                    key);
+                                        }
+                                        var ctorArgs = CodeBlock.builder();
+                                        for (var i = 0; i < info.components.size(); i++) {
+                                            if (i > 0) ctorArgs.add(", ");
+                                            ctorArgs.add("__$L.optUnwrap()", info.components.get(i).name);
+                                        }
+                                        body.addStatement("return new $L($L)", qname, ctorArgs.build());
                                     }
-                                    var ctorArgs = CodeBlock.builder();
-                                    for (var i = 0; i < info.components.size(); i++) {
-                                        if (i > 0) ctorArgs.add(", ");
-                                        ctorArgs.add("__$L.optUnwrap()", info.components.get(i).name);
-                                    }
-                                    body.addStatement("return new $L($L)", qname, ctorArgs.build());
                                     {
                                         buildRecordDecode = MethodSpec.methodBuilder("decode")
                                                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
@@ -1781,7 +1774,7 @@ public final class GenMain {
                                         body.beginControlFlow("if (value instanceof $L __v)", perm);
                                         body.addStatement("writer.name($S)", key);
                                         body.addStatement(
-                                                "$L.encode(writer, __v, style)",
+                                                "$L.encode(writer, __v)",
                                                 CodecEmitter.codecTargetFor(perm)
                                                         .klass());
                                         body.nextControlFlow("else");
@@ -1799,7 +1792,6 @@ public final class GenMain {
                                                 .returns(void.class)
                                                 .addParameter(CodecEmitter.JSON_WRITER, "writer")
                                                 .addParameter(target, "value")
-                                                .addParameter(CodecEmitter.JSON_STYLE, "style")
                                                 .addException(CodecEmitter.IO_EXCEPTION)
                                                 .addCode(body.build())
                                                 .build();
@@ -1863,7 +1855,6 @@ public final class GenMain {
                                                 .returns(void.class)
                                                 .addParameter(CodecEmitter.JSON_WRITER, "writer")
                                                 .addParameter(target, "value")
-                                                .addParameter(CodecEmitter.JSON_STYLE, "style")
                                                 .addException(CodecEmitter.IO_EXCEPTION)
                                                 .addStatement(
                                                         "writer.value(value.name().toLowerCase(java.util.Locale.ROOT))")
@@ -1907,7 +1898,16 @@ public final class GenMain {
                         {
                             var toBody = CodeBlock.builder();
                             var fromBody = CodeBlock.builder();
-                            if (info.kind == TypeKind.RECORD) {
+                            if (info.kind == TypeKind.RECORD && info.components.size() == 1) {
+                                var only = info.components.get(0);
+                                toBody.add(CodecEmitter.toValueStmts(
+                                        only.type, CodeBlock.of("value.$L()", only.name), "__f0"));
+                                toBody.addStatement("return __f0");
+                                fromBody.addStatement("$L __v", CodecEmitter.javaTypeOf(only.type));
+                                fromBody.add(CodecEmitter.fromValueStmts(
+                                        only.type, CodeBlock.of("value"), CodeBlock.of("path"), "__v"));
+                                fromBody.addStatement("return new $L(__v)", qname);
+                            } else if (info.kind == TypeKind.RECORD) {
                                 toBody.addStatement(
                                         "$T<String, $T> __o = new $T<>()",
                                         CodecEmitter.TORDERED_MAP,

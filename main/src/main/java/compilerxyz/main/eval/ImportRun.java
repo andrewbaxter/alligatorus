@@ -107,7 +107,7 @@ public final class ImportRun {
                 }
                 var newPath = new TList<CompileId>(ix.compilePath.size());
                 newPath.addAll(ix.compilePath);
-                var compileRes = gx.compiles.compilesGetOrCompute(compileId, () -> {
+                var compileRes = gx.compiles.compilesGetOrCompute(compileId, abs, () -> {
                     var module = SourceModuleToModule.sourceModuleToModule(m.id(), m.module());
                     var cir = CompileModule.compileModuleId(gx, ix.importState, module, newPath, abs);
                     return new Compiles.CompileProduct(cir.res(), m.local(), cir.localDeps(), cir.localData());
