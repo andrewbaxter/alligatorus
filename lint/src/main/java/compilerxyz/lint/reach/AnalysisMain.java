@@ -2,6 +2,7 @@ package compilerxyz.lint.reach;
 
 import compilerxyz.lint.convention.Pom;
 import compilerxyz.lint.convention.StructureChecks;
+import compilerxyz.prelude.util.IList;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,6 +22,8 @@ import spoon.reflect.CtModel;
 public final class AnalysisMain {
     private AnalysisMain() {}
 
+    public static final IList<String> GENERATED_ROOTS = IList.of("codegen", "langserver");
+
     public static void main(String[] args) throws IOException {
         Path base = Path.of(args.length > 0 ? args[0] : ".");
         Path staged = base.resolve("lint/target/spoon-src");
@@ -35,7 +38,7 @@ public final class AnalysisMain {
         for (String module : modules) {
             sourceRoots.add(module + "/src/main/java");
             sourceRoots.add(module + "/src/test/java");
-            sourceRoots.add(module + "/target/generated-sources/codegen");
+            for (String generated : GENERATED_ROOTS) sourceRoots.add(module + "/target/generated-sources/" + generated);
         }
         for (String root : sourceRoots) {
             Path src = base.resolve(root);
@@ -52,14 +55,17 @@ public final class AnalysisMain {
 
         Set<String> generatedFiles = new HashSet<>();
         for (String module : modules) {
-            Path sffSrc = base.resolve(module + "/target/generated-sources/codegen");
-            if (!Files.isDirectory(sffSrc)) continue;
-            try (var walk = Files.walk(sffSrc)) {
-                for (Path sffP : (Iterable<Path>) walk.filter(x -> x.toString().endsWith(".java"))::iterator) {
-                    generatedFiles.add(staged.resolve(sffSrc.relativize(sffP))
-                            .toAbsolutePath()
-                            .normalize()
-                            .toString());
+            for (String generated : GENERATED_ROOTS) {
+                Path sffSrc = base.resolve(module + "/target/generated-sources/" + generated);
+                if (!Files.isDirectory(sffSrc)) continue;
+                try (var walk = Files.walk(sffSrc)) {
+                    for (Path sffP :
+                            (Iterable<Path>) walk.filter(x -> x.toString().endsWith(".java"))::iterator) {
+                        generatedFiles.add(staged.resolve(sffSrc.relativize(sffP))
+                                .toAbsolutePath()
+                                .normalize()
+                                .toString());
+                    }
                 }
             }
         }

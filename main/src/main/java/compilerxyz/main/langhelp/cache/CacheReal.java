@@ -1,25 +1,23 @@
 package compilerxyz.main.langhelp.cache;
 
 import com.github.luben.zstd.ZstdInputStream;
-import com.google.gson.stream.JsonReader;
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactJson;
 import compilerxyz.main.artifact.Artifacts;
+import compilerxyz.main.eval.ArtifactExprErr;
 import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.CompileRes;
 import compilerxyz.main.eval.CompileResResult;
 import compilerxyz.main.eval.ExprErr;
-import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.ImportStateId;
 import compilerxyz.main.eval.LogEntry;
-import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.SourceId;
+import compilerxyz.main.gen.codec.ArtifactExprErrCodec;
 import compilerxyz.main.gen.codec.SourceModuleCodec;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.Sources;
-import compilerxyz.main.safejson.Json;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueNumberInt;
@@ -37,22 +35,18 @@ import compilerxyz.prelude.util.TMap;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.channels.OverlappingFileLockException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
@@ -72,12 +66,10 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 31;
+    private static final int SCHEMA_VERSION = 32;
 
     private final Connection conn;
     private final Object dbLock = new Object();
-    private final FileChannel lockChannel;
-    private final FileLock dirLock;
     private final HttpClient http =
             HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
 
@@ -98,83 +90,34 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         Opt<SourceResolved.Module> value = Opt.none();
     }
 
-    public CacheReal() {
+    public static Path cacheDirDefault() {
         var env = System.getenv("ALLIG_CACHE_DIR");
+        if (env != null && !env.isBlank()) return Path.of(env);
+        var os = System.getProperty("os.name", "").toLowerCase();
+        var home = System.getProperty("user.home");
         Path dir;
-        if (env != null && !env.isBlank()) {
-            dir = Path.of(env);
+        if (os.contains("win")) {
+            var local = System.getenv("LOCALAPPDATA");
+            dir = local != null && !local.isBlank() ? Path.of(local) : Path.of(home, "AppData", "Local");
+        } else if (os.contains("mac")) {
+            dir = Path.of(home, "Library", "Caches");
         } else {
-            var os = System.getProperty("os.name", "").toLowerCase();
-            var home = System.getProperty("user.home");
-            if (os.contains("win")) {
-                var local = System.getenv("LOCALAPPDATA");
-                dir = local != null && !local.isBlank() ? Path.of(local) : Path.of(home, "AppData", "Local");
-            } else if (os.contains("mac")) {
-                dir = Path.of(home, "Library", "Caches");
-            } else {
-                var xdg = System.getenv("XDG_CACHE_HOME");
-                dir = xdg != null && !xdg.isBlank() ? Path.of(xdg) : Path.of(home, ".cache");
-            }
-            dir = dir.resolve("allig");
+            var xdg = System.getenv("XDG_CACHE_HOME");
+            dir = xdg != null && !xdg.isBlank() ? Path.of(xdg) : Path.of(home, ".cache");
         }
-        try {
-            Class.forName("org.sqlite.JDBC");
-            Files.createDirectories(dir);
-            lockChannel = FileChannel.open(dir.resolve("lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-            FileLock acquired;
-            try {
-                acquired = lockChannel.tryLock();
-            } catch (OverlappingFileLockException e) {
-                acquired = null;
-            }
-            if (acquired == null) {
-                lockChannel.close();
-                throw new RuntimeException("CacheReal: cache directory is already in use by another instance: " + dir);
-            }
-            dirLock = acquired;
-            conn = DriverManager.getConnection("jdbc:sqlite:" + dir.resolve("cache.sqlite"));
-            conn.setAutoCommit(true);
-            configureConnection();
-            initSchema();
-        } catch (ClassNotFoundException | SQLException | IOException e) {
-            throw new RuntimeException("CacheReal: failed to open cache database", e);
-        }
+        return dir.resolve("allig");
     }
 
     public CacheReal(Path dir) {
         try {
             Class.forName("org.sqlite.JDBC");
             Files.createDirectories(dir);
-            lockChannel = FileChannel.open(dir.resolve("lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-            FileLock acquired;
-            try {
-                acquired = lockChannel.tryLock();
-            } catch (OverlappingFileLockException e) {
-                acquired = null;
-            }
-            if (acquired == null) {
-                lockChannel.close();
-                throw new RuntimeException("CacheReal: cache directory is already in use by another instance: " + dir);
-            }
-            dirLock = acquired;
             conn = DriverManager.getConnection("jdbc:sqlite:" + dir.resolve("cache.sqlite"));
             conn.setAutoCommit(true);
-            configureConnection();
-            initSchema();
-        } catch (ClassNotFoundException | SQLException | IOException e) {
-            throw new RuntimeException("CacheReal: failed to open cache database", e);
-        }
-    }
-
-    private void configureConnection() throws SQLException {
-        try (var st = conn.createStatement()) {
-            st.execute("PRAGMA journal_mode=WAL");
-            st.execute("PRAGMA synchronous=NORMAL");
-        }
-    }
-
-    private void initSchema() throws SQLException {
-        synchronized (dbLock) {
+            try (var st = conn.createStatement()) {
+                st.execute("PRAGMA journal_mode=WAL");
+                st.execute("PRAGMA synchronous=NORMAL");
+            }
             var existing = readSchemaVersion();
             if (existing.optIsSome() && existing.optUnwrap() != SCHEMA_VERSION) {
                 System.err.println("cache cleared: schema version " + existing.optUnwrap() + " -> " + SCHEMA_VERSION);
@@ -188,6 +131,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                     st.executeUpdate("DROP TABLE IF EXISTS remote_bytes");
                     st.executeUpdate("DROP TABLE IF EXISTS artifacts");
                     st.executeUpdate("DROP TABLE IF EXISTS compiles");
+                    st.executeUpdate("DROP TABLE IF EXISTS compile_deps");
+                    st.executeUpdate("DROP TABLE IF EXISTS compile_data");
                 }
             }
             try (var st = conn.createStatement()) {
@@ -203,8 +148,19 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                         + " body TEXT NOT NULL, PRIMARY KEY (import_state, source, idx))");
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS compiles ("
                         + "import_state INTEGER NOT NULL, source INTEGER NOT NULL, result TEXT NOT NULL,"
-                        + " local_path TEXT, local_mtime INTEGER, local_deps TEXT, local_data TEXT,"
+                        + " local_path TEXT, local_mtime INTEGER,"
                         + " PRIMARY KEY (import_state, source))");
+                st.executeUpdate("CREATE TABLE IF NOT EXISTS compile_data ("
+                        + "import_state INTEGER NOT NULL, source INTEGER NOT NULL,"
+                        + " path TEXT NOT NULL, mtime INTEGER NOT NULL,"
+                        + " PRIMARY KEY (import_state, source, path))");
+                st.executeUpdate("CREATE INDEX IF NOT EXISTS compile_data_by_path ON compile_data (path)");
+                st.executeUpdate("CREATE TABLE IF NOT EXISTS compile_deps ("
+                        + "import_state INTEGER NOT NULL, source INTEGER NOT NULL,"
+                        + " dep_import_state INTEGER NOT NULL, dep_source INTEGER NOT NULL,"
+                        + " PRIMARY KEY (import_state, source, dep_import_state, dep_source))");
+                st.executeUpdate(
+                        "CREATE INDEX IF NOT EXISTS compile_deps_by_dep ON compile_deps (dep_source, dep_import_state)");
             }
             if (readSchemaVersion().optIsNone()) {
                 try (var ins = conn.prepareStatement("INSERT INTO schema_version (version) VALUES (?)")) {
@@ -212,6 +168,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                     ins.executeUpdate();
                 }
             }
+        } catch (ClassNotFoundException | SQLException | IOException e) {
+            throw new RuntimeException("CacheReal: failed to open cache database", e);
         }
     }
 
@@ -396,7 +354,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         }
     }
 
-    static boolean isModulePath(String path) {
+    public static boolean isModulePath(String path) {
         return path.endsWith(".at") || path.endsWith(".atz");
     }
 
@@ -685,52 +643,11 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         if (!visiting.add(id)) return false;
         CompileRow row;
         try (var ps = conn.prepareStatement(
-                "SELECT local_path, local_mtime, local_deps, local_data FROM compiles WHERE import_state = ? AND source = ?")) {
+                "SELECT local_path, local_mtime FROM compiles WHERE import_state = ? AND source = ?")) {
             ps.setLong(1, id.importState().value());
             ps.setLong(2, id.source().value());
             try (var rs = ps.executeQuery()) {
-                if (!rs.next()) {
-                    row = null;
-                } else {
-                    var localPath = rs.getString(1);
-                    var localMtime = rs.getLong(2);
-                    TList<CompileId> deps;
-                    {
-                        var s = rs.getString(3);
-                        deps = new TList<>();
-                        if (s != null && !s.isEmpty()) {
-                            var arr = (JsonValueArray) parseJson(s);
-                            for (var e : arr.elements()) {
-                                var o = (JsonValueObject) e;
-                                var s0 = ((JsonValueNumberInt)
-                                                o.entries().getOpt("s").optUnwrap())
-                                        .value();
-                                var i0 = ((JsonValueNumberInt)
-                                                o.entries().getOpt("i").optUnwrap())
-                                        .value();
-                                deps.add(new CompileId(new ImportStateId(s0), new SourceId(i0)));
-                            }
-                        }
-                    }
-                    var data = new TList<Compiles.LocalMeta>();
-                    {
-                        var s = rs.getString(4);
-                        if (s != null && !s.isEmpty()) {
-                            var arr = (JsonValueArray) parseJson(s);
-                            for (var e : arr.elements()) {
-                                var o = (JsonValueObject) e;
-                                var path = ((JsonValueString)
-                                                o.entries().getOpt("p").optUnwrap())
-                                        .value();
-                                var t = ((JsonValueNumberInt)
-                                                o.entries().getOpt("t").optUnwrap())
-                                        .value();
-                                data.add(new Compiles.LocalMeta(path, t));
-                            }
-                        }
-                    }
-                    row = new CompileRow(localPath, localMtime, deps, data);
-                }
+                row = rs.next() ? new CompileRow(rs.getString(1), rs.getLong(2)) : null;
             }
         } catch (SQLException e) {
             throw new RuntimeException("CacheReal.loadCompileRow", e);
@@ -745,33 +662,189 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             System.err.println("dirty: " + row.localPath);
             stale = true;
         }
-        for (var data : row.localData) {
-            if (mtimeChanged(data.path(), data.timestampMs())) {
-                System.err.println("dirty: " + data.path() + " (data of " + row.localPath + ")");
-                stale = true;
+        try (var ps =
+                conn.prepareStatement("SELECT path, mtime FROM compile_data WHERE import_state = ? AND source = ?")) {
+            ps.setLong(1, id.importState().value());
+            ps.setLong(2, id.source().value());
+            try (var rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    if (mtimeChanged(rs.getString(1), rs.getLong(2))) {
+                        System.err.println("dirty: " + rs.getString(1) + " (data of " + row.localPath + ")");
+                        stale = true;
+                    }
+                }
             }
+        } catch (SQLException e) {
+            throw new RuntimeException("CacheReal.compilesData", e);
         }
-        for (var dep : row.localDeps) {
+        for (var dep : compilesDependencies(id)) {
             if (staleWalk(dep, memo, visiting)) stale = true;
         }
-        if (stale) {
+        if (stale) evictLocked(id);
+        memo.put(id, stale);
+        visiting.remove(id);
+        return stale;
+    }
+
+    public void compilesEvict(CompileId id) {
+        synchronized (dbLock) {
+            evictLocked(id);
+        }
+    }
+
+    private void evictLocked(CompileId id) {
+        try {
             try (var ps = conn.prepareStatement("DELETE FROM compiles WHERE import_state = ? AND source = ?")) {
                 ps.setLong(1, id.importState().value());
                 ps.setLong(2, id.source().value());
                 ps.executeUpdate();
-            } catch (SQLException e) {
-                throw new RuntimeException("CacheReal.deleteCompile", e);
             }
-            compileMapLock.lock();
-            try {
-                compileMem.remove(id);
-            } finally {
-                compileMapLock.unlock();
+            for (var table : new String[] {"compile_deps", "compile_data"}) {
+                try (var ps =
+                        conn.prepareStatement("DELETE FROM " + table + " WHERE import_state = ? AND source = ?")) {
+                    ps.setLong(1, id.importState().value());
+                    ps.setLong(2, id.source().value());
+                    ps.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("CacheReal.deleteCompile", e);
+        }
+        compileMapLock.lock();
+        try {
+            compileMem.remove(id);
+        } finally {
+            compileMapLock.unlock();
+        }
+    }
+
+    public TList<CompileId> compilesDependencies(CompileId id) {
+        synchronized (dbLock) {
+            try (var ps = conn.prepareStatement(
+                    "SELECT dep_import_state, dep_source FROM compile_deps WHERE import_state = ? AND source = ?")) {
+                ps.setLong(1, id.importState().value());
+                ps.setLong(2, id.source().value());
+                return compileIdRows(ps);
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.compilesDependencies", e);
             }
         }
-        memo.put(id, stale);
-        visiting.remove(id);
-        return stale;
+    }
+
+    public TList<CompileId> compilesDependents(SourceId source) {
+        synchronized (dbLock) {
+            try (var ps = conn.prepareStatement("SELECT import_state, source FROM compile_deps WHERE dep_source = ?")) {
+                ps.setLong(1, source.value());
+                return compileIdRows(ps);
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.compilesDependents", e);
+            }
+        }
+    }
+
+    public TList<CompileId> compilesDataUsers(String path) {
+        synchronized (dbLock) {
+            try (var ps = conn.prepareStatement("SELECT import_state, source FROM compile_data WHERE path = ?")) {
+                ps.setString(1, path);
+                return compileIdRows(ps);
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.compilesDataUsers", e);
+            }
+        }
+    }
+
+    public TList<CompileId> compilesUnitsOf(SourceId source) {
+        synchronized (dbLock) {
+            try (var ps = conn.prepareStatement("SELECT import_state, source FROM compiles WHERE source = ?")) {
+                ps.setLong(1, source.value());
+                return compileIdRows(ps);
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.compilesUnitsOf", e);
+            }
+        }
+    }
+
+    private static TList<CompileId> compileIdRows(PreparedStatement ps) throws SQLException {
+        var out = new TList<CompileId>();
+        try (var rs = ps.executeQuery()) {
+            while (rs.next()) {
+                out.add(new CompileId(new ImportStateId(rs.getLong(1)), new SourceId(rs.getLong(2))));
+            }
+        }
+        return out;
+    }
+
+    public Opt<CompileRes> compilesGetStored(CompileId id) {
+        synchronized (dbLock) {
+            try (var ps = conn.prepareStatement("SELECT result FROM compiles WHERE import_state = ? AND source = ?")) {
+                ps.setLong(1, id.importState().value());
+                ps.setLong(2, id.source().value());
+                try (var rs = ps.executeQuery()) {
+                    if (!rs.next()) return Opt.none();
+                    var obj = (JsonValueObject) parseJson(rs.getString(1));
+                    var startMs =
+                            ((JsonValueNumberInt) obj.entries().getOpt("start").optUnwrap()).value();
+                    var endMs =
+                            ((JsonValueNumberInt) obj.entries().getOpt("end").optUnwrap()).value();
+                    var logsArr = (JsonValueArray) obj.entries().getOpt("logs").optUnwrap();
+                    var logs = new TList<LogEntry>();
+                    for (var e : logsArr.elements()) {
+                        var lo = (JsonValueObject) e;
+                        var t = ((JsonValueNumberInt) lo.entries().getOpt("t").optUnwrap()).value();
+                        var m = ((JsonValueString) lo.entries().getOpt("m").optUnwrap()).value();
+                        logs.add(new LogEntry(t, m));
+                    }
+                    var errorsJsonOpt = obj.entries().getOpt("errors");
+                    if (errorsJsonOpt.optIsSome()) {
+                        var out = new TList<ExprErr>();
+                        for (var e : ((JsonValueArray) errorsJsonOpt.optUnwrap()).elements()) {
+                            out.add(ArtifactExprErrCodec.fromValue(e).toExprErr());
+                        }
+                        return Opt.some(new CompileRes(startMs, endMs, logs, new CompileResResult.Err(out)));
+                    }
+                    var artifactJson = obj.entries().getOpt("artifact");
+                    Opt<Artifact> art = Opt.none();
+                    if (artifactJson.optIsSome()) {
+                        art = Opt.some(ArtifactJson.decodeArtifact(artifactJson.optUnwrap()));
+                    }
+                    return Opt.some(new CompileRes(startMs, endMs, logs, new CompileResResult.Ok(art)));
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.compilesGetStored", e);
+            }
+        }
+    }
+
+    public SourceId sourcesIdFor(SourceSpecAbsolute spec) {
+        return sourceIdFor(spec.sourceSpecAbsoluteSpecKey());
+    }
+
+    public Opt<SourceSpecAbsolute> sourcesSpecOf(SourceId id) {
+        synchronized (dbLock) {
+            try (var ps = conn.prepareStatement("SELECT spec_key FROM source_ids WHERE id = ?")) {
+                ps.setLong(1, id.value());
+                try (var rs = ps.executeQuery()) {
+                    if (!rs.next()) return Opt.none();
+                    return Opt.some(SourceSpecAbsolute.sourceSpecAbsoluteParseKey(rs.getString(1)));
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.sourcesSpecOf", e);
+            }
+        }
+    }
+
+    public Result<String, String> sourcesGetText(SourceSpecAbsolute spec) {
+        return switch (sourcesGetData(spec)) {
+            case Result.Err<SourceData, String> err -> Result.err(err.error());
+            case Result.Ok<SourceData, String> ok -> {
+                try {
+                    yield Result.ok(moduleText(ok.value().bytes()));
+                } catch (IOException e) {
+                    yield Result.err(
+                            "failed to decompress " + spec.sourceSpecAbsoluteSpecKey() + ": " + e.getMessage());
+                }
+            }
+        };
     }
 
     private static String logTime(long ms) {
@@ -782,6 +855,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
 
     private static boolean mtimeChanged(String path, long recorded) {
         var file = Path.of(path);
+        if (recorded == Compiles.LocalMeta.ABSENT) return Files.exists(file);
         if (!Files.isRegularFile(file)) return true;
         try {
             return Files.getLastModifiedTime(file).toMillis() != recorded;
@@ -790,8 +864,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         }
     }
 
-    private record CompileRow(
-            String localPath, long localMtime, TList<CompileId> localDeps, TList<Compiles.LocalMeta> localData) {}
+    private record CompileRow(String localPath, long localMtime) {}
 
     @Override
     public CompileRes compilesGetOrCompute(CompileId id, SourceSpecAbsolute spec, Supplier<CompileProduct> compute) {
@@ -806,77 +879,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         try {
             if (slot.value.optIsSome()) return slot.value.optUnwrap();
             evictIfStale(id);
-            Opt<CompileRes> fromDb;
-            {
-                synchronized (dbLock) {
-                    try (var ps = conn.prepareStatement(
-                            "SELECT result FROM compiles WHERE import_state = ? AND source = ?")) {
-                        ps.setLong(1, id.importState().value());
-                        ps.setLong(2, id.source().value());
-                        try (var rs = ps.executeQuery()) {
-                            if (!rs.next()) {
-                                fromDb = Opt.none();
-                            } else {
-                                var obj = (JsonValueObject) parseJson(rs.getString(1));
-                                var startMs = ((JsonValueNumberInt)
-                                                obj.entries().getOpt("start").optUnwrap())
-                                        .value();
-                                var endMs = ((JsonValueNumberInt)
-                                                obj.entries().getOpt("end").optUnwrap())
-                                        .value();
-                                var logsArr = (JsonValueArray)
-                                        obj.entries().getOpt("logs").optUnwrap();
-                                var logs = new TList<LogEntry>();
-                                for (var e : logsArr.elements()) {
-                                    var lo = (JsonValueObject) e;
-                                    var t = ((JsonValueNumberInt)
-                                                    lo.entries().getOpt("t").optUnwrap())
-                                            .value();
-                                    var m = ((JsonValueString)
-                                                    lo.entries().getOpt("m").optUnwrap())
-                                            .value();
-                                    logs.add(new LogEntry(t, m));
-                                }
-                                var errorsJsonOpt = obj.entries().getOpt("errors");
-                                if (errorsJsonOpt.optIsSome()) {
-                                    var errorsJson = errorsJsonOpt.optUnwrap();
-                                    var out = new TList<ExprErr>();
-                                    var arr = (JsonValueArray) errorsJson;
-                                    for (var e : arr.elements()) {
-                                        var eo = (JsonValueObject) e;
-                                        var source = ((JsonValueNumberInt)
-                                                        eo.entries().getOpt("s").optUnwrap())
-                                                .value();
-                                        var exprJson = eo.entries().getOpt("e");
-                                        Opt<Long> expr = exprJson.optIsSome()
-                                                ? Opt.some(((JsonValueNumberInt) exprJson.optUnwrap()).value())
-                                                : Opt.none();
-                                        var msgs = new TList<ExprSubErr>();
-                                        for (var mv : ((JsonValueArray)
-                                                        eo.entries().getOpt("m").optUnwrap())
-                                                .elements()) {
-                                            msgs.add(new ExprSubErr.Opaque(((JsonValueString) mv).value()));
-                                        }
-                                        out.add(new ExprErr(new QExprId(new SourceId(source), expr), msgs));
-                                    }
-                                    fromDb = Opt.some(
-                                            new CompileRes(startMs, endMs, logs, new CompileResResult.Err(out)));
-                                } else {
-                                    var artifactJson = obj.entries().getOpt("artifact");
-                                    Opt<Artifact> art = Opt.none();
-                                    if (artifactJson.optIsSome()) {
-                                        art = Opt.some(ArtifactJson.decodeArtifact(artifactJson.optUnwrap()));
-                                    }
-                                    fromDb = Opt.some(
-                                            new CompileRes(startMs, endMs, logs, new CompileResResult.Ok(art)));
-                                }
-                            }
-                        }
-                    } catch (SQLException e) {
-                        throw new RuntimeException("CacheReal.loadCompile", e);
-                    }
-                }
-            }
+            var fromDb = compilesGetStored(id);
             if (fromDb.optIsSome()) {
                 slot.value = fromDb;
                 return fromDb.optUnwrap();
@@ -919,8 +922,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                 ps.executeBatch();
                             }
                             try (var ps = conn.prepareStatement("INSERT OR REPLACE INTO compiles"
-                                    + " (import_state, source, result, local_path, local_mtime, local_deps, local_data)"
-                                    + " VALUES (?, ?, ?, ?, ?, ?, ?)")) {
+                                    + " (import_state, source, result, local_path, local_mtime)"
+                                    + " VALUES (?, ?, ?, ?, ?)")) {
                                 ps.setLong(1, id.importState().value());
                                 ps.setLong(2, id.source().value());
                                 {
@@ -947,29 +950,9 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                         }
                                         case CompileResResult.Err err -> {
                                             var errArr = new TList<JsonValue>();
-                                            for (var err2 : err.errors()) {
-                                                var em = new TOrderedMap<String, JsonValue>();
-                                                em.put(
-                                                        "s",
-                                                        new JsonValueNumberInt(err2.loc()
-                                                                .source()
-                                                                .value()));
-                                                if (err2.loc().expr().optIsSome()) {
-                                                    em.put(
-                                                            "e",
-                                                            new JsonValueNumberInt(err2.loc()
-                                                                    .expr()
-                                                                    .optUnwrap()));
-                                                }
-                                                var msgs = new TList<JsonValue>();
-                                                for (var sub : err2.errors()) {
-                                                    switch (sub) {
-                                                        case ExprSubErr.Opaque o ->
-                                                            msgs.add(new JsonValueString(o.message()));
-                                                    }
-                                                }
-                                                em.put("m", new JsonValueArray(msgs));
-                                                errArr.add(new JsonValueObject(em));
+                                            for (var e : err.errors()) {
+                                                errArr.add(
+                                                        ArtifactExprErrCodec.toValue(ArtifactExprErr.fromExprErr(e)));
                                             }
                                             obj.put("errors", new JsonValueArray(errArr));
                                         }
@@ -984,33 +967,37 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                     ps.setNull(4, Types.VARCHAR);
                                     ps.setNull(5, Types.INTEGER);
                                 }
-                                {
-                                    var arr = new TList<JsonValue>();
-                                    for (var depId : product.localDeps()) {
-                                        var mv = new TOrderedMap<String, JsonValue>();
-                                        mv.put(
-                                                "s",
-                                                new JsonValueNumberInt(
-                                                        depId.importState().value()));
-                                        mv.put(
-                                                "i",
-                                                new JsonValueNumberInt(
-                                                        depId.source().value()));
-                                        arr.add(new JsonValueObject(mv));
-                                    }
-                                    ps.setString(6, JsonValues.serialize(new JsonValueArray(arr)));
-                                }
-                                {
-                                    var arr = new TList<JsonValue>();
-                                    for (var data : product.localData()) {
-                                        var mv = new TOrderedMap<String, JsonValue>();
-                                        mv.put("p", new JsonValueString(data.path()));
-                                        mv.put("t", new JsonValueNumberInt(data.timestampMs()));
-                                        arr.add(new JsonValueObject(mv));
-                                    }
-                                    ps.setString(7, JsonValues.serialize(new JsonValueArray(arr)));
-                                }
                                 ps.executeUpdate();
+                            }
+                            for (var table : new String[] {"compile_deps", "compile_data"}) {
+                                try (var ps = conn.prepareStatement(
+                                        "DELETE FROM " + table + " WHERE import_state = ? AND source = ?")) {
+                                    ps.setLong(1, id.importState().value());
+                                    ps.setLong(2, id.source().value());
+                                    ps.executeUpdate();
+                                }
+                            }
+                            try (var ps = conn.prepareStatement("INSERT OR REPLACE INTO compile_data"
+                                    + " (import_state, source, path, mtime) VALUES (?, ?, ?, ?)")) {
+                                for (var data : product.localData()) {
+                                    ps.setLong(1, id.importState().value());
+                                    ps.setLong(2, id.source().value());
+                                    ps.setString(3, data.path());
+                                    ps.setLong(4, data.timestampMs());
+                                    ps.addBatch();
+                                }
+                                ps.executeBatch();
+                            }
+                            try (var ps = conn.prepareStatement("INSERT OR IGNORE INTO compile_deps"
+                                    + " (import_state, source, dep_import_state, dep_source) VALUES (?, ?, ?, ?)")) {
+                                for (var depId : product.localDeps()) {
+                                    ps.setLong(1, id.importState().value());
+                                    ps.setLong(2, id.source().value());
+                                    ps.setLong(3, depId.importState().value());
+                                    ps.setLong(4, depId.source().value());
+                                    ps.addBatch();
+                                }
+                                ps.executeBatch();
                             }
                             conn.commit();
                         } catch (SQLException e) {
@@ -1052,18 +1039,12 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             } catch (SQLException e) {
                 throw new RuntimeException("CacheReal.close", e);
             }
-            try {
-                dirLock.release();
-                lockChannel.close();
-            } catch (IOException e) {
-                throw new RuntimeException("CacheReal.close lock", e);
-            }
         }
     }
 
     private static JsonValue parseJson(String s) {
         try {
-            return JsonValues.decode(new JsonReader(new StringReader(s)), Json.FieldPath.root());
+            return JsonValues.parse(s);
         } catch (IOException e) {
             throw new RuntimeException("CacheReal.parseJson", e);
         }

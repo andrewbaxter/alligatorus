@@ -1,10 +1,12 @@
 package compilerxyz.main.safejson;
 
 import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.io.IOException;
+import java.io.StringReader;
 import java.io.StringWriter;
 
 public final class JsonValues {
@@ -33,6 +35,15 @@ public final class JsonValues {
                 writer.endObject();
             }
         }
+    }
+
+    public static JsonValue parse(String text) throws IOException {
+        var reader = new JsonReader(new StringReader(text));
+        var value = decode(reader, Json.FieldPath.root());
+        if (reader.peek() != JsonToken.END_DOCUMENT) {
+            throw new IOException("trailing content after the JSON document");
+        }
+        return value;
     }
 
     public static JsonValue decode(JsonReader reader, Json.FieldPath path) throws IOException {

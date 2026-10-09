@@ -1,5 +1,6 @@
 package compilerxyz.lint.convention;
 
+import compilerxyz.lint.reach.AnalysisMain;
 import compilerxyz.lint.reach.ConventionChecks.Finding;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -66,7 +67,10 @@ public final class StructureChecks {
 
         for (String module : declared) {
             String expectedRoot = GROUP + "." + module;
-            for (String sourceRoot : List.of("src/main/java", "src/test/java", "target/generated-sources/codegen")) {
+            List<String> sourceRoots = new ArrayList<>(List.of("src/main/java", "src/test/java"));
+            for (String generated : AnalysisMain.GENERATED_ROOTS)
+                sourceRoots.add("target/generated-sources/" + generated);
+            for (String sourceRoot : sourceRoots) {
                 Path root = base.resolve(module).resolve(sourceRoot);
                 if (!Files.isDirectory(root)) continue;
                 try (var walk = Files.walk(root)) {

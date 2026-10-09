@@ -13,6 +13,8 @@ import compilerxyz.main.langhelp.Sources;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
@@ -93,7 +95,23 @@ public final class ImportRun {
         switch (resolvedRes) {
             case Result.Ok<Sources.SourceResolved, String> ok -> resolvedResOk = ok;
             case Result.Err<Sources.SourceResolved, String> err -> {
-                return EResult.err(loc, err.error());
+                switch (abs) {
+                    case SourceSpecAbsolute.Local l -> {
+                        var file = Path.of(l.path());
+                        long mtime;
+                        try {
+                            mtime = Files.exists(file)
+                                    ? Files.getLastModifiedTime(file).toMillis()
+                                    : Compiles.LocalMeta.ABSENT;
+                        } catch (IOException e) {
+                            mtime = 0;
+                        }
+                        ix.localData.add(new Compiles.LocalMeta(l.path(), mtime));
+                    }
+                    case SourceSpecAbsolute.Remote r -> {}
+                    case SourceSpecAbsolute.Virtual v -> {}
+                }
+                return EResult.errs(TList.of(ExprErr.importFailed(loc, abs, err.error())));
             }
         }
         var resolved = resolvedResOk.value();
@@ -103,7 +121,7 @@ public final class ImportRun {
             case Sources.SourceResolved.Module m -> {
                 var compileId = new CompileId(ix.importState, m.id());
                 if (ix.compilePath.contains(compileId)) {
-                    yield EResult.err(loc, "Import cycle detected");
+                    yield EResult.errs(TList.of(ExprErr.importFailed(loc, abs, "import cycle")));
                 }
                 var newPath = new TList<CompileId>(ix.compilePath.size());
                 newPath.addAll(ix.compilePath);
@@ -135,14 +153,14 @@ public final class ImportRun {
                 switch (m.res().result()) {
                     case CompileResResult.Ok okRes -> {
                         if (okRes.artifact().optIsNone()) {
-                            erb.errPush("Imported module yields no value to import");
-                            yield EResult.errs(erb.errors());
+                            yield EResult.errs(
+                                    TList.of(ExprErr.importFailed(loc, m.abs(), "the module yields no value")));
                         }
                         artifact = okRes.artifact().optUnwrap();
                     }
                     case CompileResResult.Err errRes -> {
-                        erb.errPush("Import failed");
-                        yield EResult.errs(erb.errors());
+                        yield EResult.errs(
+                                TList.of(ExprErr.importFailed(loc, m.abs(), "the module has compile errors")));
                     }
                 }
                 var exporterRes = erb.mustEr(ArtifactSupport.importArtifact(xx, loc, artifact));

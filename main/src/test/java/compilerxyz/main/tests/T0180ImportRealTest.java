@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.stream.JsonWriter;
+import compilerxyz.main.eval.CompileId;
+import compilerxyz.main.eval.ImportStateId;
 import compilerxyz.main.eval.builtin.Zbase32;
 import compilerxyz.main.gen.codec.SourceModuleCodec;
 import compilerxyz.main.langhelp.Compile;
@@ -208,18 +210,20 @@ public final class T0180ImportRealTest {
     }
 
     @Test
-    public void test00370DirectoryLockRejectsSecondInstance(@TempDir Path tmp) {
+    public void test00370SecondInstanceSharesTheCache(@TempDir Path tmp) throws IOException {
+        var mb = new TestMb();
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
         var cacheDir = tmp.resolve("cache");
-        try (var first = new CacheReal(cacheDir)) {
-            var failed = false;
-            try (var second = new CacheReal(cacheDir)) {
-            } catch (RuntimeException e) {
-                failed = true;
-                var message = e.getMessage();
-                assertTrue(
-                        message != null && message.contains("already in use"), () -> "unexpected message: " + message);
-            }
-            assertTrue(failed, "second CacheReal on the same directory must be rejected");
+        var mainFile = src.resolve("main.at");
+        writeModule(mainFile, TList.of(mb.call(mb.log(), mb.str("shared"))));
+        try (var first = new CacheReal(cacheDir);
+                var second = new CacheReal(cacheDir)) {
+            var ok = expectOk(Helpers.compile(gxFor(first), new SourceSpecAbsolute.Local(mainFile.toString())));
+            assertEquals("shared", ok.logs().get(0).message());
+            var id = new CompileId(
+                    new ImportStateId(0), second.sourcesIdFor(new SourceSpecAbsolute.Local(mainFile.toString())));
+            assertTrue(second.compilesGetStored(id).optIsSome(), "the second instance sees the first's result");
         }
     }
 

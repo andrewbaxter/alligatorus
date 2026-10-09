@@ -17,5 +17,7 @@ public interface Compiles {
     record CompileProduct(
             CompileRes res, Opt<LocalMeta> local, TList<CompileId> localDeps, TList<LocalMeta> localData) {}
 
-    record LocalMeta(String path, long timestampMs) {}
+    record LocalMeta(String path, long timestampMs) {
+        public static final long ABSENT = -1;
+    }
 }

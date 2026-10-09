@@ -4,11 +4,13 @@ import com.google.gson.stream.JsonWriter;
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactJson;
 import compilerxyz.main.eval.ExprErr;
-import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.builtin.App;
 import compilerxyz.main.eval.builtin.Dir;
 import compilerxyz.main.langhelp.cache.CacheReal;
+import compilerxyz.main.langhelp.serve.ServeCompiler;
+import compilerxyz.main.langhelp.serve.ServeProtocol;
+import compilerxyz.main.langhelp.serve.ServeWatcher;
 import compilerxyz.main.safejson.JsonValues;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Opt;
@@ -30,11 +32,47 @@ public final class Main {
             """
             usage: alligatorus build <path.at>
                    alligatorus build <path.at> --dir <out>
-                   alligatorus run <path.at> [args...]""";
+                   alligatorus run <path.at> [args...]
+                   alligatorus serve""";
 
     private record MainError(Opt<QExprId> loc, TList<String> messages) {}
 
     public static void main(String[] args) {
+        if (args.length == 1 && args[0].equals("serve")) {
+            var dir = Path.of("").toAbsolutePath().normalize();
+            var protocol = new ServeProtocol(System.in, System.out);
+            try (var cache = new CacheReal(CacheReal.cacheDirDefault());
+                    var watcher = new ServeWatcher(dir)) {
+                var compiler = new ServeCompiler(dir, cache, watcher, protocol);
+                var pump = new Thread(
+                        () -> {
+                            while (true) {
+                                var changes = watcher.watcherDrain(true);
+                                if (changes.isEmpty()) return;
+                                compiler.compilerPost(new ServeCompiler.Job.Changes(changes));
+                            }
+                        },
+                        "serve-changes");
+                pump.setDaemon(true);
+                pump.start();
+                var reader = new Thread(
+                        () -> {
+                            while (true) {
+                                var message = protocol.protocolRead();
+                                if (message.optIsNone()) {
+                                    compiler.compilerPost(new ServeCompiler.Job.Stop());
+                                    return;
+                                }
+                                compiler.compilerPost(new ServeCompiler.Job.Message(message.optUnwrap()));
+                            }
+                        },
+                        "serve-stdin");
+                reader.setDaemon(true);
+                reader.start();
+                compiler.compilerRun();
+            }
+            return;
+        }
         if (args.length < 2) {
             System.err.println(USAGE);
             System.exit(2);
@@ -55,7 +93,7 @@ public final class Main {
                     return;
                 }
                 Result<Opt<Artifact>, TList<MainError>> built;
-                try (var cache = new CacheReal()) {
+                try (var cache = new CacheReal(CacheReal.cacheDirDefault())) {
                     built = switch (compileRoot(cache, path)) {
                         case Result.Err<Compile.CompileResult, TList<MainError>> err -> Result.err(err.error());
                         case Result.Ok<Compile.CompileResult, TList<MainError>> ok -> {
@@ -121,7 +159,7 @@ public final class Main {
             }
             case "run" -> {
                 Result<App, TList<MainError>> app;
-                try (var cache = new CacheReal()) {
+                try (var cache = new CacheReal(CacheReal.cacheDirDefault())) {
                     app = switch (compileRoot(cache, path)) {
                         case Result.Err<Compile.CompileResult, TList<MainError>> err -> Result.err(err.error());
                         case Result.Ok<Compile.CompileResult, TList<MainError>> ok -> {
@@ -203,11 +241,7 @@ public final class Main {
                 var out = new TList<MainError>();
                 for (var e : err.error()) {
                     var msgs = new TList<String>();
-                    for (var sub : e.errors()) {
-                        switch (sub) {
-                            case ExprSubErr.Opaque o -> msgs.add(o.message());
-                        }
-                    }
+                    for (var sub : e.errors()) msgs.add(sub.exprSubErrMessage());
                     out.add(new MainError(Opt.some(e.loc()), msgs));
                 }
                 yield Result.err(out);

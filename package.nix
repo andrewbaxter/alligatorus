@@ -21,7 +21,19 @@
   git,
   pipewire,
   makeWrapper,
+  rustPlatform,
 }:
+let
+  # The language server protocol's Java bindings are generated at build time from
+  # the schema merman owns (editor/merman3/langserver/schema.json).
+  schemask = rustPlatform.buildRustPackage {
+    pname = "schemask";
+    version = "0.1.5";
+    src = ./schemask/source;
+    cargoLock.lockFile = ./schemask/source/Cargo.lock;
+    doCheck = false;
+  };
+in
 maven.buildMavenPackage rec {
   pname = "alligatorus";
   version = "0.0.0";
@@ -38,6 +50,7 @@ maven.buildMavenPackage rec {
       ./main/pom.xml
       ./main/src
       ./lint/pom.xml
+      ./editor/merman3/langserver/schema.json
     ];
   };
 
@@ -45,6 +58,7 @@ maven.buildMavenPackage rec {
   nativeBuildInputs = [
     jdk21
     makeWrapper
+    schemask
   ];
   mvnParameters = lib.escapeShellArgs [
     "-pl"

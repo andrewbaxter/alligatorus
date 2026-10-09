@@ -110,6 +110,30 @@
                             </arguments>
                         </configuration>
                     </execution>
+                    <!-- The language server protocol is owned by merman (editor/merman3/langserver);
+                         its Java bindings are generated from the checked-in schema. -->
+                    <execution>
+                        <id>generate-langserver</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>schemask</executable>
+                            <arguments>
+                                <argument>generate-java</argument>
+                                <argument>${project.basedir}/../editor/merman3/langserver/schema.json</argument>
+                                <argument>--package</argument>
+                                <argument>compilerxyz.main.langserver</argument>
+                                <argument>--runtime-package</argument>
+                                <argument>compilerxyz.main.safejson</argument>
+                                <argument>--prelude-package</argument>
+                                <argument>compilerxyz.prelude.util</argument>
+                                <argument>--out</argument>
+                                <argument>${project.build.directory}/generated-sources/langserver</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
@@ -125,6 +149,7 @@
                         <configuration>
                             <sources>
                                 <source>${project.build.directory}/generated-sources/codegen</source>
+                                <source>${project.build.directory}/generated-sources/langserver</source>
                             </sources>
                         </configuration>
                     </execution>

@@ -9,6 +9,7 @@ import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.gen.codec.ArtifactExprErrCodec;
 import compilerxyz.main.safejson.JsonValue;
+import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.MustCast;
@@ -29,17 +30,8 @@ public record ExprErr(QExprId loc, TList<ExprSubErr> errors) implements Artifact
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             var err = MustCast.mustCast(ExprErr.class, self);
-            var messages = new TList<String>(err.errors().size());
-            for (var sub : err.errors()) {
-                switch (sub) {
-                    case ExprSubErr.Opaque o -> messages.add(o.message());
-                }
-            }
-            var body = new ArtifactExprErr(
-                    new ArtifactExpr.ArtifactQExprId(
-                            err.loc().source().value(), err.loc().expr()),
-                    messages);
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactExprErrCodec.toValue(body))));
+            return EResult.ok(
+                    new Artifact.Body(makeBody.apply(ArtifactExprErrCodec.toValue(ArtifactExprErr.fromExprErr(err)))));
         }
 
         @Override
@@ -51,15 +43,16 @@ public record ExprErr(QExprId loc, TList<ExprSubErr> errors) implements Artifact
             } catch (RuntimeException e) {
                 return EResult.err(loc, "ExprErr data: failed to parse ArtifactExprErr: " + e.getMessage());
             }
-            var subs = new TList<ExprSubErr>(body.messages().size());
-            for (var message : body.messages()) subs.add(new ExprSubErr.Opaque(message));
-            return EResult.ok(new ExprErr(
-                    new QExprId(new SourceId(body.loc().source()), body.loc().expr()), subs));
+            return EResult.ok(body.toExprErr());
         }
     };
 
     public static ExprErr opaque(QExprId loc, String message) {
         return new ExprErr(loc, TList.of(new ExprSubErr.Opaque(message)));
+    }
+
+    public static ExprErr importFailed(QExprId loc, SourceSpecAbsolute spec, String reason) {
+        return new ExprErr(loc, TList.of(new ExprSubErr.ImportFailed(spec, reason)));
     }
 
     public String message() {
@@ -71,9 +64,7 @@ public record ExprErr(QExprId loc, TList<ExprSubErr> errors) implements Artifact
         sb.append("] ");
         for (var sub : errors) {
             if (!sb.toString().endsWith("] ")) sb.append("; ");
-            switch (sub) {
-                case ExprSubErr.Opaque o -> sb.append(o.message());
-            }
+            sb.append(sub.exprSubErrMessage());
         }
         return sb.toString();
     }

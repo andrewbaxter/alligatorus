@@ -265,17 +265,14 @@ public final class ReachabilityMain {
                                 && !(bo.getLeftHandOperand() instanceof CtLiteral<?> l && l.getValue() == null)
                                 && !(bo.getRightHandOperand() instanceof CtLiteral<?> r && r.getValue() == null))
                         || parent instanceof CtCase<?>
-                        || (parent instanceof CtSwitch<?> sw && sw.getSelector() == x)
-                        || (parent instanceof CtSwitchExpression<?, ?> swe && swe.getSelector() == x)
+                        || ((parent instanceof CtSwitch<?> || parent instanceof CtSwitchExpression<?, ?>)
+                                && x.getRoleInParent() == CtRole.EXPRESSION)
                         || (x.getRoleInParent() == CtRole.TARGET
                                 && (parent instanceof CtInvocation<?> || parent instanceof CtFieldAccess<?>));
                 if (!discriminating
                         && parent instanceof CtAbstractInvocation<?> call
                         && x.getRoleInParent() == CtRole.ARGUMENT) {
-                    int idx = -1;
-                    for (int i = 0; i < call.getArguments().size(); i++) {
-                        if (call.getArguments().get(i) == x) idx = i;
-                    }
+                    int idx = call.getArguments().indexOf(x);
                     CtExecutable<?> decl = call.getExecutable().getExecutableDeclaration();
                     if (decl == null || decl.getParameters().isEmpty()) {
                         discriminating = true;
