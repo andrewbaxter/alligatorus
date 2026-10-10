@@ -111,6 +111,9 @@ public final class Helpers {
                                     if (k.equals("compiled_bytecode") && someIsString) {
                                         yield jsonObj(jsonField("some", jsonStr("BYTECODE")));
                                     }
+                                    if (k.equals("meta_id") && someOpt.optIsSome()) {
+                                        yield jsonObj(jsonField("some", jsonStr("META")));
+                                    }
                                     yield jsonRedacted(v);
                                 }
                             };
@@ -278,7 +281,7 @@ public final class Helpers {
         }
 
         @Override
-        protected synchronized void metasBaseStore(MetaId id, String kind, String structuralKey, JsonValue body) {
+        protected synchronized void metasBaseStore(MetaId id, String kind, JsonValue body) {
             bodies.put(id, body);
         }
 

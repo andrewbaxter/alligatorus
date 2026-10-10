@@ -4,6 +4,7 @@ import compilerxyz.main.artifact.ArtifactSupport.ArtifactIdHolder;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.value.source_function.SourceFunctionData;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.util.Opt;
 
 public final class SourceMacroData {
@@ -12,6 +13,7 @@ public final class SourceMacroData {
     public final SourceFunctionData function;
     public Opt<Type> exceptionType = Opt.none();
     public Opt<String> description = Opt.none();
+    public final MetaCache metaCache = new MetaCache("source_macro_const");
 
     public SourceMacroData(Unique identity, SourceFunctionData function) {
         this.identity = identity;

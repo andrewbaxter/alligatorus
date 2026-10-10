@@ -25,6 +25,7 @@ import compilerxyz.prelude.util.TMap;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -177,7 +178,85 @@ public final class T0210TypeMetaTest {
             expectOk(Helpers.compile(gx, spec));
             assertEquals(helloMeta, onlyMeta(cache, source, program.hello()), "cached compile keeps rows");
             var again = onlyMeta(cache, source, program.world());
-            assertEquals(helloMeta, again, "kind-only and static metas are reused across instances");
+            assertEquals(helloMeta, again, "rows of the cached compile are unchanged");
+        }
+    }
+
+    private static SourceExpr importField(TestMb mb, String key, SourceExpr spec) {
+        var entry = new SourceExpr.RecordEntry(mb.str(key), spec);
+        return mb.field(mb.importRecord(TList.of(entry)), mb.str(key));
+    }
+
+    private static SourceExpr objectLibrary(TestMbShorthand e) {
+        return e.lower(e.seq(
+                e.let("d", e.define()),
+                e.let("obj", e.defObject(e.v("d"), "thing")),
+                e.objectImpl(e.v("obj"), e.rec(e.p("name", e.mb.typesString()))),
+                e.methodImpl(
+                        e.v("obj"),
+                        "name",
+                        e.mb.tupleOf(),
+                        e.retSome(e.mb.typesString()),
+                        e.stage(e.fld(e.v("inner"), "name"))),
+                e.let("mk", e.defFunc(e.v("d"), "mk")),
+                e.funcImpl(
+                        e.v("mk"),
+                        e.mb.typesString(),
+                        e.retSome(e.fld(e.v("obj"), "type")),
+                        e.mb.optNoneType(),
+                        e.stage(e.call(e.lower(e.fld(e.v("obj"), "new")), e.rec(e.p("name", e.v("arg")))))),
+                e.finish(e.v("d")),
+                e.ret(e.rec(e.p("mk", e.fld(e.v("mk"), "func"))))));
+    }
+
+    private static SourceExpr instanceProgram(TestMbShorthand e, SourceExpr instance) {
+        return e.seq(
+                e.let("r", importField(e.mb, "v", e.mb.sourceLocal(e.mb.str("lib.at")))),
+                e.let("inst", instance),
+                e.call(e.mb.log(), e.callM(e.v("inst"), "name", e.tup())));
+    }
+
+    private static String dataName(JsonValueObject body) {
+        var data = (JsonValueObject) body.entries().getOpt("data").optUnwrap();
+        return ((JsonValueString) data.entries().getOpt("name").optUnwrap()).value();
+    }
+
+    @Test
+    public void test00300ExportedTypeKeepsItsMetaId(@TempDir Path tmp) throws IOException {
+        var e = new TestMbShorthand();
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
+        var cacheDir = tmp.resolve("cache");
+        var libFile = src.resolve("lib.at");
+        var mainFile = src.resolve("main.at");
+        Helpers.writeModule(libFile, TList.of(e.ret(objectLibrary(e))));
+        var instance = e.call(e.fld(e.v("r"), "mk"), e.s("first"));
+        Helpers.writeModule(mainFile, TList.of(instanceProgram(e, instance)));
+        var mainSpec = new SourceSpecAbsolute.Local(mainFile.toString());
+
+        MetaId instanceMeta;
+        try (var cache = new CacheReal(cacheDir)) {
+            var gx = GlobalContext.newContext(cache, cache, cache, cache);
+            expectOk(Helpers.compile(gx, mainSpec));
+            instanceMeta = onlyMeta(cache, sourceIdOf(gx, mainSpec), instance);
+            var instanceBody = body(cache, instanceMeta);
+            assertEquals("source_object", kind(instanceBody));
+            assertEquals("thing", dataName(instanceBody));
+            assertTrue(fields(instanceBody).entries().containsKey("name"), "object meta lists its method");
+        }
+
+        var instanceAgain = e.call(e.fld(e.v("r"), "mk"), e.s("second"));
+        Helpers.writeModule(mainFile, TList.of(instanceProgram(e, instanceAgain)));
+        Files.setLastModifiedTime(
+                mainFile,
+                FileTime.fromMillis(Files.getLastModifiedTime(mainFile).toMillis() + 100000));
+        try (var cache = new CacheReal(cacheDir)) {
+            var gx = GlobalContext.newContext(cache, cache, cache, cache);
+            expectOk(Helpers.compile(gx, mainSpec));
+            assertEquals(
+                    instanceMeta,
+                    onlyMeta(cache, sourceIdOf(gx, mainSpec), instanceAgain),
+                    "a fresh process importing the cached type reuses its meta id");
         }
     }
 }

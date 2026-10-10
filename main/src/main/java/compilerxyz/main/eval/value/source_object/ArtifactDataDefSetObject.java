@@ -17,5 +17,6 @@ public record ArtifactDataDefSetObject(
         TList<ArtifactDataDefSetMethod> methods,
         TList<ArtifactDataDefSetInterfaceImpl> interfaceImpls,
         String binaryName,
-        Opt<ArtifactJavaClassCompiled> compiledClass)
+        Opt<ArtifactJavaClassCompiled> compiledClass,
+        Opt<Long> metaId)
         implements SafeJsonSerializable {}

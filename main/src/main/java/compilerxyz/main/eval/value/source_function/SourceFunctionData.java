@@ -32,6 +32,7 @@ import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
@@ -45,6 +46,7 @@ public final class SourceFunctionData {
 
     public final Opt<String> name;
     public Opt<String> description = Opt.none();
+    public final MetaCache metaCache = new MetaCache("source_function_const");
     public Opt<Type> exceptionType = Opt.none();
     public Opt<Value> implExpr = Opt.none();
     public Opt<Type> argType = Opt.none();

@@ -70,7 +70,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public final class CacheReal extends MetasBase implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 33;
+    private static final int SCHEMA_VERSION = 34;
 
     private final Connection conn;
     private final Object dbLock = new Object();
@@ -170,9 +170,7 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
                 st.executeUpdate(
                         "CREATE INDEX IF NOT EXISTS compile_deps_by_dep ON compile_deps (dep_source, dep_import_state)");
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS metas ("
-                        + "id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, skey TEXT NOT NULL,"
-                        + " body TEXT NOT NULL)");
-                st.executeUpdate("CREATE INDEX IF NOT EXISTS metas_skey ON metas (skey)");
+                        + "id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, body TEXT NOT NULL)");
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS expr_metas ("
                         + "import_state INTEGER NOT NULL, source INTEGER NOT NULL, expr_source INTEGER NOT NULL,"
                         + " expr INTEGER NOT NULL, meta INTEGER NOT NULL,"
@@ -1094,7 +1092,7 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
     protected MetaId metasBaseAllocate() {
         synchronized (dbLock) {
             try (var ps = conn.prepareStatement(
-                    "INSERT INTO metas (kind, skey, body) VALUES ('', '', '')", Statement.RETURN_GENERATED_KEYS)) {
+                    "INSERT INTO metas (kind, body) VALUES ('', '')", Statement.RETURN_GENERATED_KEYS)) {
                 ps.executeUpdate();
                 try (var rs = ps.getGeneratedKeys()) {
                     if (!rs.next()) throw new IllegalStateException("meta id allocation returned no key");
@@ -1107,31 +1105,16 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
     }
 
     @Override
-    protected void metasBaseStore(MetaId id, String kind, String structuralKey, JsonValue body) {
+    protected void metasBaseStore(MetaId id, String kind, JsonValue body) {
         synchronized (dbLock) {
             metaMem.put(id, body);
-            try (var ps = conn.prepareStatement("UPDATE metas SET kind = ?, skey = ?, body = ? WHERE id = ?")) {
+            try (var ps = conn.prepareStatement("UPDATE metas SET kind = ?, body = ? WHERE id = ?")) {
                 ps.setString(1, kind);
-                ps.setString(2, structuralKey);
-                ps.setString(3, JsonValues.serialize(body));
-                ps.setLong(4, id.value());
+                ps.setString(2, JsonValues.serialize(body));
+                ps.setLong(3, id.value());
                 ps.executeUpdate();
             } catch (SQLException e) {
                 throw new RuntimeException("CacheReal.metasBaseStore", e);
-            }
-        }
-    }
-
-    @Override
-    protected Opt<MetaId> metasBaseFindStructural(String structuralKey) {
-        synchronized (dbLock) {
-            try (var ps = conn.prepareStatement("SELECT id FROM metas WHERE skey = ? LIMIT 1")) {
-                ps.setString(1, structuralKey);
-                try (var rs = ps.executeQuery()) {
-                    return rs.next() ? Opt.some(new MetaId(rs.getLong(1))) : Opt.none();
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException("CacheReal.metasBaseFindStructural", e);
             }
         }
     }
@@ -1141,7 +1124,7 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
         synchronized (dbLock) {
             var mem = metaMem.getOpt(id);
             if (mem.optIsSome()) return mem;
-            try (var ps = conn.prepareStatement("SELECT body FROM metas WHERE id = ? AND skey <> ''")) {
+            try (var ps = conn.prepareStatement("SELECT body FROM metas WHERE id = ? AND kind <> ''")) {
                 ps.setLong(1, id.value());
                 try (var rs = ps.executeQuery()) {
                     if (!rs.next()) return Opt.none();

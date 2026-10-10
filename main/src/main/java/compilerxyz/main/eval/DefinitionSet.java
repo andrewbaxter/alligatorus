@@ -38,11 +38,13 @@ import compilerxyz.main.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
+import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetCodec;
+import compilerxyz.main.meta.Meta;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
@@ -700,6 +702,30 @@ public final class DefinitionSet implements Artifactable {
                         }
                         aeSeq.add(ab.code());
                         JavaBytecodeUtils.renderMethod(aeSeq, aeMv, TList.of(), soeInternalName, soeLocTable);
+                    }
+                    var implementsBinding = objectImplements(obj, Binding.class);
+                    if (implementsType || implementsBinding) {
+                        var tmDescriptor = JavaMethodDescriptor.fromParts(
+                                JavaDataDescriptor.fromClass(Meta.class),
+                                JavaDataDescriptor.fromClass(ExprContext.class));
+                        for (var bridge :
+                                new String[] {implementsType ? "typeMeta" : "", implementsBinding ? "bindingMeta" : ""
+                                }) {
+                            if (bridge.isEmpty()) continue;
+                            var tmMv = soeCw.visitMethod(Opcodes.ACC_PUBLIC, bridge, tmDescriptor.value(), null, null);
+                            var tmSeq = new JavaBytecodeSequence();
+                            var tb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+                            var tmSelf = tb.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName));
+                            var tmXx = tb.loadIndexed(1, JavaDataDescriptor.fromClass(ExprContext.class));
+                            tb.ret(tb.invokeStatic(
+                                    bridge.equals("typeMeta")
+                                            ? GenCodegenDescriptors.DYN_RUNTIME_SOURCE_OBJECT_TYPE_META
+                                            : GenCodegenDescriptors.DYN_RUNTIME_SOURCE_OBJECT_BINDING_META,
+                                    tmSelf,
+                                    tmXx));
+                            tmSeq.add(tb.code());
+                            JavaBytecodeUtils.renderMethod(tmSeq, tmMv, TList.of(), soeInternalName, soeLocTable);
+                        }
                     }
                 }
                 soeCw.visitEnd();

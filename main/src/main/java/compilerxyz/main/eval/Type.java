@@ -2,14 +2,14 @@ package compilerxyz.main.eval;
 
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.aspect.Aspect;
-import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.TypeMetaSource;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 2002L, scopeId = 3002)
 @BuiltinPath("eval.type")
-public interface Type extends Artifactable {
+public interface Type extends Artifactable, TypeMetaSource {
 
     boolean typeIsEqual(ExprContext xx, Type other);
 
@@ -24,8 +24,4 @@ public interface Type extends Artifactable {
     String typeDesc();
 
     Opt<Aspect> typeAspect(ExprContext xx, Unique key);
-
-    default Meta typeMeta(ExprContext xx) {
-        return Meta.ofKind(typeDesc());
-    }
 }
