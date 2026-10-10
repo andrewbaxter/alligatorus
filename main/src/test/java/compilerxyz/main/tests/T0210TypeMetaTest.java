@@ -9,11 +9,11 @@ import compilerxyz.main.eval.ImportStateId;
 import compilerxyz.main.eval.SourceId;
 import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.langhelp.GlobalContext;
-import compilerxyz.main.langhelp.Sources;
 import compilerxyz.main.langhelp.cache.CacheReal;
-import compilerxyz.main.meta.MetaId;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaProbe;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.meta.Metas;
-import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.main.syntax.SourceExpr;
@@ -25,7 +25,6 @@ import compilerxyz.prelude.util.TMap;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.FileTime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -38,24 +37,30 @@ public final class T0210TypeMetaTest {
         }
     }
 
-    private static JsonValueObject body(Metas metas, MetaId id) {
-        var bodyOpt = metas.metasGet(id);
-        assertTrue(bodyOpt.optIsSome(), "meta body missing for " + id);
-        return (JsonValueObject) bodyOpt.optUnwrap();
+    private static TList<String> onlyFields(Metas metas, SourceId source, SourceExpr expr) {
+        var rows = metas.metasExprFields(source, expr.id().value());
+        assertEquals(1, rows.size(), "expected one field set for expr " + expr.id() + ": " + rows);
+        return rows.get(0).names();
     }
 
-    private static String kind(JsonValueObject body) {
-        return ((JsonValueString) body.entries().getOpt("kind").optUnwrap()).value();
+    private static Meta onlyHit(TList<MetaProbe.Hit> hits, TList<String> path) {
+        assertEquals(1, hits.size(), "expected one evaluation: " + hits);
+        var followed = MetaSupport.follow(hits.get(0).xx(), hits.get(0).meta(), path);
+        assertTrue(followed.optIsSome(), "path " + path + " resolves");
+        return followed.optUnwrap();
     }
 
-    private static JsonValueObject fields(JsonValueObject body) {
-        return (JsonValueObject) body.entries().getOpt("fields").optUnwrap();
+    private static Meta scopeMeta(MetaProbe.Hit hit, String name) {
+        for (var entry : hit.scope()) {
+            if (entry.name().equals(name)) return entry.meta();
+        }
+        throw new AssertionError("no scope entry " + name + " in " + hit.scope());
     }
 
-    private static MetaId onlyMeta(Metas metas, SourceId source, SourceExpr expr) {
-        var rows = metas.metasForExpr(source, expr.id().value());
-        assertEquals(1, rows.size(), "expected one meta for expr " + expr.id() + ": " + rows);
-        return rows.get(0).meta();
+    private static TList<String> names(Meta meta) {
+        var out = new TList<String>();
+        for (var field : MetaSupport.fields(meta)) out.add(field.name());
+        return out;
     }
 
     private record Program(
@@ -79,44 +84,27 @@ public final class T0210TypeMetaTest {
     }
 
     @Test
-    public void test00100ExpressionMetasAndScopeEvents() {
+    public void test00100FieldNamesAndScopeEvents() {
         var mb = new TestMb();
         var program = program(mb);
         var modules = new TMap<String, SourceModule>();
         modules.put("main", new SourceModule.V1(program.exprs()));
-        var gx = Helpers.newGx(modules);
-        expectOk(Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main")));
-        var metas = gx.metas;
+        var gxa = Helpers.newGxWithArtifacts(modules);
+        expectOk(Helpers.compile(gxa.gx(), new SourceSpecAbsolute.Virtual("main")));
+        var metas = gxa.metas();
         var source = new SourceId(0);
 
-        var helloMeta = onlyMeta(metas, source, program.hello());
-        var worldMeta = onlyMeta(metas, source, program.world());
-        assertEquals(helloMeta, worldMeta, "two string literals must share one meta");
-        assertEquals("string_const", kind(body(metas, helloMeta)));
-
-        var recordMeta = onlyMeta(metas, source, program.recordExpr());
-        var recordBody = body(metas, recordMeta);
-        assertEquals("record", kind(recordBody));
-        var recordFields = fields(recordBody);
-        assertTrue(recordFields.entries().containsKey("a"), "record meta lists field a: " + recordFields);
-        assertTrue(recordFields.entries().containsKey("b"), "record meta lists field b: " + recordFields);
-        var fieldA = (JsonValueObject) recordFields.entries().getOpt("a").optUnwrap();
-        assertTrue(fieldA.entries().containsKey("meta"), "record field a carries its type meta: " + fieldA);
-
-        var useMeta = onlyMeta(metas, source, program.recordUse());
-        assertEquals("record", kind(body(metas, useMeta)));
-        var fieldMeta = onlyMeta(metas, source, program.fieldUse());
-        assertEquals("string_const", kind(body(metas, fieldMeta)));
+        assertEquals(new TList<>(), onlyFields(metas, source, program.hello()));
+        assertEquals(TList.of("a", "b"), onlyFields(metas, source, program.recordExpr()));
+        assertEquals(TList.of("a", "b"), onlyFields(metas, source, program.recordUse()));
+        assertEquals(new TList<>(), onlyFields(metas, source, program.fieldUse()));
 
         var events = metas.metasScopeEvents(new CompileId(new ImportStateId(0), source));
         var pushes = new TList<String>();
         var pops = new TList<String>();
         for (var ev : events) {
             switch (ev.kind()) {
-                case PUSH -> {
-                    pushes.add(ev.name());
-                    assertTrue(ev.meta().optIsSome(), "push carries a meta: " + ev);
-                }
+                case PUSH -> pushes.add(ev.name());
                 case POP -> pops.add(ev.name());
                 case SET -> {}
                 case ENTER -> {}
@@ -127,27 +115,43 @@ public final class T0210TypeMetaTest {
         assertTrue(pushes.contains("s") && pushes.contains("t") && pushes.contains("r"), "pushes: " + pushes);
         assertTrue(pushes.indexOf("s") < pushes.indexOf("r"), "pushes keep source order: " + pushes);
         assertTrue(pops.contains("s") && pops.contains("r"), "pops: " + pops);
-        for (var ev : events) {
-            if (ev.kind() == Metas.ScopeEventKind.PUSH && ev.name().equals("s")) {
-                assertEquals(helloMeta, ev.meta().optUnwrap(), "binding meta of s is the string meta");
-            }
-        }
-    }
-
-    private static SourceId sourceIdOf(GlobalContext gx, SourceSpecAbsolute spec) {
-        return switch (gx.sources.sourcesGet(spec)) {
-            case Result.Ok<Sources.SourceResolved, String> ok ->
-                switch (ok.value()) {
-                    case Sources.SourceResolved.Module m -> m.id();
-                    case Sources.SourceResolved.Bundle b -> throw new AssertionError("bundle");
-                    case Sources.SourceResolved.File f -> throw new AssertionError("file");
-                };
-            case Result.Err<Sources.SourceResolved, String> err -> throw new AssertionError(err.error());
-        };
     }
 
     @Test
-    public void test00200MetasPersistAcrossCacheInstances(@TempDir Path tmp) throws IOException {
+    public void test00150ProbeSeesTypeAndScopeAtExpression() {
+        var mb = new TestMb();
+        var program = program(mb);
+        var modules = new TMap<String, SourceModule>();
+        modules.put("main", new SourceModule.V1(program.exprs()));
+        var gxa = Helpers.newGxWithArtifacts(modules);
+        var spec = new SourceSpecAbsolute.Virtual("main");
+        var module = Helpers.moduleOf(gxa.gx(), spec);
+
+        var fieldHits = Helpers.probe(gxa, spec, module, program.fieldUse());
+        assertEquals("string_const", onlyHit(fieldHits, new TList<>()).kind);
+        var scopeNames = new TList<String>();
+        for (var entry : fieldHits.get(0).scope()) scopeNames.add(entry.name());
+        assertEquals(TList.of("builtins", "s", "t", "r"), scopeNames);
+        assertEquals("string_const", scopeMeta(fieldHits.get(0), "s").kind);
+        var rMeta = scopeMeta(fieldHits.get(0), "r");
+        assertEquals("binding_record", rMeta.kind);
+        assertEquals(TList.of("a", "b"), names(rMeta));
+        assertEquals(
+                "string_const",
+                MetaSupport.follow(fieldHits.get(0).xx(), rMeta, TList.of("a")).optUnwrap().kind);
+
+        var recordHits = Helpers.probe(gxa, spec, module, program.recordExpr());
+        assertEquals("record", onlyHit(recordHits, new TList<>()).kind);
+        assertEquals("string_const", onlyHit(recordHits, TList.of("a")).kind);
+        assertTrue(
+                MetaSupport.follow(recordHits.get(0).xx(), recordHits.get(0).meta(), TList.of("zzz"))
+                        .optIsNone(),
+                "a missing field resolves to nothing");
+        assertTrue(gxa.artifacts().data.size() == 0, "the probe stores no artifacts: " + gxa.artifacts().data);
+    }
+
+    @Test
+    public void test00200FieldNamesPersistAcrossCacheInstances(@TempDir Path tmp) throws IOException {
         var mb = new TestMb();
         var program = program(mb);
         var src = tmp.resolve("src");
@@ -157,106 +161,81 @@ public final class T0210TypeMetaTest {
         Helpers.writeModule(mainFile, program.exprs());
         var spec = new SourceSpecAbsolute.Local(mainFile.toString());
 
-        MetaId helloMeta;
-        JsonValue helloBody;
         SourceId source;
         try (var cache = new CacheReal(cacheDir)) {
-            var gx = GlobalContext.newContext(cache, cache, cache, cache);
+            var gx = GlobalContext.newContext(cache, cache, cache);
             expectOk(Helpers.compile(gx, spec));
-            source = sourceIdOf(gx, spec);
-            helloMeta = onlyMeta(cache, source, program.hello());
-            assertEquals(helloMeta, onlyMeta(cache, source, program.world()));
-            helloBody = body(cache, helloMeta);
-            assertEquals("string_const", kind((JsonValueObject) helloBody));
+            source = Helpers.moduleOf(gx, spec).id();
+            assertEquals(TList.of("a", "b"), onlyFields(cache, source, program.recordExpr()));
         }
         try (var cache = new CacheReal(cacheDir)) {
-            var gx = GlobalContext.newContext(cache, cache, cache, cache);
-            assertEquals(helloMeta, onlyMeta(cache, source, program.hello()), "rows survive reopen");
-            assertEquals(helloBody, body(cache, helloMeta), "body survives reopen");
+            var gx = GlobalContext.newContext(cache, cache, cache);
+            assertEquals(TList.of("a", "b"), onlyFields(cache, source, program.recordExpr()), "rows survive reopen");
             var events = cache.metasScopeEvents(new CompileId(new ImportStateId(0), source));
             assertTrue(!events.isEmpty(), "scope events survive reopen");
             expectOk(Helpers.compile(gx, spec));
-            assertEquals(helloMeta, onlyMeta(cache, source, program.hello()), "cached compile keeps rows");
-            var again = onlyMeta(cache, source, program.world());
-            assertEquals(helloMeta, again, "rows of the cached compile are unchanged");
+            assertEquals(
+                    TList.of("a", "b"), onlyFields(cache, source, program.recordExpr()), "cached compile keeps rows");
         }
     }
 
-    private static SourceExpr importField(TestMb mb, String key, SourceExpr spec) {
-        var entry = new SourceExpr.RecordEntry(mb.str(key), spec);
-        return mb.field(mb.importRecord(TList.of(entry)), mb.str(key));
-    }
-
-    private static SourceExpr objectLibrary(TestMbShorthand e) {
-        return e.lower(e.seq(
-                e.let("d", e.define()),
-                e.let("obj", e.defObject(e.v("d"), "thing")),
-                e.objectImpl(e.v("obj"), e.rec(e.p("name", e.mb.typesString()))),
-                e.methodImpl(
-                        e.v("obj"),
-                        "name",
-                        e.mb.tupleOf(),
-                        e.retSome(e.mb.typesString()),
-                        e.stage(e.fld(e.v("inner"), "name"))),
-                e.let("mk", e.defFunc(e.v("d"), "mk")),
-                e.funcImpl(
-                        e.v("mk"),
-                        e.mb.typesString(),
-                        e.retSome(e.fld(e.v("obj"), "type")),
-                        e.mb.optNoneType(),
-                        e.stage(e.call(e.lower(e.fld(e.v("obj"), "new")), e.rec(e.p("name", e.v("arg")))))),
-                e.finish(e.v("d")),
-                e.ret(e.rec(e.p("mk", e.fld(e.v("mk"), "func"))))));
-    }
-
-    private static SourceExpr instanceProgram(TestMbShorthand e, SourceExpr instance) {
-        return e.seq(
-                e.let("r", importField(e.mb, "v", e.mb.sourceLocal(e.mb.str("lib.at")))),
-                e.let("inst", instance),
-                e.call(e.mb.log(), e.callM(e.v("inst"), "name", e.tup())));
-    }
-
-    private static String dataName(JsonValueObject body) {
-        var data = (JsonValueObject) body.entries().getOpt("data").optUnwrap();
-        return ((JsonValueString) data.entries().getOpt("name").optUnwrap()).value();
-    }
-
     @Test
-    public void test00300ExportedTypeKeepsItsMetaId(@TempDir Path tmp) throws IOException {
+    public void test00300ProbeSeesImportedType(@TempDir Path tmp) throws IOException {
         var e = new TestMbShorthand();
         var src = tmp.resolve("src");
         Files.createDirectories(src);
         var cacheDir = tmp.resolve("cache");
         var libFile = src.resolve("lib.at");
         var mainFile = src.resolve("main.at");
-        Helpers.writeModule(libFile, TList.of(e.ret(objectLibrary(e))));
+        Helpers.writeModule(
+                libFile,
+                TList.of(e.ret(e.lower(e.seq(
+                        e.let("d", e.define()),
+                        e.let("obj", e.defObject(e.v("d"), "thing")),
+                        e.objectImpl(e.v("obj"), e.rec(e.p("name", e.mb.typesString()))),
+                        e.methodImpl(
+                                e.v("obj"),
+                                "name",
+                                e.mb.tupleOf(),
+                                e.retSome(e.mb.typesString()),
+                                e.stage(e.fld(e.v("inner"), "name"))),
+                        e.let("mk", e.defFunc(e.v("d"), "mk")),
+                        e.funcImpl(
+                                e.v("mk"),
+                                e.mb.typesString(),
+                                e.retSome(e.fld(e.v("obj"), "type")),
+                                e.mb.optNoneType(),
+                                e.stage(e.call(e.lower(e.fld(e.v("obj"), "new")), e.rec(e.p("name", e.v("arg")))))),
+                        e.finish(e.v("d")),
+                        e.ret(e.rec(e.p("mk", e.fld(e.v("mk"), "func")))))))));
         var instance = e.call(e.fld(e.v("r"), "mk"), e.s("first"));
-        Helpers.writeModule(mainFile, TList.of(instanceProgram(e, instance)));
+        var importEntry = new SourceExpr.RecordEntry(e.mb.str("v"), e.mb.sourceLocal(e.mb.str("lib.at")));
+        Helpers.writeModule(
+                mainFile,
+                TList.of(e.seq(
+                        e.let("r", e.mb.field(e.mb.importRecord(TList.of(importEntry)), e.mb.str("v"))),
+                        e.let("inst", instance),
+                        e.call(e.mb.log(), e.callM(e.v("inst"), "name", e.tup())))));
         var mainSpec = new SourceSpecAbsolute.Local(mainFile.toString());
 
-        MetaId instanceMeta;
         try (var cache = new CacheReal(cacheDir)) {
-            var gx = GlobalContext.newContext(cache, cache, cache, cache);
+            var gx = GlobalContext.newContext(cache, cache, cache);
             expectOk(Helpers.compile(gx, mainSpec));
-            instanceMeta = onlyMeta(cache, sourceIdOf(gx, mainSpec), instance);
-            var instanceBody = body(cache, instanceMeta);
-            assertEquals("source_object", kind(instanceBody));
-            assertEquals("thing", dataName(instanceBody));
-            assertTrue(fields(instanceBody).entries().containsKey("name"), "object meta lists its method");
         }
-
-        var instanceAgain = e.call(e.fld(e.v("r"), "mk"), e.s("second"));
-        Helpers.writeModule(mainFile, TList.of(instanceProgram(e, instanceAgain)));
-        Files.setLastModifiedTime(
-                mainFile,
-                FileTime.fromMillis(Files.getLastModifiedTime(mainFile).toMillis() + 100000));
         try (var cache = new CacheReal(cacheDir)) {
-            var gx = GlobalContext.newContext(cache, cache, cache, cache);
-            expectOk(Helpers.compile(gx, mainSpec));
+            var gx = GlobalContext.newContext(cache, cache, cache);
+            var module = Helpers.moduleOf(gx, mainSpec);
+            var hits = Compile.probe(
+                    cache, cache, cache, mainSpec, module, instance.id().value());
+            var instanceMeta = onlyHit(hits, new TList<>());
+            assertEquals("source_object", instanceMeta.kind);
+            var instanceData = (JsonValueObject) instanceMeta.data;
             assertEquals(
-                    instanceMeta,
-                    onlyMeta(cache, sourceIdOf(gx, mainSpec), instanceAgain),
-                    "a fresh process importing the cached type reuses its meta id");
+                    "thing",
+                    ((JsonValueString) instanceData.entries().getOpt("name").optUnwrap()).value());
+            assertEquals(TList.of("name"), names(instanceMeta));
+            assertEquals("source_method", onlyHit(hits, TList.of("name")).kind);
+            assertEquals("string_dynamic", onlyHit(hits, TList.of("name", "ret")).kind);
         }
     }
 }

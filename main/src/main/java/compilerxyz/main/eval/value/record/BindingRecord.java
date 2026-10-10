@@ -75,7 +75,7 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
             Meta fieldMeta =
                     switch (entry.getValue()) {
                         case RecordScopeField.Scope s -> s.binding().bindingMeta(xx);
-                        case RecordScopeField.Dynamic d -> xx.vx.ix.metaLog.metaOf(xx, d.type());
+                        case RecordScopeField.Dynamic d -> d.type().typeMeta(xx);
                         case RecordScopeField.Error e -> Meta.ofKind("error");
                     };
             meta.fieldMeta(MetaSupport.keyName(entry.getKey()), fieldMeta);

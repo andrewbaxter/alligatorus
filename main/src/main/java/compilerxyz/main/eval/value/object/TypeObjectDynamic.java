@@ -119,16 +119,11 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         return meta.typeDesc();
     }
 
-    private volatile Opt<Meta> typeMetaCache = Opt.none();
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        var current = typeMetaCache;
-        if (current.optIsSome()) return current.optUnwrap();
         var kind = "object:" + typeDesc();
         if (!isLinked()) return new Meta(kind, Meta.descData(typeDesc()));
         var result = new Meta(kind, Meta.descData(typeDesc()));
-        typeMetaCache = Opt.some(result);
         for (var field : dataFields()) {
             result.field(field.langName(), field.fieldType());
         }

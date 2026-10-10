@@ -35,8 +35,7 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetFunctionCodec;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
-import compilerxyz.main.meta.MetaId;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -55,7 +54,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return data.metaCache.get(xx, this);
+        return MetaSupport.derive(xx, this, "source_function_const");
     }
 
     @Override
@@ -137,15 +136,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
                         data.jvmMethodName,
                         compiledClassName,
                         compiledClass.optMap(ArtifactJavaClassCompiled::fromCompiled),
-                        externals.optUnwrap(),
-                        Opt.some(xx.vx.ix
-                                .gx
-                                .metas
-                                .metasIntern(
-                                        xx,
-                                        MustCast.mustCast(TypeSourceFunctionConst.class, self)
-                                                .typeMeta(xx))
-                                .value()));
+                        externals.optUnwrap());
                 return EResult.ok(makeBody.apply(ArtifactDataDefSetFunctionCodec.toValue(body)));
             });
         }
@@ -177,10 +168,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
                         var funcData = new SourceFunctionData(
                                 body.name(), DynRuntime.freshUnique(xx.vx), body.jvmMethodName());
                         funcData.artifactIdCell.set(idValue);
-                        if (body.metaId().optIsSome()) {
-                            funcData.metaCache.preassign(new MetaCache.Preassigned(
-                                    xx.vx.ix.gx.metas, new MetaId(body.metaId().optUnwrap())));
-                        }
                         funcData.compiledClassName = body.compiledClassName();
                         funcData.compiledClass = body.compiledClass().optMap(ArtifactJavaClassCompiled::toCompiled);
                         var fc = new TypeSourceFunctionConst(funcData);

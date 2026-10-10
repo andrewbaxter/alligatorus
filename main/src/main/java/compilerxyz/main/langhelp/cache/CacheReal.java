@@ -19,9 +19,7 @@ import compilerxyz.main.gen.codec.ArtifactExprErrCodec;
 import compilerxyz.main.gen.codec.SourceModuleCodec;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.Sources;
-import compilerxyz.main.meta.MetaId;
 import compilerxyz.main.meta.Metas;
-import compilerxyz.main.meta.MetasBase;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueNumberInt;
@@ -69,8 +67,8 @@ import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-public final class CacheReal extends MetasBase implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 34;
+public final class CacheReal implements Sources, Artifacts, Compiles, Metas, AutoCloseable {
+    private static final int SCHEMA_VERSION = 35;
 
     private final Connection conn;
     private final Object dbLock = new Object();
@@ -80,7 +78,6 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
     private final TMap<String, SourceSlot> sourceMem = new TMap<>();
     private final ReentrantLock sourceMapLock = new ReentrantLock();
     private final TMap<ArtifactIdSource, ArtifactBody> artifactMem = new TMap<>();
-    private final TMap<MetaId, JsonValue> metaMem = new TMap<>();
     private final TMap<ArtifactIdSource, ArtifactBody> pendingArtifacts = new TMap<>();
     private final TMap<CompileId, CompileSlot> compileMem = new TMap<>();
     private final ReentrantLock compileMapLock = new ReentrantLock();
@@ -138,8 +135,7 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
                     st.executeUpdate("DROP TABLE IF EXISTS compiles");
                     st.executeUpdate("DROP TABLE IF EXISTS compile_deps");
                     st.executeUpdate("DROP TABLE IF EXISTS compile_data");
-                    st.executeUpdate("DROP TABLE IF EXISTS metas");
-                    st.executeUpdate("DROP TABLE IF EXISTS expr_metas");
+                    st.executeUpdate("DROP TABLE IF EXISTS expr_fields");
                     st.executeUpdate("DROP TABLE IF EXISTS scope_events");
                 }
             }
@@ -169,17 +165,15 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
                         + " PRIMARY KEY (import_state, source, dep_import_state, dep_source))");
                 st.executeUpdate(
                         "CREATE INDEX IF NOT EXISTS compile_deps_by_dep ON compile_deps (dep_source, dep_import_state)");
-                st.executeUpdate("CREATE TABLE IF NOT EXISTS metas ("
-                        + "id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, body TEXT NOT NULL)");
-                st.executeUpdate("CREATE TABLE IF NOT EXISTS expr_metas ("
+                st.executeUpdate("CREATE TABLE IF NOT EXISTS expr_fields ("
                         + "import_state INTEGER NOT NULL, source INTEGER NOT NULL, expr_source INTEGER NOT NULL,"
-                        + " expr INTEGER NOT NULL, meta INTEGER NOT NULL,"
-                        + " PRIMARY KEY (import_state, source, expr_source, expr, meta))");
-                st.executeUpdate("CREATE INDEX IF NOT EXISTS expr_metas_expr ON expr_metas (expr_source, expr)");
+                        + " expr INTEGER NOT NULL, names TEXT NOT NULL,"
+                        + " PRIMARY KEY (import_state, source, expr_source, expr, names))");
+                st.executeUpdate("CREATE INDEX IF NOT EXISTS expr_fields_expr ON expr_fields (expr_source, expr)");
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS scope_events ("
                         + "import_state INTEGER NOT NULL, source INTEGER NOT NULL, seq INTEGER NOT NULL,"
                         + " expr_source INTEGER NOT NULL, expr INTEGER, kind TEXT NOT NULL, name TEXT NOT NULL,"
-                        + " meta INTEGER, PRIMARY KEY (import_state, source, seq))");
+                        + " PRIMARY KEY (import_state, source, seq))");
             }
             if (readSchemaVersion().optIsNone()) {
                 try (var ins = conn.prepareStatement("INSERT INTO schema_version (version) VALUES (?)")) {
@@ -718,7 +712,7 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
                 ps.setLong(2, id.source().value());
                 ps.executeUpdate();
             }
-            for (var table : new String[] {"compile_deps", "compile_data", "expr_metas", "scope_events"}) {
+            for (var table : new String[] {"compile_deps", "compile_data", "expr_fields", "scope_events"}) {
                 try (var ps =
                         conn.prepareStatement("DELETE FROM " + table + " WHERE import_state = ? AND source = ?")) {
                     ps.setLong(1, id.importState().value());
@@ -989,7 +983,7 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
                                 ps.executeUpdate();
                             }
                             for (var table :
-                                    new String[] {"compile_deps", "compile_data", "expr_metas", "scope_events"}) {
+                                    new String[] {"compile_deps", "compile_data", "expr_fields", "scope_events"}) {
                                 try (var ps = conn.prepareStatement(
                                         "DELETE FROM " + table + " WHERE import_state = ? AND source = ?")) {
                                     ps.setLong(1, id.importState().value());
@@ -1019,22 +1013,24 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
                                 }
                                 ps.executeBatch();
                             }
-                            try (var ps = conn.prepareStatement("INSERT OR IGNORE INTO expr_metas"
-                                    + " (import_state, source, expr_source, expr, meta) VALUES (?, ?, ?, ?, ?)")) {
-                                for (var row : product.exprMetas()) {
+                            try (var ps = conn.prepareStatement("INSERT OR IGNORE INTO expr_fields"
+                                    + " (import_state, source, expr_source, expr, names) VALUES (?, ?, ?, ?, ?)")) {
+                                for (var row : product.exprFields()) {
                                     if (row.loc().expr().optIsNone()) continue;
                                     ps.setLong(1, id.importState().value());
                                     ps.setLong(2, id.source().value());
                                     ps.setLong(3, row.loc().source().value());
                                     ps.setLong(4, row.loc().expr().optUnwrap());
-                                    ps.setLong(5, row.meta().value());
+                                    var names = new TList<JsonValue>();
+                                    for (var name : row.names()) names.add(new JsonValueString(name));
+                                    ps.setString(5, JsonValues.serialize(new JsonValueArray(names)));
                                     ps.addBatch();
                                 }
                                 ps.executeBatch();
                             }
                             try (var ps = conn.prepareStatement("INSERT OR REPLACE INTO scope_events"
-                                    + " (import_state, source, seq, expr_source, expr, kind, name, meta)"
-                                    + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
+                                    + " (import_state, source, seq, expr_source, expr, kind, name)"
+                                    + " VALUES (?, ?, ?, ?, ?, ?, ?)")) {
                                 for (var ev : product.scopeEvents()) {
                                     ps.setLong(1, id.importState().value());
                                     ps.setLong(2, id.source().value());
@@ -1047,11 +1043,6 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
                                     }
                                     ps.setString(6, ev.kind().name());
                                     ps.setString(7, ev.name());
-                                    if (ev.meta().optIsSome()) {
-                                        ps.setLong(8, ev.meta().optUnwrap().value());
-                                    } else {
-                                        ps.setNull(8, Types.INTEGER);
-                                    }
                                     ps.addBatch();
                                 }
                                 ps.executeBatch();
@@ -1089,74 +1080,27 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
     }
 
     @Override
-    protected MetaId metasBaseAllocate() {
+    public TList<Metas.ExprFields> metasExprFields(SourceId source, long expr) {
         synchronized (dbLock) {
             try (var ps = conn.prepareStatement(
-                    "INSERT INTO metas (kind, body) VALUES ('', '')", Statement.RETURN_GENERATED_KEYS)) {
-                ps.executeUpdate();
-                try (var rs = ps.getGeneratedKeys()) {
-                    if (!rs.next()) throw new IllegalStateException("meta id allocation returned no key");
-                    return new MetaId(rs.getLong(1));
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException("CacheReal.metasBaseAllocate", e);
-            }
-        }
-    }
-
-    @Override
-    protected void metasBaseStore(MetaId id, String kind, JsonValue body) {
-        synchronized (dbLock) {
-            metaMem.put(id, body);
-            try (var ps = conn.prepareStatement("UPDATE metas SET kind = ?, body = ? WHERE id = ?")) {
-                ps.setString(1, kind);
-                ps.setString(2, JsonValues.serialize(body));
-                ps.setLong(3, id.value());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                throw new RuntimeException("CacheReal.metasBaseStore", e);
-            }
-        }
-    }
-
-    @Override
-    public Opt<JsonValue> metasGet(MetaId id) {
-        synchronized (dbLock) {
-            var mem = metaMem.getOpt(id);
-            if (mem.optIsSome()) return mem;
-            try (var ps = conn.prepareStatement("SELECT body FROM metas WHERE id = ? AND kind <> ''")) {
-                ps.setLong(1, id.value());
-                try (var rs = ps.executeQuery()) {
-                    if (!rs.next()) return Opt.none();
-                    var body = parseJson(rs.getString(1));
-                    metaMem.put(id, body);
-                    return Opt.some(body);
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException("CacheReal.metasGet", e);
-            }
-        }
-    }
-
-    @Override
-    public TList<Metas.ExprMeta> metasForExpr(SourceId source, long expr) {
-        synchronized (dbLock) {
-            try (var ps = conn.prepareStatement(
-                    "SELECT import_state, source, meta FROM expr_metas WHERE expr_source = ? AND expr = ?"
-                            + " ORDER BY import_state, source, meta")) {
+                    "SELECT import_state, source, names FROM expr_fields WHERE expr_source = ? AND expr = ?"
+                            + " ORDER BY import_state, source, names")) {
                 ps.setLong(1, source.value());
                 ps.setLong(2, expr);
                 try (var rs = ps.executeQuery()) {
-                    var out = new TList<Metas.ExprMeta>();
+                    var out = new TList<Metas.ExprFields>();
                     while (rs.next()) {
-                        out.add(new Metas.ExprMeta(
-                                new CompileId(new ImportStateId(rs.getLong(1)), new SourceId(rs.getLong(2))),
-                                new MetaId(rs.getLong(3))));
+                        var names = new TList<String>();
+                        for (var name : ((JsonValueArray) parseJson(rs.getString(3))).elements()) {
+                            names.add(((JsonValueString) name).value());
+                        }
+                        out.add(new Metas.ExprFields(
+                                new CompileId(new ImportStateId(rs.getLong(1)), new SourceId(rs.getLong(2))), names));
                     }
                     return out;
                 }
             } catch (SQLException e) {
-                throw new RuntimeException("CacheReal.metasForExpr", e);
+                throw new RuntimeException("CacheReal.metasExprFields", e);
             }
         }
     }
@@ -1164,7 +1108,7 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
     @Override
     public TList<Metas.ScopeEvent> metasScopeEvents(CompileId compile) {
         synchronized (dbLock) {
-            try (var ps = conn.prepareStatement("SELECT seq, expr_source, expr, kind, name, meta FROM scope_events"
+            try (var ps = conn.prepareStatement("SELECT seq, expr_source, expr, kind, name FROM scope_events"
                     + " WHERE import_state = ? AND source = ? ORDER BY seq")) {
                 ps.setLong(1, compile.importState().value());
                 ps.setLong(2, compile.source().value());
@@ -1173,14 +1117,11 @@ public final class CacheReal extends MetasBase implements Sources, Artifacts, Co
                     while (rs.next()) {
                         var exprRaw = rs.getLong(3);
                         Opt<Long> exprOpt = rs.wasNull() ? Opt.none() : Opt.some(exprRaw);
-                        var metaRaw = rs.getLong(6);
-                        Opt<MetaId> metaOpt = rs.wasNull() ? Opt.none() : Opt.some(new MetaId(metaRaw));
                         out.add(new Metas.ScopeEvent(
                                 rs.getLong(1),
                                 new QExprId(new SourceId(rs.getLong(2)), exprOpt),
                                 Metas.ScopeEventKind.valueOf(rs.getString(4)),
-                                rs.getString(5),
-                                metaOpt));
+                                rs.getString(5)));
                     }
                     return out;
                 }

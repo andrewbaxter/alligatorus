@@ -66,7 +66,7 @@ import compilerxyz.main.gen.GenAspectOperatorXor;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNumberInt;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -77,8 +77,6 @@ import java.util.function.Function;
 @BuiltinFull(uniqueId = 6149L)
 public record TypeByteConst() implements Aspect, Type {
 
-    private static final MetaCache META = new MetaCache("byte_const");
-
     @Override
     public String typeDesc() {
         return "byte";
@@ -86,7 +84,7 @@ public record TypeByteConst() implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "byte_const");
     }
 
     @Override

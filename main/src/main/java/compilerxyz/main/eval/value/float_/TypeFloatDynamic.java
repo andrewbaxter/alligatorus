@@ -67,7 +67,7 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.IMap;
@@ -81,8 +81,6 @@ public record TypeFloatDynamic() implements Aspect, Type {
     static final IMap<ConstKey, TypeFloatToStringDynamic> METHOD_FIELDS =
             IMap.ofEntries(new Pair<>(new ConstKey.Str("to_string"), new TypeFloatToStringDynamic()));
 
-    private static final MetaCache META = new MetaCache("float_dynamic");
-
     @Override
     public String typeDesc() {
         return "dynamic float";
@@ -90,7 +88,7 @@ public record TypeFloatDynamic() implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "float_dynamic");
     }
 
     @Override

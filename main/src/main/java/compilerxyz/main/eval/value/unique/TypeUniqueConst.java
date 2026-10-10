@@ -15,7 +15,7 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -27,11 +27,9 @@ public record TypeUniqueConst() implements Aspect, Type {
         return "unique_const";
     }
 
-    private static final MetaCache META = new MetaCache("unique_const");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "unique_const");
     }
 
     @Override

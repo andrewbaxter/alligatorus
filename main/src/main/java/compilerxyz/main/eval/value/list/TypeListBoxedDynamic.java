@@ -38,8 +38,6 @@ import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
-import java.util.ArrayList;
-import java.util.List;
 
 @BuiltinFull(uniqueId = 6117L)
 public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListDynamic {
@@ -63,8 +61,7 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        var key = new ArrayList<Object>(List.of("list_boxed_dynamic", xx.vx.ix.metaLog.metaOf(xx, elementType)));
-        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "list_boxed_dynamic"));
+        return MetaSupport.derive(xx, this, "list_boxed_dynamic");
     }
 
     @Override

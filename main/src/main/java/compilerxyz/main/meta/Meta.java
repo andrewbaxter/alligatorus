@@ -15,9 +15,6 @@ public final class Meta {
     public final String kind;
     public final JsonValue data;
     final TOrderedMap<String, MetaField> fields = new TOrderedMap<>();
-    private Opt<Assigned> assigned = Opt.none();
-
-    private record Assigned(Metas owner, MetaId id) {}
 
     public Meta(String kind, JsonValue data) {
         this.kind = kind;
@@ -26,10 +23,6 @@ public final class Meta {
 
     public static Meta ofKind(String kind) {
         return new Meta(kind, emptyData());
-    }
-
-    public static Meta ofKind(String kind, String desc) {
-        return new Meta(kind, descData(desc));
     }
 
     public static JsonValueObject emptyData() {
@@ -43,29 +36,12 @@ public final class Meta {
     }
 
     public Meta field(String name, Type type) {
-        fields.put(name, MetaField.ofLazy(xx -> xx.vx.ix.metaLog.metaOf(xx, type)));
+        fields.put(name, new MetaField(emptyData(), Opt.some(xx -> type.typeMeta(xx))));
         return this;
     }
 
     public Meta fieldMeta(String name, Meta meta) {
-        fields.put(name, MetaField.of(meta));
+        fields.put(name, new MetaField(emptyData(), Opt.some(xx -> meta)));
         return this;
-    }
-
-    Meta fieldRaw(String name, MetaField field) {
-        fields.put(name, field);
-        return this;
-    }
-
-    synchronized Opt<MetaId> metaAssignedId(Metas owner) {
-        return switch (assigned) {
-            case Opt.Some<Assigned> s ->
-                s.value().owner() == owner ? Opt.some(s.value().id()) : Opt.none();
-            case Opt.None<Assigned> n -> Opt.none();
-        };
-    }
-
-    synchronized void metaAssign(Metas owner, MetaId id) {
-        assigned = Opt.some(new Assigned(owner, id));
     }
 }

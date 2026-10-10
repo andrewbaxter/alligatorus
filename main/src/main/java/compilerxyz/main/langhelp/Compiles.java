@@ -20,7 +20,7 @@ public interface Compiles {
             Opt<LocalMeta> local,
             TList<CompileId> localDeps,
             TList<LocalMeta> localData,
-            TList<Metas.ExprMetaRow> exprMetas,
+            TList<Metas.ExprFieldsRow> exprFields,
             TList<Metas.ScopeEvent> scopeEvents) {}
 
     record LocalMeta(String path, long timestampMs) {

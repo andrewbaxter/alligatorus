@@ -36,8 +36,6 @@ import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6162L)
@@ -59,9 +57,7 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        var key = new ArrayList<Object>(
-                List.of("map_const", xx.vx.ix.metaLog.metaOf(xx, keyType), xx.vx.ix.metaLog.metaOf(xx, valueType)));
-        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "map_const"));
+        return MetaSupport.derive(xx, this, "map_const");
     }
 
     @Override

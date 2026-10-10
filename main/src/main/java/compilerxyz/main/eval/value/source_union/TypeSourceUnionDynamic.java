@@ -37,8 +37,6 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.codec.ArtifactDataSourceUnionCodec;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
-import compilerxyz.main.meta.MetaId;
 import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -61,8 +59,6 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
     public final TList<Integer> active;
     public final ArtifactIdHolder artifactIdCell;
     public final SourceUnionCompiled compiled;
-    private volatile Opt<Meta> metaCache = Opt.none();
-    public Opt<MetaCache.Preassigned> importedMeta = Opt.none();
 
     public TypeSourceUnionDynamic(DefinitionSet set, Unique identity, String baseBinaryName) {
         this.set = set;
@@ -139,11 +135,7 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        var current = metaCache;
-        if (current.optIsSome()) return current.optUnwrap();
         var meta = new Meta("source_union_dynamic", Meta.descData(typeDesc()));
-        metaCache = Opt.some(meta);
-        if (importedMeta.optIsSome()) importedMeta.optUnwrap().apply(meta);
         for (var i : active) {
             var variant = variants.get(i);
             meta.field(MetaSupport.keyName(variant.tag), variant.type);
@@ -252,12 +244,7 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
                         variantsOut,
                         tu.baseBinaryName,
                         tu.compiled.baseBytecode,
-                        tu.compiled.variantBytecode,
-                        Opt.some(xx.vx.ix
-                                .gx
-                                .metas
-                                .metasIntern(xx, tu.typeMeta(xx))
-                                .value()));
+                        tu.compiled.variantBytecode);
                 return EResult.ok(makeBody.apply(ArtifactDataSourceUnionCodec.toValue(body)));
             });
         }
@@ -287,10 +274,6 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
                     (body) -> {
                         var tu = new TypeSourceUnionDynamic(body.identity(), body.baseBinaryName());
                         tu.artifactIdCell.set(idValue);
-                        if (body.metaId().optIsSome()) {
-                            tu.importedMeta = Opt.some(new MetaCache.Preassigned(
-                                    xx.vx.ix.gx.metas, new MetaId(body.metaId().optUnwrap())));
-                        }
                         tu.compiled.baseBytecode = body.compiledBaseBytecode();
                         tu.compiled.variantBytecode = body.compiledVariantBytecode();
                         for (var v : body.variants()) {

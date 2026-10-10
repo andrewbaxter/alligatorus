@@ -19,7 +19,6 @@ import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @BuiltinFull(uniqueId = 6101L)
@@ -33,16 +32,11 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes) i
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        var key = new ArrayList<Object>();
-        key.add("argument_tuple");
-        for (var elementType : elementTypes) key.add(xx.vx.ix.metaLog.metaOf(xx, elementType));
-        return xx.vx.ix.metaLog.metaShared(key, () -> {
-            var meta = MetaSupport.derive(xx, this, "argument_tuple");
-            for (int i = 0; i < elementTypes.size(); i++) {
-                meta.field(Integer.toString(i), elementTypes.get(i));
-            }
-            return meta;
-        });
+        var meta = MetaSupport.derive(xx, this, "argument_tuple");
+        for (int i = 0; i < elementTypes.size(); i++) {
+            meta.field(Integer.toString(i), elementTypes.get(i));
+        }
+        return meta;
     }
 
     public Type valueType() {

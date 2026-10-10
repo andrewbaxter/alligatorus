@@ -30,7 +30,7 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueBoolean;
@@ -54,11 +54,9 @@ public record TypeUniqueDynamic() implements Aspect, Type {
         return "unique";
     }
 
-    private static final MetaCache META = new MetaCache("unique_dynamic");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "unique_dynamic");
     }
 
     @Override

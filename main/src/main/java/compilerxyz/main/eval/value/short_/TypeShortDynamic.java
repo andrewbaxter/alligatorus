@@ -68,7 +68,7 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.IMap;
@@ -87,11 +87,9 @@ public record TypeShortDynamic() implements Aspect, Type {
         return "dynamic short";
     }
 
-    private static final MetaCache META = new MetaCache("short_dynamic");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "short_dynamic");
     }
 
     @Override

@@ -14,7 +14,7 @@ import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -26,11 +26,9 @@ public record TypeUlongToStringDynamic() implements Aspect, Type {
         return "ulong.to_string";
     }
 
-    private static final MetaCache META = new MetaCache("ulong_to_string_dynamic");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "ulong_to_string_dynamic");
     }
 
     @Override

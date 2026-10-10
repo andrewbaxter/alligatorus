@@ -33,8 +33,6 @@ import compilerxyz.main.meta.Meta;
 import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import java.util.ArrayList;
-import java.util.List;
 
 public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspect, OptionDynamic {
     public final T elementType;
@@ -86,9 +84,7 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        var key =
-                new ArrayList<Object>(List.of("option_specialized_dynamic", xx.vx.ix.metaLog.metaOf(xx, elementType)));
-        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "option_specialized_dynamic"));
+        return MetaSupport.derive(xx, this, "option_specialized_dynamic");
     }
 
     @Override

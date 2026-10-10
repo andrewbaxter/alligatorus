@@ -74,7 +74,7 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
             Meta elementMeta =
                     switch (elements.get(i)) {
                         case TupleScopeField.Scope s -> s.binding().bindingMeta(xx);
-                        case TupleScopeField.Dynamic d -> xx.vx.ix.metaLog.metaOf(xx, d.type());
+                        case TupleScopeField.Dynamic d -> d.type().typeMeta(xx);
                         case TupleScopeField.Error e -> Meta.ofKind("error");
                     };
             meta.fieldMeta(Integer.toString(i), elementMeta);

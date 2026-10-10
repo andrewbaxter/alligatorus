@@ -20,7 +20,7 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
@@ -34,11 +34,9 @@ public record TypeJvmObjectDynamic() implements Type, Aspect {
         return "dynamic object";
     }
 
-    private static final MetaCache META = new MetaCache("jvm_object_dynamic");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "jvm_object_dynamic");
     }
 
     @Override

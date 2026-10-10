@@ -66,7 +66,6 @@ import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6147L)
@@ -287,13 +286,7 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        var key = new ArrayList<Object>();
-        key.add("tuple");
-        for (var element : elements()) {
-            var elementType = tupleElementType(element);
-            key.add(elementType.optIsSome() ? xx.vx.ix.metaLog.metaOf(xx, elementType.optUnwrap()) : "?");
-        }
-        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "tuple"));
+        return MetaSupport.derive(xx, this, "tuple");
     }
 
     public Type valueType() {

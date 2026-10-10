@@ -12,7 +12,7 @@ import compilerxyz.main.eval.aspect.AspectBindConstValue;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -24,11 +24,9 @@ public record TypeSourceSpec() implements Aspect, Type {
         return "source_spec";
     }
 
-    private static final MetaCache META = new MetaCache("source_spec");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "source_spec");
     }
 
     @Override

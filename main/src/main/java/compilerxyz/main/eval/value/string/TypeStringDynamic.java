@@ -30,7 +30,7 @@ import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.IMap;
@@ -45,11 +45,9 @@ public record TypeStringDynamic() implements Aspect, Type {
             new Pair<>(new ConstKey.Str("toLowerCase"), new TypeStringMethodDynamic("toLowerCase")),
             new Pair<>(new ConstKey.Str("toUpperCase"), new TypeStringMethodDynamic("toUpperCase")));
 
-    private static final MetaCache META = new MetaCache("string_dynamic");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "string_dynamic");
     }
 
     @Override

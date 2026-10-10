@@ -27,8 +27,7 @@ public final class T0049AppTest {
     static App compileApp(Path cacheDir, Path entry) {
         try (var cache = new CacheReal(cacheDir)) {
             var res = Helpers.compile(
-                    GlobalContext.newContext(cache, cache, cache, cache),
-                    new SourceSpecAbsolute.Local(entry.toString()));
+                    GlobalContext.newContext(cache, cache, cache), new SourceSpecAbsolute.Local(entry.toString()));
             Compile.CompileResult out =
                     switch (res) {
                         case Result.Ok<Compile.CompileResult, TList<ExprErr>> ok -> ok.value();

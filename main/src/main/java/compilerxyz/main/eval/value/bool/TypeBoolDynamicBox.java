@@ -27,7 +27,7 @@ import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
@@ -37,8 +37,6 @@ import compilerxyz.prelude.util.TList;
 @BuiltinPath("types.bool_box")
 public record TypeBoolDynamicBox() implements Aspect, Type {
 
-    private static final MetaCache META = new MetaCache("bool_dynamic_box");
-
     @Override
     public String typeDesc() {
         return "dynamic bool";
@@ -46,7 +44,7 @@ public record TypeBoolDynamicBox() implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "bool_dynamic_box");
     }
 
     @Override

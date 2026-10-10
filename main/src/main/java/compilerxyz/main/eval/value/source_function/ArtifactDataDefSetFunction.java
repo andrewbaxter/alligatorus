@@ -17,6 +17,5 @@ public record ArtifactDataDefSetFunction(
         String jvmMethodName,
         Opt<String> compiledClassName,
         Opt<ArtifactJavaClassCompiled> compiledClass,
-        TList<ArtifactExternal> capturedExternals,
-        Opt<Long> metaId)
+        TList<ArtifactExternal> capturedExternals)
         implements SafeJsonSerializable {}

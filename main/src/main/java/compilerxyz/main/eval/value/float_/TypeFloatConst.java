@@ -66,7 +66,7 @@ import compilerxyz.main.gen.GenAspectOperatorXor;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNumberFloat;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -77,8 +77,6 @@ import java.util.function.Function;
 @BuiltinFull(uniqueId = 6172L)
 public record TypeFloatConst() implements Aspect, Type {
 
-    private static final MetaCache META = new MetaCache("float_const");
-
     @Override
     public String typeDesc() {
         return "float";
@@ -86,7 +84,7 @@ public record TypeFloatConst() implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "float_const");
     }
 
     @Override

@@ -35,8 +35,6 @@ import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6464L)
@@ -56,8 +54,7 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        var key = new ArrayList<Object>(List.of("eresult_const", xx.vx.ix.metaLog.metaOf(xx, elementType)));
-        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "eresult_const"));
+        return MetaSupport.derive(xx, this, "eresult_const");
     }
 
     @Override

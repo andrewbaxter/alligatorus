@@ -18,20 +18,22 @@ import compilerxyz.main.langserver.ClientMessage;
 import compilerxyz.main.langserver.ClientMessageCodec;
 import compilerxyz.main.langserver.Compiled;
 import compilerxyz.main.langserver.Request;
+import compilerxyz.main.langserver.RequestExprFields;
 import compilerxyz.main.langserver.RequestExprMeta;
 import compilerxyz.main.langserver.RequestFileState;
 import compilerxyz.main.langserver.RequestFlush;
-import compilerxyz.main.langserver.RequestMeta;
 import compilerxyz.main.langserver.RequestPause;
-import compilerxyz.main.langserver.RequestScopeMeta;
+import compilerxyz.main.langserver.RequestScopeEntryMeta;
+import compilerxyz.main.langserver.RequestScopeNames;
 import compilerxyz.main.langserver.RequestSourceRead;
 import compilerxyz.main.langserver.Response;
+import compilerxyz.main.langserver.ResponseExprFields;
 import compilerxyz.main.langserver.ResponseExprMeta;
 import compilerxyz.main.langserver.ResponseFileState;
 import compilerxyz.main.langserver.ResponseFlush;
-import compilerxyz.main.langserver.ResponseMeta;
 import compilerxyz.main.langserver.ResponsePause;
-import compilerxyz.main.langserver.ResponseScopeMeta;
+import compilerxyz.main.langserver.ResponseScopeEntryMeta;
+import compilerxyz.main.langserver.ResponseScopeNames;
 import compilerxyz.main.langserver.ResponseSourceRead;
 import compilerxyz.main.langserver.ServerMessage;
 import compilerxyz.main.langserver.ServerMessageCodec;
@@ -301,12 +303,6 @@ public final class T0221ServeTest {
         }
     }
 
-    private static List<String> fieldNames(compilerxyz.main.langserver.Meta meta) {
-        var out = new ArrayList<String>();
-        for (var f : meta.fields()) out.add(f.name());
-        return out;
-    }
-
     @Test
     public void test00200MetaQueries(@TempDir Path tmp) throws Exception {
         var mb = new TestMb();
@@ -327,37 +323,54 @@ public final class T0221ServeTest {
                         mb.call(mb.log(), fieldUse)));
         try (var h = new Harness(src, tmp.resolve("cache"))) {
             h.readUntil(x -> settled(x, a));
-            long fieldX;
-            switch (h.request(new RequestExprMeta(recordUse.id().value(), new SourceLocal(a)))) {
+            switch (h.request(new RequestExprFields(recordUse.id().value(), new SourceLocal(a)))) {
+                case ResponseExprFields r -> {
+                    assertEquals(1, r.fields().size());
+                    assertEquals(TList.of("x", "y"), r.fields().get(0).names());
+                }
+                default -> throw new AssertionError("expected an expr fields reply");
+            }
+            switch (h.request(new RequestScopeNames(fieldUse.id().value(), new SourceLocal(a)))) {
+                case ResponseScopeNames r -> {
+                    assertEquals(1, r.scopes().size());
+                    assertEquals(TList.of("s", "r"), r.scopes().get(0).names());
+                }
+                default -> throw new AssertionError("expected a scope names reply");
+            }
+            switch (h.request(new RequestExprMeta(recordUse.id().value(), new TList<>(), new SourceLocal(a)))) {
                 case ResponseExprMeta r -> {
                     assertEquals(1, r.metas().size());
-                    var meta = r.metas().get(0).meta();
+                    var meta = r.metas().get(0);
                     assertEquals("record", meta.kind());
-                    assertEquals(List.of("x", "y"), fieldNames(meta));
-                    assertTrue(meta.fields().get(0).meta().optIsSome());
-                    fieldX = meta.fields().get(0).meta().optUnwrap();
+                    var fieldNames = new ArrayList<String>();
+                    for (var f : meta.fields()) fieldNames.add(f.name());
+                    assertEquals(List.of("x", "y"), fieldNames);
+                    assertTrue(meta.fields().get(0).hasMeta());
                 }
                 default -> throw new AssertionError("expected an expr meta reply");
             }
-            switch (h.request(new RequestMeta(TList.of(fieldX, -1L)))) {
-                case ResponseMeta r -> {
+            switch (h.request(new RequestExprMeta(recordUse.id().value(), TList.of("x"), new SourceLocal(a)))) {
+                case ResponseExprMeta r -> {
                     assertEquals(1, r.metas().size());
-                    assertEquals(fieldX, r.metas().get(0).id());
                     assertEquals("string_const", r.metas().get(0).kind());
                 }
-                default -> throw new AssertionError("expected a meta reply");
+                default -> throw new AssertionError("expected an expr meta reply");
             }
-            switch (h.request(new RequestScopeMeta(fieldUse.id().value(), new SourceLocal(a)))) {
-                case ResponseScopeMeta r -> {
-                    assertEquals(1, r.scopes().size());
-                    var names = new ArrayList<String>();
-                    for (var e : r.scopes().get(0).entries()) names.add(e.name());
-                    assertEquals(List.of("s", "r"), names);
-                    var rEntry = r.scopes().get(0).entries().get(1);
-                    assertTrue(rEntry.meta().optIsSome());
-                    assertEquals(List.of("x", "y"), fieldNames(rEntry.meta().optUnwrap()));
+            switch (h.request(
+                    new RequestScopeEntryMeta(fieldUse.id().value(), "r", TList.of("y"), new SourceLocal(a)))) {
+                case ResponseScopeEntryMeta r -> {
+                    assertEquals(1, r.metas().size());
+                    assertEquals("string_const", r.metas().get(0).kind());
                 }
-                default -> throw new AssertionError("expected a scope meta reply");
+                default -> throw new AssertionError("expected a scope entry meta reply");
+            }
+            switch (h.request(new RequestExprMeta(recordUse.id().value(), TList.of("zzz"), new SourceLocal(a)))) {
+                case ResponseExprMeta r -> assertEquals(0, r.metas().size());
+                default -> throw new AssertionError("expected an expr meta reply");
+            }
+            switch (h.request(new RequestFileState(a))) {
+                case ResponseFileState r -> assertEquals(1, r.value().compiles().size(), "probes add no compiles");
+                default -> throw new AssertionError("expected a file state reply");
             }
         }
     }

@@ -7,6 +7,7 @@ import compilerxyz.main.eval.CompileResResult;
 import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.ImportStateId;
 import compilerxyz.main.eval.SourceId;
+import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.GlobalContext;
 import compilerxyz.main.langhelp.SourceModuleToModule;
@@ -19,40 +20,40 @@ import compilerxyz.main.langserver.AnnounceSettled;
 import compilerxyz.main.langserver.ClientMessage;
 import compilerxyz.main.langserver.CompileError;
 import compilerxyz.main.langserver.Compiled;
-import compilerxyz.main.langserver.ExprMeta;
+import compilerxyz.main.langserver.ExprFields;
 import compilerxyz.main.langserver.FileState;
 import compilerxyz.main.langserver.Location;
 import compilerxyz.main.langserver.Log;
 import compilerxyz.main.langserver.MetaField;
 import compilerxyz.main.langserver.Related;
+import compilerxyz.main.langserver.RequestExprFields;
 import compilerxyz.main.langserver.RequestExprMeta;
 import compilerxyz.main.langserver.RequestFileState;
 import compilerxyz.main.langserver.RequestFlush;
-import compilerxyz.main.langserver.RequestMeta;
 import compilerxyz.main.langserver.RequestPause;
-import compilerxyz.main.langserver.RequestScopeMeta;
+import compilerxyz.main.langserver.RequestScopeEntryMeta;
+import compilerxyz.main.langserver.RequestScopeNames;
 import compilerxyz.main.langserver.RequestSourceRead;
 import compilerxyz.main.langserver.Response;
+import compilerxyz.main.langserver.ResponseExprFields;
 import compilerxyz.main.langserver.ResponseExprMeta;
 import compilerxyz.main.langserver.ResponseFileState;
 import compilerxyz.main.langserver.ResponseFlush;
-import compilerxyz.main.langserver.ResponseMeta;
 import compilerxyz.main.langserver.ResponsePause;
-import compilerxyz.main.langserver.ResponseScopeMeta;
+import compilerxyz.main.langserver.ResponseScopeEntryMeta;
+import compilerxyz.main.langserver.ResponseScopeNames;
 import compilerxyz.main.langserver.ResponseSourceRead;
-import compilerxyz.main.langserver.ScopeEntry;
-import compilerxyz.main.langserver.ScopeMeta;
+import compilerxyz.main.langserver.ScopeNames;
 import compilerxyz.main.langserver.ServerMessageEv;
 import compilerxyz.main.langserver.ServerMessageRes;
 import compilerxyz.main.langserver.Source;
 import compilerxyz.main.langserver.SourceLocal;
 import compilerxyz.main.langserver.SourceRemote;
-import compilerxyz.main.meta.MetaId;
-import compilerxyz.main.meta.ScopeReplay;
-import compilerxyz.main.safejson.JsonValueNumberFloat;
-import compilerxyz.main.safejson.JsonValueNumberInt;
-import compilerxyz.main.safejson.JsonValueObject;
-import compilerxyz.main.safejson.JsonValueString;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaProbe;
+import compilerxyz.main.meta.MetaSupport;
+import compilerxyz.main.syntax.SourceExpr;
+import compilerxyz.main.syntax.SourceModule;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -60,7 +61,10 @@ import compilerxyz.prelude.util.TList;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.TreeSet;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -86,7 +90,7 @@ public final class ServeCompiler {
     public ServeCompiler(Path dir, CacheReal cache, ServeWatcher watcher, ServeProtocol protocol) {
         this.dir = dir;
         this.cache = cache;
-        this.gx = GlobalContext.newContext(cache, cache, cache, cache);
+        this.gx = GlobalContext.newContext(cache, cache, cache);
         this.watcher = watcher;
         this.protocol = protocol;
     }
@@ -143,63 +147,116 @@ public final class ServeCompiler {
                                                 case Result.Err<String, String> err -> Opt.none();
                                             });
                                 }
-                                case RequestExprMeta r -> {
+                                case RequestExprFields r -> {
                                     var sid = cache.sourcesIdFor(specOf(r.source()));
-                                    var out = new TList<ExprMeta>();
-                                    for (var row : cache.metasForExpr(sid, r.expr())) {
-                                        var meta = metaRecord(row.meta());
-                                        if (meta.optIsNone()) continue;
-                                        out.add(new ExprMeta(
+                                    var out = new TList<ExprFields>();
+                                    for (var row : cache.metasExprFields(sid, r.expr())) {
+                                        out.add(new ExprFields(
                                                 row.compile().importState().value(),
-                                                meta.optUnwrap(),
+                                                row.names(),
                                                 source(row.compile().source())));
                                     }
-                                    yield new ResponseExprMeta(out);
+                                    yield new ResponseExprFields(out);
                                 }
-                                case RequestScopeMeta r -> {
+                                case RequestScopeNames r -> {
                                     var spec = specOf(r.source());
                                     var sid = cache.sourcesIdFor(spec);
                                     Opt<Long> statement =
                                             switch (cache.sourcesGet(spec)) {
                                                 case Result.Ok<Sources.SourceResolved, String> ok ->
                                                     switch (ok.value()) {
-                                                        case Sources.SourceResolved.Module mod ->
-                                                            ScopeReplay.enclosingStatement(mod.module(), r.expr());
+                                                        case Sources.SourceResolved.Module mod -> {
+                                                            Opt<Long> found = Opt.none();
+                                                            var roots =
+                                                                    switch (mod.module()) {
+                                                                        case SourceModule.V1 v1 -> v1.exprs();
+                                                                    };
+                                                            for (var root : roots) {
+                                                                found = statementOf(
+                                                                        root,
+                                                                        r.expr(),
+                                                                        root.id()
+                                                                                .value());
+                                                                if (found.optIsSome()) break;
+                                                            }
+                                                            yield found;
+                                                        }
                                                         case Sources.SourceResolved.Bundle b -> Opt.none();
                                                         case Sources.SourceResolved.File f -> Opt.none();
                                                     };
                                                 case Result.Err<Sources.SourceResolved, String> err -> Opt.none();
                                             };
-                                    var scopes = new TList<ScopeMeta>();
+                                    var scopes = new TList<ScopeNames>();
                                     if (statement.optIsSome()) {
                                         for (var unit : cache.compilesUnitsOf(sid)) {
-                                            var entries = ScopeReplay.scopeAt(
-                                                    cache.metasScopeEvents(unit), sid, statement.optUnwrap());
-                                            if (entries.optIsNone()) continue;
-                                            var converted = new TList<ScopeEntry>();
-                                            for (var entry : entries.optUnwrap()) {
-                                                Opt<compilerxyz.main.langserver.Meta> meta =
-                                                        entry.meta().optIsSome()
-                                                                ? metaRecord(entry.meta()
-                                                                        .optUnwrap())
-                                                                : Opt.none();
-                                                converted.add(new ScopeEntry(meta, entry.name()));
+                                            var frames = new ArrayList<TList<String>>();
+                                            frames.add(new TList<>());
+                                            Opt<TList<String>> names = Opt.none();
+                                            for (var ev : cache.metasScopeEvents(unit)) {
+                                                var top = frames.get(frames.size() - 1);
+                                                switch (ev.kind()) {
+                                                    case BEGIN -> frames.add(new TList<>());
+                                                    case END -> {
+                                                        if (frames.size() > 1) frames.remove(frames.size() - 1);
+                                                    }
+                                                    case PUSH -> top.add(ev.name());
+                                                    case SET -> {}
+                                                    case POP -> {
+                                                        for (int i = top.size() - 1; i >= 0; i--) {
+                                                            if (top.get(i).equals(ev.name())) {
+                                                                top.removeAt(i);
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                    case ENTER -> {
+                                                        if (ev.loc().source().equals(sid)
+                                                                && ev.loc()
+                                                                        .expr()
+                                                                        .optIsSome()
+                                                                && ev.loc()
+                                                                        .expr()
+                                                                        .optUnwrap()
+                                                                        .equals(statement.optUnwrap())) {
+                                                            names = Opt.some(TList.from(top));
+                                                        }
+                                                    }
+                                                }
+                                                if (names.optIsSome()) break;
                                             }
-                                            scopes.add(new ScopeMeta(
-                                                    converted,
+                                            if (names.optIsNone()) continue;
+                                            scopes.add(new ScopeNames(
                                                     unit.importState().value(),
+                                                    names.optUnwrap(),
                                                     source(unit.source())));
                                         }
                                     }
-                                    yield new ResponseScopeMeta(scopes);
+                                    yield new ResponseScopeNames(scopes);
                                 }
-                                case RequestMeta r -> {
+                                case RequestExprMeta r -> {
                                     var out = new TList<compilerxyz.main.langserver.Meta>();
-                                    for (var id : r.ids()) {
-                                        var meta = metaRecord(new MetaId(id));
-                                        if (meta.optIsSome()) out.add(meta.optUnwrap());
+                                    var seen = Collections.newSetFromMap(new IdentityHashMap<Meta, Boolean>());
+                                    for (var hit : probe(r.source(), r.expr())) {
+                                        var followed = MetaSupport.follow(hit.xx(), hit.meta(), r.path());
+                                        if (followed.optIsNone() || !seen.add(followed.optUnwrap())) continue;
+                                        out.add(metaRecord(followed.optUnwrap()));
                                     }
-                                    yield new ResponseMeta(out);
+                                    yield new ResponseExprMeta(out);
+                                }
+                                case RequestScopeEntryMeta r -> {
+                                    var out = new TList<compilerxyz.main.langserver.Meta>();
+                                    var seen = Collections.newSetFromMap(new IdentityHashMap<Meta, Boolean>());
+                                    for (var hit : probe(r.source(), r.expr())) {
+                                        Opt<Meta> entry = Opt.none();
+                                        for (var scopeEntry : hit.scope()) {
+                                            if (scopeEntry.name().equals(r.name())) entry = Opt.some(scopeEntry.meta());
+                                        }
+                                        if (entry.optIsNone()) continue;
+                                        var followed = MetaSupport.follow(hit.xx(), entry.optUnwrap(), r.path());
+                                        if (followed.optIsNone() || !seen.add(followed.optUnwrap())) continue;
+                                        out.add(metaRecord(followed.optUnwrap()));
+                                    }
+                                    yield new ResponseScopeEntryMeta(out);
                                 }
                             };
                     protocol.protocolWrite(new ServerMessageRes(m.message().id(), res));
@@ -298,7 +355,7 @@ public final class ServeCompiler {
                         module.local(),
                         cir.localDeps(),
                         cir.localData(),
-                        cir.exprMetas(),
+                        cir.exprFields(),
                         cir.scopeEvents());
             });
             var pending = new ArrayDeque<CompileId>();
@@ -355,29 +412,115 @@ public final class ServeCompiler {
         };
     }
 
-    private Opt<compilerxyz.main.langserver.Meta> metaRecord(MetaId id) {
-        var bodyOpt = cache.metasGet(id);
-        if (bodyOpt.optIsNone()) return Opt.none();
-        var body = (JsonValueObject) bodyOpt.optUnwrap();
-        var kind = ((JsonValueString) body.entries().getOpt("kind").optUnwrap()).value();
-        var data = body.entries().getOpt("data").optUnwrap();
-        var fields = new TList<MetaField>();
-        var fieldsJson = (JsonValueObject) body.entries().getOpt("fields").optUnwrap();
-        for (var entry : fieldsJson.entries().entrySet()) {
-            var field = (JsonValueObject) entry.getValue();
-            var ref = field.entries().getOpt("meta");
-            Opt<Long> refId = Opt.none();
-            if (ref.optIsSome()) {
-                refId = Opt.some(
-                        switch (ref.optUnwrap()) {
-                            case JsonValueNumberInt n -> n.value();
-                            case JsonValueNumberFloat n -> (long) n.value();
-                            default -> throw new IllegalStateException("meta field reference is not a number");
-                        });
+    private static Opt<Long> statementOf(SourceExpr expr, long target, long statement) {
+        if (expr.id().value() == target) return Opt.some(statement);
+        var isSeq =
+                switch (expr.variant()) {
+                    case SourceExpr.Seq s -> true;
+                    default -> false;
+                };
+        var children = new TList<SourceExpr>();
+        switch (expr.variant()) {
+            case SourceExpr.As e -> {
+                children.add(e.base());
+                children.add(e.target());
             }
-            fields.add(new MetaField(field.entries().getOpt("data").optUnwrap(), refId, entry.getKey()));
+            case SourceExpr.Bind e -> {
+                children.add(e.name());
+                children.add(e.value());
+            }
+            case SourceExpr.Call e -> {
+                children.add(e.func());
+                children.add(e.arg());
+            }
+            case SourceExpr.Field e -> {
+                children.add(e.base());
+                children.add(e.key());
+            }
+            case SourceExpr.Foreach e -> {
+                children.add(e.base());
+                children.add(e.elementKey());
+                children.add(e.body());
+            }
+            case SourceExpr.Graft e -> children.add(e.expr());
+            case SourceExpr.If e -> {
+                for (var branch : e.conditions()) {
+                    children.add(branch.condition());
+                    children.add(branch.body());
+                }
+                if (e.fallback().optIsSome()) children.add(e.fallback().optUnwrap());
+            }
+            case SourceExpr.Labeled e -> children.add(e.inner());
+            case SourceExpr.Literal e -> {}
+            case SourceExpr.Lower e -> children.add(e.expr());
+            case SourceExpr.Match e -> {
+                children.add(e.base());
+                children.add(e.elementKey());
+                for (var branch : e.cases()) {
+                    children.add(branch.condition());
+                    children.add(branch.body());
+                }
+                if (e.fallback().optIsSome()) children.add(e.fallback().optUnwrap());
+            }
+            case SourceExpr.OperatorBinary e -> {
+                children.add(e.base());
+                children.add(e.reference());
+            }
+            case SourceExpr.OperatorUnary e -> children.add(e.base());
+            case SourceExpr.Record e -> {
+                for (var entry : e.entries()) {
+                    children.add(entry.key());
+                    children.add(entry.value());
+                }
+            }
+            case SourceExpr.Return e -> {
+                if (e.value().optIsSome()) children.add(e.value().optUnwrap());
+            }
+            case SourceExpr.ScopeUse e -> children.add(e.key());
+            case SourceExpr.Seq e -> children.addAll(e.exprs());
+            case SourceExpr.Set e -> {
+                children.add(e.base());
+                children.add(e.value());
+            }
+            case SourceExpr.Stage e -> children.add(e.expr());
+            case SourceExpr.Try e -> {
+                children.add(e.body());
+                if (e.catchClause().optIsSome()) {
+                    var c = e.catchClause().optUnwrap();
+                    children.add(c.bindingName());
+                    children.add(c.exceptionType());
+                    children.add(c.body());
+                }
+                if (e.finallyBlock().optIsSome()) children.add(e.finallyBlock().optUnwrap());
+            }
+            case SourceExpr.Tuple e -> children.addAll(e.exprs());
         }
-        return Opt.some(new compilerxyz.main.langserver.Meta(data, fields, id.value(), kind));
+        for (var child : children) {
+            var found = statementOf(child, target, isSeq ? child.id().value() : statement);
+            if (found.optIsSome()) return found;
+        }
+        return Opt.none();
+    }
+
+    private TList<MetaProbe.Hit> probe(Source source, long expr) {
+        var spec = specOf(source);
+        return switch (cache.sourcesGet(spec)) {
+            case Result.Ok<Sources.SourceResolved, String> ok ->
+                switch (ok.value()) {
+                    case Sources.SourceResolved.Module module -> Compile.probe(cache, cache, cache, spec, module, expr);
+                    case Sources.SourceResolved.Bundle b -> new TList<>();
+                    case Sources.SourceResolved.File f -> new TList<>();
+                };
+            case Result.Err<Sources.SourceResolved, String> err -> new TList<>();
+        };
+    }
+
+    private static compilerxyz.main.langserver.Meta metaRecord(Meta meta) {
+        var fields = new TList<MetaField>();
+        for (var field : MetaSupport.fields(meta)) {
+            fields.add(new MetaField(field.field().data(), field.field().meta().optIsSome(), field.name()));
+        }
+        return new compilerxyz.main.langserver.Meta(meta.data, fields, meta.kind);
     }
 
     private Source source(SourceId id) {

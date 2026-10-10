@@ -43,8 +43,6 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetObjectCodec;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
-import compilerxyz.main.meta.MetaId;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
@@ -77,8 +75,6 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
 
     public Opt<JavaClassCompiled> compiledClass = Opt.none();
     public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
-    private volatile Opt<Meta> metaCache = Opt.none();
-    public Opt<MetaCache.Preassigned> importedMeta = Opt.none();
 
     public TypeSourceObjectDynamic(DefSetId setId, String name, Unique identity, DefinitionSet set, String binaryName) {
         this.setId = setId;
@@ -123,14 +119,10 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        var current = metaCache;
-        if (current.optIsSome()) return current.optUnwrap();
         var entries = new TOrderedMap<String, JsonValue>();
         entries.put("desc", new JsonValueString(typeDesc()));
         if (name.optIsSome()) entries.put("name", new JsonValueString(name.optUnwrap()));
         var meta = new Meta("source_object", new JsonValueObject(entries));
-        metaCache = Opt.some(meta);
-        if (importedMeta.optIsSome()) importedMeta.optUnwrap().apply(meta);
         for (var m : methods) {
             var methodMeta = new Meta("source_method", Meta.descData(m.name));
             if (m.argType.optIsSome()) methodMeta.field("arg", m.argType.optUnwrap());
@@ -364,12 +356,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                         methods,
                         ifaceImpls,
                         dt.binaryName,
-                        dt.compiledClass.optMap(ArtifactJavaClassCompiled::fromCompiled),
-                        Opt.some(xx.vx.ix
-                                .gx
-                                .metas
-                                .metasIntern(xx, dt.typeMeta(xx))
-                                .value()));
+                        dt.compiledClass.optMap(ArtifactJavaClassCompiled::fromCompiled));
                 return EResult.ok(makeBody.apply(ArtifactDataDefSetObjectCodec.toValue(body)));
             });
         }
@@ -401,10 +388,6 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                         var dt = new TypeSourceObjectDynamic(
                                 body.defSetId(), body.name(), body.identity(), body.binaryName());
                         dt.artifactIdCell.set(idValue);
-                        if (body.metaId().optIsSome()) {
-                            dt.importedMeta = Opt.some(new MetaCache.Preassigned(
-                                    xx.vx.ix.gx.metas, new MetaId(body.metaId().optUnwrap())));
-                        }
                         dt.compiledClass = body.compiledClass().optMap(ArtifactJavaClassCompiled::toCompiled);
                         for (var m : body.methods()) {
                             var md = new SourceDataMethodData(m.name(), m.jvmMethodName());

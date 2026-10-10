@@ -5,8 +5,6 @@ import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.object.ObjectAspectSource;
-import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -30,9 +28,6 @@ public final class InterfaceCell {
     public Opt<byte[]> compiledBytecode = Opt.none();
 
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
-
-    public volatile Opt<Meta> metaCache = Opt.none();
-    public Opt<MetaCache.Preassigned> importedMeta = Opt.none();
 
     public InterfaceCell(Opt<DefinitionSet> set, Unique identity, String binaryName, State state) {
         this.set = set;

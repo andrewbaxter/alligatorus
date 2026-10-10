@@ -47,6 +47,6 @@ public final class CompileImportContext {
         this.sourceId = sourceId;
         this.compilePath = compilePath;
         this.currentSpec = currentSpec;
-        this.metaLog = new MetaLog(gx.metas);
+        this.metaLog = new MetaLog(gx.metaProbe);
     }
 }

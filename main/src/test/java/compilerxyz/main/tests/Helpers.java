@@ -16,9 +16,8 @@ import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.GlobalContext;
 import compilerxyz.main.langhelp.Sources;
 import compilerxyz.main.langhelp.cache.CacheReal;
-import compilerxyz.main.meta.MetaId;
+import compilerxyz.main.meta.MetaProbe;
 import compilerxyz.main.meta.Metas;
-import compilerxyz.main.meta.MetasBase;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueBoolean;
@@ -110,9 +109,6 @@ public final class Helpers {
                                             };
                                     if (k.equals("compiled_bytecode") && someIsString) {
                                         yield jsonObj(jsonField("some", jsonStr("BYTECODE")));
-                                    }
-                                    if (k.equals("meta_id") && someOpt.optIsSome()) {
-                                        yield jsonObj(jsonField("some", jsonStr("META")));
                                     }
                                     yield jsonRedacted(v);
                                 }
@@ -210,8 +206,7 @@ public final class Helpers {
     public static Compile.CompileResult compileOk(Path entry, Path cacheDir) {
         try (var cache = new CacheReal(cacheDir)) {
             var res = compile(
-                    GlobalContext.newContext(cache, cache, cache, cache),
-                    new SourceSpecAbsolute.Local(entry.toString()));
+                    GlobalContext.newContext(cache, cache, cache), new SourceSpecAbsolute.Local(entry.toString()));
             Result.Ok<Compile.CompileResult, ?> ok;
             switch (res) {
                 case Result.Ok<Compile.CompileResult, ?> o -> ok = o;
@@ -235,12 +230,35 @@ public final class Helpers {
         }
         var artifacts = new TestArtifacts();
         var metas = new TestMetas();
-        var gx = GlobalContext.newContext(new TestSources(sources), artifacts, new TestCompiles(metas), metas);
+        var gx = GlobalContext.newContext(new TestSources(sources), artifacts, new TestCompiles(metas));
 
-        return new GxAndArtifacts(gx, artifacts);
+        return new GxAndArtifacts(gx, artifacts, metas);
     }
 
-    public record GxAndArtifacts(GlobalContext gx, TestArtifacts artifacts) {}
+    public record GxAndArtifacts(GlobalContext gx, TestArtifacts artifacts, TestMetas metas) {}
+
+    public static Sources.SourceResolved.Module moduleOf(GlobalContext gx, SourceSpecAbsolute spec) {
+        return switch (gx.sources.sourcesGet(spec)) {
+            case Result.Ok<Sources.SourceResolved, String> ok ->
+                switch (ok.value()) {
+                    case Sources.SourceResolved.Module m -> m;
+                    case Sources.SourceResolved.Bundle b -> throw new AssertionError("bundle: " + spec);
+                    case Sources.SourceResolved.File f -> throw new AssertionError("file: " + spec);
+                };
+            case Result.Err<Sources.SourceResolved, String> err -> throw new AssertionError(err.error());
+        };
+    }
+
+    public static TList<MetaProbe.Hit> probe(
+            GxAndArtifacts gxa, SourceSpecAbsolute spec, Sources.SourceResolved.Module module, SourceExpr expr) {
+        return Compile.probe(
+                gxa.gx().sources,
+                gxa.artifacts(),
+                gxa.gx().compiles,
+                spec,
+                module,
+                expr.id().value());
+    }
 
     public static final class TestArtifacts implements Artifacts {
         public final TMap<ArtifactIdSource, ArtifactBody> data = new TMap<>();
@@ -267,43 +285,24 @@ public final class Helpers {
         }
     }
 
-    public static final class TestMetas extends MetasBase {
-        private final TMap<MetaId, JsonValue> bodies = new TMap<>();
-        private final TList<Pair<CompileId, Metas.ExprMetaRow>> exprMetas = new TList<>();
+    public static final class TestMetas implements Metas {
+        private final TList<Pair<CompileId, Metas.ExprFieldsRow>> exprFields = new TList<>();
         private final TMap<CompileId, TList<Metas.ScopeEvent>> scopeEvents = new TMap<>();
-        private long nextId = 0;
-
-        @Override
-        protected synchronized MetaId metasBaseAllocate() {
-            var id = new MetaId(nextId);
-            nextId++;
-            return id;
-        }
-
-        @Override
-        protected synchronized void metasBaseStore(MetaId id, String kind, JsonValue body) {
-            bodies.put(id, body);
-        }
 
         public synchronized void recordCompile(CompileId id, Compiles.CompileProduct product) {
-            for (var row : product.exprMetas()) exprMetas.add(new Pair<>(id, row));
+            for (var row : product.exprFields()) exprFields.add(new Pair<>(id, row));
             scopeEvents.put(id, TList.from(product.scopeEvents()));
         }
 
         @Override
-        public synchronized Opt<JsonValue> metasGet(MetaId id) {
-            return bodies.getOpt(id);
-        }
-
-        @Override
-        public synchronized TList<Metas.ExprMeta> metasForExpr(SourceId source, long expr) {
-            var out = new TList<Metas.ExprMeta>();
-            for (var entry : exprMetas) {
+        public synchronized TList<Metas.ExprFields> metasExprFields(SourceId source, long expr) {
+            var out = new TList<Metas.ExprFields>();
+            for (var entry : exprFields) {
                 var loc = entry.second().loc();
                 if (loc.source().equals(source)
                         && loc.expr().optIsSome()
                         && loc.expr().optUnwrap() == expr) {
-                    out.add(new Metas.ExprMeta(entry.first(), entry.second().meta()));
+                    out.add(new Metas.ExprFields(entry.first(), entry.second().names()));
                 }
             }
             return out;

@@ -14,7 +14,7 @@ import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
@@ -23,8 +23,6 @@ import compilerxyz.prelude.util.Opt;
 @BuiltinFull(uniqueId = 6105L)
 public record TypeEResultConstructorConst() implements Aspect, Type {
 
-    private static final MetaCache META = new MetaCache("eresult_constructor_const");
-
     @Override
     public String typeDesc() {
         return "eresult constructor";
@@ -32,7 +30,7 @@ public record TypeEResultConstructorConst() implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "eresult_constructor_const");
     }
 
     @Override

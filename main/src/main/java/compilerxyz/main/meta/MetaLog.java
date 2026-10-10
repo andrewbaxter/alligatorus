@@ -3,101 +3,88 @@ package compilerxyz.main.meta;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.Type;
-import compilerxyz.main.gen.Binding;
+import compilerxyz.main.eval.ScopeLevel;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TSet;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
 
 public final class MetaLog {
-    private final Metas metas;
-    private final TList<Frame> frames = new TList<>();
+    private final Opt<MetaProbe> probe;
+    private final TList<QExprId> frames = new TList<>();
     private final TSet<ExprKey> seen = new TSet<>();
-    private final Map<Type, Meta> byType = new IdentityHashMap<>();
-    private final Map<List<Object>, Meta> byStructure = new HashMap<>();
-    public final TList<Metas.ExprMetaRow> exprMetas = new TList<>();
+    public final TList<Metas.ExprFieldsRow> exprFields = new TList<>();
     public final TList<Metas.ScopeEvent> scopeEvents = new TList<>();
 
-    private record Frame(ExprContext xx, QExprId loc) {}
+    private record ExprKey(long source, long expr, TList<String> names) {}
 
-    private record ExprKey(long source, long expr, long meta) {}
-
-    public MetaLog(Metas metas) {
-        this.metas = metas;
+    public MetaLog(Opt<MetaProbe> probe) {
+        this.probe = probe;
     }
 
-    public void enter(ExprContext xx, QExprId loc) {
-        frames.add(new Frame(xx, loc));
+    public void enter(QExprId loc) {
+        frames.add(loc);
     }
 
     public void exit() {
         frames.removeLast();
     }
 
-    public Meta metaOf(ExprContext xx, Type type) {
-        var cached = byType.get(type);
-        if (cached != null) return cached;
-        var meta = type.typeMeta(xx);
-        byType.put(type, meta);
-        return meta;
-    }
-
-    public Meta metaShared(List<Object> key, Supplier<Meta> build) {
-        var cached = byStructure.get(key);
-        if (cached != null) return cached;
-        var meta = build.get();
-        byStructure.put(key, meta);
-        return meta;
-    }
-
     public void recordExpr(ExprContext xx, QExprId loc, Value value) {
         if (loc.expr().optIsNone()) return;
-        var meta = metaOf(xx, value.valueType());
-        var id = metas.metasIntern(xx, meta);
-        if (!seen.add(new ExprKey(loc.source().value(), loc.expr().optUnwrap(), id.value()))) return;
-        exprMetas.add(new Metas.ExprMetaRow(loc, id));
+        var meta = value.valueType().typeMeta(xx);
+        var names = new TList<String>();
+        for (var field : MetaSupport.fields(meta)) names.add(field.name());
+        if (seen.add(new ExprKey(loc.source().value(), loc.expr().optUnwrap(), names))) {
+            exprFields.add(new Metas.ExprFieldsRow(loc, names));
+        }
+        if (probe.optIsNone() || !probe.optUnwrap().target.equals(loc)) return;
+        var scope = new TList<MetaProbe.ScopeEntry>();
+        for (var level : xx.scope.levels) {
+            switch (level) {
+                case ScopeLevel.Entry entry -> {
+                    if (entry.name.optIsNone()) continue;
+                    scope.add(new MetaProbe.ScopeEntry(
+                            MetaSupport.keyName(entry.name.optUnwrap()), entry.binding.bindingMeta(xx)));
+                }
+                case ScopeLevel.Temp t -> {}
+                case ScopeLevel.Labeled l -> {}
+                case ScopeLevel.Catch c -> {}
+                case ScopeLevel.Finally f -> {}
+            }
+        }
+        probe.optUnwrap().hits.add(new MetaProbe.Hit(xx, meta, scope));
     }
 
     public void scopeBegin(QExprId loc) {
-        scopeEvents.add(new Metas.ScopeEvent(scopeEvents.size(), loc, Metas.ScopeEventKind.BEGIN, "", Opt.none()));
+        scopeEvents.add(new Metas.ScopeEvent(scopeEvents.size(), loc, Metas.ScopeEventKind.BEGIN, ""));
     }
 
     public void scopeEnd(QExprId loc) {
-        scopeEvents.add(new Metas.ScopeEvent(scopeEvents.size(), loc, Metas.ScopeEventKind.END, "", Opt.none()));
+        scopeEvents.add(new Metas.ScopeEvent(scopeEvents.size(), loc, Metas.ScopeEventKind.END, ""));
     }
 
     public void scopeEnter(QExprId loc) {
         if (loc.expr().optIsNone()) return;
-        scopeEvents.add(new Metas.ScopeEvent(scopeEvents.size(), loc, Metas.ScopeEventKind.ENTER, "", Opt.none()));
+        scopeEvents.add(new Metas.ScopeEvent(scopeEvents.size(), loc, Metas.ScopeEventKind.ENTER, ""));
     }
 
-    public void scopePush(Opt<ConstKey> name, Binding binding) {
-        scopeEvent(Metas.ScopeEventKind.PUSH, name, Opt.some(binding));
+    public void scopePush(Opt<ConstKey> name) {
+        scopeEvent(Metas.ScopeEventKind.PUSH, name);
     }
 
-    public void scopeSet(Opt<ConstKey> name, Binding binding) {
-        scopeEvent(Metas.ScopeEventKind.SET, name, Opt.some(binding));
+    public void scopeSet(Opt<ConstKey> name) {
+        scopeEvent(Metas.ScopeEventKind.SET, name);
     }
 
     public void scopePop(Opt<ConstKey> name) {
-        scopeEvent(Metas.ScopeEventKind.POP, name, Opt.none());
+        scopeEvent(Metas.ScopeEventKind.POP, name);
     }
 
-    private void scopeEvent(Metas.ScopeEventKind kind, Opt<ConstKey> name, Opt<Binding> binding) {
+    private void scopeEvent(Metas.ScopeEventKind kind, Opt<ConstKey> name) {
         if (name.optIsNone()) return;
         if (frames.isEmpty()) return;
-        var frame = frames.get(frames.size() - 1);
-        Opt<MetaId> meta = Opt.none();
-        if (binding.optIsSome()) {
-            meta = Opt.some(metas.metasIntern(frame.xx(), binding.optUnwrap().bindingMeta(frame.xx())));
-        }
         scopeEvents.add(new Metas.ScopeEvent(
-                scopeEvents.size(), frame.loc(), kind, MetaSupport.keyName(name.optUnwrap()), meta));
+                scopeEvents.size(), frames.get(frames.size() - 1), kind, MetaSupport.keyName(name.optUnwrap())));
     }
 }

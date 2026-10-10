@@ -16,14 +16,12 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenTypeExprStagedPlaceholder;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6107L)
 public record TypeExprStagedPlaceholder() implements Aspect, Type, Value {
-
-    private static final MetaCache META = new MetaCache("expr_staged_placeholder");
 
     @Override
     public String typeDesc() {
@@ -32,7 +30,7 @@ public record TypeExprStagedPlaceholder() implements Aspect, Type, Value {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "expr_staged_placeholder");
     }
 
     public Type valueType() {

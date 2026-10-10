@@ -374,8 +374,7 @@ public final class T0100ImportTest {
                                         "some",
                                         jsonObj(
                                                 jsonField("bytecode", jsonStr("BYTECODE")),
-                                                jsonField("locs", jsonStr("LOCS")))))),
-                        jsonField("meta_id", jsonObj(jsonField("some", jsonStr("META"))))),
+                                                jsonField("locs", jsonStr("LOCS"))))))),
                 Helpers.jsonRedacted(objArt.data()));
         var defSetArt = Helpers.artifactByTag(gxa.artifacts(), "definition_set");
         assertEquals(

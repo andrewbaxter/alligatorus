@@ -32,8 +32,6 @@ import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetInterfaceCodec;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
-import compilerxyz.main.meta.MetaId;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
@@ -73,11 +71,7 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        var current = cell.metaCache;
-        if (current.optIsSome()) return current.optUnwrap();
         var meta = new Meta("source_interface", Meta.descData(typeDesc()));
-        cell.metaCache = Opt.some(meta);
-        if (cell.importedMeta.optIsSome()) cell.importedMeta.optUnwrap().apply(meta);
         for (var methodName : cell.methodNames()) {
             meta.fieldMeta(methodName, Meta.ofKind("interface_method"));
         }
@@ -147,15 +141,7 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
                         frozen.aspectId,
                         cell.binaryName,
                         cell.compiledBytecode,
-                        methodsOut,
-                        Opt.some(xx.vx.ix
-                                .gx
-                                .metas
-                                .metasIntern(
-                                        xx,
-                                        MustCast.mustCast(TypeSourceInterfaceDynamic.class, self)
-                                                .typeMeta(xx))
-                                .value()));
+                        methodsOut);
                 return EResult.ok(makeBody.apply(ArtifactDataDefSetInterfaceCodec.toValue(body)));
             });
         }
@@ -201,11 +187,6 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
                                         new InterfaceCell.State.Building(building));
                                 cell.compiledBytecode = user.compiledBytecode();
                                 cell.artifactIdCell.set(idValue);
-                                if (user.metaId().optIsSome()) {
-                                    cell.importedMeta = Opt.some(new MetaCache.Preassigned(
-                                            xx.vx.ix.gx.metas,
-                                            new MetaId(user.metaId().optUnwrap())));
-                                }
                                 var imported = new TypeSourceInterfaceDynamic(cell);
                                 var deps = new TList<Artifact>();
                                 deps.add(user.defSet());

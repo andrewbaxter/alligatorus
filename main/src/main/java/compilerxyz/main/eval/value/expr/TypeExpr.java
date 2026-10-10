@@ -24,7 +24,7 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenTypeExpr;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
@@ -33,8 +33,6 @@ import compilerxyz.prelude.util.Opt;
 @BuiltinPath("types.expr")
 public record TypeExpr() implements Aspect, Type, Value {
 
-    private static final MetaCache META = new MetaCache("expr");
-
     @Override
     public String typeDesc() {
         return "expr";
@@ -42,7 +40,7 @@ public record TypeExpr() implements Aspect, Type, Value {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "expr");
     }
 
     public Type valueType() {

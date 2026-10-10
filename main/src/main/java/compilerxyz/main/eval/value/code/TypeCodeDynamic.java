@@ -20,7 +20,7 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
@@ -29,8 +29,6 @@ import compilerxyz.prelude.util.Opt;
 @BuiltinFull(uniqueId = 6300L)
 public record TypeCodeDynamic() implements Aspect, Type {
 
-    private static final MetaCache META = new MetaCache("code_dynamic");
-
     @Override
     public String typeDesc() {
         return "code";
@@ -38,7 +36,7 @@ public record TypeCodeDynamic() implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "code_dynamic");
     }
 
     @Override

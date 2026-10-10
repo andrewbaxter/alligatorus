@@ -28,8 +28,7 @@ import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetMacroCodec;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
-import compilerxyz.main.meta.MetaId;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -48,7 +47,7 @@ public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return data.metaCache.get(xx, this);
+        return MetaSupport.derive(xx, this, "source_macro_const");
     }
 
     @Override
@@ -95,18 +94,7 @@ public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type
                             Artifactable.exportArtifact(xx, loc, data.exceptionType.optUnwrap()));
                 }
                 if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-                var body = new ArtifactDataDefSetMacro(
-                        functionArt.optUnwrap(),
-                        exceptionArt,
-                        data.description,
-                        Opt.some(xx.vx.ix
-                                .gx
-                                .metas
-                                .metasIntern(
-                                        xx,
-                                        MustCast.mustCast(TypeSourceMacroConst.class, self)
-                                                .typeMeta(xx))
-                                .value()));
+                var body = new ArtifactDataDefSetMacro(functionArt.optUnwrap(), exceptionArt, data.description);
                 return EResult.ok(makeBody.apply(ArtifactDataDefSetMacroCodec.toValue(body)));
             });
         }
@@ -147,11 +135,6 @@ public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type
                                     TypeSourceFunctionConst.class,
                                     functionAny.requireValue("TypeSourceMacroConst::finalizer function artifact"));
                             var macroData = new SourceMacroData(DynRuntime.freshUnique(xx2.vx), function.data());
-                            if (body.metaId().optIsSome()) {
-                                macroData.metaCache.preassign(new MetaCache.Preassigned(
-                                        xx2.vx.ix.gx.metas,
-                                        new MetaId(body.metaId().optUnwrap())));
-                            }
                             macroData.artifactIdCell.set(idValue);
                             if (body.exceptionType().optIsSome()) {
                                 var exceptionRes = ArtifactSupport.independentFinalizeImportTypeArtifact(

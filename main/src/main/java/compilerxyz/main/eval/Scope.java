@@ -26,7 +26,7 @@ public final class Scope {
         var entry = new ScopeLevel.Entry(
                 Opt.some(name), binding, false, id, id, new ScopeLevel.Emission(vx.emissionCounter.next()));
         levels.add(entry);
-        vx.ix.metaLog.scopePush(entry.name, binding);
+        vx.ix.metaLog.scopePush(entry.name);
         return entry;
     }
 
@@ -183,7 +183,7 @@ public final class Scope {
                         entry.binding = m.optUnwrap().binding();
                         entry.state = m.optUnwrap().state();
                         entry.dropState = m.optUnwrap().dropState();
-                        vx.ix.metaLog.scopeSet(entry.name, entry.binding);
+                        vx.ix.metaLog.scopeSet(entry.name);
                     }
                 }
                 case ScopeLevel.Temp t -> {}

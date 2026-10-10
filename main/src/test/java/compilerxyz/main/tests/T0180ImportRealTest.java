@@ -63,7 +63,7 @@ public final class T0180ImportRealTest {
     }
 
     private static GlobalContext gxFor(CacheReal cache) {
-        return GlobalContext.newContext(cache, cache, cache, cache);
+        return GlobalContext.newContext(cache, cache, cache);
     }
 
     private static Compile.CompileResult expectOk(Result<Compile.CompileResult, ?> res) {

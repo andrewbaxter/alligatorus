@@ -23,7 +23,7 @@ import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
@@ -33,8 +33,6 @@ import compilerxyz.prelude.util.TList;
 @BuiltinPath("types.constkey")
 public record TypeConstkeyDynamic() implements Aspect, Type {
 
-    private static final MetaCache META = new MetaCache("constkey_dynamic");
-
     @Override
     public String typeDesc() {
         return "constkey";
@@ -42,7 +40,7 @@ public record TypeConstkeyDynamic() implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "constkey_dynamic");
     }
 
     @Override

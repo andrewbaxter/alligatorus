@@ -29,7 +29,7 @@ public final class CompileModule {
             CompileRes res,
             TList<CompileId> localDeps,
             TList<Compiles.LocalMeta> localData,
-            TList<Metas.ExprMetaRow> exprMetas,
+            TList<Metas.ExprFieldsRow> exprFields,
             TList<Metas.ScopeEvent> scopeEvents) {}
 
     public static CompileModuleResult compileModuleId(
@@ -187,7 +187,7 @@ public final class CompileModule {
                                     new CompileResResult.Err(err.errors())),
                             cix.localDependencies,
                             cix.localData,
-                            cix.metaLog.exprMetas,
+                            cix.metaLog.exprFields,
                             cix.metaLog.scopeEvents);
                 }
                 case EvalOutcome.Ok ok -> {
@@ -206,7 +206,7 @@ public final class CompileModule {
                                             new CompileResResult.Ok(Opt.none())),
                                     cix.localDependencies,
                                     cix.localData,
-                                    cix.metaLog.exprMetas,
+                                    cix.metaLog.exprFields,
                                     cix.metaLog.scopeEvents);
                         }
                         var exportErrors = new TList<ExprErr>();
@@ -222,7 +222,7 @@ public final class CompileModule {
                                             new CompileResResult.Err(exportErrors)),
                                     cix.localDependencies,
                                     cix.localData,
-                                    cix.metaLog.exprMetas,
+                                    cix.metaLog.exprFields,
                                     cix.metaLog.scopeEvents);
                         }
                         var artifact = exportArt.requireValue("ArtifactSupport::exportArtifact artifact");
@@ -234,7 +234,7 @@ public final class CompileModule {
                                         new CompileResResult.Ok(Opt.some(artifact))),
                                 cix.localDependencies,
                                 cix.localData,
-                                cix.metaLog.exprMetas,
+                                cix.metaLog.exprFields,
                                 cix.metaLog.scopeEvents);
                     }
                     if (ok.value().optIsNone()) {
@@ -248,7 +248,7 @@ public final class CompileModule {
                                                 TList.of(new ExprSubErr.Opaque("Stage yields no expression")))))),
                                 cix.localDependencies,
                                 cix.localData,
-                                cix.metaLog.exprMetas,
+                                cix.metaLog.exprFields,
                                 cix.metaLog.scopeEvents);
                     }
                     rootExpr = mustCast(Expr.class, ok.value().optUnwrap());

@@ -18,7 +18,7 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -27,8 +27,6 @@ public record TypeCodeTargetDynamic() implements Aspect, Type {
 
     static final ConstKey CAST_KEY = new ConstKey.Str("cast");
 
-    private static final MetaCache META = new MetaCache("code_target_dynamic");
-
     @Override
     public String typeDesc() {
         return "code.target";
@@ -36,7 +34,7 @@ public record TypeCodeTargetDynamic() implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "code_target_dynamic");
     }
 
     @Override

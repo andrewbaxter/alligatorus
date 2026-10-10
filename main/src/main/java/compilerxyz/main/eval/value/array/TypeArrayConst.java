@@ -35,8 +35,6 @@ import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -57,8 +55,7 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        var key = new ArrayList<Object>(List.of("array_const", xx.vx.ix.metaLog.metaOf(xx, elementType)));
-        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "array_const"));
+        return MetaSupport.derive(xx, this, "array_const");
     }
 
     @Override

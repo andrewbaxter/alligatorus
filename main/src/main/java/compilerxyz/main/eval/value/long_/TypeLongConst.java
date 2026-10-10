@@ -66,7 +66,7 @@ import compilerxyz.main.gen.GenAspectOperatorXor;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNumberInt;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -82,11 +82,9 @@ public record TypeLongConst() implements Aspect, Type {
         return "long";
     }
 
-    private static final MetaCache META = new MetaCache("long_const");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "long_const");
     }
 
     @Override

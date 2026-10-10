@@ -14,14 +14,12 @@ import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6178L)
 public record TypeDoubleToStringDynamic() implements Aspect, Type {
-
-    private static final MetaCache META = new MetaCache("double_to_string_dynamic");
 
     @Override
     public String typeDesc() {
@@ -30,7 +28,7 @@ public record TypeDoubleToStringDynamic() implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "double_to_string_dynamic");
     }
 
     @Override

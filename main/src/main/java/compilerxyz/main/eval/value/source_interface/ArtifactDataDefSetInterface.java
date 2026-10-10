@@ -19,7 +19,6 @@ public sealed interface ArtifactDataDefSetInterface extends SafeJsonSerializable
             Opt<Unique> aspectId,
             String binaryName,
             Opt<byte[]> compiledBytecode,
-            TList<Artifact> methods,
-            Opt<Long> metaId)
+            TList<Artifact> methods)
             implements ArtifactDataDefSetInterface {}
 }

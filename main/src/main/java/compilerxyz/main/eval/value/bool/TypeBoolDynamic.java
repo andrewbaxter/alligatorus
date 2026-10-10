@@ -30,7 +30,7 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
@@ -39,8 +39,6 @@ import compilerxyz.prelude.util.Opt;
 @BuiltinFull(uniqueId = 6103L)
 public record TypeBoolDynamic() implements Aspect, Type {
 
-    private static final MetaCache META = new MetaCache("bool_dynamic");
-
     @Override
     public String typeDesc() {
         return "dynamic bool";
@@ -48,7 +46,7 @@ public record TypeBoolDynamic() implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return META.get(xx, this);
+        return MetaSupport.derive(xx, this, "bool_dynamic");
     }
 
     @Override
