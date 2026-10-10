@@ -32,6 +32,10 @@ public final class T0021ObjectValueTypeTest {
                                 e.p("cast_from", e.mb.panic(e.s("cast_to unreachable"))),
                                 e.p("can_cast_to", e.mb.as(e.b(false), e.mb.typesBool())),
                                 e.p("cast_to", e.mb.panic(e.s("cast_to unreachable"))),
+                                e.p(
+                                        "meta",
+                                        e.seq(e.ret(e.call(
+                                                e.mb.builtin("eval", "meta_new"), e.s("t0021objectvaluetypetest"))))),
                                 e.p("is_equal", e.b(false))),
                         e.finish(e.v("d")))));
         var res = Helpers.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));

@@ -26,6 +26,7 @@ import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TOrderedMap;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @BuiltinFull(uniqueId = 6100L)
@@ -47,11 +48,19 @@ public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) impleme
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        var meta = MetaSupport.derive(xx, this, "argument_record");
+        var key = new ArrayList<Object>();
+        key.add("argument_record");
         for (var entry : fieldTypes.entrySet()) {
-            meta.field(MetaSupport.keyName(entry.getKey()), entry.getValue());
+            key.add(MetaSupport.keyName(entry.getKey()));
+            key.add(xx.vx.ix.metaLog.metaOf(xx, entry.getValue()));
         }
-        return meta;
+        return xx.vx.ix.metaLog.metaShared(key, () -> {
+            var meta = MetaSupport.derive(xx, this, "argument_record");
+            for (var entry : fieldTypes.entrySet()) {
+                meta.field(MetaSupport.keyName(entry.getKey()), entry.getValue());
+            }
+            return meta;
+        });
     }
 
     @Override

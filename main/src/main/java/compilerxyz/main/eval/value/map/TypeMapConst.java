@@ -29,13 +29,15 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactMapTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactMapValueCodec;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6162L)
@@ -55,11 +57,11 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
         return "const map(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ")";
     }
 
-    private final MetaCache meta = new MetaCache("map_const");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return meta.get(xx, this);
+        var key = new ArrayList<Object>(
+                List.of("map_const", xx.vx.ix.metaLog.metaOf(xx, keyType), xx.vx.ix.metaLog.metaOf(xx, valueType)));
+        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "map_const"));
     }
 
     @Override

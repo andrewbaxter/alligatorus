@@ -957,6 +957,18 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                 .str(
                                                                                                                                                                                                                                         "setter")))))))))))),
                                                                                         new TestMb.RecordPair(
+                                                                                                "meta",
+                                                                                                mb.seqOf(
+                                                                                                        mb.return_(
+                                                                                                                mb.call(
+                                                                                                                        mb
+                                                                                                                                .builtin(
+                                                                                                                                        "eval",
+                                                                                                                                        "meta_new"),
+                                                                                                                        mb
+                                                                                                                                .str(
+                                                                                                                                        "t0160evenoddtest_binding"))))),
+                                                                                        new TestMb.RecordPair(
                                                                                                 "merge",
                                                                                                 mb.labeled(
                                                                                                         "merge_res",
@@ -1086,6 +1098,18 @@ public final class T0160EvenOddTest {
                                                                         ifaceMethods(
                                                                                 mb,
                                                                                 TList.of(
+                                                                                        new TestMb.RecordPair(
+                                                                                                "meta",
+                                                                                                mb.seqOf(
+                                                                                                        mb.return_(
+                                                                                                                mb.call(
+                                                                                                                        mb
+                                                                                                                                .builtin(
+                                                                                                                                        "eval",
+                                                                                                                                        "meta_new"),
+                                                                                                                        mb
+                                                                                                                                .str(
+                                                                                                                                        "t0160evenoddtest"))))),
                                                                                         new TestMb.RecordPair(
                                                                                                 "is_equal",
                                                                                                 mb.panic(
@@ -3207,6 +3231,18 @@ public final class T0160EvenOddTest {
                                                                                         new TestMb.RecordPair(
                                                                                                 "fork",
                                                                                                 mb.scopeUse("outer")),
+                                                                                        new TestMb.RecordPair(
+                                                                                                "meta",
+                                                                                                mb.seqOf(
+                                                                                                        mb.return_(
+                                                                                                                mb.call(
+                                                                                                                        mb
+                                                                                                                                .builtin(
+                                                                                                                                        "eval",
+                                                                                                                                        "meta_new"),
+                                                                                                                        mb
+                                                                                                                                .str(
+                                                                                                                                        "t0160evenoddtest_binding"))))),
                                                                                         new TestMb.RecordPair(
                                                                                                 "merge",
                                                                                                 mb.call(

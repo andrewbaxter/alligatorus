@@ -23,7 +23,7 @@ public final class MetaSupport {
             if (fieldType.optIsSome()) {
                 meta.field(keyName(key), fieldType.optUnwrap());
             } else {
-                meta.field(keyName(key), MetaField.dataOnly(Meta.emptyData()));
+                meta.fieldRaw(keyName(key), MetaField.dataOnly(Meta.emptyData()));
             }
         }
     }

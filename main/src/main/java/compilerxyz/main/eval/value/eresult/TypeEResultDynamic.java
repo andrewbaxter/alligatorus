@@ -31,7 +31,7 @@ import compilerxyz.main.gen.GenExprErr;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactEResultTypeCodec;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -39,6 +39,8 @@ import compilerxyz.prelude.util.Pair;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6017L)
@@ -46,7 +48,6 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
 
     public final T elementType;
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
-    private final MetaCache meta = new MetaCache("eresult_dynamic");
 
     public TypeEResultDynamic(T elementType) {
         this.elementType = elementType;
@@ -67,7 +68,8 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return meta.get(xx, this);
+        var key = new ArrayList<Object>(List.of("eresult_dynamic", xx.vx.ix.metaLog.metaOf(xx, elementType)));
+        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "eresult_dynamic"));
     }
 
     @Override

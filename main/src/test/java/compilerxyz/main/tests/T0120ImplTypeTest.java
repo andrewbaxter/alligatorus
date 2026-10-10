@@ -191,6 +191,16 @@ public final class T0120ImplTypeTest {
                                                                                         mb.str("none")),
                                                                                 mb.tupleOf())),
                                                                 new TestMb.RecordPair(
+                                                                        "meta",
+                                                                        mb.seqOf(
+                                                                                mb.return_(
+                                                                                        mb.call(
+                                                                                                mb.builtin(
+                                                                                                        "eval",
+                                                                                                        "meta_new"),
+                                                                                                mb.str(
+                                                                                                        "t0120impltypetest"))))),
+                                                                new TestMb.RecordPair(
                                                                         "is_equal",
                                                                         mb.seqOf(
                                                                                 mb.return_(

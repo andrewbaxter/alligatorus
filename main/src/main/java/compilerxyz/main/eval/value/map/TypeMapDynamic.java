@@ -38,13 +38,15 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 import compilerxyz.prelude.util.TOrderedMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @BuiltinFull(uniqueId = 6122L)
@@ -64,11 +66,11 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
         return "map(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ")";
     }
 
-    private final MetaCache meta = new MetaCache("map_dynamic");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return meta.get(xx, this);
+        var key = new ArrayList<Object>(
+                List.of("map_dynamic", xx.vx.ix.metaLog.metaOf(xx, keyType), xx.vx.ix.metaLog.metaOf(xx, valueType)));
+        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "map_dynamic"));
     }
 
     @Override

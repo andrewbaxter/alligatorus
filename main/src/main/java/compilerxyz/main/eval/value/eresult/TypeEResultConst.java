@@ -28,13 +28,15 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactEResultTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactEResultValueCodec;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6464L)
@@ -42,7 +44,6 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
 
     public final T elementType;
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
-    private final MetaCache meta = new MetaCache("eresult_const");
 
     public TypeEResultConst(T elementType) {
         this.elementType = elementType;
@@ -55,7 +56,8 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return meta.get(xx, this);
+        var key = new ArrayList<Object>(List.of("eresult_const", xx.vx.ix.metaLog.metaOf(xx, elementType)));
+        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "eresult_const"));
     }
 
     @Override

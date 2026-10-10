@@ -30,9 +30,11 @@ import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspect, OptionDynamic {
     public final T elementType;
@@ -82,11 +84,11 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
         return "option(" + elementType.typeDesc() + ")";
     }
 
-    private final MetaCache meta = new MetaCache("option_specialized_dynamic");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return meta.get(xx, this);
+        var key =
+                new ArrayList<Object>(List.of("option_specialized_dynamic", xx.vx.ix.metaLog.metaOf(xx, elementType)));
+        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "option_specialized_dynamic"));
     }
 
     @Override

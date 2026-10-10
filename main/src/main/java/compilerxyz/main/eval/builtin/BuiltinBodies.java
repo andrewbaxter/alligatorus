@@ -48,6 +48,8 @@ import compilerxyz.main.gen.ListStoreInt;
 import compilerxyz.main.gen.Target;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.langhelp.Sources;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.syntax.HashValue;
 import compilerxyz.main.syntax.RemoteOrigin;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
@@ -95,6 +97,16 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.exporter_object_const", scopeId = 5041L)
     public static ArtifactExporter exporterObjectConst(Type payloadType) {
         return new ArtifactExporterObjectConstPayload(payloadType);
+    }
+
+    @BuiltinPath(value = "eval.meta_new", scopeId = 5054L)
+    public static Meta metaNew(String kind) {
+        return Meta.ofKind(kind);
+    }
+
+    @BuiltinPath(value = "eval.meta_new_data", scopeId = 5055L)
+    public static Meta metaNewData(String kind, JsonValue data) {
+        return new Meta(kind, data);
     }
 
     @BuiltinPath(value = "log", scopeId = 5001L)

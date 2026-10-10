@@ -33,11 +33,13 @@ import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
+import java.util.ArrayList;
+import java.util.List;
 
 @BuiltinFull(uniqueId = 6117L)
 public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListDynamic {
@@ -59,11 +61,10 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
         return "list(" + elementType.typeDesc() + ")";
     }
 
-    private final MetaCache meta = new MetaCache("list_boxed_dynamic");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return meta.get(xx, this);
+        var key = new ArrayList<Object>(List.of("list_boxed_dynamic", xx.vx.ix.metaLog.metaOf(xx, elementType)));
+        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "list_boxed_dynamic"));
     }
 
     @Override

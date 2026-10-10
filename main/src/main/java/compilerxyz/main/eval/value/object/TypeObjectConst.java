@@ -45,6 +45,7 @@ import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
+import java.util.List;
 import java.util.function.Function;
 
 @SuppressWarnings("rawtypes")
@@ -57,7 +58,8 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
 
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return MetaSupport.derive(xx, this, "object_const");
+        return xx.vx.ix.metaLog.metaShared(
+                List.of("object_const", typeDesc()), () -> MetaSupport.derive(xx, this, "object_const"));
     }
 
     public IList<TypeObjectCastRule> castRules() {

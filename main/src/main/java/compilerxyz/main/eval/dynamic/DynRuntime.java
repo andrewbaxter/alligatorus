@@ -25,7 +25,6 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenLists;
 import compilerxyz.main.gen.GenOptions;
 import compilerxyz.main.gen.Value;
-import compilerxyz.main.meta.Meta;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
@@ -65,16 +64,6 @@ public final class DynRuntime {
     @CodegenDescriptor
     public static EResult<ArtifactExporter> sourceObjectTypeExporter() {
         return EResult.ok(ExporterRoot.SOURCE_OBJECT_TYPE_INSTANCE);
-    }
-
-    @CodegenDescriptor
-    public static Meta sourceObjectTypeMeta(Object self, ExprContext xx) {
-        return Meta.ofKind(mustCast(Type.class, self).typeDesc());
-    }
-
-    @CodegenDescriptor
-    public static Meta sourceObjectBindingMeta(Object self, ExprContext xx) {
-        return Meta.ofKind("binding");
     }
 
     @CodegenDescriptor

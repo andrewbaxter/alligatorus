@@ -30,13 +30,15 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactOptionTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactOptionValueCodec;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6463L)
@@ -54,11 +56,10 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
         return "const option(" + elementType.typeDesc() + ")";
     }
 
-    private final MetaCache meta = new MetaCache("option_const");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return meta.get(xx, this);
+        var key = new ArrayList<Object>(List.of("option_const", xx.vx.ix.metaLog.metaOf(xx, elementType)));
+        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "option_const"));
     }
 
     @Override

@@ -79,7 +79,7 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
         cell.metaCache = Opt.some(meta);
         if (cell.importedMeta.optIsSome()) cell.importedMeta.optUnwrap().apply(meta);
         for (var methodName : cell.methodNames()) {
-            meta.field(methodName, Meta.ofKind("interface_method"));
+            meta.fieldMeta(methodName, Meta.ofKind("interface_method"));
         }
         return meta;
     }

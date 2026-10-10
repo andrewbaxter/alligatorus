@@ -956,6 +956,18 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                                                 .str(
                                                                                                                                                                                                                                         "setter")))))))))))),
                                                                                         new TestMb.RecordPair(
+                                                                                                "meta",
+                                                                                                mb.seqOf(
+                                                                                                        mb.return_(
+                                                                                                                mb.call(
+                                                                                                                        mb
+                                                                                                                                .builtin(
+                                                                                                                                        "eval",
+                                                                                                                                        "meta_new"),
+                                                                                                                        mb
+                                                                                                                                .str(
+                                                                                                                                        "t0165mutabledropforktest_binding"))))),
+                                                                                        new TestMb.RecordPair(
                                                                                                 "merge",
                                                                                                 mb.labeled(
                                                                                                         "merge_res",
@@ -1085,6 +1097,18 @@ public final class T0165MutableDropForkTest {
                                                                         ifaceMethods(
                                                                                 mb,
                                                                                 TList.of(
+                                                                                        new TestMb.RecordPair(
+                                                                                                "meta",
+                                                                                                mb.seqOf(
+                                                                                                        mb.return_(
+                                                                                                                mb.call(
+                                                                                                                        mb
+                                                                                                                                .builtin(
+                                                                                                                                        "eval",
+                                                                                                                                        "meta_new"),
+                                                                                                                        mb
+                                                                                                                                .str(
+                                                                                                                                        "t0165mutabledropforktest"))))),
                                                                                         new TestMb.RecordPair(
                                                                                                 "is_equal",
                                                                                                 mb.panic(
@@ -3238,6 +3262,18 @@ public final class T0165MutableDropForkTest {
                                                                                         new TestMb.RecordPair(
                                                                                                 "fork",
                                                                                                 mb.scopeUse("outer")),
+                                                                                        new TestMb.RecordPair(
+                                                                                                "meta",
+                                                                                                mb.seqOf(
+                                                                                                        mb.return_(
+                                                                                                                mb.call(
+                                                                                                                        mb
+                                                                                                                                .builtin(
+                                                                                                                                        "eval",
+                                                                                                                                        "meta_new"),
+                                                                                                                        mb
+                                                                                                                                .str(
+                                                                                                                                        "t0165mutabledropforktest_binding"))))),
                                                                                         new TestMb.RecordPair(
                                                                                                 "merge",
                                                                                                 mb.call(

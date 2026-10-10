@@ -9,14 +9,18 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TSet;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public final class MetaLog {
     private final Metas metas;
     private final TList<Frame> frames = new TList<>();
     private final TSet<ExprKey> seen = new TSet<>();
     private final Map<Type, Meta> byType = new IdentityHashMap<>();
+    private final Map<List<Object>, Meta> byStructure = new HashMap<>();
     public final TList<Metas.ExprMetaRow> exprMetas = new TList<>();
     public final TList<Metas.ScopeEvent> scopeEvents = new TList<>();
 
@@ -41,6 +45,14 @@ public final class MetaLog {
         if (cached != null) return cached;
         var meta = type.typeMeta(xx);
         byType.put(type, meta);
+        return meta;
+    }
+
+    public Meta metaShared(List<Object> key, Supplier<Meta> build) {
+        var cached = byStructure.get(key);
+        if (cached != null) return cached;
+        var meta = build.get();
+        byStructure.put(key, meta);
         return meta;
     }
 

@@ -135,7 +135,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
             var methodMeta = new Meta("source_method", Meta.descData(m.name));
             if (m.argType.optIsSome()) methodMeta.field("arg", m.argType.optUnwrap());
             if (m.retType.optIsSome()) methodMeta.field("ret", m.retType.optUnwrap());
-            meta.field(m.name, methodMeta);
+            meta.fieldMeta(m.name, methodMeta);
         }
         return meta;
     }

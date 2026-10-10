@@ -363,6 +363,16 @@ public final class T0130DropThrowTest {
                                                                                                         mb.str("none")),
                                                                                                 mb.tupleOf())))),
                                                                 new TestMb.RecordPair(
+                                                                        "meta",
+                                                                        mb.seqOf(
+                                                                                mb.return_(
+                                                                                        mb.call(
+                                                                                                mb.builtin(
+                                                                                                        "eval",
+                                                                                                        "meta_new"),
+                                                                                                mb.str(
+                                                                                                        "t0130dropthrowtest"))))),
+                                                                new TestMb.RecordPair(
                                                                         "is_equal",
                                                                         mb.seqOf(
                                                                                 mb.return_(
@@ -606,6 +616,16 @@ public final class T0130DropThrowTest {
                                                                                                                 "codevalue_dynamic failed")))),
                                                                                 Opt.none())),
                                                                 new TestMb.RecordPair("fork", mb.scopeUse("outer")),
+                                                                new TestMb.RecordPair(
+                                                                        "meta",
+                                                                        mb.seqOf(
+                                                                                mb.return_(
+                                                                                        mb.call(
+                                                                                                mb.builtin(
+                                                                                                        "eval",
+                                                                                                        "meta_new"),
+                                                                                                mb.str(
+                                                                                                        "t0130dropthrowtest_binding"))))),
                                                                 new TestMb.RecordPair(
                                                                         "merge",
                                                                         mb.call(

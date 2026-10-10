@@ -16,6 +16,7 @@ module compilerxyz.main {
 
     exports compilerxyz.main.artifact;
     exports compilerxyz.main.eval;
+    exports compilerxyz.main.meta;
     exports compilerxyz.main.eval.aspect;
     exports compilerxyz.main.eval.binding;
     exports compilerxyz.main.eval.builtin;

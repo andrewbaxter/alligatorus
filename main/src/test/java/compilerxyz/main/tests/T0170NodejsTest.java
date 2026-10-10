@@ -502,6 +502,7 @@ public final class T0170NodejsTest {
                         rp("cast_from", eresultOk(mb, mb.typesCve(), mb.field(mb.scopeUse("arg"), mb.str("cv")))),
                         rp("can_cast_to", mb.bool(false)),
                         rp("cast_to", mb.panic(mb.str(desc + ".cast_to not implemented"))),
+                        rp("meta", mb.call(mb.builtin("eval", "meta_new"), mb.str(desc))),
                         rp("is_equal", mb.bool(false)))));
     }
 
@@ -1058,6 +1059,7 @@ public final class T0170NodejsTest {
                                                                                                                                         .str(
                                                                                                                                                 "type"))))))))))))),
                         rp("fork", mb.scopeUse("outer")),
+                        rp("meta", mb.call(mb.builtin("eval", "meta_new"), mb.str("t0170nodejstest_binding"))),
                         rp("merge", mb.panic(mb.str("nbinding.merge not implemented"))))));
         exprs.add(mb.bind("ntarget", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs target"))));
         exprs.add(mb.call(

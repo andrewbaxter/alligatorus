@@ -37,12 +37,14 @@ import compilerxyz.main.gen.GenOptions;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactOptionTypeCodec;
 import compilerxyz.main.meta.Meta;
-import compilerxyz.main.meta.MetaCache;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6008L)
@@ -86,11 +88,10 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
         return "option(" + elementType.typeDesc() + ")";
     }
 
-    private final MetaCache meta = new MetaCache("option_dynamic");
-
     @Override
     public Meta typeMeta(ExprContext xx) {
-        return meta.get(xx, this);
+        var key = new ArrayList<Object>(List.of("option_dynamic", xx.vx.ix.metaLog.metaOf(xx, elementType)));
+        return xx.vx.ix.metaLog.metaShared(key, () -> MetaSupport.derive(xx, this, "option_dynamic"));
     }
 
     @Override
