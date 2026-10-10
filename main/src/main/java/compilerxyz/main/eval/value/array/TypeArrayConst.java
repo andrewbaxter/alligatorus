@@ -27,6 +27,8 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactArrayTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactArrayValueCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -41,6 +43,7 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
 
     public final T elementType;
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
+    private final MetaCache meta = new MetaCache("array_const");
 
     public TypeArrayConst(T elementType) {
         this.elementType = elementType;
@@ -49,6 +52,11 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
     @Override
     public String typeDesc() {
         return "const array(" + elementType.typeDesc() + ")";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return meta.get(xx, this);
     }
 
     @Override

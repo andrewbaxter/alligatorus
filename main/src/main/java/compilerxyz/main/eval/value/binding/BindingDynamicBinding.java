@@ -16,6 +16,7 @@ import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.meta.Meta;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.TList;
 
@@ -30,6 +31,11 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type) implements 
         Value value =
                 new ValueDynamic(new ValueDynamicSource.Slot(dynamicKey, JvmSort.descriptor(xx, type), setter), type);
         return new CodeValue(code, EvalOutcome.ofValue(value));
+    }
+
+    @Override
+    public Meta bindingMeta(ExprContext xx) {
+        return type.typeMeta(xx);
     }
 
     @Override

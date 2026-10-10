@@ -23,6 +23,8 @@ import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataSourceUnionNewCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -41,6 +43,11 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type, int varia
     @Override
     public String typeDesc() {
         return "definition_set_union_new_const";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "type_source_union_new_const");
     }
 
     @Override

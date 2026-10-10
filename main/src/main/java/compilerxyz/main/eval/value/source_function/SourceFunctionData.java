@@ -170,7 +170,9 @@ public final class SourceFunctionData {
         }
         var funcXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, exceptionType);
 
+        xx.vx.ix.metaLog.scopeBegin(implExprAst.loc());
         var implResult = ConstEval.constEval(funcXx, implExprAst);
+        xx.vx.ix.metaLog.scopeEnd(implExprAst.loc());
         if (implResult.hasErrors()) {
             return implResult.errorsOpt();
         }

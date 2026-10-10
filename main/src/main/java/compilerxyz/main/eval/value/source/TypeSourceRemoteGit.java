@@ -11,6 +11,8 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
@@ -19,9 +21,16 @@ import compilerxyz.prelude.util.Opt;
 @BuiltinFull(uniqueId = 6471L)
 public record TypeSourceRemoteGit() implements Aspect, Type {
 
+    private static final MetaCache META = new MetaCache("source_remote_git");
+
     @Override
     public String typeDesc() {
         return "source.remote.git";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return META.get(xx, this);
     }
 
     @Override

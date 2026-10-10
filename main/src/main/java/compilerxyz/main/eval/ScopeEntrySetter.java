@@ -19,6 +19,7 @@ public final class ScopeEntrySetter implements BindingSetter {
         }
         entry.binding = newBinding;
         entry.state = scope.vx.dropStateCounter.next();
+        scope.vx.ix.metaLog.scopeSet(entry.name, newBinding);
         if (dropModified) {
             entry.dropState = scope.vx.dropStateCounter.next();
         }

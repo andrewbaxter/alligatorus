@@ -11,6 +11,8 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -33,6 +35,11 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind) 
                     case ERR -> "err";
                     case ERRS -> "errs";
                 };
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "eresult_variant_constructor_dynamic");
     }
 
     @Override

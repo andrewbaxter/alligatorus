@@ -2,6 +2,7 @@ package compilerxyz.main.eval;
 
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.aspect.Aspect;
+import compilerxyz.main.meta.Meta;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
@@ -23,4 +24,8 @@ public interface Type extends Artifactable {
     String typeDesc();
 
     Opt<Aspect> typeAspect(ExprContext xx, Unique key);
+
+    default Meta typeMeta(ExprContext xx) {
+        return Meta.ofKind(typeDesc());
+    }
 }

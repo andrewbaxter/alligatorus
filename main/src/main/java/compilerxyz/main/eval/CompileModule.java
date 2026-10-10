@@ -16,6 +16,7 @@ import compilerxyz.main.gen.GenBuiltinTree;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.GlobalContext;
+import compilerxyz.main.meta.Metas;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -25,7 +26,11 @@ public final class CompileModule {
     private CompileModule() {}
 
     public record CompileModuleResult(
-            CompileRes res, TList<CompileId> localDeps, TList<Compiles.LocalMeta> localData) {}
+            CompileRes res,
+            TList<CompileId> localDeps,
+            TList<Compiles.LocalMeta> localData,
+            TList<Metas.ExprMetaRow> exprMetas,
+            TList<Metas.ScopeEvent> scopeEvents) {}
 
     public static CompileModuleResult compileModuleId(
             GlobalContext gx,
@@ -181,7 +186,9 @@ public final class CompileModule {
                                     allLogs,
                                     new CompileResResult.Err(err.errors())),
                             cix.localDependencies,
-                            cix.localData);
+                            cix.localData,
+                            cix.metaLog.exprMetas,
+                            cix.metaLog.scopeEvents);
                 }
                 case EvalOutcome.Ok ok -> {
                     allLogs.addAll(ok.logs());
@@ -198,7 +205,9 @@ public final class CompileModule {
                                             allLogs,
                                             new CompileResResult.Ok(Opt.none())),
                                     cix.localDependencies,
-                                    cix.localData);
+                                    cix.localData,
+                                    cix.metaLog.exprMetas,
+                                    cix.metaLog.scopeEvents);
                         }
                         var exportErrors = new TList<ExprErr>();
                         var exportArt = Artifactable.exportArtifact(
@@ -212,7 +221,9 @@ public final class CompileModule {
                                             allLogs,
                                             new CompileResResult.Err(exportErrors)),
                                     cix.localDependencies,
-                                    cix.localData);
+                                    cix.localData,
+                                    cix.metaLog.exprMetas,
+                                    cix.metaLog.scopeEvents);
                         }
                         var artifact = exportArt.requireValue("ArtifactSupport::exportArtifact artifact");
                         return new CompileModuleResult(
@@ -222,7 +233,9 @@ public final class CompileModule {
                                         allLogs,
                                         new CompileResResult.Ok(Opt.some(artifact))),
                                 cix.localDependencies,
-                                cix.localData);
+                                cix.localData,
+                                cix.metaLog.exprMetas,
+                                cix.metaLog.scopeEvents);
                     }
                     if (ok.value().optIsNone()) {
                         return new CompileModuleResult(
@@ -234,7 +247,9 @@ public final class CompileModule {
                                                 rootLoc,
                                                 TList.of(new ExprSubErr.Opaque("Stage yields no expression")))))),
                                 cix.localDependencies,
-                                cix.localData);
+                                cix.localData,
+                                cix.metaLog.exprMetas,
+                                cix.metaLog.scopeEvents);
                     }
                     rootExpr = mustCast(Expr.class, ok.value().optUnwrap());
                 }

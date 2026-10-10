@@ -9,12 +9,18 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.meta.Meta;
 import compilerxyz.prelude.util.TList;
 
 public record BindingValue(Value value) implements Binding {
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
+    }
+
+    @Override
+    public Meta bindingMeta(ExprContext xx) {
+        return value.valueType().typeMeta(xx);
     }
 
     @Override

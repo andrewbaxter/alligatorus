@@ -25,7 +25,7 @@
 }:
 let
   # The language server protocol's Java bindings are generated at build time from
-  # the schema merman owns (editor/merman3/langserver/schema.json).
+  # the schema merman owns (merman/langserver/schema.json).
   schemask = rustPlatform.buildRustPackage {
     pname = "schemask";
     version = "0.1.5";
@@ -50,7 +50,7 @@ maven.buildMavenPackage rec {
       ./main/pom.xml
       ./main/src
       ./lint/pom.xml
-      ./editor/merman3/langserver/schema.json
+      ./merman/langserver/schema.json
     ];
   };
 

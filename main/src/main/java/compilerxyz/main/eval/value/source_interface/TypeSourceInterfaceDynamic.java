@@ -31,6 +31,8 @@ import compilerxyz.main.gen.GenBuiltinInterfaces;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetInterfaceCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
@@ -66,6 +68,15 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
     @Override
     public String typeDesc() {
         return cell.description().optUnwrapOr("interface");
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        var meta = MetaSupport.derive(xx, this, "source_interface");
+        for (var methodName : cell.methodNames()) {
+            meta.field(methodName, Meta.ofKind("interface_method"));
+        }
+        return meta;
     }
 
     @Override

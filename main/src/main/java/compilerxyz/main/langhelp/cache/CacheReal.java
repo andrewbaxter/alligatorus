@@ -13,11 +13,15 @@ import compilerxyz.main.eval.CompileResResult;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ImportStateId;
 import compilerxyz.main.eval.LogEntry;
+import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.SourceId;
 import compilerxyz.main.gen.codec.ArtifactExprErrCodec;
 import compilerxyz.main.gen.codec.SourceModuleCodec;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.Sources;
+import compilerxyz.main.meta.MetaId;
+import compilerxyz.main.meta.Metas;
+import compilerxyz.main.meta.MetasBase;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueNumberInt;
@@ -65,8 +69,8 @@ import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 32;
+public final class CacheReal extends MetasBase implements Sources, Artifacts, Compiles, AutoCloseable {
+    private static final int SCHEMA_VERSION = 33;
 
     private final Connection conn;
     private final Object dbLock = new Object();
@@ -76,6 +80,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
     private final TMap<String, SourceSlot> sourceMem = new TMap<>();
     private final ReentrantLock sourceMapLock = new ReentrantLock();
     private final TMap<ArtifactIdSource, ArtifactBody> artifactMem = new TMap<>();
+    private final TMap<MetaId, JsonValue> metaMem = new TMap<>();
     private final TMap<ArtifactIdSource, ArtifactBody> pendingArtifacts = new TMap<>();
     private final TMap<CompileId, CompileSlot> compileMem = new TMap<>();
     private final ReentrantLock compileMapLock = new ReentrantLock();
@@ -133,6 +138,9 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                     st.executeUpdate("DROP TABLE IF EXISTS compiles");
                     st.executeUpdate("DROP TABLE IF EXISTS compile_deps");
                     st.executeUpdate("DROP TABLE IF EXISTS compile_data");
+                    st.executeUpdate("DROP TABLE IF EXISTS metas");
+                    st.executeUpdate("DROP TABLE IF EXISTS expr_metas");
+                    st.executeUpdate("DROP TABLE IF EXISTS scope_events");
                 }
             }
             try (var st = conn.createStatement()) {
@@ -161,6 +169,19 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                         + " PRIMARY KEY (import_state, source, dep_import_state, dep_source))");
                 st.executeUpdate(
                         "CREATE INDEX IF NOT EXISTS compile_deps_by_dep ON compile_deps (dep_source, dep_import_state)");
+                st.executeUpdate("CREATE TABLE IF NOT EXISTS metas ("
+                        + "id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, skey TEXT NOT NULL,"
+                        + " body TEXT NOT NULL)");
+                st.executeUpdate("CREATE INDEX IF NOT EXISTS metas_skey ON metas (skey)");
+                st.executeUpdate("CREATE TABLE IF NOT EXISTS expr_metas ("
+                        + "import_state INTEGER NOT NULL, source INTEGER NOT NULL, expr_source INTEGER NOT NULL,"
+                        + " expr INTEGER NOT NULL, meta INTEGER NOT NULL,"
+                        + " PRIMARY KEY (import_state, source, expr_source, expr, meta))");
+                st.executeUpdate("CREATE INDEX IF NOT EXISTS expr_metas_expr ON expr_metas (expr_source, expr)");
+                st.executeUpdate("CREATE TABLE IF NOT EXISTS scope_events ("
+                        + "import_state INTEGER NOT NULL, source INTEGER NOT NULL, seq INTEGER NOT NULL,"
+                        + " expr_source INTEGER NOT NULL, expr INTEGER, kind TEXT NOT NULL, name TEXT NOT NULL,"
+                        + " meta INTEGER, PRIMARY KEY (import_state, source, seq))");
             }
             if (readSchemaVersion().optIsNone()) {
                 try (var ins = conn.prepareStatement("INSERT INTO schema_version (version) VALUES (?)")) {
@@ -699,7 +720,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 ps.setLong(2, id.source().value());
                 ps.executeUpdate();
             }
-            for (var table : new String[] {"compile_deps", "compile_data"}) {
+            for (var table : new String[] {"compile_deps", "compile_data", "expr_metas", "scope_events"}) {
                 try (var ps =
                         conn.prepareStatement("DELETE FROM " + table + " WHERE import_state = ? AND source = ?")) {
                     ps.setLong(1, id.importState().value());
@@ -969,7 +990,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                 }
                                 ps.executeUpdate();
                             }
-                            for (var table : new String[] {"compile_deps", "compile_data"}) {
+                            for (var table :
+                                    new String[] {"compile_deps", "compile_data", "expr_metas", "scope_events"}) {
                                 try (var ps = conn.prepareStatement(
                                         "DELETE FROM " + table + " WHERE import_state = ? AND source = ?")) {
                                     ps.setLong(1, id.importState().value());
@@ -995,6 +1017,43 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                                     ps.setLong(2, id.source().value());
                                     ps.setLong(3, depId.importState().value());
                                     ps.setLong(4, depId.source().value());
+                                    ps.addBatch();
+                                }
+                                ps.executeBatch();
+                            }
+                            try (var ps = conn.prepareStatement("INSERT OR IGNORE INTO expr_metas"
+                                    + " (import_state, source, expr_source, expr, meta) VALUES (?, ?, ?, ?, ?)")) {
+                                for (var row : product.exprMetas()) {
+                                    if (row.loc().expr().optIsNone()) continue;
+                                    ps.setLong(1, id.importState().value());
+                                    ps.setLong(2, id.source().value());
+                                    ps.setLong(3, row.loc().source().value());
+                                    ps.setLong(4, row.loc().expr().optUnwrap());
+                                    ps.setLong(5, row.meta().value());
+                                    ps.addBatch();
+                                }
+                                ps.executeBatch();
+                            }
+                            try (var ps = conn.prepareStatement("INSERT OR REPLACE INTO scope_events"
+                                    + " (import_state, source, seq, expr_source, expr, kind, name, meta)"
+                                    + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
+                                for (var ev : product.scopeEvents()) {
+                                    ps.setLong(1, id.importState().value());
+                                    ps.setLong(2, id.source().value());
+                                    ps.setLong(3, ev.seq());
+                                    ps.setLong(4, ev.loc().source().value());
+                                    if (ev.loc().expr().optIsSome()) {
+                                        ps.setLong(5, ev.loc().expr().optUnwrap());
+                                    } else {
+                                        ps.setNull(5, Types.INTEGER);
+                                    }
+                                    ps.setString(6, ev.kind().name());
+                                    ps.setString(7, ev.name());
+                                    if (ev.meta().optIsSome()) {
+                                        ps.setLong(8, ev.meta().optUnwrap().value());
+                                    } else {
+                                        ps.setNull(8, Types.INTEGER);
+                                    }
                                     ps.addBatch();
                                 }
                                 ps.executeBatch();
@@ -1028,6 +1087,123 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             return out;
         } finally {
             compileMapLock.unlock();
+        }
+    }
+
+    @Override
+    protected MetaId metasBaseAllocate() {
+        synchronized (dbLock) {
+            try (var ps = conn.prepareStatement(
+                    "INSERT INTO metas (kind, skey, body) VALUES ('', '', '')", Statement.RETURN_GENERATED_KEYS)) {
+                ps.executeUpdate();
+                try (var rs = ps.getGeneratedKeys()) {
+                    if (!rs.next()) throw new IllegalStateException("meta id allocation returned no key");
+                    return new MetaId(rs.getLong(1));
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.metasBaseAllocate", e);
+            }
+        }
+    }
+
+    @Override
+    protected void metasBaseStore(MetaId id, String kind, String structuralKey, JsonValue body) {
+        synchronized (dbLock) {
+            metaMem.put(id, body);
+            try (var ps = conn.prepareStatement("UPDATE metas SET kind = ?, skey = ?, body = ? WHERE id = ?")) {
+                ps.setString(1, kind);
+                ps.setString(2, structuralKey);
+                ps.setString(3, JsonValues.serialize(body));
+                ps.setLong(4, id.value());
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.metasBaseStore", e);
+            }
+        }
+    }
+
+    @Override
+    protected Opt<MetaId> metasBaseFindStructural(String structuralKey) {
+        synchronized (dbLock) {
+            try (var ps = conn.prepareStatement("SELECT id FROM metas WHERE skey = ? LIMIT 1")) {
+                ps.setString(1, structuralKey);
+                try (var rs = ps.executeQuery()) {
+                    return rs.next() ? Opt.some(new MetaId(rs.getLong(1))) : Opt.none();
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.metasBaseFindStructural", e);
+            }
+        }
+    }
+
+    @Override
+    public Opt<JsonValue> metasGet(MetaId id) {
+        synchronized (dbLock) {
+            var mem = metaMem.getOpt(id);
+            if (mem.optIsSome()) return mem;
+            try (var ps = conn.prepareStatement("SELECT body FROM metas WHERE id = ? AND skey <> ''")) {
+                ps.setLong(1, id.value());
+                try (var rs = ps.executeQuery()) {
+                    if (!rs.next()) return Opt.none();
+                    var body = parseJson(rs.getString(1));
+                    metaMem.put(id, body);
+                    return Opt.some(body);
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.metasGet", e);
+            }
+        }
+    }
+
+    @Override
+    public TList<Metas.ExprMeta> metasForExpr(SourceId source, long expr) {
+        synchronized (dbLock) {
+            try (var ps = conn.prepareStatement(
+                    "SELECT import_state, source, meta FROM expr_metas WHERE expr_source = ? AND expr = ?"
+                            + " ORDER BY import_state, source, meta")) {
+                ps.setLong(1, source.value());
+                ps.setLong(2, expr);
+                try (var rs = ps.executeQuery()) {
+                    var out = new TList<Metas.ExprMeta>();
+                    while (rs.next()) {
+                        out.add(new Metas.ExprMeta(
+                                new CompileId(new ImportStateId(rs.getLong(1)), new SourceId(rs.getLong(2))),
+                                new MetaId(rs.getLong(3))));
+                    }
+                    return out;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.metasForExpr", e);
+            }
+        }
+    }
+
+    @Override
+    public TList<Metas.ScopeEvent> metasScopeEvents(CompileId compile) {
+        synchronized (dbLock) {
+            try (var ps = conn.prepareStatement("SELECT seq, expr_source, expr, kind, name, meta FROM scope_events"
+                    + " WHERE import_state = ? AND source = ? ORDER BY seq")) {
+                ps.setLong(1, compile.importState().value());
+                ps.setLong(2, compile.source().value());
+                try (var rs = ps.executeQuery()) {
+                    var out = new TList<Metas.ScopeEvent>();
+                    while (rs.next()) {
+                        var exprRaw = rs.getLong(3);
+                        Opt<Long> exprOpt = rs.wasNull() ? Opt.none() : Opt.some(exprRaw);
+                        var metaRaw = rs.getLong(6);
+                        Opt<MetaId> metaOpt = rs.wasNull() ? Opt.none() : Opt.some(new MetaId(metaRaw));
+                        out.add(new Metas.ScopeEvent(
+                                rs.getLong(1),
+                                new QExprId(new SourceId(rs.getLong(2)), exprOpt),
+                                Metas.ScopeEventKind.valueOf(rs.getString(4)),
+                                rs.getString(5),
+                                metaOpt));
+                    }
+                    return out;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("CacheReal.metasScopeEvents", e);
+            }
         }
     }
 

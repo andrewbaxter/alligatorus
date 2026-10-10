@@ -32,6 +32,8 @@ import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataSourceInterfaceTypeCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -53,6 +55,11 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
     public String typeDesc() {
         if (type.optIsSome()) return type.optUnwrap().typeDesc();
         return "interface";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "type_source_interface_dynamic");
     }
 
     @Override

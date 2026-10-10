@@ -48,6 +48,8 @@ import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueBoolean;
@@ -280,6 +282,11 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
                     });
         }
         return "tuple(" + String.join(", ", parts) + ")";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "tuple");
     }
 
     public Type valueType() {

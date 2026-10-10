@@ -14,6 +14,8 @@ import compilerxyz.main.eval.value.object.TypeObjectDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -24,6 +26,11 @@ public record TypeInterfaceMethodBuiltin(TypeObjectDynamic receiverType, String 
     @Override
     public String typeDesc() {
         return "interface method " + name;
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "interface_method_builtin");
     }
 
     @Override

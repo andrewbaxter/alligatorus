@@ -128,7 +128,8 @@ public final class ImportRun {
                 var compileRes = gx.compiles.compilesGetOrCompute(compileId, abs, () -> {
                     var module = SourceModuleToModule.sourceModuleToModule(m.id(), m.module());
                     var cir = CompileModule.compileModuleId(gx, ix.importState, module, newPath, abs);
-                    return new Compiles.CompileProduct(cir.res(), m.local(), cir.localDeps(), cir.localData());
+                    return new Compiles.CompileProduct(
+                            cir.res(), m.local(), cir.localDeps(), cir.localData(), cir.exprMetas(), cir.scopeEvents());
                 });
                 yield EResult.ok(new SpecOutcome.ModuleOut(compileId, abs, compileRes));
             }

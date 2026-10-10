@@ -5,6 +5,7 @@ import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.GlobalContext;
+import compilerxyz.main.meta.MetaLog;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -29,6 +30,7 @@ public final class CompileImportContext {
     public final SourceSpecAbsolute currentSpec;
     public final TList<CompileId> localDependencies = new TList<>();
     public final TList<Compiles.LocalMeta> localData = new TList<>();
+    public final MetaLog metaLog;
 
     public Opt<DefinitionSetClassLoader> classLoader = Opt.none();
 
@@ -45,5 +47,6 @@ public final class CompileImportContext {
         this.sourceId = sourceId;
         this.compilePath = compilePath;
         this.currentSpec = currentSpec;
+        this.metaLog = new MetaLog(gx.metas);
     }
 }

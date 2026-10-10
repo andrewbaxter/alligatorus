@@ -8,12 +8,18 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
+import compilerxyz.main.meta.Meta;
 import compilerxyz.prelude.util.TList;
 
 public record ArgumentTupleBinding(ArgumentTuple tuple) implements Binding {
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         return new CodeValue(Code.none(loc), EvalOutcome.ofValue(tuple));
+    }
+
+    @Override
+    public Meta bindingMeta(ExprContext xx) {
+        return tuple.typeMeta(xx);
     }
 
     @Override

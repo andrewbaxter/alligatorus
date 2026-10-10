@@ -24,6 +24,8 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataSourceObjectNewCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -42,6 +44,11 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
     @Override
     public String typeDesc() {
         return type.description.optUnwrapOr("definition_set_object_new_const");
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "type_source_object_new_const");
     }
 
     @Override

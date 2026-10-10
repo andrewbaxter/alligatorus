@@ -8,6 +8,7 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
+import compilerxyz.main.meta.Meta;
 import compilerxyz.prelude.util.TList;
 
 public record BindingIteratorSlot(BindingId iteratorSlot) implements Binding {
@@ -20,6 +21,11 @@ public record BindingIteratorSlot(BindingId iteratorSlot) implements Binding {
     @Override
     public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
         return EResult.ok(Code.none(loc));
+    }
+
+    @Override
+    public Meta bindingMeta(ExprContext xx) {
+        return Meta.ofKind("binding_iterator_slot");
     }
 
     @Override

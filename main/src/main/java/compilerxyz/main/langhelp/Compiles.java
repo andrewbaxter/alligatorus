@@ -2,6 +2,7 @@ package compilerxyz.main.langhelp;
 
 import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.CompileRes;
+import compilerxyz.main.meta.Metas;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -15,7 +16,12 @@ public interface Compiles {
     TList<CompileRes> compilesResults();
 
     record CompileProduct(
-            CompileRes res, Opt<LocalMeta> local, TList<CompileId> localDeps, TList<LocalMeta> localData) {}
+            CompileRes res,
+            Opt<LocalMeta> local,
+            TList<CompileId> localDeps,
+            TList<LocalMeta> localData,
+            TList<Metas.ExprMetaRow> exprMetas,
+            TList<Metas.ScopeEvent> scopeEvents) {}
 
     record LocalMeta(String path, long timestampMs) {
         public static final long ABSENT = -1;

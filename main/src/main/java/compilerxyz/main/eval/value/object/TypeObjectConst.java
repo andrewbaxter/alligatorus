@@ -32,6 +32,8 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenDynamicTypes;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueBoolean;
@@ -51,6 +53,11 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
 
     public String typeDesc() {
         return meta.typeDesc();
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "object_const");
     }
 
     public IList<TypeObjectCastRule> castRules() {

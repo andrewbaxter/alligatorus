@@ -20,6 +20,8 @@ import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
@@ -42,6 +44,11 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType) implements Aspec
     @Override
     public String typeDesc() {
         return "map-entry(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ")";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "map_entry_dynamic");
     }
 
     @Override

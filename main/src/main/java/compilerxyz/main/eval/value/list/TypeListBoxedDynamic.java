@@ -32,6 +32,8 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -55,6 +57,13 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
     @Override
     public String typeDesc() {
         return "list(" + elementType.typeDesc() + ")";
+    }
+
+    private final MetaCache meta = new MetaCache("list_boxed_dynamic");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return meta.get(xx, this);
     }
 
     @Override

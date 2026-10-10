@@ -24,6 +24,8 @@ import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenBuiltinInterfaces;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetInterfaceMethodCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.IList;
@@ -39,6 +41,11 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
     @Override
     public String typeDesc() {
         return "interface method " + method.name;
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "interface_method_dynamic");
     }
 
     @Override

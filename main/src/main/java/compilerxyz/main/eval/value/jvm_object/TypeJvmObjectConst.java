@@ -15,6 +15,8 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -24,6 +26,13 @@ public record TypeJvmObjectConst() implements Aspect, Type {
     @Override
     public String typeDesc() {
         return "object";
+    }
+
+    private static final MetaCache META = new MetaCache("jvm_object_const");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return META.get(xx, this);
     }
 
     @Override

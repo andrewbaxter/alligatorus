@@ -29,6 +29,8 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -78,6 +80,13 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
     @Override
     public String typeDesc() {
         return "option(" + elementType.typeDesc() + ")";
+    }
+
+    private final MetaCache meta = new MetaCache("option_specialized_dynamic");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return meta.get(xx, this);
     }
 
     @Override

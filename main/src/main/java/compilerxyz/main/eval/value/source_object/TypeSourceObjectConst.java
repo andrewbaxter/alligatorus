@@ -19,6 +19,8 @@ import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -28,6 +30,11 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic) implements 
     @Override
     public String typeDesc() {
         return dynamic.typeDesc();
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "source_object_const");
     }
 
     @Override

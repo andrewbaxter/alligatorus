@@ -93,7 +93,7 @@ public final class T0071TryInForeachTest {
         Helpers.writeModule(src.resolve("main.at"), top);
         try (var cache = new CacheReal(tmp.resolve("cache_" + label))) {
             var res = Helpers.compile(
-                    GlobalContext.newContext(cache, cache, cache),
+                    GlobalContext.newContext(cache, cache, cache, cache),
                     new SourceSpecAbsolute.Local(src.resolve("main.at").toString()));
             Result.Ok<Compile.CompileResult, ?> ok;
             switch (res) {

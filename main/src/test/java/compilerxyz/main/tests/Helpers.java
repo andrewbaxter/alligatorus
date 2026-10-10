@@ -16,6 +16,9 @@ import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.GlobalContext;
 import compilerxyz.main.langhelp.Sources;
 import compilerxyz.main.langhelp.cache.CacheReal;
+import compilerxyz.main.meta.MetaId;
+import compilerxyz.main.meta.Metas;
+import compilerxyz.main.meta.MetasBase;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueBoolean;
@@ -204,7 +207,8 @@ public final class Helpers {
     public static Compile.CompileResult compileOk(Path entry, Path cacheDir) {
         try (var cache = new CacheReal(cacheDir)) {
             var res = compile(
-                    GlobalContext.newContext(cache, cache, cache), new SourceSpecAbsolute.Local(entry.toString()));
+                    GlobalContext.newContext(cache, cache, cache, cache),
+                    new SourceSpecAbsolute.Local(entry.toString()));
             Result.Ok<Compile.CompileResult, ?> ok;
             switch (res) {
                 case Result.Ok<Compile.CompileResult, ?> o -> ok = o;
@@ -227,7 +231,8 @@ public final class Helpers {
             i++;
         }
         var artifacts = new TestArtifacts();
-        var gx = GlobalContext.newContext(new TestSources(sources), artifacts, new TestCompiles());
+        var metas = new TestMetas();
+        var gx = GlobalContext.newContext(new TestSources(sources), artifacts, new TestCompiles(metas), metas);
 
         return new GxAndArtifacts(gx, artifacts);
     }
@@ -259,9 +264,63 @@ public final class Helpers {
         }
     }
 
+    public static final class TestMetas extends MetasBase {
+        private final TMap<MetaId, JsonValue> bodies = new TMap<>();
+        private final TList<Pair<CompileId, Metas.ExprMetaRow>> exprMetas = new TList<>();
+        private final TMap<CompileId, TList<Metas.ScopeEvent>> scopeEvents = new TMap<>();
+        private long nextId = 0;
+
+        @Override
+        protected synchronized MetaId metasBaseAllocate() {
+            var id = new MetaId(nextId);
+            nextId++;
+            return id;
+        }
+
+        @Override
+        protected synchronized void metasBaseStore(MetaId id, String kind, String structuralKey, JsonValue body) {
+            bodies.put(id, body);
+        }
+
+        public synchronized void recordCompile(CompileId id, Compiles.CompileProduct product) {
+            for (var row : product.exprMetas()) exprMetas.add(new Pair<>(id, row));
+            scopeEvents.put(id, TList.from(product.scopeEvents()));
+        }
+
+        @Override
+        public synchronized Opt<JsonValue> metasGet(MetaId id) {
+            return bodies.getOpt(id);
+        }
+
+        @Override
+        public synchronized TList<Metas.ExprMeta> metasForExpr(SourceId source, long expr) {
+            var out = new TList<Metas.ExprMeta>();
+            for (var entry : exprMetas) {
+                var loc = entry.second().loc();
+                if (loc.source().equals(source)
+                        && loc.expr().optIsSome()
+                        && loc.expr().optUnwrap() == expr) {
+                    out.add(new Metas.ExprMeta(entry.first(), entry.second().meta()));
+                }
+            }
+            return out;
+        }
+
+        @Override
+        public synchronized TList<Metas.ScopeEvent> metasScopeEvents(CompileId compile) {
+            var found = scopeEvents.getOpt(compile);
+            return found.optIsSome() ? TList.from(found.optUnwrap()) : new TList<>();
+        }
+    }
+
     public static final class TestCompiles implements Compiles {
         private final TMap<CompileId, Entry> entries = new TMap<>();
         private final ReentrantLock mapLock = new ReentrantLock();
+        private final TestMetas metas;
+
+        public TestCompiles(TestMetas metas) {
+            this.metas = metas;
+        }
 
         private static final class Entry {
             final ReentrantLock lock = new ReentrantLock();
@@ -286,6 +345,7 @@ public final class Helpers {
                 if (e.value.optIsSome()) return e.value.optUnwrap();
                 var product = compute.get();
                 e.value = Opt.some(product.res());
+                metas.recordCompile(id, product);
                 return product.res();
             } finally {
                 e.lock.unlock();

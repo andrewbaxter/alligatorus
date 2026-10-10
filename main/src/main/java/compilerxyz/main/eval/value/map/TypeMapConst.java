@@ -28,6 +28,8 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactMapTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactMapValueCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -51,6 +53,13 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
     @Override
     public String typeDesc() {
         return "const map(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ")";
+    }
+
+    private final MetaCache meta = new MetaCache("map_const");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return meta.get(xx, this);
     }
 
     @Override

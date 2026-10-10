@@ -18,6 +18,8 @@ import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -64,6 +66,21 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
             }
             case Opt.None<BindingId> none -> new CodeValue(code, EvalOutcome.ofValue(record));
         };
+    }
+
+    @Override
+    public Meta bindingMeta(ExprContext xx) {
+        var meta = Meta.ofKind("binding_record");
+        for (var entry : fields.entrySet()) {
+            Meta fieldMeta =
+                    switch (entry.getValue()) {
+                        case RecordScopeField.Scope s -> s.binding().bindingMeta(xx);
+                        case RecordScopeField.Dynamic d -> xx.vx.ix.metaLog.metaOf(xx, d.type());
+                        case RecordScopeField.Error e -> Meta.ofKind("error");
+                    };
+            meta.field(MetaSupport.keyName(entry.getKey()), fieldMeta);
+        }
+        return meta;
     }
 
     @Override

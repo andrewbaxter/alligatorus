@@ -7,6 +7,7 @@ import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.binding.BindingSetterConsumed;
+import compilerxyz.main.meta.Meta;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.TList;
@@ -30,4 +31,8 @@ public interface Binding {
     Binding bindingFork();
 
     EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others);
+
+    default Meta bindingMeta(ExprContext xx) {
+        return Meta.ofKind("binding");
+    }
 }

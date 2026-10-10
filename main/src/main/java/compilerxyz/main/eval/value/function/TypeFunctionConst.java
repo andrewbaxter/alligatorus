@@ -18,6 +18,8 @@ import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -77,6 +79,11 @@ public record TypeFunctionConst(
     @Override
     public String typeDesc() {
         return "dynamic func";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "function_const");
     }
 
     @Override

@@ -18,6 +18,8 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -47,6 +49,11 @@ public record TypeSourceMethodDynamic(
     @Override
     public String typeDesc() {
         return "dynamic source method";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "source_method_dynamic");
     }
 
     @Override

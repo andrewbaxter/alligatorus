@@ -20,7 +20,8 @@ public final class T0048ExecTest {
     private static Result<Compile.CompileResult, TList<ExprErr>> compile(Path cacheDir, Path entry) {
         try (var cache = new CacheReal(cacheDir)) {
             return Helpers.compile(
-                    GlobalContext.newContext(cache, cache, cache), new SourceSpecAbsolute.Local(entry.toString()));
+                    GlobalContext.newContext(cache, cache, cache, cache),
+                    new SourceSpecAbsolute.Local(entry.toString()));
         }
     }
 

@@ -27,6 +27,8 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetMacroCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -41,6 +43,11 @@ public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type
     @Override
     public String typeDesc() {
         return data.description.optUnwrapOr("definition_set_const_function");
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "source_macro_const");
     }
 
     @Override

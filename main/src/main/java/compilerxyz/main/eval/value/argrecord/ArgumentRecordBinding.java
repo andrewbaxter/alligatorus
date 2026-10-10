@@ -9,6 +9,7 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
+import compilerxyz.main.meta.Meta;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 
@@ -16,6 +17,11 @@ public record ArgumentRecordBinding(TOrderedMap<ConstKey, ArgumentEntry> fields)
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         return new CodeValue(Code.none(loc), EvalOutcome.ofValue(new ArgumentRecord(fields, setter)));
+    }
+
+    @Override
+    public Meta bindingMeta(ExprContext xx) {
+        return TypeArgumentRecord.of(fields).typeMeta(xx);
     }
 
     @Override

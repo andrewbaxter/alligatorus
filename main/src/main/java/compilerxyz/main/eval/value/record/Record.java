@@ -50,6 +50,8 @@ import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactRecordTypeCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
@@ -271,6 +273,11 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
             parts.add(e.getKey().constKeyToCanonical() + ": " + tDesc);
         }
         return "record(" + String.join(", ", parts) + ")";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "record");
     }
 
     public Type valueType() {

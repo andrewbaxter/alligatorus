@@ -11,6 +11,8 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -21,6 +23,11 @@ public record TypeBundle(SourceSpecAbsolute base) implements Aspect, Type {
     @Override
     public String typeDesc() {
         return "bundle(" + base.sourceSpecAbsoluteSpecKey() + ")";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "bundle");
     }
 
     @Override

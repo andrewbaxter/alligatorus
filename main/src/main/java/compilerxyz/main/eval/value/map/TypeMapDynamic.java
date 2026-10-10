@@ -37,6 +37,8 @@ import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
@@ -60,6 +62,13 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
     @Override
     public String typeDesc() {
         return "map(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ")";
+    }
+
+    private final MetaCache meta = new MetaCache("map_dynamic");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return meta.get(xx, this);
     }
 
     @Override

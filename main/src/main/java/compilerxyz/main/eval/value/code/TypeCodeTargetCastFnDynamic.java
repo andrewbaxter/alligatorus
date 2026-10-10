@@ -10,15 +10,24 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6361L)
 public record TypeCodeTargetCastFnDynamic() implements Aspect, Type {
 
+    private static final MetaCache META = new MetaCache("code_target_cast_fn_dynamic");
+
     @Override
     public String typeDesc() {
         return "code.target.cast";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return META.get(xx, this);
     }
 
     @Override

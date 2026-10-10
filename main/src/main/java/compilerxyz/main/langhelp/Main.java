@@ -216,7 +216,7 @@ public final class Main {
     }
 
     private static Result<Compile.CompileResult, TList<MainError>> compileRoot(CacheReal cache, String path) {
-        var gx = GlobalContext.newContext(cache, cache, cache);
+        var gx = GlobalContext.newContext(cache, cache, cache, cache);
         var entry = new SourceSpecAbsolute.Local(path);
         Sources.SourceResolved.Module module;
         switch (gx.sources.sourcesGet(entry)) {

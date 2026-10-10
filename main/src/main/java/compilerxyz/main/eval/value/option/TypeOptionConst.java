@@ -29,6 +29,8 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactOptionTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactOptionValueCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -50,6 +52,13 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
     @Override
     public String typeDesc() {
         return "const option(" + elementType.typeDesc() + ")";
+    }
+
+    private final MetaCache meta = new MetaCache("option_const");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return meta.get(xx, this);
     }
 
     @Override

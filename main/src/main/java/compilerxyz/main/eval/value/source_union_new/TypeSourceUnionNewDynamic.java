@@ -19,6 +19,8 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -32,6 +34,11 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type, int variant
             return "union_new(?)";
         }
         return "union_new(" + type.variants.get(variantIndex).tag.constKeyToCanonical() + ")";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "source_union_new_dynamic");
     }
 
     @Override
@@ -60,6 +67,11 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type, int variant
         @Override
         public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
             return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
+        }
+
+        @Override
+        public Meta bindingMeta(ExprContext xx) {
+            return value.valueType().typeMeta(xx);
         }
 
         @Override

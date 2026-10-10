@@ -10,12 +10,18 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
+import compilerxyz.main.meta.Meta;
 import compilerxyz.prelude.util.TList;
 
 public record BindingObjectConst(Type type, Object data) implements Binding {
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         return new CodeValue(Code.none(loc), EvalOutcome.ofValue(new ValueObjectConst(type, data)));
+    }
+
+    @Override
+    public Meta bindingMeta(ExprContext xx) {
+        return type.typeMeta(xx);
     }
 
     @Override

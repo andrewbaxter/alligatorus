@@ -26,6 +26,8 @@ import compilerxyz.main.gen.GenAspectOperatorBitNot;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueBoolean;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -36,9 +38,16 @@ import java.util.function.Function;
 @BuiltinFull(uniqueId = 6102L)
 public record TypeBoolConst() implements Aspect, Type {
 
+    private static final MetaCache META = new MetaCache("bool_const");
+
     @Override
     public String typeDesc() {
         return "bool";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return META.get(xx, this);
     }
 
     @Override

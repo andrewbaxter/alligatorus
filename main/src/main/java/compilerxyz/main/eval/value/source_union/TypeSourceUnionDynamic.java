@@ -36,6 +36,8 @@ import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.codec.ArtifactDataSourceUnionCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -57,6 +59,7 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
     public final TList<Integer> active;
     public final ArtifactIdHolder artifactIdCell;
     public final SourceUnionCompiled compiled;
+    private volatile Opt<Meta> metaCache = Opt.none();
 
     public TypeSourceUnionDynamic(DefinitionSet set, Unique identity, String baseBinaryName) {
         this.set = set;
@@ -129,6 +132,19 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
         }
         sb.append(")");
         return sb.toString();
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        var current = metaCache;
+        if (current.optIsSome()) return current.optUnwrap();
+        var meta = new Meta("source_union_dynamic", Meta.descData(typeDesc()));
+        metaCache = Opt.some(meta);
+        for (var i : active) {
+            var variant = variants.get(i);
+            meta.field(MetaSupport.keyName(variant.tag), variant.type);
+        }
+        return meta;
     }
 
     @Override

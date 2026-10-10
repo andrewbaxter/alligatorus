@@ -19,6 +19,8 @@ import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.MustCast;
@@ -41,6 +43,15 @@ public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) impleme
         var keys =
                 fieldTypes.keySet().stream().map(ConstKey::constKeyToCanonical).collect(Collectors.joining(", "));
         return "argument_record(" + keys + ")";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        var meta = MetaSupport.derive(xx, this, "argument_record");
+        for (var entry : fieldTypes.entrySet()) {
+            meta.field(MetaSupport.keyName(entry.getKey()), entry.getValue());
+        }
+        return meta;
     }
 
     @Override

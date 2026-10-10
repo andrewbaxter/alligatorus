@@ -38,6 +38,7 @@ import compilerxyz.main.gen.GenBuiltinInterfaces;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenDynamicTypes;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueBoolean;
@@ -116,6 +117,25 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
 
     public String typeDesc() {
         return meta.typeDesc();
+    }
+
+    private volatile Opt<Meta> typeMetaCache = Opt.none();
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        var current = typeMetaCache;
+        if (current.optIsSome()) return current.optUnwrap();
+        var kind = "object:" + typeDesc();
+        if (!isLinked()) return new Meta(kind, Meta.descData(typeDesc()));
+        var result = new Meta(kind, Meta.descData(typeDesc()));
+        typeMetaCache = Opt.some(result);
+        for (var field : dataFields()) {
+            result.field(field.langName(), field.fieldType());
+        }
+        for (var method : methods()) {
+            result.field(method.langName(), method.funcType());
+        }
+        return result;
     }
 
     public IList<Unique> trivialIdentityAspects() {

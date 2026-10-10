@@ -14,6 +14,8 @@ import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -26,6 +28,15 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes) i
     public String typeDesc() {
         var inner = elementTypes.stream().map(Type::typeDesc).collect(Collectors.joining(", "));
         return "argument_tuple(" + inner + ")";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        var meta = MetaSupport.derive(xx, this, "argument_tuple");
+        for (int i = 0; i < elementTypes.size(); i++) {
+            meta.field(Integer.toString(i), elementTypes.get(i));
+        }
+        return meta;
     }
 
     public Type valueType() {

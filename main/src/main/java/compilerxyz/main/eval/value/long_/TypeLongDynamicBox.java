@@ -28,6 +28,8 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
@@ -39,6 +41,13 @@ public record TypeLongDynamicBox() implements Aspect, Type {
     @Override
     public String typeDesc() {
         return "dynamic long";
+    }
+
+    private static final MetaCache META = new MetaCache("long_dynamic_box");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return META.get(xx, this);
     }
 
     @Override

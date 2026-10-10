@@ -48,6 +48,22 @@ public final class ConstEval {
     private ConstEval() {}
 
     public static EResult<EvalRes> constEval(ExprContext xx, Expr expr) {
+        var log = xx.vx.ix.metaLog;
+        log.enter(xx, expr.loc());
+        try {
+            var res = constEvalInner(xx, expr);
+            var evOpt = res.valueOpt();
+            if (evOpt.optIsSome()) {
+                var value = evOpt.optUnwrap().cv().value();
+                if (value.optIsSome()) log.recordExpr(xx, expr.loc(), value.optUnwrap());
+            }
+            return res;
+        } finally {
+            log.exit();
+        }
+    }
+
+    private static EResult<EvalRes> constEvalInner(ExprContext xx, Expr expr) {
         var loc = expr.loc();
         return switch (expr.variant()) {
             case Expr.Literal lit -> {
@@ -232,6 +248,7 @@ public final class ConstEval {
                 CodeValue pendingDiscard = null;
                 boolean controlEnded = false;
                 for (var sub : e.exprs()) {
+                    xx.vx.ix.metaLog.scopeEnter(sub.loc());
                     if (controlEnded) {
                         erb.errors()
                                 .add(new ExprErr(
@@ -368,7 +385,7 @@ public final class ConstEval {
                     var splice = spliceOpt.optUnwrap();
                     codes.add(code);
                     codes.add(splice);
-                    xx.scope.levels.removeLast();
+                    xx.scope.popLevel();
                 }
                 var seqOpt = erb.mustErMaybeUnreachable(xx.target.targetSeq(loc, codes));
                 if (seqOpt.optIsNone()) yield EResult.errs(erb.errors());
@@ -1599,10 +1616,11 @@ public final class ConstEval {
     }
 
     private static void popByBox(Scope scope, ScopeLevel level) {
-        var top = scope.levels.removeLast();
+        var top = scope.levels.get(scope.levels.size() - 1);
         if (top.scopeLevelEmission().id != level.scopeLevelEmission().id) {
             throw new AssertionError("scope level pop does not match the owning level");
         }
+        scope.popLevel();
     }
 
     private static Opt<Code> seqCode(ExprContext xx, QExprId loc, Erb erb, TList<Code> parts) {
@@ -1645,7 +1663,7 @@ public final class ConstEval {
         if (top.scopeLevelEmission().id != level.scopeLevelEmission().id) {
             throw new AssertionError("labeledConsume: consumer level is not on top");
         }
-        xx.scope.levels.removeLast();
+        xx.scope.popLevel();
         var innerCv = inner.cv();
         var arrivals = level.landing.arrivals;
         if (!arrivals.isEmpty()

@@ -26,6 +26,7 @@ public final class Scope {
         var entry = new ScopeLevel.Entry(
                 Opt.some(name), binding, false, id, id, new ScopeLevel.Emission(vx.emissionCounter.next()));
         levels.add(entry);
+        vx.ix.metaLog.scopePush(entry.name, binding);
         return entry;
     }
 
@@ -66,7 +67,18 @@ public final class Scope {
 
     public void popToLevelCount(int targetCount) {
         while (levels.size() > targetCount) {
-            levels.removeLast();
+            popLevel();
+        }
+    }
+
+    public void popLevel() {
+        var top = levels.removeLast();
+        switch (top) {
+            case ScopeLevel.Entry entry -> vx.ix.metaLog.scopePop(entry.name);
+            case ScopeLevel.Temp t -> {}
+            case ScopeLevel.Labeled l -> {}
+            case ScopeLevel.Catch c -> {}
+            case ScopeLevel.Finally f -> {}
         }
     }
 
@@ -171,6 +183,7 @@ public final class Scope {
                         entry.binding = m.optUnwrap().binding();
                         entry.state = m.optUnwrap().state();
                         entry.dropState = m.optUnwrap().dropState();
+                        vx.ix.metaLog.scopeSet(entry.name, entry.binding);
                     }
                 }
                 case ScopeLevel.Temp t -> {}

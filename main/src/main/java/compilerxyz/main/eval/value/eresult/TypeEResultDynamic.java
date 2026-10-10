@@ -30,6 +30,8 @@ import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenExprErr;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactEResultTypeCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -44,6 +46,7 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
 
     public final T elementType;
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
+    private final MetaCache meta = new MetaCache("eresult_dynamic");
 
     public TypeEResultDynamic(T elementType) {
         this.elementType = elementType;
@@ -60,6 +63,11 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
     @Override
     public String typeDesc() {
         return "eresult(" + elementType.typeDesc() + ")";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return meta.get(xx, this);
     }
 
     @Override

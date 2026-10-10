@@ -30,6 +30,8 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactListTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactListValueCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -55,6 +57,13 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
     @Override
     public String typeDesc() {
         return "const list(" + elementType.typeDesc() + ")";
+    }
+
+    private final MetaCache meta = new MetaCache("list_const");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return meta.get(xx, this);
     }
 
     @Override

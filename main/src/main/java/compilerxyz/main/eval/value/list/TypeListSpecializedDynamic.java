@@ -27,6 +27,8 @@ import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -73,6 +75,13 @@ public final class TypeListSpecializedDynamic<T extends Type> implements Aspect,
     @Override
     public String typeDesc() {
         return "list(" + elementType.typeDesc() + ")";
+    }
+
+    private final MetaCache meta = new MetaCache("list_specialized_dynamic");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return meta.get(xx, this);
     }
 
     @Override

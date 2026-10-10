@@ -17,6 +17,8 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -28,6 +30,11 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
     @Override
     public String typeDesc() {
         return "option(" + elementType.typeDesc() + ")." + (isSome ? "some" : "none");
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "option_variant_constructor_dynamic");
     }
 
     @Override

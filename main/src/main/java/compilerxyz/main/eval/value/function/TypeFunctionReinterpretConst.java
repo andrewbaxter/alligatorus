@@ -13,6 +13,8 @@ import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
@@ -24,6 +26,13 @@ public record TypeFunctionReinterpretConst() implements Aspect, Type {
     @Override
     public String typeDesc() {
         return "fn-reinterpret";
+    }
+
+    private static final MetaCache META = new MetaCache("function_reinterpret_const");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return META.get(xx, this);
     }
 
     @Override

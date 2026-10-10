@@ -39,7 +39,8 @@ public final class T0049DirTest {
         Dir dir;
         try (var cache = new CacheReal(tmp.resolve("cache"))) {
             var res = Helpers.compile(
-                    GlobalContext.newContext(cache, cache, cache), new SourceSpecAbsolute.Local(main.toString()));
+                    GlobalContext.newContext(cache, cache, cache, cache),
+                    new SourceSpecAbsolute.Local(main.toString()));
             Compile.CompileResult out =
                     switch (res) {
                         case Result.Ok<Compile.CompileResult, TList<ExprErr>> ok -> ok.value();

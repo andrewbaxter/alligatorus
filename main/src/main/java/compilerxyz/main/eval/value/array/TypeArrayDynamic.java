@@ -40,6 +40,8 @@ import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.IMap;
@@ -54,6 +56,7 @@ public final class TypeArrayDynamic<T extends Type> implements Aspect, Type {
 
     public final T elementType;
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
+    private final MetaCache meta = new MetaCache("array_dynamic");
 
     public TypeArrayDynamic(T elementType) {
         this.elementType = elementType;
@@ -62,6 +65,11 @@ public final class TypeArrayDynamic<T extends Type> implements Aspect, Type {
     @Override
     public String typeDesc() {
         return "array(" + elementType.typeDesc() + ")";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return meta.get(xx, this);
     }
 
     @Override

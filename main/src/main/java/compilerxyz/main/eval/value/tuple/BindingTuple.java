@@ -18,6 +18,7 @@ import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
+import compilerxyz.main.meta.Meta;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -64,6 +65,21 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
                 code,
                 EvalOutcome.ofValue(
                         new ValueDynamic(new ValueDynamicSource.Slot(jsKey.optUnwrap(), desc, setter), tuple)));
+    }
+
+    @Override
+    public Meta bindingMeta(ExprContext xx) {
+        var meta = Meta.ofKind("binding_tuple");
+        for (int i = 0; i < elements.size(); i++) {
+            Meta elementMeta =
+                    switch (elements.get(i)) {
+                        case TupleScopeField.Scope s -> s.binding().bindingMeta(xx);
+                        case TupleScopeField.Dynamic d -> xx.vx.ix.metaLog.metaOf(xx, d.type());
+                        case TupleScopeField.Error e -> Meta.ofKind("error");
+                    };
+            meta.field(Integer.toString(i), elementMeta);
+        }
+        return meta;
     }
 
     @Override

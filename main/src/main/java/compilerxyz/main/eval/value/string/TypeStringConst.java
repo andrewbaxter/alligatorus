@@ -26,6 +26,8 @@ import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -39,6 +41,13 @@ public record TypeStringConst() implements Aspect, Type {
     @Override
     public String typeDesc() {
         return "string";
+    }
+
+    private static final MetaCache META = new MetaCache("string_const");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return META.get(xx, this);
     }
 
     @Override

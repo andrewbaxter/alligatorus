@@ -11,6 +11,8 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -20,6 +22,11 @@ public record TypeMapGetFnDynamic(Type keyType, Type valueType) implements Aspec
     @Override
     public String typeDesc() {
         return "map get fn";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "map_get_fn_dynamic");
     }
 
     @Override

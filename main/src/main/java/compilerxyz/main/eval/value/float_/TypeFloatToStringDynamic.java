@@ -13,15 +13,24 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6174L)
 public record TypeFloatToStringDynamic() implements Aspect, Type {
 
+    private static final MetaCache META = new MetaCache("float_to_string_dynamic");
+
     @Override
     public String typeDesc() {
         return "float.to_string";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return META.get(xx, this);
     }
 
     @Override

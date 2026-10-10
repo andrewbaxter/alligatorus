@@ -15,15 +15,24 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenTypeExprStagedPlaceholder;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6107L)
 public record TypeExprStagedPlaceholder() implements Aspect, Type, Value {
 
+    private static final MetaCache META = new MetaCache("expr_staged_placeholder");
+
     @Override
     public String typeDesc() {
         return "stage result";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return META.get(xx, this);
     }
 
     public Type valueType() {

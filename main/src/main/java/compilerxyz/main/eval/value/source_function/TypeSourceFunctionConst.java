@@ -34,6 +34,8 @@ import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetFunctionCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -48,6 +50,11 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
     @Override
     public String typeDesc() {
         return data.description.optUnwrapOr("definition_set_function");
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "source_function_const");
     }
 
     @Override
@@ -209,6 +216,11 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
         @Override
         public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
             return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
+        }
+
+        @Override
+        public Meta bindingMeta(ExprContext xx) {
+            return value.valueType().typeMeta(xx);
         }
 
         @Override

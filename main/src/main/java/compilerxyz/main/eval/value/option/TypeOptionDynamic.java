@@ -36,6 +36,8 @@ import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenOptions;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactOptionTypeCodec;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -82,6 +84,13 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
     @Override
     public String typeDesc() {
         return "option(" + elementType.typeDesc() + ")";
+    }
+
+    private final MetaCache meta = new MetaCache("option_dynamic");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return meta.get(xx, this);
     }
 
     @Override

@@ -42,7 +42,10 @@ import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetObjectCodec;
+import compilerxyz.main.meta.Meta;
 import compilerxyz.main.safejson.JsonValue;
+import compilerxyz.main.safejson.JsonValueObject;
+import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
@@ -72,6 +75,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
 
     public Opt<JavaClassCompiled> compiledClass = Opt.none();
     public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
+    private volatile Opt<Meta> metaCache = Opt.none();
 
     public TypeSourceObjectDynamic(DefSetId setId, String name, Unique identity, DefinitionSet set, String binaryName) {
         this.setId = setId;
@@ -112,6 +116,24 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
     @Override
     public String typeDesc() {
         return description.optUnwrapOr("object(" + name.optUnwrapOr("?") + ")");
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        var current = metaCache;
+        if (current.optIsSome()) return current.optUnwrap();
+        var entries = new TOrderedMap<String, JsonValue>();
+        entries.put("desc", new JsonValueString(typeDesc()));
+        if (name.optIsSome()) entries.put("name", new JsonValueString(name.optUnwrap()));
+        var meta = new Meta("source_object", new JsonValueObject(entries));
+        metaCache = Opt.some(meta);
+        for (var m : methods) {
+            var methodMeta = new Meta("source_method", Meta.descData(m.name));
+            if (m.argType.optIsSome()) methodMeta.field("arg", m.argType.optUnwrap());
+            if (m.retType.optIsSome()) methodMeta.field("ret", m.retType.optUnwrap());
+            meta.field(m.name, methodMeta);
+        }
+        return meta;
     }
 
     @Override

@@ -21,6 +21,8 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -31,6 +33,11 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type) implement
     @Override
     public String typeDesc() {
         return type.description.optUnwrapOr("definition_set_object_new");
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "source_object_new_dynamic");
     }
 
     @Override
@@ -57,6 +64,11 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type) implement
         @Override
         public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
             return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
+        }
+
+        @Override
+        public Meta bindingMeta(ExprContext xx) {
+            return value.valueType().typeMeta(xx);
         }
 
         @Override

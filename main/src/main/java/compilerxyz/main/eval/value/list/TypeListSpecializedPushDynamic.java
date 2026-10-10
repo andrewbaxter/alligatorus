@@ -14,6 +14,8 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaSupport;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -23,6 +25,11 @@ public record TypeListSpecializedPushDynamic(TypeListSpecializedDynamic listType
     @Override
     public String typeDesc() {
         return listType.typeDesc() + ".push";
+    }
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return MetaSupport.derive(xx, this, "list_specialized_push_dynamic");
     }
 
     @Override

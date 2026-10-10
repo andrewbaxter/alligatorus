@@ -11,6 +11,8 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindConstValue;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.meta.Meta;
+import compilerxyz.main.meta.MetaCache;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
@@ -20,6 +22,13 @@ public record TypeHash() implements Aspect, Type {
     @Override
     public String typeDesc() {
         return "hash";
+    }
+
+    private static final MetaCache META = new MetaCache("hash");
+
+    @Override
+    public Meta typeMeta(ExprContext xx) {
+        return META.get(xx, this);
     }
 
     @Override
