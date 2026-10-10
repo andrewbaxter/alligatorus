@@ -1,0 +1,3 @@
+[submodule "merman"]
+	path = merman
+	url = https://github.com/andrewbaxter/merman.git
