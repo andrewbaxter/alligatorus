@@ -12,25 +12,27 @@ import java.util.List;
 
 public final class GitRepo {
     private final Path root;
+    private final String against;
 
-    private GitRepo(Path root) {
+    private GitRepo(Path root, String against) {
         this.root = root;
+        this.against = against;
     }
 
-    public static Opt<GitRepo> at(Path start) {
+    public static Opt<GitRepo> at(Path start, String against) {
         Exec e = run(start, "rev-parse", "--show-toplevel");
         if (e.code != 0) {
             return Opt.none();
         }
-        return Opt.some(new GitRepo(Path.of(e.out.strip())));
+        return Opt.some(new GitRepo(Path.of(e.out.strip()), against));
     }
 
-    public boolean hasHead() {
-        return run(root, "rev-parse", "--verify", "HEAD").code == 0;
+    public boolean hasAgainst() {
+        return run(root, "rev-parse", "--verify", "--quiet", against + "^{commit}").code == 0;
     }
 
     public List<String> stagedChanged(String suffix) {
-        Exec e = run(root, "diff", "--cached", "--name-only", "--diff-filter=ACMR", "--", "*" + suffix);
+        Exec e = run(root, "diff", "--cached", "--name-only", "--diff-filter=ACMR", against, "--", "*" + suffix);
         return lines(e, suffix);
     }
 
@@ -54,7 +56,7 @@ public final class GitRepo {
     }
 
     public Opt<String> parentContent(String path) {
-        Exec e = run(root, "show", "HEAD:" + path);
+        Exec e = run(root, "show", against + ":" + path);
         if (e.code != 0) {
             return Opt.none();
         }
@@ -98,7 +100,7 @@ public final class GitRepo {
     }
 
     public boolean revertIndexToParent(String path) {
-        Exec e = run(root, "rev-parse", "HEAD:" + path);
+        Exec e = run(root, "rev-parse", against + ":" + path);
         if (e.code != 0) {
             return false;
         }

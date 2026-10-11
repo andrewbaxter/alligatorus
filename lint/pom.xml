@@ -34,6 +34,10 @@
         </dependency>
     </dependencies>
 
+    <properties>
+        <docguard.against>HEAD</docguard.against>
+    </properties>
+
     <build>
         <finalName>docguard</finalName>
         <plugins>
@@ -77,6 +81,8 @@
                                 <argument>-classpath</argument>
                                 <classpath/>
                                 <argument>compilerxyz.lint.docguard.DocGuardMain</argument>
+                                <argument>--against</argument>
+                                <argument>${docguard.against}</argument>
                                 <argument>scan</argument>
                             </arguments>
                         </configuration>

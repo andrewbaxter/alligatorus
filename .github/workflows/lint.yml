@@ -1,0 +1,29 @@
+name: lint
+
+on:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Format
+        run: mvn -B spotless:check
+
+      # The lint module's compile phase runs the reachability analysis and the
+      # doc guard. The guard compares against the branch the request targets, so
+      # a comment added anywhere on the branch is rejected, where a local run
+      # compares against HEAD.
+      - name: Lint
+        run: mvn -B -pl :allig3-lint -am compile -Ddocguard.against=origin/${{ github.base_ref }}
