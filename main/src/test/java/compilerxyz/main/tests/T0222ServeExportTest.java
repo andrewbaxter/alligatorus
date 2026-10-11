@@ -21,8 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * A marker the editor recognizes is an object defined in source, not a builtin: here a module defines
- * `ide` holding a dir, another module exports an instance, and the language server describes the
+ * A marker the ide recognizes is an object defined in source, not a builtin: here a module defines
+ * `editor` holding a dir, another module exports an instance, and the language server describes the
  * export by the object's name and reads a dir entry out of it by path.
  */
 public final class T0222ServeExportTest {
@@ -32,29 +32,29 @@ public final class T0222ServeExportTest {
     public void test00000DescribeAndRead(@TempDir Path tmp) throws IOException {
         var e = new TestMbShorthand();
         var dirType = e.mb.builtin("types", "dir");
-        var lib = tmp.resolve("ide.at");
+        var lib = tmp.resolve("editor.at");
         T0047FileTest.writeModule(
                 lib,
                 TList.of(e.ret(e.lower(e.seq(
                         e.let("d", e.define()),
-                        e.let("ide_o", e.defObject(e.v("d"), "ide")),
-                        e.objectImpl(e.v("ide_o"), e.rec(e.p("files", dirType))),
+                        e.let("editor_o", e.defObject(e.v("d"), "editor")),
+                        e.objectImpl(e.v("editor_o"), e.rec(e.p("files", dirType))),
                         e.let("build_b", e.defFunc(e.v("d"), "build")),
                         e.funcImpl(
                                 e.v("build_b"),
                                 dirType,
-                                e.retSome(e.fld(e.v("ide_o"), "type")),
+                                e.retSome(e.fld(e.v("editor_o"), "type")),
                                 e.mb.optNoneType(),
-                                e.stage(e.call(e.lower(e.fld(e.v("ide_o"), "new")), e.rec(e.p("files", e.v("arg")))))),
+                                e.stage(e.call(e.lower(e.fld(e.v("editor_o"), "new")), e.rec(e.p("files", e.v("arg")))))),
                         e.finish(e.v("d")),
                         e.ret(e.rec(e.p("build", e.fld(e.v("build_b"), "func")))))))));
         var main = tmp.resolve("main.at");
         T0047FileTest.writeModule(
                 main,
                 TList.of(
-                        e.let("ide", e.importLocal("ide", "ide.at")),
+                        e.let("editor", e.importLocal("editor", "editor.at")),
                         e.ret(e.call(
-                                e.fld(e.v("ide"), "build"),
+                                e.fld(e.v("editor"), "build"),
                                 e.call(
                                         e.mb.builtin("dir"),
                                         e.mapNew(
@@ -75,7 +75,7 @@ public final class T0222ServeExportTest {
             Artifact artifact = out.artifact().optUnwrap();
             var export = ServeExport.exportDescribe(cache, artifact);
             assertTrue(export.optIsSome(), "export not described");
-            assertEquals("ide", export.optUnwrap().typeName().optUnwrap());
+            assertEquals("editor", export.optUnwrap().typeName().optUnwrap());
             assertEquals(
                     new SourceLocal(lib.toString()),
                     export.optUnwrap().typeSource().optUnwrap());

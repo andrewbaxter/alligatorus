@@ -35,10 +35,10 @@ import java.util.Base64;
 import java.util.function.Supplier;
 
 /**
- * What the language server tells the editor about a module's root export. The editor recognizes
- * markers (an `ide` extension, say) by the name of the source-defined object the export is an
- * instance of, and reads the export's bytes by a path of record fields and dir entries, so neither
- * the compiler nor the protocol knows any marker by name.
+ * What the language server tells the ide about a module's root export. The ide recognizes markers
+ * (an `editor` extension, say) by the name of the source-defined object the export is an instance
+ * of, and reads the export's bytes by a path of record fields and dir entries, so neither the
+ * compiler nor the protocol knows any marker by name.
  */
 public final class ServeExport {
     private ServeExport() {}
