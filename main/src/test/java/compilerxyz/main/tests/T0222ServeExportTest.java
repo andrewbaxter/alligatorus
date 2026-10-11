@@ -45,7 +45,8 @@ public final class T0222ServeExportTest {
                                 dirType,
                                 e.retSome(e.fld(e.v("editor_o"), "type")),
                                 e.mb.optNoneType(),
-                                e.stage(e.call(e.lower(e.fld(e.v("editor_o"), "new")), e.rec(e.p("files", e.v("arg")))))),
+                                e.stage(e.call(
+                                        e.lower(e.fld(e.v("editor_o"), "new")), e.rec(e.p("files", e.v("arg")))))),
                         e.finish(e.v("d")),
                         e.ret(e.rec(e.p("build", e.fld(e.v("build_b"), "func")))))))));
         var main = tmp.resolve("main.at");
