@@ -518,7 +518,8 @@ public final class ConstEval {
                         && GenAspectNumericConst.getMaybe(xx, baseType).optIsSome()) {
                     var referenceType = reference.value().optUnwrap().valueType();
                     if (GenAspectNumericConst.getMaybe(xx, referenceType).optIsNone()
-                            && GenAspectNumericDynamic.getMaybe(xx, referenceType).optIsNone()) {
+                            && GenAspectNumericDynamic.getMaybe(xx, referenceType)
+                                    .optIsNone()) {
                         baseType = referenceType;
                     }
                 }
