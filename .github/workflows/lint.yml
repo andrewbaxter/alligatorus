@@ -18,12 +18,21 @@ jobs:
           java-version: 21
           cache: maven
 
-      - name: Format
-        run: mvn -B spotless:check
+      # The main module generates the language server bindings from merman's
+      # schema with schemask at build time.
+      - uses: actions/cache@v4
+        id: schemask
+        with:
+          path: ~/.cargo/bin/schemask
+          key: schemask-0.1.6
 
-      # The lint module's compile phase runs the reachability analysis and the
-      # doc guard. The guard compares against the branch the request targets, so
-      # a comment added anywhere on the branch is rejected, where a local run
-      # compares against HEAD.
+      - if: steps.schemask.outputs.cache-hit != 'true'
+        run: cargo install schemask --version 0.1.6 --locked
+
+      # Compiling the whole reactor runs Spotless on every module, the
+      # reachability analysis (which needs every module's classpath written by
+      # the build) and the doc guard. The guard compares against the branch the
+      # request targets, so a comment added anywhere on the branch is rejected,
+      # where a local run compares against HEAD.
       - name: Lint
-        run: mvn -B -pl :allig3-lint -am compile -Ddocguard.against=origin/${{ github.base_ref }}
+        run: mvn -B compile -Ddocguard.against=origin/${{ github.base_ref }}
