@@ -513,7 +513,15 @@ public final class ConstEval {
                 var base = bopt.optUnwrap();
                 var bv = (Opt.Some<Value>) base.value();
                 var reference = ropt.optUnwrap();
-                var baseType = operatorDispatchType(xx, bv.value(), reference);
+                var baseType = bv.value().valueType();
+                if (reference.value().optIsSome()
+                        && GenAspectNumericConst.getMaybe(xx, baseType).optIsSome()) {
+                    var referenceType = reference.value().optUnwrap().valueType();
+                    if (GenAspectNumericConst.getMaybe(xx, referenceType).optIsNone()
+                            && GenAspectNumericDynamic.getMaybe(xx, referenceType).optIsNone()) {
+                        baseType = referenceType;
+                    }
+                }
                 var out =
                         switch (e.op()) {
                             case ADD -> {
@@ -1538,21 +1546,6 @@ public final class ConstEval {
         var res = constEval(xx, expr);
         xx.scope.popToLevelCount(before);
         return res;
-    }
-
-    /**
-     * The type whose operator aspect a binary operator dispatches to: the base operand's, except that a
-     * compile-time number on the left defers to a right operand that is not a host number (a target's
-     * value, say), whose type knows how to take the number as its other operand.
-     */
-    private static Type operatorDispatchType(ExprContext xx, Value base, CodeValue reference) {
-        var baseType = base.valueType();
-        if (reference.value().optIsNone()) return baseType;
-        if (GenAspectNumericConst.getMaybe(xx, baseType).optIsNone()) return baseType;
-        var referenceType = reference.value().optUnwrap().valueType();
-        if (GenAspectNumericConst.getMaybe(xx, referenceType).optIsSome()) return baseType;
-        if (GenAspectNumericDynamic.getMaybe(xx, referenceType).optIsSome()) return baseType;
-        return referenceType;
     }
 
     private static Opt<CodeValue> ifRequireNoValueWithoutElse(Erb erb, CodeValue cv) {
