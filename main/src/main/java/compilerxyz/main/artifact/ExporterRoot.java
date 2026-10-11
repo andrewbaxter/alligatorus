@@ -638,6 +638,10 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
 
     abstract ExporterRootDelegate delegate();
 
+    public String exporterRootTag() {
+        return tag;
+    }
+
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ROOT);

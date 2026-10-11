@@ -1,5 +1,6 @@
 package compilerxyz.main.langhelp.serve;
 
+import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.CompileModule;
 import compilerxyz.main.eval.CompileRes;
@@ -19,15 +20,19 @@ import compilerxyz.main.langserver.AnnounceSettled;
 import compilerxyz.main.langserver.ClientMessage;
 import compilerxyz.main.langserver.CompileError;
 import compilerxyz.main.langserver.Compiled;
+import compilerxyz.main.langserver.Export;
 import compilerxyz.main.langserver.FileState;
 import compilerxyz.main.langserver.Location;
 import compilerxyz.main.langserver.Log;
 import compilerxyz.main.langserver.Related;
+import compilerxyz.main.langserver.RequestExportRead;
 import compilerxyz.main.langserver.RequestFileState;
 import compilerxyz.main.langserver.RequestFlush;
 import compilerxyz.main.langserver.RequestPause;
 import compilerxyz.main.langserver.RequestSourceRead;
 import compilerxyz.main.langserver.Response;
+import compilerxyz.main.langserver.ResponseExportRead;
+import compilerxyz.main.langserver.ResponseFailed;
 import compilerxyz.main.langserver.ResponseFileState;
 import compilerxyz.main.langserver.ResponseFlush;
 import compilerxyz.main.langserver.ResponsePause;
@@ -44,6 +49,7 @@ import compilerxyz.prelude.util.TList;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.TreeSet;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -119,6 +125,34 @@ public final class ServeCompiler {
                                     }
                                     yield new ResponseFileState(
                                             new FileState(compiles, dirty.contains(Path.of(s.path()))));
+                                }
+                                case RequestExportRead r -> {
+                                    var spec =
+                                            switch (r.source()) {
+                                                case SourceLocal l -> new SourceSpecAbsolute.Local(l.path());
+                                                case SourceRemote rm ->
+                                                    SourceSpecAbsolute.sourceSpecAbsoluteParseKey(rm.spec());
+                                            };
+                                    var unit =
+                                            new CompileId(new ImportStateId(r.importState()), cache.sourcesIdFor(spec));
+                                    var stored = cache.compilesGetStored(unit);
+                                    if (stored.optIsNone()) {
+                                        yield new ResponseFailed("the source has no compile under that import state");
+                                    }
+                                    Opt<Artifact> artifact =
+                                            switch (stored.optUnwrap().result()) {
+                                                case CompileResResult.Ok ok -> ok.artifact();
+                                                case CompileResResult.Err err -> Opt.none();
+                                            };
+                                    if (artifact.optIsNone()) {
+                                        yield new ResponseFailed("the compile exported nothing");
+                                    }
+                                    yield switch (ServeExport.exportRead(cache, artifact.optUnwrap(), r.path())) {
+                                        case Result.Ok<byte[], String> ok ->
+                                            new ResponseExportRead(
+                                                    Base64.getEncoder().encodeToString(ok.value()));
+                                        case Result.Err<byte[], String> err -> new ResponseFailed(err.error());
+                                    };
                                 }
                                 case RequestSourceRead r -> {
                                     var spec =
@@ -204,8 +238,8 @@ public final class ServeCompiler {
                     var now = System.currentTimeMillis();
                     var error = new CompileError(
                             new Location(Opt.none(), new SourceLocal(root.toString())), err.error(), new TList<>());
-                    var compiled =
-                            new Compiled(now, TList.of(error), 0, new TList<>(), new SourceLocal(root.toString()), now);
+                    var compiled = new Compiled(
+                            now, TList.of(error), Opt.none(), 0, new TList<>(), new SourceLocal(root.toString()), now);
                     protocol.protocolWrite(new ServerMessageEv(new AnnounceCompiled(compiled)));
                     out.add(compiled);
                     continue;
@@ -247,8 +281,12 @@ public final class ServeCompiler {
 
     private Compiled compiled(CompileId unit, CompileRes res) {
         var errors = new TList<CompileError>();
+        Opt<Export> export = Opt.none();
         switch (res.result()) {
-            case CompileResResult.Ok ok -> {}
+            case CompileResResult.Ok ok -> {
+                if (ok.artifact().optIsSome())
+                    export = ServeExport.exportDescribe(cache, ok.artifact().optUnwrap());
+            }
             case CompileResResult.Err err -> {
                 for (var e : err.errors()) {
                     var location = new Location(e.loc().expr(), source(e.loc().source()));
@@ -271,7 +309,7 @@ public final class ServeCompiler {
         var logs = new TList<Log>();
         for (var log : res.logs()) logs.add(new Log(log.timestampMs(), log.message()));
         return new Compiled(
-                res.endMs(), errors, unit.importState().value(), logs, source(unit.source()), res.startMs());
+                res.endMs(), errors, export, unit.importState().value(), logs, source(unit.source()), res.startMs());
     }
 
     private Source source(SourceId id) {
@@ -280,7 +318,7 @@ public final class ServeCompiler {
         return source(spec.optUnwrap());
     }
 
-    private static Source source(SourceSpecAbsolute spec) {
+    static Source source(SourceSpecAbsolute spec) {
         return switch (spec) {
             case SourceSpecAbsolute.Local l -> new SourceLocal(l.path());
             case SourceSpecAbsolute.Remote r -> new SourceRemote(r.sourceSpecAbsoluteSpecKey());
