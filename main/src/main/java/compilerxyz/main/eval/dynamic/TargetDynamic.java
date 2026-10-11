@@ -533,7 +533,13 @@ public final class TargetDynamic implements Target {
         b.land(loopKey);
         var bodyAdd = b.addCode(loc, body.code());
         if (bodyAdd.optIsSome()) return EResult.errs(bodyAdd.optUnwrap());
-        if (!(body.outcome() instanceof EvalOutcome.ControlEnded)) b.jump(loopKey);
+        boolean ended =
+                switch (body.outcome()) {
+                    case EvalOutcome.ControlEnded ce -> true;
+                    case EvalOutcome.NoValue nv -> false;
+                    case EvalOutcome.HasValue hv -> false;
+                };
+        if (!ended) b.jump(loopKey);
         return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.CONTROL_ENDED));
     }
 
