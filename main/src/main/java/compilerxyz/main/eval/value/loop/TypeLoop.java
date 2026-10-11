@@ -10,7 +10,6 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindConstValue;
 import compilerxyz.main.eval.aspect.AspectConsumeDynamicObject;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectIterable;
@@ -19,19 +18,10 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.TList;
 
-/**
- * The type of `builtins.loop`, an endless iterable: a `foreach` over it runs its body until a return out of an
- * enclosing block, as the loop values of the wat and llvm targets do for their code.
- */
 @BuiltinFull(uniqueId = 6475L)
 @BuiltinPath(value = "loop", instance = true)
 public record TypeLoop() implements Aspect, Type {
-
-    public static ValueObjectConst value() {
-        return new ValueObjectConst(new TypeLoop(), new TList<>());
-    }
 
     @Override
     public String typeDesc() {

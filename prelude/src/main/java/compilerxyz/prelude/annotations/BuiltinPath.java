@@ -12,6 +12,5 @@ public @interface BuiltinPath {
 
     long scopeId() default 0L;
 
-    /** On a type: bind an instance of it holding no data, not the type itself. */
     boolean instance() default false;
 }
