@@ -1230,11 +1230,6 @@ public final class GenMain {
                     BuiltinTreeGen.LeafSpec spec =
                             switch (entry) {
                                 case BuiltinPathScanner.TypeLeaf tl -> {
-                                    if (tl.instance()) {
-                                        yield BuiltinTreeGen.LeafSpec.of(
-                                                CodeBlock.of("new $T<>()", BuiltinTreeGen.TLIST),
-                                                CodeBlock.of("new $T()", tl.typeClass()));
-                                    }
                                     var wrapper = BuiltinTreeGen.TYPE_OF_TYPES_EXPR;
                                     yield BuiltinTreeGen.LeafSpec.of(
                                             DynamicTypes.leaf(tl.typeClass(), scannedLeaves), wrapper);

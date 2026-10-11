@@ -70,6 +70,12 @@ public final class ExprArtifacts {
                                 elementKey.requireValue("ExprArtifacts::exprFromArtifact Foreach elementKey"),
                                 body.requireValue("ExprArtifacts::exprFromArtifact Foreach body"))));
             }
+            case ArtifactExpr.Variant.Loop lp -> {
+                var body = exprFromArtifact(xx, lp.body());
+                if (body.hasErrors()) return body.reerr();
+                return EResult.ok(
+                        new Expr(loc, new Expr.Loop(body.requireValue("ExprArtifacts::exprFromArtifact Loop body"))));
+            }
             case ArtifactExpr.Variant.Graft g -> {
                 var inner = exprFromArtifact(xx, g.expr());
                 if (inner.hasErrors()) return inner.reerr();
@@ -339,6 +345,13 @@ public final class ExprArtifacts {
                                 base.requireValue("ExprArtifacts::exprToArtifact Foreach base"),
                                 elementKey.requireValue("ExprArtifacts::exprToArtifact Foreach elementKey"),
                                 body.requireValue("ExprArtifacts::exprToArtifact Foreach body"))));
+            }
+            case Expr.Loop lp -> {
+                var body = exprToArtifact(xx, lp.body());
+                if (body.hasErrors()) return body.reerr();
+                return EResult.ok(new ArtifactExpr(
+                        loc,
+                        new ArtifactExpr.Variant.Loop(body.requireValue("ExprArtifacts::exprToArtifact Loop body"))));
             }
             case Expr.Graft.Pending p -> {
                 var inner = exprToArtifact(xx, p.expr());

@@ -41,7 +41,7 @@ public final class BuiltinPathScanner {
         String entryPath();
     }
 
-    public record TypeLeaf(String entryPath, ClassName typeClass, boolean instance) implements Entry {}
+    public record TypeLeaf(String entryPath, ClassName typeClass) implements Entry {}
 
     public record FunctionLeaf(
             String entryPath,
@@ -67,15 +67,7 @@ public final class BuiltinPathScanner {
             ClassName cn;
             if (enclosing.isEmpty()) cn = ClassName.get(pkg, simple);
             else cn = ClassName.get(pkg, enclosing, simple);
-            var instance = false;
-            if (findBuiltinPath(t).optUnwrap() instanceof NormalAnnotationExpr n) {
-                for (var p : n.getPairs()) {
-                    if (p.getNameAsString().equals("instance")) {
-                        instance = p.getValue().toString().equals("true");
-                    }
-                }
-            }
-            out.add(new TypeLeaf(pathOpt.optUnwrap(), cn, instance));
+            out.add(new TypeLeaf(pathOpt.optUnwrap(), cn));
         }
         if (t instanceof ClassOrInterfaceDeclaration || t instanceof RecordDeclaration) {
             for (var m : t.getMethods()) {

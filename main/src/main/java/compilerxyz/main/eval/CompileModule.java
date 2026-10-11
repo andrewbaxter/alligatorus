@@ -65,6 +65,7 @@ public final class CompileModule {
                         case Expr.Call c -> false;
                         case Expr.Field f -> false;
                         case Expr.Foreach f -> false;
+                        case Expr.Loop lp -> false;
                         case Expr.Graft.Pending p -> false;
                         case Expr.Graft.Evaluated g -> false;
                         case Expr.If i -> false;
@@ -306,6 +307,7 @@ public final class CompileModule {
             case Expr.OperatorBinary op ->
                 maxExcess(lowerExcess(op.base(), sd, ld), lowerExcess(op.reference(), sd, ld));
             case Expr.OperatorUnary op -> lowerExcess(op.base(), sd, ld);
+            case Expr.Loop lp -> lowerExcess(lp.body(), sd, ld);
             case Expr.Foreach f -> {
                 var m = lowerExcess(f.base(), sd, ld);
                 m = maxExcess(m, lowerExcess(f.elementKey(), sd, ld));

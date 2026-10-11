@@ -26,6 +26,8 @@ public record SourceExpr(ExprId id, Variant variant) implements SafeJsonSerializ
 
     public record Labeled(String label, SourceExpr inner) implements Variant {}
 
+    public record Loop(SourceExpr body) implements Variant {}
+
     public record Literal(SourceLiteral value) implements Variant {}
 
     public record Lower(SourceExpr expr) implements Variant {}

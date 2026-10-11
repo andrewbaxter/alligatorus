@@ -33,6 +33,8 @@ public record Expr(QExprId loc, Variant variant) implements Value {
 
     public record Foreach(Expr base, Expr elementKey, Expr body) implements Variant {}
 
+    public record Loop(Expr body) implements Variant {}
+
     public sealed interface Graft extends Variant {
         record Pending(Expr expr) implements Graft {}
 

@@ -88,6 +88,7 @@ public final class SourceModuleToModule {
                                 sourceExprToExpr(sourceId, op.reference()));
                     case SourceExpr.OperatorUnary op ->
                         new Expr.OperatorUnary(op.op(), sourceExprToExpr(sourceId, op.base()));
+                    case SourceExpr.Loop lp -> new Expr.Loop(sourceExprToExpr(sourceId, lp.body()));
                     case SourceExpr.Foreach f ->
                         new Expr.Foreach(
                                 sourceExprToExpr(sourceId, f.base()),

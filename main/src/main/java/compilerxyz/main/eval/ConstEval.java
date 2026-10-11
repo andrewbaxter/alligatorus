@@ -249,6 +249,7 @@ public final class ConstEval {
                                 case Expr.Call c -> Opt.none();
                                 case Expr.Field f -> Opt.none();
                                 case Expr.Foreach f -> Opt.none();
+                                case Expr.Loop lp -> Opt.none();
                                 case Expr.Graft.Pending p -> Opt.none();
                                 case Expr.Graft.Evaluated g -> Opt.none();
                                 case Expr.If i -> Opt.none();
@@ -747,6 +748,56 @@ public final class ConstEval {
                     outCv = new CodeValue(outSeq.optUnwrap(), outCv.outcome());
                     var foreachRes = EvalRes.of(outCv, xx.scope);
                     res = erb.errors().isEmpty() ? EResult.ok(foreachRes) : EResult.mixed(foreachRes, erb.errors());
+                }
+                yield labeledConsume(xx, loc, level, baseLevelCount, res);
+            }
+            case Expr.Loop e -> {
+                int baseLevelCount = xx.scope.levelCount();
+                var level = xx.scope.pushMergeLabeled();
+                EResult<EvalRes> res;
+                loopCompute:
+                {
+                    var erb = new Erb(loc);
+                    var bodyScope = xx.scope.fork();
+                    var bodyXx = new ExprContext(bodyScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
+                    var bodyResult = constEval(bodyXx, e.body());
+                    if (bodyResult.valueOpt().optIsNone()) {
+                        bodyResult.drainInto(erb.errors());
+                        res = EResult.errs(erb.errors());
+                        break loopCompute;
+                    }
+                    bodyResult.drainInto(erb.errors());
+                    var bodyEv = bodyResult.requireValue("constEvalLoop body");
+                    var bodyRanScope = bodyEv.scope();
+                    var others = new TList<Scope>();
+                    others.add(xx.scope);
+                    var mergeRes = bodyRanScope.merge(xx, loc, others);
+                    if (mergeRes.optIsSome()) {
+                        res = EResult.errs(mergeRes.optUnwrap());
+                        break loopCompute;
+                    }
+                    xx.scope.adopt(bodyRanScope);
+                    var bodyCv = bodyEv.cv();
+                    if (bodyCv.value().optIsSome()) {
+                        var dropOpt = erb.mustErMaybeUnreachable(Eval.dropValue(xx, loc, bodyCv));
+                        if (dropOpt.optIsNone()) {
+                            res = EResult.errs(erb.errors());
+                            break loopCompute;
+                        }
+                        var droppedOpt = seqCode(xx, loc, erb, TList.of(bodyCv.code(), dropOpt.optUnwrap()));
+                        if (droppedOpt.optIsNone()) {
+                            res = EResult.errs(erb.errors());
+                            break loopCompute;
+                        }
+                        bodyCv = new CodeValue(droppedOpt.optUnwrap(), EvalOutcome.NO_VALUE);
+                    }
+                    var out = erb.mustErMaybeUnreachable(xx.target.targetLoop(xx, loc, bodyCv));
+                    if (out.optIsNone()) {
+                        res = EResult.errs(erb.errors());
+                        break loopCompute;
+                    }
+                    var loopRes = EvalRes.of(out.optUnwrap(), xx.scope);
+                    res = erb.errors().isEmpty() ? EResult.ok(loopRes) : EResult.mixed(loopRes, erb.errors());
                 }
                 yield labeledConsume(xx, loc, level, baseLevelCount, res);
             }
@@ -1863,6 +1914,7 @@ public final class ConstEval {
                 findMatchedLowersInner(o.reference(), sd, ld, out);
             }
             case Expr.OperatorUnary o -> findMatchedLowersInner(o.base(), sd, ld, out);
+            case Expr.Loop lp -> findMatchedLowersInner(lp.body(), sd, ld, out);
             case Expr.Foreach fe -> {
                 findMatchedLowersInner(fe.base(), sd, ld, out);
                 findMatchedLowersInner(fe.elementKey(), sd, ld, out);
@@ -1955,6 +2007,7 @@ public final class ConstEval {
                 findMatchedGraftsInner(o.reference(), sd, out);
             }
             case Expr.OperatorUnary o -> findMatchedGraftsInner(o.base(), sd, out);
+            case Expr.Loop lp -> findMatchedGraftsInner(lp.body(), sd, out);
             case Expr.Foreach fe -> {
                 findMatchedGraftsInner(fe.base(), sd, out);
                 findMatchedGraftsInner(fe.elementKey(), sd, out);

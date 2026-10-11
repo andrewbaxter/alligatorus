@@ -42,17 +42,14 @@ public final class T0075LoopTest {
         exprs.add(mb.bind("i", mb.as(mb.num(0), mb.typesInt())));
         exprs.add(mb.labeled(
                 "done",
-                mb.foreach(
-                        mb.builtin("loop"),
-                        mb.str("_"),
-                        mb.seqOf(
-                                mb.ifOf(
-                                        TList.of(new TestMb.Branch(
-                                                mb.operatorGe(mb.scopeUse("i"), mb.num(3)),
-                                                mb.return_(Opt.some("done"), Opt.none()))),
-                                        Opt.none()),
-                                mb.call(mb.log(), intToString(mb, mb.scopeUse("i"))),
-                                mb.set(mb.scopeUse("i"), mb.operatorAdd(mb.scopeUse("i"), mb.num(1)))))));
+                mb.loop(mb.seqOf(
+                        mb.ifOf(
+                                TList.of(new TestMb.Branch(
+                                        mb.operatorGe(mb.scopeUse("i"), mb.num(3)),
+                                        mb.return_(Opt.some("done"), Opt.none()))),
+                                Opt.none()),
+                        mb.call(mb.log(), intToString(mb, mb.scopeUse("i"))),
+                        mb.set(mb.scopeUse("i"), mb.operatorAdd(mb.scopeUse("i"), mb.num(1)))))));
         exprs.add(mb.call(mb.log(), mb.str("after")));
         assertEquals(TList.of("0", "1", "2", "after"), run(exprs));
     }
@@ -65,38 +62,25 @@ public final class T0075LoopTest {
         exprs.add(mb.bind("i", mb.as(mb.num(0), mb.typesInt())));
         exprs.add(mb.labeled(
                 "outer",
-                mb.foreach(
-                        mb.builtin("loop"),
-                        mb.str("_"),
-                        mb.seqOf(
-                                mb.ifOf(
-                                        TList.of(new TestMb.Branch(
-                                                mb.operatorGe(mb.scopeUse("i"), mb.num(2)),
-                                                mb.return_(Opt.some("outer"), Opt.none()))),
-                                        Opt.none()),
-                                mb.bind("j", mb.as(mb.num(0), mb.typesInt())),
-                                mb.labeled(
-                                        "inner",
-                                        mb.foreach(
-                                                mb.builtin("loop"),
-                                                mb.str("_"),
-                                                mb.seqOf(
-                                                        mb.ifOf(
-                                                                TList.of(
-                                                                        new TestMb.Branch(
-                                                                                mb.operatorGe(
-                                                                                        mb.scopeUse("j"), mb.num(3)),
-                                                                                mb.return_(
-                                                                                        Opt.some("inner"),
-                                                                                        Opt.none()))),
-                                                                Opt.none()),
-                                                        mb.set(
-                                                                mb.scopeUse("n"),
-                                                                mb.operatorAdd(mb.scopeUse("n"), mb.num(1))),
-                                                        mb.set(
-                                                                mb.scopeUse("j"),
-                                                                mb.operatorAdd(mb.scopeUse("j"), mb.num(1)))))),
-                                mb.set(mb.scopeUse("i"), mb.operatorAdd(mb.scopeUse("i"), mb.num(1)))))));
+                mb.loop(mb.seqOf(
+                        mb.ifOf(
+                                TList.of(new TestMb.Branch(
+                                        mb.operatorGe(mb.scopeUse("i"), mb.num(2)),
+                                        mb.return_(Opt.some("outer"), Opt.none()))),
+                                Opt.none()),
+                        mb.bind("j", mb.as(mb.num(0), mb.typesInt())),
+                        mb.labeled(
+                                "inner",
+                                mb.loop(mb.seqOf(
+                                        mb.ifOf(
+                                                TList.of(
+                                                        new TestMb.Branch(
+                                                                mb.operatorGe(mb.scopeUse("j"), mb.num(3)),
+                                                                mb.return_(Opt.some("inner"), Opt.none()))),
+                                                Opt.none()),
+                                        mb.set(mb.scopeUse("n"), mb.operatorAdd(mb.scopeUse("n"), mb.num(1))),
+                                        mb.set(mb.scopeUse("j"), mb.operatorAdd(mb.scopeUse("j"), mb.num(1)))))),
+                        mb.set(mb.scopeUse("i"), mb.operatorAdd(mb.scopeUse("i"), mb.num(1)))))));
         exprs.add(mb.call(mb.log(), intToString(mb, mb.scopeUse("n"))));
         assertEquals(TList.of("6"), run(exprs));
     }

@@ -527,6 +527,17 @@ public final class TargetDynamic implements Target {
     }
 
     @Override
+    public EResult<CodeValue> targetLoop(ExprContext xx, QExprId loc, CodeValue body) {
+        var loopKey = new JumpKey();
+        var b = new JavaBytecodeBuilder(loc);
+        b.land(loopKey);
+        var bodyAdd = b.addCode(loc, body.code());
+        if (bodyAdd.optIsSome()) return EResult.errs(bodyAdd.optUnwrap());
+        if (!(body.outcome() instanceof EvalOutcome.ControlEnded)) b.jump(loopKey);
+        return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.CONTROL_ENDED));
+    }
+
+    @Override
     public EResult<CodeValue> targetIf(ExprContext xx, QExprId loc, TList<IfBranch> conditions, Opt<CodeValue> else_) {
         var rawArms = new TList<CodeValue>();
         for (var branch : conditions) rawArms.add(branch.body);

@@ -11,6 +11,4 @@ public @interface BuiltinPath {
     String value();
 
     long scopeId() default 0L;
-
-    boolean instance() default false;
 }

@@ -55,6 +55,8 @@ public interface Target {
 
     EResult<CodeValue> targetIf(ExprContext xx, QExprId loc, TList<IfBranch> conditions, Opt<CodeValue> else_);
 
+    EResult<CodeValue> targetLoop(ExprContext xx, QExprId loc, CodeValue body);
+
     EResult<CodeValue> targetTryCatchFinally(
             ExprContext xx,
             QExprId loc,
