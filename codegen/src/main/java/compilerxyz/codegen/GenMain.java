@@ -994,7 +994,7 @@ public final class GenMain {
         }
         {
             for (var store : ListsGen.STORES) {
-                for (var bytecodeCalled : new String[] {"push", "get", "size"}) {
+                for (var bytecodeCalled : new String[] {"push", "get", "set", "size"}) {
                     dispatchRoots.add(ListsGen.GEN_PACKAGE + "." + store.simple() + "#" + bytecodeCalled);
                 }
                 TypeSpec storeClass;
@@ -1034,6 +1034,15 @@ public final class GenMain {
                                         .addStatement("throw new $T(index)", ArrayIndexOutOfBoundsException.class)
                                         .endControlFlow()
                                         .addStatement("return data[index]")
+                                        .build())
+                                .addMethod(MethodSpec.methodBuilder("set")
+                                        .addModifiers(Modifier.PUBLIC)
+                                        .addParameter(TypeName.INT, "index")
+                                        .addParameter(store.javaPrim(), "value")
+                                        .beginControlFlow("if (index >= size)")
+                                        .addStatement("throw new $T(index)", ArrayIndexOutOfBoundsException.class)
+                                        .endControlFlow()
+                                        .addStatement("data[index] = value")
                                         .build())
                                 .addMethod(MethodSpec.methodBuilder("size")
                                         .addModifiers(Modifier.PUBLIC)
@@ -1221,6 +1230,11 @@ public final class GenMain {
                     BuiltinTreeGen.LeafSpec spec =
                             switch (entry) {
                                 case BuiltinPathScanner.TypeLeaf tl -> {
+                                    if (tl.instance()) {
+                                        yield BuiltinTreeGen.LeafSpec.of(
+                                                CodeBlock.of("new $T<>()", BuiltinTreeGen.TLIST),
+                                                CodeBlock.of("new $T()", tl.typeClass()));
+                                    }
                                     var wrapper = BuiltinTreeGen.TYPE_OF_TYPES_EXPR;
                                     yield BuiltinTreeGen.LeafSpec.of(
                                             DynamicTypes.leaf(tl.typeClass(), scannedLeaves), wrapper);

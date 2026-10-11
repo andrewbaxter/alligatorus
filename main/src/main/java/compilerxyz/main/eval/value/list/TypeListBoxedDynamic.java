@@ -18,6 +18,7 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.JvmSort;
+import compilerxyz.main.eval.value.int_.TypeIntDynamic;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
@@ -120,12 +121,22 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
                 return type;
             }
         }
+
+        record Length() implements FieldSpec {
+            @Override
+            public Type fieldSpecFieldType() {
+                return new TypeIntDynamic();
+            }
+        }
     }
 
     TMap<ConstKey, FieldSpec> fieldSpecs(ExprContext xx) {
         var m = new TMap<ConstKey, FieldSpec>();
         m.put(new ConstKey.Str("new"), new FieldSpec.Factory(new TypeListNewDynamic(elementType)));
         m.put(new ConstKey.Str("push"), new FieldSpec.Method(new TypeListPushDynamic(elementType)));
+        m.put(new ConstKey.Str("len"), new FieldSpec.Length());
+        m.put(new ConstKey.Str("get"), new FieldSpec.Method(new TypeListGetDynamic(this)));
+        m.put(new ConstKey.Str("set"), new FieldSpec.Method(new TypeListSetDynamic(this)));
         if (GenAspectStringDynamic.getMaybe(xx, elementType).optIsSome()) {
             m.put(new ConstKey.Str("join"), new FieldSpec.Method(new TypeListJoinDynamic(elementType)));
         }
