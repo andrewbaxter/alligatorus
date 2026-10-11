@@ -110,7 +110,7 @@
                             </arguments>
                         </configuration>
                     </execution>
-                    <!-- The language server protocol is owned by merman (editor/merman3/langserver);
+                    <!-- The language server protocol is owned by merman (the merman submodule's langserver);
                          its Java bindings are generated from the checked-in schema. -->
                     <execution>
                         <id>generate-langserver</id>
@@ -122,7 +122,7 @@
                             <executable>schemask</executable>
                             <arguments>
                                 <argument>generate-java</argument>
-                                <argument>${project.basedir}/../editor/merman3/langserver/schema.json</argument>
+                                <argument>${project.basedir}/../merman/langserver/schema.json</argument>
                                 <argument>--package</argument>
                                 <argument>compilerxyz.main.langserver</argument>
                                 <argument>--runtime-package</argument>

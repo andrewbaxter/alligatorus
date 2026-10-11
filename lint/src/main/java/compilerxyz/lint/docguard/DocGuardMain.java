@@ -15,12 +15,17 @@ public final class DocGuardMain {
     private DocGuardMain() {}
 
     public static void main(String[] args) throws IOException {
-        if (args.length == 0) {
-            System.err.println("usage: docguard <scan|check|fix|strip-inline> [paths...]");
+        List<String> rest = new ArrayList<>(Arrays.asList(args));
+        String against = "HEAD";
+        if (rest.size() >= 2 && rest.get(0).equals("--against")) {
+            against = rest.get(1);
+            rest = new ArrayList<>(rest.subList(2, rest.size()));
+        }
+        if (rest.isEmpty()) {
+            System.err.println("usage: docguard [--against REV] <scan|check|fix|strip-inline> [paths...]");
             System.exit(2);
         }
-        String mode = args[0];
-        List<String> rest = new ArrayList<>(Arrays.asList(args).subList(1, args.length));
+        String mode = rest.remove(0);
 
         switch (mode) {
             case "strip-inline" -> {
@@ -47,13 +52,13 @@ public final class DocGuardMain {
                 System.exit(0);
             }
             case "scan" -> {
-                Opt<GitRepo> repoOpt = GitRepo.at(Path.of("."));
+                Opt<GitRepo> repoOpt = GitRepo.at(Path.of("."), against);
                 if (repoOpt.optIsNone()) {
                     System.out.println("docguard: not a git repository; skipping.");
                     System.exit(0);
                 }
                 GitRepo repo = repoOpt.optUnwrap();
-                boolean hasHead = repo.hasHead();
+                boolean hasHead = hasAgainst(repo, against);
                 List<Violation> violations = new ArrayList<>();
                 for (String path : repo.workingTree(".java")) {
                     String current;
@@ -68,8 +73,8 @@ public final class DocGuardMain {
                 violations.forEach(v -> System.out.println(v.render()));
                 System.exit(violations.isEmpty() ? 0 : 1);
             }
-            case "check" -> System.exit(perCommit(rest, false));
-            case "fix" -> System.exit(perCommit(rest, true));
+            case "check" -> System.exit(perCommit(against, rest, false));
+            case "fix" -> System.exit(perCommit(against, rest, true));
             default -> {
                 System.err.println("docguard: unknown mode '" + mode + "'");
                 System.exit(2);
@@ -77,14 +82,23 @@ public final class DocGuardMain {
         }
     }
 
-    private static int perCommit(List<String> paths, boolean fix) throws IOException {
-        Opt<GitRepo> repoOpt = GitRepo.at(Path.of("."));
+    private static boolean hasAgainst(GitRepo repo, String against) {
+        boolean has = repo.hasAgainst();
+        if (!has && !against.equals("HEAD")) {
+            System.err.println("docguard: no commit named '" + against + "'");
+            System.exit(2);
+        }
+        return has;
+    }
+
+    private static int perCommit(String against, List<String> paths, boolean fix) throws IOException {
+        Opt<GitRepo> repoOpt = GitRepo.at(Path.of("."), against);
         if (repoOpt.optIsNone()) {
             System.out.println("docguard: not a git repository; skipping.");
             return 0;
         }
         GitRepo repo = repoOpt.optUnwrap();
-        boolean hasHead = repo.hasHead();
+        boolean hasHead = hasAgainst(repo, against);
         Set<String> restrict = new LinkedHashSet<>(paths);
         List<Violation> violations = new ArrayList<>();
         List<String> fixedFiles = new ArrayList<>();
