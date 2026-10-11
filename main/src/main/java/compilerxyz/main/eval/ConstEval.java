@@ -11,6 +11,8 @@ import compilerxyz.main.gen.GenAspectBoolConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectIterable;
+import compilerxyz.main.gen.GenAspectNumericConst;
+import compilerxyz.main.gen.GenAspectNumericDynamic;
 import compilerxyz.main.gen.GenAspectOperatorAdd;
 import compilerxyz.main.gen.GenAspectOperatorAnd;
 import compilerxyz.main.gen.GenAspectOperatorBitNot;
@@ -510,8 +512,8 @@ public final class ConstEval {
                 if (bopt.optIsNone() || ropt.optIsNone()) yield EResult.errs(erb.errors());
                 var base = bopt.optUnwrap();
                 var bv = (Opt.Some<Value>) base.value();
-                var baseType = bv.value().valueType();
                 var reference = ropt.optUnwrap();
+                var baseType = operatorDispatchType(xx, bv.value(), reference);
                 var out =
                         switch (e.op()) {
                             case ADD -> {
@@ -1536,6 +1538,21 @@ public final class ConstEval {
         var res = constEval(xx, expr);
         xx.scope.popToLevelCount(before);
         return res;
+    }
+
+    /**
+     * The type whose operator aspect a binary operator dispatches to: the base operand's, except that a
+     * compile-time number on the left defers to a right operand that is not a host number (a target's
+     * value, say), whose type knows how to take the number as its other operand.
+     */
+    private static Type operatorDispatchType(ExprContext xx, Value base, CodeValue reference) {
+        var baseType = base.valueType();
+        if (reference.value().optIsNone()) return baseType;
+        if (GenAspectNumericConst.getMaybe(xx, baseType).optIsNone()) return baseType;
+        var referenceType = reference.value().optUnwrap().valueType();
+        if (GenAspectNumericConst.getMaybe(xx, referenceType).optIsSome()) return baseType;
+        if (GenAspectNumericDynamic.getMaybe(xx, referenceType).optIsSome()) return baseType;
+        return referenceType;
     }
 
     private static Opt<CodeValue> ifRequireNoValueWithoutElse(Erb erb, CodeValue cv) {
