@@ -20,11 +20,6 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/**
- * A marker the ide recognizes is an object defined in source, not a builtin: here a module defines
- * `editor` holding a dir, another module exports an instance, and the language server describes the
- * export by the object's name and reads a dir entry out of it by path.
- */
 public final class T0222ServeExportTest {
     private static final String WASM = "\0asm\1\0\0\0";
 

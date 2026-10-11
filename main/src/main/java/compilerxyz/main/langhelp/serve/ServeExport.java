@@ -34,12 +34,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.function.Supplier;
 
-/**
- * What the language server tells the ide about a module's root export. The ide recognizes markers
- * (an `editor` extension, say) by the name of the source-defined object the export is an instance
- * of, and reads the export's bytes by a path of record fields and dir entries, so neither the
- * compiler nor the protocol knows any marker by name.
- */
 public final class ServeExport {
     private ServeExport() {}
 
@@ -74,10 +68,6 @@ public final class ServeExport {
         }
     }
 
-    /**
-     * The value an export wraps: a const value is exported as its type and data, and an instance
-     * of a source object as its type and underlying record.
-     */
     private static Opt<Artifact> unwrap(Resolved resolved) {
         var tag = resolved.exporter();
         if (tag.equals(ExporterRoot.OBJECT_CONST.exporterRootTag())) {
