@@ -5,6 +5,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.eval.value.source_interface.InterfaceMethodBuilding;
+import compilerxyz.main.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.prelude.annotations.BuiltinEvalContext;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -39,9 +40,11 @@ public final class SourceInterfaceResult {
             throw new IllegalStateException(
                     "Cannot add method '" + name + "' to an interface that has already been implemented");
         }
-        DefinitionSetBuilder.requireArgBindable(
-                DefinitionSetBuilder.builderContext(vx), arg, "Interface method '" + name + "'");
-        building.methods.add(new InterfaceMethodBuilding(name, arg, ret));
+        var what = "Interface method '" + name + "'";
+        var builderXx = DefinitionSetBuilder.builderContext(vx);
+        DefinitionSetBuilder.requireArgBindable(builderXx, arg, what);
+        building.methods.add(new InterfaceMethodBuilding(
+                name, arg, ret, InterfaceMethodData.deriveDescriptor(builderXx, arg, ret, what)));
     }
 
     public Unique aspectId() {

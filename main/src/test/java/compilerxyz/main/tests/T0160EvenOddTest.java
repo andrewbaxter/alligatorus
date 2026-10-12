@@ -116,7 +116,7 @@ public final class T0160EvenOddTest {
                         mb.evalConstEval(),
                         mb.recordOf(TList.of(
                                 new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                new TestMb.RecordPair("staged", mb.stage(mb.returnEmpty())))))))));
+                                new TestMb.RecordPair("staged", mb.stage(mb.seqOf())))))))));
     }
 
     private static TList<SourceExpr> bindEvenOddType(TestMb mb, String name, SourceExpr dropBody) {
@@ -218,16 +218,25 @@ public final class T0160EvenOddTest {
                                                 mb.recordOf(
                                                         TList.of(
                                                                 new TestMb.RecordPair(
-                                                                        "iface_ref", mb.evalAspectInitialBindDynamic()),
+                                                                        "iface_ref", mb.evalAspectInitialBind()),
                                                                 new TestMb.RecordPair(
                                                                         "record",
                                                                         ifaceMethods(
                                                                                 mb,
                                                                                 TList.of(
                                                                                         new TestMb.RecordPair(
-                                                                                                "initial_bind_dynamic",
-                                                                                                mb.scopeUse(
-                                                                                                        "outer")))))))),
+                                                                                                "initial_bind",
+                                                                                                mb.call(
+                                                                                                        mb.field(
+                                                                                                                mb.call(
+                                                                                                                        mb
+                                                                                                                                .typesEresult(),
+                                                                                                                        mb
+                                                                                                                                .evalBinding()),
+                                                                                                                mb.str(
+                                                                                                                        "ok")),
+                                                                                                        mb.scopeUse(
+                                                                                                                "outer"))))))))),
                                         mb.bind(
                                                 "vb",
                                                 mb.call(
@@ -426,16 +435,25 @@ public final class T0160EvenOddTest {
                                                 mb.recordOf(
                                                         TList.of(
                                                                 new TestMb.RecordPair(
-                                                                        "iface_ref", mb.evalAspectInitialBindDynamic()),
+                                                                        "iface_ref", mb.evalAspectInitialBind()),
                                                                 new TestMb.RecordPair(
                                                                         "record",
                                                                         ifaceMethods(
                                                                                 mb,
                                                                                 TList.of(
                                                                                         new TestMb.RecordPair(
-                                                                                                "initial_bind_dynamic",
-                                                                                                mb.scopeUse(
-                                                                                                        "outer")))))))),
+                                                                                                "initial_bind",
+                                                                                                mb.call(
+                                                                                                        mb.field(
+                                                                                                                mb.call(
+                                                                                                                        mb
+                                                                                                                                .typesEresult(),
+                                                                                                                        mb
+                                                                                                                                .evalBinding()),
+                                                                                                                mb.str(
+                                                                                                                        "ok")),
+                                                                                                        mb.scopeUse(
+                                                                                                                "outer"))))))))),
                                         mb.call(
                                                 mb.field(mb.scopeUse("bb"), mb.str("impl_interface")),
                                                 mb.recordOf(

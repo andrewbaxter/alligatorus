@@ -30,8 +30,13 @@ public final class Eval {
     }
 
     public static EResult<Code> dropValue(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dropXx = new ExprContext(xx.scope, xx.target, xx.vx, xx.importState, Opt.none());
-        return dropXx.target.targetDrop(dropXx, loc, cv);
+        return xx.target.targetDrop(dropContext(xx), loc, cv);
+    }
+
+    public static ExprContext dropContext(ExprContext xx) {
+        var scope = new Scope(xx.vx);
+        scope.pushAll(bodyBuiltinScope(xx));
+        return new ExprContext(scope, xx.target, xx.vx, xx.importState, Opt.none());
     }
 
     public static EResult<CodeValue> typecheckConvert(ExprContext xx, QExprId loc, Type destType, CodeValue source) {

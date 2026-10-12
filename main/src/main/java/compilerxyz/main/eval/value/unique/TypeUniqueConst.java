@@ -1,6 +1,11 @@
 package compilerxyz.main.eval.value.unique;
 
+import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ArtifactIdSource;
+import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -10,15 +15,62 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindConstValue;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
+import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.safejson.JsonValue;
+import compilerxyz.main.safejson.JsonValueArray;
+import compilerxyz.main.safejson.JsonValueBoolean;
+import compilerxyz.main.safejson.JsonValueNull;
+import compilerxyz.main.safejson.JsonValueNumber;
+import compilerxyz.main.safejson.JsonValueObject;
+import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
+import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6148L)
 public record TypeUniqueConst() implements Aspect, Type {
+
+    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+            var u = MustCast.mustCast(
+                    Unique.class,
+                    MustCast.mustCast(ValueObjectConst.class, self).data());
+            return EResult.ok(new Artifact.Body(makeBody.apply(TypeUniqueDynamic.encodeUnique(u))));
+        }
+
+        @Override
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            return switch (data) {
+                case JsonValueObject obj -> {
+                    var decoded = TypeUniqueDynamic.decodeUnique(loc, obj);
+                    if (decoded.hasErrors()) {
+                        yield EResult.err(loc, "TypeUniqueConst::exporterRootDelegateSelfFromArtifactData: malformed");
+                    }
+                    yield EResult.ok(new ValueObjectConst(
+                            new TypeUniqueConst(),
+                            decoded.requireValue("TypeUniqueConst::exporterRootDelegateSelfFromArtifactData decoded")));
+                }
+                case JsonValueNull ignored ->
+                    EResult.err(loc, "TypeUniqueConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+                case JsonValueBoolean b ->
+                    EResult.err(loc, "TypeUniqueConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+                case JsonValueNumber n ->
+                    EResult.err(loc, "TypeUniqueConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+                case JsonValueString s ->
+                    EResult.err(loc, "TypeUniqueConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+                case JsonValueArray a ->
+                    EResult.err(loc, "TypeUniqueConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+            };
+        }
+    };
 
     @Override
     public String typeDesc() {
@@ -38,6 +90,9 @@ public record TypeUniqueConst() implements Aspect, Type {
         }
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(AspectBindConstValue.INSTANCE);
+        }
+        if (key.equals(GenAspectArtifact.AspectId)) {
+            return Opt.some(AspectArtifactUniqueConst.INSTANCE);
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY)) {
             return Opt.some(this);

@@ -51,16 +51,10 @@ public final class ConstEval {
         var loc = expr.loc();
         return switch (expr.variant()) {
             case Expr.Literal lit -> {
-                var litVal = lit.value();
-                Value v;
-                if (!litVal.once) {
-                    v = litVal.value.optUnwrap();
-                } else {
-                    if (litVal.value.optIsNone()) throw new IllegalStateException("Once Literal already consumed");
-                    v = litVal.value.optUnwrap();
-                    litVal.value = Opt.none();
-                }
-                yield EResult.ok(EvalRes.of(new CodeValue(Code.none(loc), EvalOutcome.ofValue(v)), xx.scope));
+                yield EResult.ok(EvalRes.of(
+                        new CodeValue(
+                                Code.none(loc), EvalOutcome.ofValue(lit.value().litValueValue())),
+                        xx.scope));
             }
             case Expr.ScopeUse p -> {
                 var erb = new Erb(loc);
@@ -357,7 +351,7 @@ public final class ConstEval {
                     if (current.scopeLevelEmission().id != entries.get(i).scopeLevelEmission().id) {
                         throw new AssertionError("seq unwind: top level is not the expected entry");
                     }
-                    var dropRes = current.binding.bindingDrop(xx, loc);
+                    var dropRes = current.binding.bindingDrop(Eval.dropContext(xx), loc);
                     if (dropRes.hasErrors()) {
                         dropRes.drainInto(erb.errors());
                         yield EResult.errs(erb.errors());
@@ -1468,27 +1462,29 @@ public final class ConstEval {
                             case ScopeLevel.Catch ca -> {}
                         }
                     }
-                    if (!found) throw new AssertionError("exitDest: target label level is not in scope");
-                    var discriminator = target.label.optIsSome() ? target.label.optUnwrap() : "";
-                    var next = target.end;
-                    for (int ci = cleanups.size() - 1; ci >= 0; ci--) {
-                        var resolved = ScopeChains.node(
-                                xx,
-                                loc,
-                                cleanups.get(ci),
-                                new ScopeLevel.DestKey(
-                                        ScopeChains.levelDropState(cleanups.get(ci)),
-                                        Opt.some(discriminator),
-                                        Opt.some(next),
-                                        cleanups.get(ci).scopeLevelEmission().argumentIntern(xx, argument)));
-                        if (resolved.hasErrors()) {
-                            destRes = resolved.reerr();
-                            break exitDestCompute;
-                        }
-                        next = resolved.requireValue("ScopeChains.exitDest node")
-                                .optUnwrap();
+                    if (!found) {
+                        erb.errPush("return: no enclosing block to return from (drop code and other detached code"
+                                + " cannot return)");
+                        yield EResult.errs(erb.errors());
                     }
-                    destRes = EResult.ok(next);
+                    var discriminator = target.label.optIsSome() ? target.label.optUnwrap() : "";
+                    var argumentFinal = argument;
+                    var chainRes = ScopeChains.chain(
+                            xx,
+                            loc,
+                            cleanups,
+                            Opt.some(target.end),
+                            level -> new ScopeLevel.DestKey(
+                                    ScopeChains.levelDropState(level),
+                                    Opt.some(discriminator),
+                                    Opt.<JumpKey>none(),
+                                    level.scopeLevelEmission().argumentIntern(xx, argumentFinal)));
+                    if (chainRes.hasErrors()) {
+                        destRes = chainRes.reerr();
+                        break exitDestCompute;
+                    }
+                    destRes = EResult.ok(
+                            chainRes.requireValue("ScopeChains.exitDest chain").optUnwrap());
                 }
                 if (destRes.hasErrors()) {
                     destRes.drainInto(erb.errors());

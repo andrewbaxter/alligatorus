@@ -31,7 +31,7 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenBuiltinInterfaces;
@@ -211,8 +211,8 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicObjectDynamic(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindObjectDynamic(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_OBJECT_DYNAMIC_IDENTITY)) {
             return Opt.some(this);

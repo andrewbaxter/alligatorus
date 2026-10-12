@@ -330,8 +330,8 @@ public final class TestMb {
         return builtin("eval", "aspect_bind");
     }
 
-    public SourceExpr evalAspectInitialBindDynamic() {
-        return builtin("eval", "aspect_initial_bind_dynamic");
+    public SourceExpr evalAspectInitialBind() {
+        return builtin("eval", "aspect_initial_bind");
     }
 
     public SourceExpr evalAspectInt() {

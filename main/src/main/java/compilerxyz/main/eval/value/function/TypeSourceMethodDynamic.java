@@ -16,7 +16,7 @@ import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -51,8 +51,8 @@ public record TypeSourceMethodDynamic(
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicSourceMethodDynamic(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindSourceMethodDynamic(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_METHOD_DYNAMIC_IDENTITY)) {
             return Opt.some(this);

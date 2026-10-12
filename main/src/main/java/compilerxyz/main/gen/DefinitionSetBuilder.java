@@ -114,21 +114,21 @@ public final class DefinitionSetBuilder {
         var recordOpt = GenAspectRecord.getMaybe(xx, arg);
         if (tupleOpt.optIsSome()) {
             for (var et : tupleOpt.optUnwrap().aspectTupleElementTypes()) {
-                if (GenAspectInitialBindDynamic.getMaybe(xx, et).optIsNone()) {
+                if (GenAspectInitialBind.getMaybe(xx, et).optIsNone()) {
                     throw new IllegalStateException(
                             what + ": arg tuple element type " + et.typeDesc() + " cannot be bound dynamically");
                 }
             }
         } else if (recordOpt.optIsSome()) {
             for (var entry : recordOpt.optUnwrap().aspectRecordFieldTypes().entrySet()) {
-                if (GenAspectInitialBindDynamic.getMaybe(xx, entry.getValue()).optIsNone()) {
+                if (GenAspectInitialBind.getMaybe(xx, entry.getValue()).optIsNone()) {
                     throw new IllegalStateException(what + ": arg record field '"
                             + entry.getKey().constKeyToCanonical() + "' type "
                             + entry.getValue().typeDesc()
                             + " cannot be bound dynamically");
                 }
             }
-        } else if (GenAspectInitialBindDynamic.getMaybe(xx, arg).optIsNone()) {
+        } else if (GenAspectInitialBind.getMaybe(xx, arg).optIsNone()) {
             throw new IllegalStateException(what + ": arg type " + arg.typeDesc() + " cannot be bound dynamically");
         }
     }

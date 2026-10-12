@@ -270,7 +270,7 @@ public final class DefinitionSet implements Artifactable {
             var sieMethods = new TList<InterfaceMethodData>();
             for (var sieMethod : building.methods) {
                 sieMethods.add(new InterfaceMethodData(
-                        sieMethod.name, sieMethod.argType, sieMethod.retType, IList.of(), Opt.none(), Opt.none()));
+                        sieMethod.name, sieMethod.argType, sieMethod.retType, sieMethod.name, sieMethod.jvmDescriptor));
             }
             var internalName = iface.binaryName.replace('.', '/');
             var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
@@ -284,9 +284,8 @@ public final class DefinitionSet implements Artifactable {
             for (var method : sieMethods) {
                 cw.visitMethod(
                                 Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT,
-                                method.name,
-                                JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT)
-                                        .value(),
+                                method.jvmName,
+                                method.jvmDescriptor.value(),
                                 null,
                                 null)
                         .visitEnd();
@@ -589,17 +588,8 @@ public final class DefinitionSet implements Artifactable {
                                 continue;
                             }
                             var ehiIfaceMethod = ehiM.interfaceMethod;
-                            String hostName;
-                            JavaMethodDescriptor hostDescriptor;
-                            if (ehiIfaceMethod.hostMethodName.optIsSome()
-                                    && ehiIfaceMethod.hostMethodDescriptor.optIsSome()) {
-                                hostName = ehiIfaceMethod.hostMethodName.optUnwrap();
-                                hostDescriptor = ehiIfaceMethod.hostMethodDescriptor.optUnwrap();
-                            } else {
-                                hostName = ehiIfaceMethod.name;
-                                hostDescriptor = JavaMethodDescriptor.fromParts(
-                                        JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT);
-                            }
+                            var hostName = ehiIfaceMethod.jvmName;
+                            var hostDescriptor = ehiIfaceMethod.jvmDescriptor;
                             var dedupeKey = hostName + hostDescriptor.value();
                             if (!emitted.add(dedupeKey)) {
                                 continue;

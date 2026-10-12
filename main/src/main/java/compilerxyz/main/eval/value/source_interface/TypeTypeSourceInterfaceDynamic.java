@@ -25,7 +25,7 @@ import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
@@ -57,8 +57,8 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicTypeSourceInterfaceDynamic(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindTypeSourceInterfaceDynamic(this));
         }
         if (key.equals(GenAspectType.AspectId)) {
             return Opt.some(new AspectTypeTypeSourceInterfaceDynamic(this));
@@ -107,7 +107,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                 .optIsSome()) {
-            var sourceRes = DynUtil.valueReg(loc, cv);
+            var sourceRes = DynUtil.materialize(xx, loc, cv);
             if (sourceRes.hasErrors()) return sourceRes.reerr();
             var b = new JavaBytecodeBuilder(loc);
             var out = b.invokeVirtual(

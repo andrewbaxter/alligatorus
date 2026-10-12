@@ -26,7 +26,7 @@ import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
@@ -66,8 +66,8 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
                 case Opt.None<AspectLift> none -> Opt.none();
             };
         }
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicListBoxedDynamic<>(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindListBoxedDynamic<>(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_BOXED_DYNAMIC_IDENTITY)) {
             return Opt.some(this);

@@ -15,7 +15,7 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -32,8 +32,8 @@ public record TypeCodeTargetDynamic() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicCodeTargetDynamic(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindCodeTargetDynamic(this));
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(AspectFieldCodeTargetDynamic.INSTANCE);

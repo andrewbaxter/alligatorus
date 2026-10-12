@@ -30,7 +30,7 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -138,8 +138,8 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicSourceUnionDynamic(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindSourceUnionDynamic(this));
         }
         if (key.equals(GenAspectUnion.AspectId)) {
             return Opt.some(new AspectUnionSourceUnionDynamic(this));

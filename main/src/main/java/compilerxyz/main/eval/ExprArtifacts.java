@@ -126,7 +126,7 @@ public final class ExprArtifacts {
                 }
                 var exporterAny = imported.requireValue("ExprArtifacts::exprFromArtifact Literal imported");
                 var litVal = ArtifactSupport.importedAsValue(exporterAny);
-                var expr = new Expr(loc, new Expr.Literal(Expr.LitValue.shared(litVal)));
+                var expr = new Expr(loc, new Expr.Literal(new Expr.LitValue(litVal)));
                 return EResult.ok(expr);
             }
             case ArtifactExpr.Variant.Lower lo -> {
@@ -395,11 +395,7 @@ public final class ExprArtifacts {
                 return EResult.ok(new ArtifactExpr(loc, new ArtifactExpr.Variant.Return(rt.label(), value)));
             }
             case Expr.Literal l -> {
-                var peeked = l.value().value;
-                if (peeked.optIsNone()) {
-                    return EResult.err(expr.loc(), "Cannot serialize consumed Literal");
-                }
-                var value = peeked.optUnwrap();
+                var value = l.value().litValueValue();
                 var errors = new TList<ExprErr>();
                 var artRes = Artifactable.exportArtifact(xx, expr.loc(), value);
                 if (artRes.hasErrors()) {

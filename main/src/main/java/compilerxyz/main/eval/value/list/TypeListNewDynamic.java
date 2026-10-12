@@ -10,7 +10,7 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -25,8 +25,8 @@ public record TypeListNewDynamic(Type elementType) implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicListNewDynamic(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindListNewDynamic(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_NEW_DYNAMIC_IDENTITY)) {
             return Opt.some(this);

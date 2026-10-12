@@ -11,7 +11,7 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectConsumeDynamicObject;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -26,8 +26,8 @@ public record TypeUbyteToStringDynamic() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicUbyteToStringDynamic(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindUbyteToStringDynamic(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_UBYTE_TO_STRING_DYNAMIC_IDENTITY)) {
             return Opt.some(this);

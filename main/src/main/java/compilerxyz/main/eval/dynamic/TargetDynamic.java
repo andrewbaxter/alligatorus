@@ -32,7 +32,6 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.main.gen.GenAspectDynamicBoxed;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.IfBranch;
@@ -76,11 +75,7 @@ public final class TargetDynamic implements Target {
 
     @Override
     public EResult<Binding> targetInitialBind(ExprContext xx, QExprId loc, Type type) {
-        var aspectRes = GenAspectInitialBindDynamic.get(xx, loc, type);
-        if (aspectRes.hasErrors()) return aspectRes.reerr();
-        return EResult.ok(aspectRes
-                .requireValue("targetInitialBind AspectInitialBindDynamic")
-                .aspectInitialBindDynamicInitialBindDynamic(new BindingId()));
+        return DynUtil.initialBind(xx, loc, type, new BindingId());
     }
 
     @Override

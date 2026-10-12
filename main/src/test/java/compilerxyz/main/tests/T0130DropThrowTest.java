@@ -50,15 +50,21 @@ public final class T0130DropThrowTest {
                         mb.call(
                                 mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                                 mb.recordOf(TList.of(
-                                        new TestMb.RecordPair("iface_ref", mb.evalAspectInitialBindDynamic()),
+                                        new TestMb.RecordPair("iface_ref", mb.evalAspectInitialBind()),
                                         new TestMb.RecordPair(
                                                 "record",
                                                 ifaceMethods(
                                                         mb,
                                                         TList.of(
                                                                 new TestMb.RecordPair(
-                                                                        "initial_bind_dynamic",
-                                                                        mb.scopeUse("outer")))))))),
+                                                                        "initial_bind",
+                                                                        mb.call(
+                                                                                mb.field(
+                                                                                        mb.call(
+                                                                                                mb.typesEresult(),
+                                                                                                mb.evalBinding()),
+                                                                                        mb.str("ok")),
+                                                                                mb.scopeUse("outer"))))))))),
                         mb.call(
                                 mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                                 mb.recordOf(TList.of(

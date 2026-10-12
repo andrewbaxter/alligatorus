@@ -26,7 +26,7 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
@@ -93,8 +93,8 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicObjectConst(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindObjectConst(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_OBJECT_CONST_IDENTITY)) {
             return Opt.some(this);

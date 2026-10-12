@@ -19,12 +19,10 @@ import compilerxyz.main.eval.value.argrecord.ArgumentEntry;
 import compilerxyz.main.eval.value.argrecord.ArgumentRecordBinding;
 import compilerxyz.main.eval.value.argrecord.ArgumentTuple;
 import compilerxyz.main.eval.value.argrecord.ArgumentTupleBinding;
-import compilerxyz.main.eval.value.record.Record;
-import compilerxyz.main.eval.value.record.RecordField;
-import compilerxyz.main.eval.value.record.RecordField.Dynamic;
 import compilerxyz.main.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.main.gen.Binding;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.Opt;
@@ -83,101 +81,60 @@ public final class SourceObjectInterfaceMethodImplData {
         var bodyScope = new Scope(innerVx);
         bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
         TypeSourceObjectDynamic outerType = dtData;
-        var outerIb = GenAspectInitialBindDynamic.getMaybe(xx, outerType);
-        if (outerIb.optIsSome()) {
-            bodyScope.pushNamed(
-                    new ConstKey.Str("outer"), outerIb.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(outerId));
+        if (GenAspectInitialBind.getMaybe(xx, outerType).optIsSome()) {
+            var outerRes = DynUtil.initialBind(xx, bodyLoc, outerType, outerId);
+            if (outerRes.hasErrors()) return outerRes.errorsOpt();
+            bodyScope.pushNamed(new ConstKey.Str("outer"), outerRes.requireValue("outer binding"));
         }
 
-        var selfIb = GenAspectInitialBindDynamic.getMaybe(xx, underlyingType);
-        if (selfIb.optIsSome()) {
-            bodyScope.pushNamed(
-                    new ConstKey.Str("inner"), selfIb.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(selfId));
+        if (GenAspectInitialBind.getMaybe(xx, underlyingType).optIsSome()) {
+            var selfRes = DynUtil.initialBind(xx, bodyLoc, underlyingType, selfId);
+            if (selfRes.hasErrors()) return selfRes.errorsOpt();
+            bodyScope.pushNamed(new ConstKey.Str("inner"), selfRes.requireValue("inner binding"));
         }
         var methodArgType = ifaceMethod.argType;
-        var dataFieldNames = new TList<String>();
-        for (var n : ifaceMethod.dataFieldNames) {
-            dataFieldNames.add(n);
+        var slotsRes = DynUtil.argSignatureSlots(xx, bodyLoc, methodArgType);
+        if (slotsRes.hasErrors()) return slotsRes.errorsOpt();
+        var argSlots = slotsRes.requireValue("SourceObjectInterfaceMethodImplData::finish argSignatureSlots");
+        var paramTypes = new TList<Type>(argSlots.size());
+        var argParamIds = new TList<BindingId>(argSlots.size());
+        for (var slot : argSlots) {
+            paramTypes.add(slot.elementType());
+            argParamIds.add(new BindingId());
         }
         var tupleOpt = GenAspectTuple.getMaybe(xx, methodArgType);
-        TList<Type> paramTypes;
-        var argParamIds = new TList<BindingId>();
-        if (methodArgType instanceof Record rec) {
-            if (dataFieldNames.size() != rec.fields().size()) {
-                throw new AssertionError("Record method '"
-                        + ifaceMethod.name
-                        + "' data_field_names ("
-                        + dataFieldNames.size()
-                        + ") does not match record field count ("
-                        + rec.fields().size()
-                        + ")");
+        var recordOpt = GenAspectRecord.getMaybe(xx, methodArgType);
+        if (tupleOpt.optIsSome()) {
+            var elemTypes = tupleOpt.optUnwrap().aspectTupleElementTypes();
+            var elemBindings = new TList<Binding>(elemTypes.size());
+            for (int i = 0; i < elemTypes.size(); i++) {
+                var bRes = DynUtil.initialBind(xx, bodyLoc, elemTypes.get(i), argParamIds.get(i));
+                if (bRes.hasErrors()) return bRes.errorsOpt();
+                elemBindings.add(bRes.requireValue("SourceObjectInterfaceMethodImplData::finish tuple binding"));
             }
-            paramTypes = new TList<>(dataFieldNames.size());
+            bodyScope.pushNamed(
+                    new ConstKey.Str("arg"), new ArgumentTupleBinding(new ArgumentTuple(elemBindings, elemTypes)));
+        } else if (recordOpt.optIsSome()) {
             var fields = new TOrderedMap<ConstKey, ArgumentEntry>();
-            for (var fieldName : dataFieldNames) {
-                var fOpt = rec.fields().getOpt(new ConstKey.Str(fieldName));
-                if (fOpt.optIsNone()) {
-                    throw new AssertionError("Record method arg_type missing field '" + fieldName + "'");
-                }
-                var f = fOpt.optUnwrap();
-                Dynamic fd;
-                switch (f) {
-                    case Dynamic d -> fd = d;
-                    case RecordField.EvalRes ignored ->
-                        throw new AssertionError("Record method arg_type field '" + fieldName + "' is not Dynamic");
-                }
-                paramTypes.add(fd.type());
-                var pid = new BindingId();
-                argParamIds.add(pid);
-                var ibResult = GenAspectInitialBindDynamic.get(xx, bodyLoc, fd.type());
-                if (ibResult.hasErrors()) {
-                    return ibResult.errorsOpt();
-                }
-                var ibAspect = ibResult.requireValue("SourceObjectInterfaceMethodImplData::compile param InitialBind");
+            int i = 0;
+            for (var entry : recordOpt.optUnwrap().aspectRecordFieldTypes().entrySet()) {
+                var bRes = DynUtil.initialBind(xx, bodyLoc, entry.getValue(), argParamIds.get(i));
+                if (bRes.hasErrors()) return bRes.errorsOpt();
                 fields.put(
-                        new ConstKey.Str(fieldName),
-                        new ArgumentEntry(ibAspect.aspectInitialBindDynamicInitialBindDynamic(pid), fd.type()));
+                        entry.getKey(),
+                        new ArgumentEntry(
+                                bRes.requireValue("SourceObjectInterfaceMethodImplData::finish record binding"),
+                                entry.getValue()));
+                i++;
             }
             bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(fields));
-        } else if (tupleOpt.optIsSome()) {
-            if (!dataFieldNames.isEmpty()) {
-                throw new AssertionError("Tuple method '"
-                        + ifaceMethod.name
-                        + "' must have empty data_field_names, got: "
-                        + dataFieldNames);
-            }
-            var elemTypes = tupleOpt.optUnwrap().aspectTupleElementTypes();
-            paramTypes = new TList<>(elemTypes.size());
-            var elemBindings = new TList<Binding>(elemTypes.size());
-            for (var elemType : elemTypes) {
-                paramTypes.add(elemType);
-                var pid = new BindingId();
-                argParamIds.add(pid);
-                var ibResult = GenAspectInitialBindDynamic.get(xx, bodyLoc, elemType);
-                if (ibResult.hasErrors()) {
-                    return ibResult.errorsOpt();
-                }
-                var ibAspect =
-                        ibResult.requireValue("SourceObjectInterfaceMethodImplData::compile tuple elem InitialBind");
-                elemBindings.add(ibAspect.aspectInitialBindDynamicInitialBindDynamic(pid));
-            }
-            var argTuple = new ArgumentTuple(elemBindings, elemTypes);
-            bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentTupleBinding(argTuple));
         } else {
-            if (!dataFieldNames.isEmpty()) {
-                throw new AssertionError("Non-record method '"
-                        + ifaceMethod.name
-                        + "' must have empty data_field_names, got: "
-                        + dataFieldNames);
-            }
-            paramTypes = TList.of(methodArgType);
-            var argId = new BindingId();
-            argParamIds.add(argId);
-            var argIbMaybe = GenAspectInitialBindDynamic.getMaybe(xx, methodArgType);
-            if (argIbMaybe.optIsSome()) {
+            if (GenAspectInitialBind.getMaybe(xx, methodArgType).optIsSome()) {
+                var bRes = DynUtil.initialBind(xx, bodyLoc, methodArgType, argParamIds.get(0));
+                if (bRes.hasErrors()) return bRes.errorsOpt();
                 bodyScope.pushNamed(
                         new ConstKey.Str("arg"),
-                        argIbMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(argId));
+                        bRes.requireValue("SourceObjectInterfaceMethodImplData::finish arg binding"));
             }
         }
         compiledArgParamTypes = Opt.some(paramTypes);

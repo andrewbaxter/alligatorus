@@ -21,7 +21,7 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
@@ -50,8 +50,8 @@ public record TypeStringDynamic() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicStringDynamic(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindStringDynamic(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_STRING_DYNAMIC_IDENTITY)) {
             return Opt.some(this);

@@ -20,13 +20,12 @@ import compilerxyz.main.eval.aspect.AspectConsumeDynamicObject;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenBuiltinInterfaces;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetInterfaceMethodCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
-import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -43,8 +42,8 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicInterfaceMethodDynamic(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindInterfaceMethodDynamic(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_INTERFACE_METHOD_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
@@ -123,12 +122,8 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
                             Artifactable.exportArtifact(xx, loc, method.retType.optUnwrap()));
                 }
                 if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-                var dataFieldNames = new TList<String>();
-                for (var n : method.dataFieldNames) {
-                    dataFieldNames.add(n);
-                }
                 var body = new ArtifactDataDefSetInterfaceMethod.User(
-                        ifaceArt.optUnwrap(), method.name, argArt.optUnwrap(), retArt, dataFieldNames);
+                        ifaceArt.optUnwrap(), method.name, argArt.optUnwrap(), retArt);
                 return EResult.ok(makeBody.apply(ArtifactDataDefSetInterfaceMethodCodec.toValue(body)));
             });
         }
@@ -197,9 +192,9 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
                                             user.name(),
                                             argVal,
                                             retVal,
-                                            IList.from(user.dataFieldNames()),
-                                            Opt.none(),
-                                            Opt.none());
+                                            user.name(),
+                                            InterfaceMethodData.deriveDescriptor(
+                                                    xx2, argVal, retVal, "interface method '" + user.name() + "'"));
                                     method.artifactIdCell.set(idValue);
                                     return new TypeInterfaceMethodDynamic(cell, method);
                                 };

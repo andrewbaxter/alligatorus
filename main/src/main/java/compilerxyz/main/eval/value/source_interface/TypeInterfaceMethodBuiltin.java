@@ -12,7 +12,7 @@ import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.value.function.TypeMethodDynamic;
 import compilerxyz.main.eval.value.object.TypeObjectDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -28,8 +28,8 @@ public record TypeInterfaceMethodBuiltin(TypeObjectDynamic receiverType, String 
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicInterfaceMethodBuiltin(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindInterfaceMethodBuiltin(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_INTERFACE_METHOD_BUILTIN_IDENTITY)) {
             return Opt.some(this);

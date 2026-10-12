@@ -38,9 +38,8 @@ public record AspectConsumeDynamicExpr(TypeExpr type) implements AspectConsumeDy
             switch (expr.variant()) {
                 case Expr.Literal lit -> {
                     var litValue = lit.value().litValueValue();
-                    if (litValue.optIsSome()
-                            && DynUtil.sourceOf(litValue.optUnwrap()).optIsSome()) {
-                        var inner = DynUtil.sourceOf(litValue.optUnwrap()).optUnwrap();
+                    if (DynUtil.sourceOf(litValue).optIsSome()) {
+                        var inner = DynUtil.sourceOf(litValue).optUnwrap();
                         return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(new ValueDynamic(inner, type))));
                     }
                 }

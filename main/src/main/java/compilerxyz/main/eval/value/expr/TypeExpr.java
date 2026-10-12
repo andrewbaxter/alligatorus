@@ -17,7 +17,7 @@ import compilerxyz.main.eval.value.object.TypeObjectDynamic;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -42,8 +42,8 @@ public record TypeExpr() implements Aspect, Type, Value {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicExpr(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindExpr(this));
         }
         if (key.equals(GenAspectType.AspectId)) {
             return Opt.some(AspectTypeExpr.INSTANCE);
@@ -92,7 +92,7 @@ public record TypeExpr() implements Aspect, Type, Value {
             }
             return EResult.ok(cv);
         }
-        var literalExpr = new Expr(loc, new Expr.Literal(Expr.LitValue.shared(sourceValue)));
+        var literalExpr = new Expr(loc, new Expr.Literal(new Expr.LitValue(sourceValue)));
         return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(literalExpr)));
     }
 

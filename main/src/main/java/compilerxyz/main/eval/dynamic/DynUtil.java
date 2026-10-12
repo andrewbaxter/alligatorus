@@ -1,6 +1,7 @@
 package compilerxyz.main.eval.dynamic;
 
 import compilerxyz.main.eval.BindingId;
+import compilerxyz.main.eval.BindingSlotDynamic;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -24,6 +25,7 @@ import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDynamicBoxed;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenType;
@@ -38,6 +40,14 @@ public final class DynUtil {
     private DynUtil() {}
 
     public record ArgSignatureSlot(Type elementType, JavaDataDescriptor jvmDesc) {}
+
+    public static EResult<Binding> initialBind(ExprContext xx, QExprId loc, Type type, BindingId id) {
+        var aspectRes = GenAspectInitialBind.get(xx, loc, type);
+        if (aspectRes.hasErrors()) return aspectRes.reerr();
+        return aspectRes
+                .requireValue("DynUtil.initialBind aspect")
+                .aspectInitialBindInitialBind(xx, loc, new BindingSlotDynamic(id));
+    }
 
     public static EResult<TList<ArgSignatureSlot>> argSignatureSlots(ExprContext xx, QExprId loc, Type argType) {
         var tupleOpt = GenAspectTuple.getMaybe(xx, argType);

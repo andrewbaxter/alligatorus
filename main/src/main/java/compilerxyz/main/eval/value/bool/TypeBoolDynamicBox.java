@@ -23,7 +23,7 @@ import compilerxyz.main.gen.GenAspectBoolConst;
 import compilerxyz.main.gen.GenAspectBoolDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDynamicUnboxed;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -42,8 +42,8 @@ public record TypeBoolDynamicBox() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicBoolDynamicBox(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindBoolDynamicBox(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_BOOL_DYNAMIC_BOX_IDENTITY)) {
             return Opt.some(this);

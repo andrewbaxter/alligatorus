@@ -10,7 +10,7 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -28,8 +28,8 @@ public record TypeFunctionReinterpretConst() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicFunctionReinterpretConst(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindFunctionReinterpretConst(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_FUNCTION_REINTERPRET_CONST_IDENTITY)) {
             return Opt.some(this);

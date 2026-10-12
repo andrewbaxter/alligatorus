@@ -22,7 +22,7 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDynamicUnboxed;
 import compilerxyz.main.gen.GenAspectField;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
@@ -42,8 +42,8 @@ public record TypeDoubleDynamicBox() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicDoubleDynamicBox(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindDoubleDynamicBox(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_DOUBLE_DYNAMIC_BOX_IDENTITY)) {
             return Opt.some(this);

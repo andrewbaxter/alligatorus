@@ -41,7 +41,7 @@ import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.main.gen.GenAspectElementUseConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenAspectType;
@@ -317,8 +317,8 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicTuple(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindTuple(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TUPLE_IDENTITY)) {
             return Opt.some(this);

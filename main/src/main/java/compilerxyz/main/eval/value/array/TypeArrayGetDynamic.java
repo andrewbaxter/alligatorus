@@ -12,7 +12,7 @@ import compilerxyz.main.eval.aspect.AspectConsumeDynamicObject;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -27,8 +27,8 @@ public record TypeArrayGetDynamic(TypeArrayDynamic arrayType) implements Aspect,
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicArrayGetDynamic(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindArrayGetDynamic(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_ARRAY_GET_DYNAMIC_IDENTITY)) {
             return Opt.some(this);

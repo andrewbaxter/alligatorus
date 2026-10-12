@@ -198,7 +198,6 @@ public final class ImportRun {
     }
 
     private static Expr constString(QExprId loc, String value) {
-        return new Expr(
-                loc, new Expr.Literal(Expr.LitValue.shared(new ValueObjectConst(new TypeStringConst(), value))));
+        return new Expr(loc, new Expr.Literal(new Expr.LitValue(new ValueObjectConst(new TypeStringConst(), value))));
     }
 }

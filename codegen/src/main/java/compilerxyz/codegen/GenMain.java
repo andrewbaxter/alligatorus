@@ -1272,10 +1272,8 @@ public final class GenMain {
                 }
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
-                        "eval.aspect_initial_bind_dynamic",
-                        CodeBlock.of(
-                                "$T.dynamicType()",
-                                ClassName.get("compilerxyz.main.gen", "GenAspectInitialBindDynamic")),
+                        "eval.aspect_initial_bind",
+                        CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectInitialBind")),
                         BuiltinTreeGen.TYPE_OF_TYPES_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
@@ -1465,9 +1463,8 @@ public final class GenMain {
                         BuiltinTreeGen.TUC_TYPE_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
-                        "eval.aspect_initial_bind_dynamic_id",
-                        CodeBlock.of(
-                                "$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectInitialBindDynamic")),
+                        "eval.aspect_initial_bind_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectInitialBind")),
                         BuiltinTreeGen.TUC_TYPE_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,

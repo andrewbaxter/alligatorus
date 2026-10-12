@@ -9,7 +9,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
@@ -26,8 +26,8 @@ public record TypeSourceLocal() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicSourceLocal(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindSourceLocal(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_LOCAL_IDENTITY)) {
             return Opt.some(this);

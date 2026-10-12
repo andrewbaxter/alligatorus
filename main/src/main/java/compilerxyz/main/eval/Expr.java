@@ -75,23 +75,7 @@ public record Expr(QExprId loc, Variant variant) implements Value {
 
     public record Tuple(TList<Expr> elements) implements Variant {}
 
-    public static final class LitValue {
-        final boolean once;
-        Opt<Value> value;
-
-        public LitValue(Value value, boolean once) {
-            this.value = Opt.some(value);
-            this.once = once;
-        }
-
-        public static LitValue shared(Value v) {
-            return new LitValue(v, false);
-        }
-
-        public Opt<Value> litValueValue() {
-            return value;
-        }
-    }
+    public record LitValue(Value litValueValue) {}
 
     public sealed interface Module {
         record V1(SourceId source, TList<Expr> exprs) implements Module {}

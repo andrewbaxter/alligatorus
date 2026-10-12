@@ -15,7 +15,7 @@ import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -32,8 +32,8 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic) implements 
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicSourceObjectConst(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindSourceObjectConst(this));
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldSourceObjectConst(this));

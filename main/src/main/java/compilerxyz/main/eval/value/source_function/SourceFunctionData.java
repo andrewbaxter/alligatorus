@@ -28,7 +28,6 @@ import compilerxyz.main.eval.value.argrecord.ArgumentTuple;
 import compilerxyz.main.eval.value.argrecord.ArgumentTupleBinding;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.Value;
@@ -131,12 +130,9 @@ public final class SourceFunctionData {
             for (var et : elemTypes) {
                 var slotId = new BindingId();
                 argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, et)));
-                var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, et);
-                if (ibMaybe.optIsNone()) {
-                    throw new AssertionError("arg tuple element type " + et.typeDesc()
-                            + " missing AspectInitialBindDynamic" + " (checked at impl)");
-                }
-                elemBindings.add(ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
+                var bRes = DynUtil.initialBind(xx, bodyLoc, et, slotId);
+                if (bRes.hasErrors()) return bRes.errorsOpt();
+                elemBindings.add(bRes.requireValue("SourceFunctionData tuple element binding"));
             }
             var argTuple = new ArgumentTuple(elemBindings, elemTypes);
             bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentTupleBinding(argTuple));
@@ -147,26 +143,19 @@ public final class SourceFunctionData {
                 var et = entry.getValue();
                 var slotId = new BindingId();
                 argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, et)));
-                var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, et);
-                if (ibMaybe.optIsNone()) {
-                    throw new AssertionError("arg record field type " + et.typeDesc()
-                            + " missing AspectInitialBindDynamic" + " (checked at impl)");
-                }
+                var bRes = DynUtil.initialBind(xx, bodyLoc, et, slotId);
+                if (bRes.hasErrors()) return bRes.errorsOpt();
                 fields.put(
                         entry.getKey(),
-                        new ArgumentEntry(ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId), et));
+                        new ArgumentEntry(bRes.requireValue("SourceFunctionData record field binding"), et));
             }
             bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(fields));
         } else {
             var slotId = new BindingId();
             argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, argT)));
-            var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, argT);
-            if (ibMaybe.optIsNone()) {
-                throw new AssertionError(
-                        "arg type " + argT.typeDesc() + " missing AspectInitialBindDynamic" + " (checked at impl)");
-            }
-            bodyScope.pushNamed(
-                    new ConstKey.Str("arg"), ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
+            var bRes = DynUtil.initialBind(xx, bodyLoc, argT, slotId);
+            if (bRes.hasErrors()) return bRes.errorsOpt();
+            bodyScope.pushNamed(new ConstKey.Str("arg"), bRes.requireValue("SourceFunctionData arg binding"));
         }
         var funcXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, exceptionType);
 

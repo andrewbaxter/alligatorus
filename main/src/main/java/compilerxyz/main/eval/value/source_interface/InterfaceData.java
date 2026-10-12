@@ -1,12 +1,10 @@
 package compilerxyz.main.eval.value.source_interface;
 
-import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.value.function.TypeMethodDynamic;
 import compilerxyz.main.eval.value.object.ObjectAspectSource;
 import compilerxyz.main.eval.value.object.TypeObjectDynamic;
-import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
@@ -54,22 +52,7 @@ public final class InterfaceData {
                 throw new IllegalStateException(type.typeDesc() + "::ofBuiltinType: method " + m.langName()
                         + " funcType is not TypeMethodDynamic");
             }
-            var dataFieldNames = new TList<String>();
-            if (mt.arg() instanceof Record rec) {
-                for (var key : rec.fields().keys()) {
-                    switch (key) {
-                        case ConstKey.Str str -> dataFieldNames.add(str.value());
-                        case ConstKey.Uint u -> dataFieldNames.add(key.constKeyToCanonical());
-                    }
-                }
-            }
-            methods.add(new InterfaceMethodData(
-                    m.langName(),
-                    mt.arg(),
-                    mt.ret(),
-                    IList.from(dataFieldNames),
-                    Opt.some(mt.methodName()),
-                    Opt.some(mt.descriptor())));
+            methods.add(new InterfaceMethodData(m.langName(), mt.arg(), mt.ret(), mt.methodName(), mt.descriptor()));
         }
         return new InterfaceData(
                 Opt.some(type.typeDesc()),

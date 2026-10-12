@@ -21,7 +21,7 @@ import compilerxyz.main.eval.value.argrecord.ArgumentRecordBinding;
 import compilerxyz.main.eval.value.argrecord.ArgumentTuple;
 import compilerxyz.main.eval.value.argrecord.ArgumentTupleBinding;
 import compilerxyz.main.gen.Binding;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenType;
@@ -94,15 +94,15 @@ public final class SourceDataMethodData {
         outerBindingId = Opt.some(outerId);
         var bodyScope = new Scope(innerVx);
         bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
-        var outerIb = GenAspectInitialBindDynamic.getMaybe(xx, outerType);
-        if (outerIb.optIsSome()) {
-            bodyScope.pushNamed(
-                    new ConstKey.Str("outer"), outerIb.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(outerId));
+        if (GenAspectInitialBind.getMaybe(xx, outerType).optIsSome()) {
+            var outerRes = DynUtil.initialBind(xx, bodyLoc, outerType, outerId);
+            if (outerRes.hasErrors()) return outerRes.errorsOpt();
+            bodyScope.pushNamed(new ConstKey.Str("outer"), outerRes.requireValue("outer binding"));
         }
-        var selfIb = GenAspectInitialBindDynamic.getMaybe(xx, underlyingType);
-        if (selfIb.optIsSome()) {
-            bodyScope.pushNamed(
-                    new ConstKey.Str("inner"), selfIb.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(selfId));
+        if (GenAspectInitialBind.getMaybe(xx, underlyingType).optIsSome()) {
+            var selfRes = DynUtil.initialBind(xx, bodyLoc, underlyingType, selfId);
+            if (selfRes.hasErrors()) return selfRes.errorsOpt();
+            bodyScope.pushNamed(new ConstKey.Str("inner"), selfRes.requireValue("inner binding"));
         }
         Opt<TList<ArgSignatureSlot>> argSlotsOut = Opt.none();
         Opt<TList<BindingId>> argSlotIdsOut = Opt.none();
@@ -121,13 +121,9 @@ public final class SourceDataMethodData {
                 for (var slot : argSlots) {
                     var slotId = new BindingId();
                     argSlotIds.add(slotId);
-                    var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, slot.elementType());
-                    if (ibMaybe.optIsNone()) {
-                        throw new AssertionError("SourceDataMethodData::finish tuple element type "
-                                + slot.elementType().typeDesc() + " missing AspectInitialBindDynamic"
-                                + " (checked at impl)");
-                    }
-                    elemBindings.add(ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
+                    var bRes = DynUtil.initialBind(xx, bodyLoc, slot.elementType(), slotId);
+                    if (bRes.hasErrors()) return bRes.errorsOpt();
+                    elemBindings.add(bRes.requireValue("SourceDataMethodData::finish tuple element binding"));
                 }
                 var argTuple =
                         new ArgumentTuple(elemBindings, tupleOpt.optUnwrap().aspectTupleElementTypes());
@@ -137,30 +133,22 @@ public final class SourceDataMethodData {
                 for (var entry : recordOpt.optUnwrap().aspectRecordFieldTypes().entrySet()) {
                     var slotId = new BindingId();
                     argSlotIds.add(slotId);
-                    var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, entry.getValue());
-                    if (ibMaybe.optIsNone()) {
-                        throw new AssertionError("SourceDataMethodData::finish record field type "
-                                + entry.getValue().typeDesc() + " missing AspectInitialBindDynamic"
-                                + " (checked at impl)");
-                    }
+                    var bRes = DynUtil.initialBind(xx, bodyLoc, entry.getValue(), slotId);
+                    if (bRes.hasErrors()) return bRes.errorsOpt();
                     fields.put(
                             entry.getKey(),
                             new ArgumentEntry(
-                                    ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId),
+                                    bRes.requireValue("SourceDataMethodData::finish record field binding"),
                                     entry.getValue()));
                 }
                 bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(fields));
             } else {
                 var slotId = new BindingId();
                 argSlotIds.add(slotId);
-                var argIbMaybe = GenAspectInitialBindDynamic.getMaybe(xx, argT);
-                if (argIbMaybe.optIsNone()) {
-                    throw new AssertionError("SourceDataMethodData::finish arg type " + argT.typeDesc()
-                            + " missing AspectInitialBindDynamic (checked at impl)");
-                }
+                var bRes = DynUtil.initialBind(xx, bodyLoc, argT, slotId);
+                if (bRes.hasErrors()) return bRes.errorsOpt();
                 bodyScope.pushNamed(
-                        new ConstKey.Str("arg"),
-                        argIbMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
+                        new ConstKey.Str("arg"), bRes.requireValue("SourceDataMethodData::finish arg binding"));
             }
         }
         var methodXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, Opt.none());

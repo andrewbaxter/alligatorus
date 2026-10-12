@@ -69,21 +69,7 @@ public final class SourceObjectEmitter {
                     };
             jvmParamDescs.add(argConsume.aspectConsumeDynamicJvmClass(xx));
         }
-        JavaDataDescriptor retDesc;
-        if (ifaceMethod.hostMethodDescriptor.optIsSome()) {
-            var hmd = ifaceMethod.hostMethodDescriptor.optUnwrap();
-            retDesc =
-                    JavaDataDescriptor.create(hmd.value().substring(hmd.value().indexOf(')') + 1));
-        } else if (ifaceMethod.retType.optIsSome()) {
-            var retConsume = GenAspectConsumeDynamic.getMaybe(xx, ifaceMethod.retType.optUnwrap());
-            if (retConsume.optIsNone()) {
-                throw new IllegalStateException(
-                        "SourceObjectEmitter.interfaceMethodMethodDescriptor: retType does not implement AspectConsumeDynamic");
-            }
-            retDesc = retConsume.optUnwrap().aspectConsumeDynamicJvmClass(xx);
-        } else {
-            retDesc = JavaDataDescriptor.DESC_VOID;
-        }
+        var retDesc = ifaceMethod.jvmDescriptor.returnDescriptor();
         return JavaMethodDescriptor.fromParts(retDesc, jvmParamDescs);
     }
 }

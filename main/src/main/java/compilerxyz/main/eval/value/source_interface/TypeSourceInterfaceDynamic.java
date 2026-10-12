@@ -24,7 +24,7 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenBuiltinInterfaces;
@@ -70,8 +70,8 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicSourceInterfaceDynamic(this));
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(new AspectInitialBindSourceInterfaceDynamic(this));
         }
         if (key.equals(GenAspectType.AspectId)) {
             return Opt.some(AspectTypeSourceInterfaceDynamic.INSTANCE);

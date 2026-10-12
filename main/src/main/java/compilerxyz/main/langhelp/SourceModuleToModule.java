@@ -34,11 +34,11 @@ public final class SourceModuleToModule {
                         new Expr.Literal(
                                 switch (lit.value()) {
                                     case SourceLiteral.Str s ->
-                                        Expr.LitValue.shared(new ValueObjectConst(new TypeStringConst(), s.value()));
+                                        new Expr.LitValue(new ValueObjectConst(new TypeStringConst(), s.value()));
                                     case SourceLiteral.Number n ->
-                                        Expr.LitValue.shared(new ValueObjectConst(new TypeDoubleConst(), n.value()));
+                                        new Expr.LitValue(new ValueObjectConst(new TypeDoubleConst(), n.value()));
                                     case SourceLiteral.Bool b ->
-                                        Expr.LitValue.shared(new ValueObjectConst(new TypeBoolConst(), b.value()));
+                                        new Expr.LitValue(new ValueObjectConst(new TypeBoolConst(), b.value()));
                                 });
                     case SourceExpr.ScopeUse u -> new Expr.ScopeUse(sourceExprToExpr(sourceId, u.key()));
                     case SourceExpr.Call c ->

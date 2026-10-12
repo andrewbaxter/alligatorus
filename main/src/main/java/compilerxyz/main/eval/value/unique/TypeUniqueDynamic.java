@@ -25,7 +25,7 @@ import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectInitialBindDynamic;
+import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -54,8 +54,8 @@ public record TypeUniqueDynamic() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(AspectInitialBindDynamicUniqueDynamic.INSTANCE);
+        if (key.equals(GenAspectInitialBind.AspectId)) {
+            return Opt.some(AspectInitialBindUniqueDynamic.INSTANCE);
         }
         if (key.equals(GenAspectBindDynamic.AspectId)) {
             return Opt.some(AspectBindDynamicDefault.INSTANCE);
@@ -121,7 +121,7 @@ public record TypeUniqueDynamic() implements Aspect, Type {
         }
     };
 
-    private static JsonValue encodeUnique(Unique u) {
+    static JsonValue encodeUnique(Unique u) {
         var m = new TOrderedMap<String, JsonValue>();
         switch (u) {
             case Unique.Builtin b -> {
@@ -144,7 +144,7 @@ public record TypeUniqueDynamic() implements Aspect, Type {
         return new JsonValueObject(m);
     }
 
-    private static EResult<Unique> decodeUnique(QExprId loc, JsonValueObject obj) {
+    static EResult<Unique> decodeUnique(QExprId loc, JsonValueObject obj) {
         if (obj.entries().size() != 1) return EResult.err(loc, "expected tagged object");
         var entry = obj.entries().entrySet().iterator().next();
         var tag = entry.getKey();

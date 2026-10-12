@@ -70,6 +70,7 @@ import compilerxyz.main.eval.value.uint.TypeUintDynamicBox;
 import compilerxyz.main.eval.value.ulong.TypeUlongConst;
 import compilerxyz.main.eval.value.ulong.TypeUlongDynamic;
 import compilerxyz.main.eval.value.ulong.TypeUlongDynamicBox;
+import compilerxyz.main.eval.value.unique.TypeUniqueConst;
 import compilerxyz.main.eval.value.unique.TypeUniqueDynamic;
 import compilerxyz.main.eval.value.ushort.TypeUshortConst;
 import compilerxyz.main.eval.value.ushort.TypeUshortDynamic;
@@ -285,6 +286,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return TypeUniqueDynamic.DELEGATE;
+        }
+    },
+    UNIQUE_CONST("unique_const") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeUniqueConst.DELEGATE;
         }
     },
     SOURCE_FUNCTION_CONST("source_function_const") {
