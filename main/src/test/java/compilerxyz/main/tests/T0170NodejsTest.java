@@ -1093,6 +1093,7 @@ public final class T0170NodejsTest {
                         rp("return", targetPanic(mb, "return")),
                         rp("stage", targetPanic(mb, "stage")),
                         rp("if", targetPanic(mb, "if")),
+                        rp("loop", targetPanic(mb, "loop")),
                         rp("try_catch_finally", targetPanic(mb, "try_catch_finally")),
                         rp("match", targetPanic(mb, "match")))));
 

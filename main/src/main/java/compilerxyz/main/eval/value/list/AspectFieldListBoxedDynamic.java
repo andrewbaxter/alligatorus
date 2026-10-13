@@ -10,6 +10,10 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.main.eval.dynamic.JavaInternalName;
+import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.value.list.TypeListBoxedDynamic.FieldSpec;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
@@ -38,6 +42,18 @@ public record AspectFieldListBoxedDynamic<T extends Type>(TypeListBoxedDynamic<T
                         self.code(),
                         EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), f.type()))));
             case FieldSpec.Method m -> EResult.ok(DynUtil.methodRefOn(self, m.type()));
+            case FieldSpec.Length l -> {
+                var selfRes = DynUtil.valueReg(loc, self);
+                if (selfRes.hasErrors()) yield selfRes.reerr();
+                var b = new JavaBytecodeBuilder(loc);
+                var sizeDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_INT, TList.of());
+                var out = b.invokeVirtual(
+                        JavaInternalName.fromClass(TList.class),
+                        "size",
+                        sizeDesc,
+                        b.reg(selfRes.requireValue("selfDyn")));
+                yield EResult.ok(DynUtil.regToValue(b.code(), out, l.fieldSpecFieldType()));
+            }
         };
     }
 

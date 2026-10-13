@@ -73,6 +73,10 @@ public final class TestMb {
         return call(builtin("import"), record(entries));
     }
 
+    public SourceExpr loop(SourceExpr body) {
+        return new SourceExpr(id(), new SourceExpr.Loop(body));
+    }
+
     public SourceExpr labeled(String label, SourceExpr inner) {
         return new SourceExpr(id(), new SourceExpr.Labeled(label, inner));
     }

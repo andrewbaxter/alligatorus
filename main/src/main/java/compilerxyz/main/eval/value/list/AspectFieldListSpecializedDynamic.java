@@ -10,6 +10,10 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.main.eval.value.int_.TypeIntDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.prelude.util.Opt;
@@ -36,12 +40,31 @@ public record AspectFieldListSpecializedDynamic<T extends Type>(TypeListSpeciali
         if (ck.equals(new ConstKey.Str("push"))) {
             return EResult.ok(DynUtil.methodRefOn(self, new TypeListSpecializedPushDynamic(type)));
         }
+        if (ck.equals(new ConstKey.Str("get"))) {
+            return EResult.ok(DynUtil.methodRefOn(self, new TypeListGetDynamic(type)));
+        }
+        if (ck.equals(new ConstKey.Str("set"))) {
+            return EResult.ok(DynUtil.methodRefOn(self, new TypeListSetDynamic(type)));
+        }
+        if (ck.equals(new ConstKey.Str("len"))) {
+            var selfRes = DynUtil.valueReg(loc, self);
+            if (selfRes.hasErrors()) return selfRes.reerr();
+            var b = new JavaBytecodeBuilder(loc);
+            var sizeDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_INT, TList.of());
+            var out = b.invokeVirtual(type.storeName, "size", sizeDesc, b.reg(selfRes.requireValue("selfDyn")));
+            return EResult.ok(DynUtil.regToValue(b.code(), out, new TypeIntDynamic()));
+        }
         return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on list");
     }
 
     @Override
     public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        return TList.of(new ConstKey.Str("new"), new ConstKey.Str("push"));
+        return TList.of(
+                new ConstKey.Str("new"),
+                new ConstKey.Str("push"),
+                new ConstKey.Str("get"),
+                new ConstKey.Str("set"),
+                new ConstKey.Str("len"));
     }
 
     @Override
@@ -51,6 +74,15 @@ public record AspectFieldListSpecializedDynamic<T extends Type>(TypeListSpeciali
         }
         if (key.equals(new ConstKey.Str("push"))) {
             return Opt.some(new TypeListSpecializedPushDynamic(type));
+        }
+        if (key.equals(new ConstKey.Str("get"))) {
+            return Opt.some(new TypeListGetDynamic(type));
+        }
+        if (key.equals(new ConstKey.Str("set"))) {
+            return Opt.some(new TypeListSetDynamic(type));
+        }
+        if (key.equals(new ConstKey.Str("len"))) {
+            return Opt.some(new TypeIntDynamic());
         }
         return Opt.none();
     }

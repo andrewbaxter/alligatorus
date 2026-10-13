@@ -35,6 +35,8 @@ public record ArtifactExpr(ArtifactQExprId loc, Variant variant) implements Safe
 
         record Labeled(String label, ArtifactExpr inner) implements Variant {}
 
+        record Loop(ArtifactExpr body) implements Variant {}
+
         record Literal(Artifact value) implements Variant {}
 
         record Lower(ArtifactExpr expr) implements Variant {}
