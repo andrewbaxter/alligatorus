@@ -64,5 +64,5 @@ public interface Target {
             Opt<Code> finallyNormal);
 
     EResult<CodeValue> targetMatch(
-            ExprContext xx, QExprId loc, CodeValue base, TList<TargetCase> cases, Opt<TargetMatchFallback> fallback);
+            ExprContext xx, QExprId loc, CodeValue base, TList<TargetCase> cases, Opt<CodeValue> fallback);
 }

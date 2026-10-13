@@ -1,6 +1,5 @@
 package compilerxyz.main.eval.builtin;
 
-import compilerxyz.main.eval.EvaluationLocal;
 import compilerxyz.main.eval.dynamic.DynPanic;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.TList;
@@ -8,8 +7,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-@BuiltinFull(uniqueId = 6469L)
-public final class DirHandle implements EvaluationLocal {
+@BuiltinFull(uniqueId = 6469L, lift = false)
+public final class DirHandle {
     private final Path root;
 
     public DirHandle(Path root) {

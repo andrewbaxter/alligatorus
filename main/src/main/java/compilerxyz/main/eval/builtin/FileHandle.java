@@ -1,12 +1,11 @@
 package compilerxyz.main.eval.builtin;
 
-import compilerxyz.main.eval.EvaluationLocal;
 import compilerxyz.main.eval.dynamic.DynPanic;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import java.util.Arrays;
 
-@BuiltinFull(uniqueId = 6467L)
-public final class FileHandle implements EvaluationLocal {
+@BuiltinFull(uniqueId = 6467L, lift = false)
+public final class FileHandle {
     public final int len;
     private final byte[] bytes;
 

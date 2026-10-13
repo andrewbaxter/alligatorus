@@ -9,7 +9,6 @@ import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvaluationLocal;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -217,7 +216,7 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         if (key.equals(GenTrivialIdentityAspects.TYPE_OBJECT_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectLift.AspectId) && !EvaluationLocal.class.isAssignableFrom(hostClass)) {
+        if (key.equals(GenAspectLift.AspectId) && meta.liftable()) {
             return Opt.some(new AspectLiftObjectDynamic(this));
         }
         if (key.equals(GenAspectBindDynamic.AspectId)) {
@@ -309,7 +308,8 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         }
         for (var idAspect : trivialIdentityAspects()) {
             if (destType.typeAspect(xx, idAspect).optIsSome()) {
-                return EResult.ok(cv);
+                if (typeIsEqual(xx, destType)) return EResult.ok(cv);
+                return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, destType));
             }
         }
         for (var rule : castRules()) {

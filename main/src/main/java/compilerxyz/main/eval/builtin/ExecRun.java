@@ -1,6 +1,5 @@
 package compilerxyz.main.eval.builtin;
 
-import compilerxyz.main.eval.EvaluationLocal;
 import compilerxyz.main.eval.dynamic.DynPanic;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import java.io.IOException;
@@ -8,8 +7,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-@BuiltinFull(uniqueId = 6468L)
-public final class ExecRun implements EvaluationLocal {
+@BuiltinFull(uniqueId = 6468L, lift = false)
+public final class ExecRun {
     private final Path fs;
     private final Path stdoutFile;
     private final Path stderrFile;

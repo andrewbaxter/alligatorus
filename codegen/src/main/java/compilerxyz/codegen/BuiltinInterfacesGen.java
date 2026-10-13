@@ -22,7 +22,8 @@ public final class BuiltinInterfacesGen {
             TList<DataField> dataFields,
             Opt<String> outerSimpleName,
             Opt<String> nestedSimpleName,
-            boolean identityToken) {
+            boolean identityToken,
+            boolean lift) {
         public BuiltinSpec(
                 String simpleName,
                 String pkg,
@@ -43,7 +44,8 @@ public final class BuiltinInterfacesGen {
                     dataFields,
                     Opt.none(),
                     Opt.none(),
-                    false);
+                    false,
+                    true);
         }
     }
 

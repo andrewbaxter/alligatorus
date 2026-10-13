@@ -2,6 +2,7 @@ package compilerxyz.main.eval.dynamic;
 
 import static org.objectweb.asm.Opcodes.ASTORE;
 import static org.objectweb.asm.Opcodes.ATHROW;
+import static org.objectweb.asm.Opcodes.CHECKCAST;
 import static org.objectweb.asm.Opcodes.DUP;
 import static org.objectweb.asm.Opcodes.GETSTATIC;
 import static org.objectweb.asm.Opcodes.GOTO;
@@ -9,6 +10,7 @@ import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 import static org.objectweb.asm.Opcodes.NEW;
 import static org.objectweb.asm.Opcodes.POP;
 import static org.objectweb.asm.Opcodes.POP2;
+import static org.objectweb.asm.Opcodes.PUTSTATIC;
 import static org.objectweb.asm.Opcodes.RETURN;
 
 import compilerxyz.main.eval.BindingId;
@@ -84,12 +86,90 @@ public final class JavaBytecodeSequence implements JavaBytecode {
 
     private record Prefix(int consumer, int arg) {}
 
+    public static final class Layout {
+        private final TList<Item> flat;
+        private final IdentityHashMap<JavaBytecodeReg, RegInfo> infos;
+        private final IdentityHashMap<JumpKey, Integer> landIndex;
+        private final IdentityHashMap<JumpKey, TList<JavaBytecodeReg>> landParams;
+        private final IdentityHashMap<JumpKey, Boolean> handlerKeys;
+        private final IdentityHashMap<Label, Integer> rangeLabelIndex;
+        private final int[] chainStart;
+        private final TMap<Integer, TList<Prefix>> prefixes;
+
+        private Layout(
+                TList<Item> flat,
+                IdentityHashMap<JavaBytecodeReg, RegInfo> infos,
+                IdentityHashMap<JumpKey, Integer> landIndex,
+                IdentityHashMap<JumpKey, TList<JavaBytecodeReg>> landParams,
+                IdentityHashMap<JumpKey, Boolean> handlerKeys,
+                IdentityHashMap<Label, Integer> rangeLabelIndex,
+                int[] chainStart,
+                TMap<Integer, TList<Prefix>> prefixes) {
+            this.flat = flat;
+            this.infos = infos;
+            this.landIndex = landIndex;
+            this.landParams = landParams;
+            this.handlerKeys = handlerKeys;
+            this.rangeLabelIndex = rangeLabelIndex;
+            this.chainStart = chainStart;
+            this.prefixes = prefixes;
+        }
+
+        public int size() {
+            return flat.size();
+        }
+    }
+
+    public static final class ChunkFields {
+        private final JavaBytecodeRenderRefs refs;
+        private final IdentityHashMap<JavaBytecodeReg, JavaStaticFieldRef> regs = new IdentityHashMap<>();
+        private final TMap<BindingId, JavaStaticFieldRef> slots = new TMap<>();
+
+        private ChunkFields(JavaBytecodeRenderRefs refs) {
+            this.refs = refs;
+        }
+
+        private JavaStaticFieldRef slot(BindingId key, JavaDataDescriptor desc) {
+            var existing = slots.getOpt(key);
+            if (existing.optIsSome()) return existing.optUnwrap();
+            var ref = refs.chunkField(desc.isReference() ? JvmConstants.DESC_OBJECT : desc);
+            slots.put(key, ref);
+            return ref;
+        }
+    }
+
+    public static final class Emitted {
+        private final MethodNode node;
+        private final int[] itemInsnIndex;
+
+        private Emitted(MethodNode node, int[] itemInsnIndex) {
+            this.node = node;
+            this.itemInsnIndex = itemInsnIndex;
+        }
+
+        public MethodNode node() {
+            return node;
+        }
+
+        public int[] itemInsnIndex() {
+            return itemInsnIndex;
+        }
+    }
+
     void renderInternal(
             MethodVisitor out,
             TList<InitialSlot> initialSlots,
             JavaBytecodeRenderRefs refs,
             JavaBytecodeLocTable locTable) {
+        var layout = layout(refs, locTable);
+        var emitted = emit(layout, 0, layout.size(), initialSlots, refs, Opt.none());
+        emitted.node().instructions.accept(out);
+        for (var tcb : emitted.node().tryCatchBlocks) {
+            out.visitTryCatchBlock(tcb.start.getLabel(), tcb.end.getLabel(), tcb.handler.getLabel(), tcb.type);
+        }
+    }
 
+    public Layout layout(JavaBytecodeRenderRefs refs, JavaBytecodeLocTable locTable) {
         var flat = new TList<Item>();
         final int[] realCount = {0};
         var destStack = new TList<JumpKey>();
@@ -393,7 +473,29 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                 prefixes.computeIfAbsentT(argPos[i][k], key -> new TList<>()).add(new Prefix(i, k));
             }
         }
+        var rangeLabelIndex = new IdentityHashMap<Label, Integer>();
+        for (int i = 0; i < flat.size(); i++) {
+            switch (flat.get(i)) {
+                case Item.RangeLabel l -> rangeLabelIndex.put(l.label(), i);
+                default -> {}
+            }
+        }
+        return new Layout(flat, infos, landIndex, landParams, handlerKeys, rangeLabelIndex, chainStart, prefixes);
+    }
 
+    public Emitted emit(
+            Layout layout,
+            int from,
+            int to,
+            TList<InitialSlot> initialSlots,
+            JavaBytecodeRenderRefs refs,
+            Opt<ChunkFields> fields) {
+        var flat = layout.flat;
+        var infos = layout.infos;
+        var landIndex = layout.landIndex;
+        var landParams = layout.landParams;
+        var handlerKeys = layout.handlerKeys;
+        var prefixes = layout.prefixes;
         var slots = new SlotAllocator();
         var fakeDesc = new StringBuilder("(");
         for (var s : initialSlots) {
@@ -422,15 +524,21 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                 Opcodes.ASM9, Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "render", fakeDesc.toString(), null, null);
         var labels = new IdentityHashMap<JumpKey, Label>();
         var handlerLabels = new IdentityHashMap<JumpKey, Label>();
+        var labelCopies = new IdentityHashMap<Label, Label>();
         var paramSlots = new IdentityHashMap<JavaBytecodeReg, Integer>();
         for (var e : landParams.entrySet()) {
-            for (var p : e.getValue()) paramSlots.put(p, slots.permanent(p.desc.isWide()));
+            for (var p : e.getValue()) {
+                if (regField(fields, p).optIsSome()) continue;
+                paramSlots.put(p, slots.permanent(p.desc.isWide()));
+            }
         }
         var regSlots = new IdentityHashMap<JavaBytecodeReg, Integer>();
         var segments = new TMap<Integer, TList<TList<AbstractInsnNode>>>();
         var tryRanges = new TList<Item.TryRange>();
+        var itemInsnIndex = new int[to - from + 1];
         boolean reachable = true;
-        for (int i = 0; i < flat.size(); i++) {
+        for (int i = from; i < to; i++) {
+            itemInsnIndex[i - from] = node.instructions.size();
             var scheduledOpt = prefixes.getOpt(i);
             if (scheduledOpt.optIsSome()) {
                 var scheduled = scheduledOpt.optUnwrap();
@@ -441,7 +549,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                     var consumer = flat.get(p.consumer());
                     switch (consumer) {
                         case Item.Insn ins -> {
-                            for (var n : segmentsOf(segments, p.consumer(), ins.n(), slots, refs)
+                            for (var n : segmentsOf(segments, p.consumer(), ins.n(), slots, refs, fields)
                                     .get(p.arg())) {
                                 node.instructions.add(n);
                             }
@@ -459,15 +567,27 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                     var info = regInfo(infos, a);
                     switch (info.kind) {
                         case STACK -> {}
-                        case PARAM -> node.instructions.add(new VarInsnNode(a.desc.loadOpcode(), paramSlots.get(a)));
+                        case PARAM -> {
+                            var field = regField(fields, a);
+                            if (field.optIsSome()) {
+                                node.instructions.add(fieldInsn(GETSTATIC, field.optUnwrap()));
+                            } else {
+                                node.instructions.add(new VarInsnNode(a.desc.loadOpcode(), paramSlots.get(a)));
+                            }
+                        }
                         case LOCAL -> {
+                            var field = regField(fields, a);
+                            if (field.optIsSome()) {
+                                node.instructions.add(fieldInsn(GETSTATIC, field.optUnwrap()));
+                                break;
+                            }
                             var slot = regSlots.get(a);
                             if (slot == null) throw new IllegalStateException("register read before it was stored");
                             node.instructions.add(new VarInsnNode(a.desc.loadOpcode(), slot));
                         }
                         case DEFER -> {
                             var def = ((Item.Insn) flat.get(info.def)).n();
-                            for (var pn : segmentsOf(segments, info.def, def, slots, refs)
+                            for (var pn : segmentsOf(segments, info.def, def, slots, refs, fields)
                                     .get(0)) node.instructions.add(pn);
                         }
                         case DEAD -> throw new AssertionError("dead register used");
@@ -497,12 +617,18 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                             }) {
                         break;
                     }
-                    for (var pn : segmentsOf(segments, i, n, slots, refs).get(args.size())) node.instructions.add(pn);
+                    for (var pn :
+                            segmentsOf(segments, i, n, slots, refs, fields).get(args.size())) node.instructions.add(pn);
                     if (outInfo != null) {
                         var o = n.out.optUnwrap();
                         switch (outInfo.kind) {
                             case DEAD -> node.instructions.add(new InsnNode(o.desc.isWide() ? POP2 : POP));
                             case LOCAL -> {
+                                var field = regField(fields, o);
+                                if (field.optIsSome()) {
+                                    node.instructions.add(fieldInsn(PUTSTATIC, field.optUnwrap()));
+                                    break;
+                                }
                                 int slot = slots.alloc(o.desc.isWide());
                                 regSlots.put(o, slot);
                                 node.instructions.add(new VarInsnNode(o.desc.storeOpcode(), slot));
@@ -524,8 +650,12 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                         if (land.n().params.isEmpty()) {
                             node.instructions.add(new InsnNode(POP));
                         } else if (land.n().params.size() == 1) {
-                            node.instructions.add(new VarInsnNode(
-                                    ASTORE, paramSlots.get(land.n().params.get(0))));
+                            var p = land.n().params.get(0);
+                            var field = regField(fields, p);
+                            node.instructions.add(
+                                    field.optIsSome()
+                                            ? fieldInsn(PUTSTATIC, field.optUnwrap())
+                                            : new VarInsnNode(ASTORE, paramSlots.get(p)));
                         } else {
                             throw new IllegalStateException(
                                     "exception handler landing must take exactly one parameter\n" + listing(flat, i));
@@ -544,7 +674,11 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                     }
                     for (int k = params.size() - 1; k >= 0; k--) {
                         var p = params.get(k);
-                        node.instructions.add(new VarInsnNode(p.desc.storeOpcode(), paramSlots.get(p)));
+                        var field = regField(fields, p);
+                        node.instructions.add(
+                                field.optIsSome()
+                                        ? fieldInsn(PUTSTATIC, field.optUnwrap())
+                                        : new VarInsnNode(p.desc.storeOpcode(), paramSlots.get(p)));
                     }
                     node.visitJumpInsn(GOTO, labels.computeIfAbsent(key, k -> new Label()));
                     reachable = false;
@@ -566,10 +700,11 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                     reachable = false;
                 }
                 case Item.Line l -> {
-                    node.visitLabel(l.label());
-                    node.visitLineNumber(l.line(), l.label());
+                    var label = labelCopy(labelCopies, l.label());
+                    node.visitLabel(label);
+                    node.visitLineNumber(l.line(), label);
                 }
-                case Item.RangeLabel l -> node.visitLabel(l.label());
+                case Item.RangeLabel l -> node.visitLabel(labelCopy(labelCopies, l.label()));
                 case Item.TryRange tr -> tryRanges.add(tr);
             }
             for (var a : args) {
@@ -580,17 +715,123 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                 }
             }
         }
+        itemInsnIndex[to - from] = node.instructions.size();
         for (var tr : tryRanges) {
             if (!landIndex.containsKey(tr.handler())) {
                 throw new IllegalStateException("guarded region whose handler landing is not in this method");
             }
             node.visitTryCatchBlock(
-                    tr.start(), tr.end(), handlerLabels.computeIfAbsent(tr.handler(), k -> new Label()), null);
+                    labelCopy(labelCopies, tr.start()),
+                    labelCopy(labelCopies, tr.end()),
+                    handlerLabels.computeIfAbsent(tr.handler(), k -> new Label()),
+                    null);
         }
-        node.instructions.accept(out);
-        for (var tcb : node.tryCatchBlocks) {
-            out.visitTryCatchBlock(tcb.start.getLabel(), tcb.end.getLabel(), tcb.handler.getLabel(), tcb.type);
+        return new Emitted(node, itemInsnIndex);
+    }
+
+    public TList<Integer> chunkCuts(Layout layout, int[] itemBytes, int budget) {
+        var flat = layout.flat;
+        int n = flat.size();
+        var invalid = new boolean[n + 1];
+        {
+            int minChain = Integer.MAX_VALUE;
+            for (int c = n - 1; c >= 1; c--) {
+                minChain = Math.min(minChain, layout.chainStart[c]);
+                if (minChain < c) invalid[c] = true;
+            }
         }
+        var blocked = new int[n + 2];
+        for (int i = 0; i < n; i++) {
+            switch (flat.get(i)) {
+                case Item.Jump j -> blockBetween(blocked, i, indexIn(layout.landIndex, j.n().jumpKey, "landing"));
+                case Item.Branch b -> blockBetween(blocked, i, indexIn(layout.landIndex, b.n().jumpKey, "landing"));
+                case Item.TryRange tr -> {
+                    int start = indexIn(layout.rangeLabelIndex, tr.start(), "range label");
+                    int end = indexIn(layout.rangeLabelIndex, tr.end(), "range label");
+                    int handler = indexIn(layout.landIndex, tr.handler(), "handler landing");
+                    blockBetween(blocked, start, end);
+                    blockBetween(blocked, start, handler);
+                }
+                case Item.Return r -> blockBetween(blocked, i, n);
+                case Item.Insn ins -> {}
+                case Item.Land l -> {}
+                case Item.Throw t -> {}
+                case Item.Line l -> {}
+                case Item.RangeLabel l -> {}
+            }
+        }
+        for (int c = 1, depth = 0; c <= n; c++) {
+            depth += blocked[c];
+            if (depth > 0) invalid[c] = true;
+        }
+        var cuts = new TList<Integer>();
+        int start = 0;
+        while (itemBytes[n] - itemBytes[start] > budget) {
+            int cut = -1;
+            for (int c = n - 1; c > start; c--) {
+                if (invalid[c] || itemBytes[c] - itemBytes[start] > budget) continue;
+                cut = c;
+                break;
+            }
+            if (cut < 0) {
+                throw new IllegalStateException("method body cannot be split: no chunk boundary within " + budget
+                        + " bytes after item " + start + "\n" + listing(flat, start));
+            }
+            cuts.add(cut);
+            start = cut;
+        }
+        return cuts;
+    }
+
+    private static void blockBetween(int[] blocked, int a, int b) {
+        int lo = Math.min(a, b);
+        int hi = Math.max(a, b);
+        blocked[lo + 1] += 1;
+        blocked[hi + 1] -= 1;
+    }
+
+    public ChunkFields chunkFields(Layout layout, TList<Integer> cuts, JavaBytecodeRenderRefs refs) {
+        var fields = new ChunkFields(refs);
+        for (int i = 0; i < layout.flat.size(); i++) {
+            var defined =
+                    switch (layout.flat.get(i)) {
+                        case Item.Insn ins ->
+                            ins.n().out.optIsSome() ? TList.of(ins.n().out.optUnwrap()) : new TList<JavaBytecodeReg>();
+                        case Item.Land land -> land.n().params;
+                        default -> new TList<JavaBytecodeReg>();
+                    };
+            for (var reg : defined) {
+                var info = regInfo(layout.infos, reg);
+                if (info.kind != RegKind.LOCAL && info.kind != RegKind.PARAM) continue;
+                for (var cut : cuts) {
+                    if (info.def < cut && cut <= info.lastUse) {
+                        fields.regs.put(reg, refs.chunkField(reg.desc));
+                        break;
+                    }
+                }
+            }
+        }
+        return fields;
+    }
+
+    private static Label labelCopy(IdentityHashMap<Label, Label> copies, Label label) {
+        return copies.computeIfAbsent(label, k -> new Label());
+    }
+
+    private static <K> int indexIn(IdentityHashMap<K, Integer> index, K key, String what) {
+        var found = index.get(key);
+        if (found == null) throw new IllegalStateException(what + " has no item index");
+        return found;
+    }
+
+    private static Opt<JavaStaticFieldRef> regField(Opt<ChunkFields> fields, JavaBytecodeReg reg) {
+        if (fields.optIsNone()) return Opt.none();
+        var field = fields.optUnwrap().regs.get(reg);
+        return field == null ? Opt.none() : Opt.some(field);
+    }
+
+    private static FieldInsnNode fieldInsn(int opcode, JavaStaticFieldRef field) {
+        return new FieldInsnNode(opcode, field.owner.value, field.name, field.descriptor.value());
     }
 
     private static void pushLine(TList<Item> flat, int line) {
@@ -622,7 +863,8 @@ public final class JavaBytecodeSequence implements JavaBytecode {
             int index,
             JavaBytecodeInsn n,
             SlotAllocator slots,
-            JavaBytecodeRenderRefs refs) {
+            JavaBytecodeRenderRefs refs,
+            Opt<ChunkFields> fields) {
         var existingOpt = cache.getOpt(index);
         if (existingOpt.optIsSome()) {
             var existing = existingOpt.optUnwrap();
@@ -635,6 +877,23 @@ public final class JavaBytecodeSequence implements JavaBytecode {
             case JavaBytecodeInsnBody.Op o -> segs.get(argc).add(new InsnNode(o.opcode()));
             case JavaBytecodeInsnBody.Node nd -> segs.get(argc).add(nd.node().clone(new IdentityHashMap<>()));
             case JavaBytecodeInsnBody.Var v -> {
+                if (fields.optIsSome()) {
+                    if (JavaBytecodeUtils.isLoadOpcode(v.opcode())) {
+                        var desc = n.out.optUnwrap().desc;
+                        segs.get(argc)
+                                .add(fieldInsn(GETSTATIC, fields.optUnwrap().slot(v.slot(), desc)));
+                        if (desc.isReference() && !desc.equals(JvmConstants.DESC_OBJECT)) {
+                            segs.get(argc)
+                                    .add(new TypeInsnNode(
+                                            CHECKCAST, desc.isObject() ? desc.internalName().value : desc.value()));
+                        }
+                    } else {
+                        var desc = n.args.get(0).desc;
+                        segs.get(argc)
+                                .add(fieldInsn(PUTSTATIC, fields.optUnwrap().slot(v.slot(), desc)));
+                    }
+                    break;
+                }
                 boolean wide = v.opcode() == Opcodes.LLOAD
                         || v.opcode() == Opcodes.DLOAD
                         || v.opcode() == Opcodes.LSTORE

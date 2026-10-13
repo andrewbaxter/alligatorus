@@ -17,12 +17,14 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.TypeAspect;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
+import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
+import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
@@ -81,6 +83,9 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
         }
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(AspectBindViaTarget.INSTANCE);
+        }
+        if (key.equals(GenAspectBindDynamic.AspectId)) {
+            return Opt.some(AspectBindDynamicDefault.INSTANCE);
         }
         if (key.equals(GenAspectArtifact.AspectId)) {
             return Opt.some(AspectArtifactSourceInterfaceDynamic.INSTANCE);

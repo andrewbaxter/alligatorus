@@ -23,7 +23,7 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6213L)
+@BuiltinFull(uniqueId = 6213L, lift = false)
 @BuiltinPath("types.value_object_const")
 public record ValueObjectConst(Type type, Object data) implements Value {
     @Override

@@ -32,12 +32,10 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.main.gen.GenAspectDynamicBoxed;
-import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.IfBranch;
 import compilerxyz.main.gen.Target;
 import compilerxyz.main.gen.TargetCase;
-import compilerxyz.main.gen.TargetMatchFallback;
 import compilerxyz.main.gen.TryCatchClause;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.IList;
@@ -561,44 +559,32 @@ public final class TargetDynamic implements Target {
 
     @Override
     public EResult<CodeValue> targetMatch(
-            ExprContext xx, QExprId loc, CodeValue base, TList<TargetCase> cases, Opt<TargetMatchFallback> fallback) {
-        var baseType = base.value().optUnwrap().valueType();
-        var unionRes = GenAspectUnion.get(xx, loc, baseType);
-        if (unionRes.hasErrors()) return unionRes.reerr();
-        var union = unionRes.requireValue("targetMatch union");
+            ExprContext xx, QExprId loc, CodeValue base, TList<TargetCase> cases, Opt<CodeValue> fallback) {
         var rawArms = new TList<CodeValue>();
         for (var branch : cases) rawArms.add(branch.body);
-        if (fallback.optIsSome()) rawArms.add(fallback.optUnwrap().body);
+        if (fallback.optIsSome()) rawArms.add(fallback.optUnwrap());
         var armsRes = sourceArms(xx, loc, rawArms);
         if (armsRes.hasErrors()) return armsRes.reerr();
         var arms = armsRes.requireValue("targetMatch arms");
         var shapeRes = armsShape(xx, loc, arms, false, "Match");
         if (shapeRes.hasErrors()) return shapeRes.reerr();
         var shape = shapeRes.requireValue("targetMatch shape");
-        var prepRes = union.aspectUnionPrepare(xx);
-        if (prepRes.optIsSome()) return EResult.errs(prepRes.optUnwrap());
         var b = new JavaBytecodeBuilder(loc);
-        var baseRes = DynUtil.materialize(xx, loc, base);
-        if (baseRes.hasErrors()) return baseRes.reerr();
-        var baseReg = b.reg(baseRes.requireValue("targetMatch base"));
+        var baseCodeRes = b.addCode(loc, base.code());
+        if (baseCodeRes.optIsSome()) return EResult.errs(baseCodeRes.optUnwrap());
         var endKey = new JumpKey();
         for (int ci = 0; ci < cases.size(); ci++) {
             var branch = cases.get(ci);
             var nextCaseKey = new JumpKey();
-            var testRes = union.aspectUnionTest(loc, baseReg, branch.variantIndex);
+            var testRes = DynUtil.materialize(xx, loc, branch.test);
             if (testRes.hasErrors()) return testRes.reerr();
             var test = b.reg(testRes.requireValue("targetMatch variant test"));
             b.branch(Opcodes.IFEQ, nextCaseKey, test);
-            var extractRes = union.aspectUnionExtract(xx, loc, baseReg, branch.variantIndex, branch.variantType);
-            if (extractRes.hasErrors()) return extractRes.reerr();
-            var payload = b.reg(extractRes.requireValue("targetMatch variant extract"));
-            b.store(initialBindSlot(branch.payloadBinding), payload);
             var bodyRes = emitBranchBody(loc, b, arms.get(ci), shape, endKey);
             if (bodyRes.optIsSome()) return EResult.errs(bodyRes.optUnwrap());
             b.land(nextCaseKey);
         }
         if (fallback.optIsSome()) {
-            b.store(initialBindSlot(fallback.optUnwrap().payloadBinding), baseReg);
             var fbRes = emitBranchBody(loc, b, arms.get(cases.size()), shape, endKey);
             if (fbRes.optIsSome()) return EResult.errs(fbRes.optUnwrap());
         } else {

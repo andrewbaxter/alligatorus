@@ -39,6 +39,7 @@ import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleElement;
 import compilerxyz.main.gen.AspectBind;
+import compilerxyz.main.gen.AspectUnion;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.DefinitionSetBuilder;
@@ -378,6 +379,11 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.exit_value", scopeId = 5053L)
     public static Target.ExitValue exitValue(boolean carries, CodeValue cv) {
         return new Target.ExitValue(carries, cv);
+    }
+
+    @BuiltinPath(value = "eval.aspect_union_variant", scopeId = 5054L)
+    public static AspectUnion.Variant aspectUnionVariant(ConstKey key, Type type) {
+        return new AspectUnion.Variant(key, type);
     }
 
     @BuiltinPath(value = "eval.bind_result", scopeId = 5015L)

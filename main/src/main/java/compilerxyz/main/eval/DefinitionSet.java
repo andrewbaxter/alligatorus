@@ -475,6 +475,7 @@ public final class DefinitionSet implements Artifactable {
                                 mv,
                                 initialSlots,
                                 obj.typeDesc() + "." + methodName,
+                                Opcodes.ACC_PUBLIC,
                                 descriptor,
                                 emmRefs,
                                 soeLocTable);
@@ -571,6 +572,7 @@ public final class DefinitionSet implements Artifactable {
                                     eimMv,
                                     eimInitialSlots,
                                     obj.typeDesc() + "." + eimMethodName,
+                                    Opcodes.ACC_PUBLIC,
                                     eimDescriptor,
                                     eimRefs,
                                     soeLocTable);
@@ -863,6 +865,7 @@ public final class DefinitionSet implements Artifactable {
                     mv,
                     initialSlots,
                     internalName + "." + spec.methodName(),
+                    Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
                     JavaMethodDescriptor.fromParts(spec.retDesc(), argDescs),
                     efmRefs,
                     locTable);

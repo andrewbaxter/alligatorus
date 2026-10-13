@@ -5,6 +5,7 @@ import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleElement;
+import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBoolConst;
 import compilerxyz.main.gen.GenAspectField;
@@ -34,7 +35,6 @@ import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.IfBranch;
 import compilerxyz.main.gen.TargetCase;
-import compilerxyz.main.gen.TargetMatchFallback;
 import compilerxyz.main.gen.TryCatchClause;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.IList;
@@ -768,7 +768,9 @@ public final class ConstEval {
                         res = EResult.errs(erb.errors());
                         break matchCompute;
                     }
-                    var variants = unionOpt.optUnwrap().aspectUnionVariants();
+                    var union = unionOpt.optUnwrap();
+                    var variants = union.aspectUnionVariants();
+                    var baseValue = new CodeValue(Code.none(loc), base.outcome());
                     var unionInst = TypeSourceUnionDynamic.unionOf(xx, baseType);
                     var active = new TList<Integer>();
                     if (unionInst.optIsSome()) {
@@ -840,15 +842,25 @@ public final class ConstEval {
                     var matchCases = new TList<TargetCase>(e.cases().size());
                     for (int i = 0; i < e.cases().size(); i++) {
                         int variantIdx = caseIndices.get(i);
-                        var variant = variants.get(variantIdx);
                         var caseScope = initialScope.fork();
-                        var payloadRes = xx.target.targetInitialBind(xx, loc, variant.type());
+                        var testRes = union.aspectUnionTest(xx, loc, baseValue, variantIdx);
+                        if (testRes.hasErrors()) {
+                            res = testRes.reerr();
+                            break matchCompute;
+                        }
+                        var testCv = testRes.requireValue("Match: variant test");
+                        var payloadRes = union.aspectUnionExtract(xx, loc, baseValue, variantIdx);
                         if (payloadRes.hasErrors()) {
                             res = payloadRes.reerr();
                             break matchCompute;
                         }
-                        var payloadBinding = payloadRes.requireValue("Match: payload initial bind");
-                        var payloadEntry = caseScope.pushNamed(elementKey, payloadBinding);
+                        var payloadBindRes = bindValue(xx, loc, payloadRes.requireValue("Match: variant payload"));
+                        if (payloadBindRes.hasErrors()) {
+                            res = payloadBindRes.reerr();
+                            break matchCompute;
+                        }
+                        var payloadBind = payloadBindRes.requireValue("Match: payload bind");
+                        var payloadEntry = caseScope.pushNamed(elementKey, payloadBind.binding());
                         var caseXx =
                                 new ExprContext(caseScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
                         var bodyResult = constEval(caseXx, e.cases().get(i).body());
@@ -867,7 +879,7 @@ public final class ConstEval {
                             break matchCompute;
                         }
                         var payloadSplice = payloadSpliceOpt.optUnwrap();
-                        var bodySeq = seqCode(xx, loc, erb, TList.of(bodyCv.code(), payloadSplice));
+                        var bodySeq = seqCode(xx, loc, erb, TList.of(payloadBind.code(), bodyCv.code(), payloadSplice));
                         if (bodySeq.optIsNone()) {
                             res = EResult.errs(erb.errors());
                             break matchCompute;
@@ -888,9 +900,9 @@ public final class ConstEval {
                                 bodyCv = convertedOpt.optUnwrap();
                             }
                         }
-                        matchCases.add(new TargetCase(variant.type(), variantIdx, payloadBinding, bodyCv));
+                        matchCases.add(new TargetCase(testCv, bodyCv));
                     }
-                    Opt<TargetMatchFallback> fallbackCv = Opt.none();
+                    Opt<CodeValue> fallbackCv = Opt.none();
                     if (e.fallback().optIsSome()) {
                         var remaining = new TList<Integer>();
                         for (var idx : active) {
@@ -899,13 +911,19 @@ public final class ConstEval {
                         Type fallbackType =
                                 unionInst.optIsSome() ? unionInst.optUnwrap().withActiveVariants(remaining) : baseType;
                         var fallbackScope = initialScope.fork();
-                        var fallbackBindRes = xx.target.targetInitialBind(xx, loc, fallbackType);
+                        var fallbackValueRes = Eval.typecheckConvert(xx, loc, fallbackType, baseValue);
+                        if (fallbackValueRes.hasErrors()) {
+                            res = fallbackValueRes.reerr();
+                            break matchCompute;
+                        }
+                        var fallbackBindRes =
+                                bindValue(xx, loc, fallbackValueRes.requireValue("Match: fallback value"));
                         if (fallbackBindRes.hasErrors()) {
                             res = fallbackBindRes.reerr();
                             break matchCompute;
                         }
-                        var fallbackBinding = fallbackBindRes.requireValue("Match: fallback initial bind");
-                        var fallbackEntry = fallbackScope.pushNamed(elementKey, fallbackBinding);
+                        var fallbackBind = fallbackBindRes.requireValue("Match: fallback bind");
+                        var fallbackEntry = fallbackScope.pushNamed(elementKey, fallbackBind.binding());
                         var fallbackXx = new ExprContext(
                                 fallbackScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
                         var fallbackResult = constEval(fallbackXx, e.fallback().optUnwrap());
@@ -925,7 +943,7 @@ public final class ConstEval {
                             break matchCompute;
                         }
                         var fallbackSplice = fallbackSpliceOpt.optUnwrap();
-                        var fbSeq = seqCode(xx, loc, erb, TList.of(fbCv.code(), fallbackSplice));
+                        var fbSeq = seqCode(xx, loc, erb, TList.of(fallbackBind.code(), fbCv.code(), fallbackSplice));
                         if (fbSeq.optIsNone()) {
                             res = EResult.errs(erb.errors());
                             break matchCompute;
@@ -946,7 +964,7 @@ public final class ConstEval {
                                 fbCv = convertedOpt.optUnwrap();
                             }
                         }
-                        fallbackCv = Opt.some(new TargetMatchFallback(fallbackBinding, fbCv));
+                        fallbackCv = Opt.some(fbCv);
                     } else if (!allControlEnded) {
                         branchScopes.add(initialScope.fork());
                     }
@@ -1599,6 +1617,12 @@ public final class ConstEval {
         if (top.scopeLevelEmission().id != level.scopeLevelEmission().id) {
             throw new AssertionError("scope level pop does not match the owning level");
         }
+    }
+
+    private static EResult<AspectBind.BindResult> bindValue(ExprContext xx, QExprId loc, CodeValue cv) {
+        var bindRes = GenAspectBind.get(xx, loc, cv.value().optUnwrap().valueType());
+        if (bindRes.hasErrors()) return bindRes.reerr();
+        return bindRes.requireValue("ConstEval::bindValue aspect").aspectBindBind(xx, loc, cv);
     }
 
     private static Opt<Code> seqCode(ExprContext xx, QExprId loc, Erb erb, TList<Code> parts) {

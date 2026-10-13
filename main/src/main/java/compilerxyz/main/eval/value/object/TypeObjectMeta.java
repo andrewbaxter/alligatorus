@@ -10,4 +10,5 @@ public record TypeObjectMeta(
         IList<TypeObjectCastRule> castRules,
         IList<TypeObjectCastFromRule> castFromRules,
         Opt<ObjectAspectSource> aspectSource,
-        boolean identityEq) {}
+        boolean identityEq,
+        boolean liftable) {}

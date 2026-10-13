@@ -20,9 +20,29 @@ import compilerxyz.prelude.util.TOrderedMap;
 import java.lang.reflect.InvocationTargetException;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.FrameNode;
+import org.objectweb.asm.tree.IincInsnNode;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.IntInsnNode;
+import org.objectweb.asm.tree.InvokeDynamicInsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.LineNumberNode;
+import org.objectweb.asm.tree.LookupSwitchInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MultiANewArrayInsnNode;
+import org.objectweb.asm.tree.TableSwitchInsnNode;
+import org.objectweb.asm.tree.TypeInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 
 public final class EvalRoot {
     private EvalRoot() {}
+
+    private static final int MAX_METHOD_CODE = 65535;
+
+    private static final int CHUNK_BUDGET = 32000;
 
     public static String newBinaryName(ExprContext xx) {
         var binaryName = "compilerxyz.main.eval.gen.EvalRoot$" + xx.vx.ix.evalRootCounter.next();
@@ -55,7 +75,6 @@ public final class EvalRoot {
                         null)
                 .visitEnd();
         var mdescRun = JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, TList.of());
-        var mv = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "run", mdescRun.value(), null, null);
         var seq = new JavaBytecodeSequence();
         var ownerInternal = JavaInternalName.of(internalName);
         var refs = new JavaBytecodeRenderRefs(ownerInternal, "");
@@ -69,8 +88,65 @@ public final class EvalRoot {
             rb.ret(result);
             seq.add(rb.code());
         }
-        JavaBytecodeUtils.renderMethodTyped(
-                seq, mv, TList.of(), ownerInternal.value() + ".run", mdescRun, refs, locTable);
+        var context = ownerInternal.value() + ".run";
+        var layout = seq.layout(refs, locTable);
+        var whole = seq.emit(layout, 0, layout.size(), TList.of(), refs, Opt.none());
+        var offsets = new int[whole.node().instructions.size() + 1];
+        {
+            int at = 0;
+            int i = 0;
+            for (var insn : whole.node().instructions) {
+                offsets[i++] = at;
+                at += switch (insn) {
+                    case LabelNode l -> 0;
+                    case LineNumberNode l -> 0;
+                    case FrameNode f -> 0;
+                    case InsnNode n -> 1;
+                    case IntInsnNode n -> n.getOpcode() == Opcodes.SIPUSH ? 3 : 2;
+                    case VarInsnNode n -> n.var < 256 ? 2 : 4;
+                    case TypeInsnNode n -> 3;
+                    case FieldInsnNode n -> 3;
+                    case MethodInsnNode n -> n.getOpcode() == Opcodes.INVOKEINTERFACE ? 5 : 3;
+                    case InvokeDynamicInsnNode n -> 5;
+                    case JumpInsnNode n -> 3;
+                    case LdcInsnNode n -> 3;
+                    case IincInsnNode n -> n.var < 256 && n.incr >= Byte.MIN_VALUE && n.incr <= Byte.MAX_VALUE ? 3 : 6;
+                    case TableSwitchInsnNode n -> 16 + 4 * n.labels.size();
+                    case LookupSwitchInsnNode n -> 12 + 8 * n.keys.size();
+                    case MultiANewArrayInsnNode n -> 4;
+                    default ->
+                        throw new IllegalStateException(
+                                "unsized instruction node " + insn.getClass().getName());
+                };
+            }
+            offsets[i] = at;
+        }
+        if (offsets[offsets.length - 1] <= MAX_METHOD_CODE) {
+            JavaBytecodeUtils.renderMethodNode(cw, "run", mdescRun, whole.node(), context);
+        } else {
+            var itemBytes = new int[whole.itemInsnIndex().length];
+            for (int i = 0; i < itemBytes.length; i++) itemBytes[i] = offsets[whole.itemInsnIndex()[i]];
+            var cuts = seq.chunkCuts(layout, itemBytes, CHUNK_BUDGET);
+            var fields = seq.chunkFields(layout, cuts, refs);
+            var starts = new TList<Integer>();
+            starts.add(0);
+            starts.addAll(cuts);
+            var driver = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "run", mdescRun.value(), null, null);
+            for (int k = 0; k < starts.size(); k++) {
+                boolean last = k == starts.size() - 1;
+                int from = starts.get(k);
+                int to = last ? layout.size() : starts.get(k + 1);
+                var part = seq.emit(layout, from, to, TList.of(), refs, Opt.some(fields));
+                if (!last) part.node().instructions.add(new InsnNode(Opcodes.RETURN));
+                var chunkName = "run$" + k;
+                var chunkDesc = last ? mdescRun : JavaMethodDescriptor.VOID_NOARGS;
+                JavaBytecodeUtils.renderMethodNode(cw, chunkName, chunkDesc, part.node(), context + "$" + k);
+                driver.visitMethodInsn(Opcodes.INVOKESTATIC, internalName, chunkName, chunkDesc.value(), false);
+            }
+            driver.visitInsn(Opcodes.ARETURN);
+            driver.visitMaxs(0, 0);
+            driver.visitEnd();
+        }
         var rootStaticFields = new TOrderedMap<String, Object>();
         refs.declareFields(cw, rootStaticFields);
         cw.visitEnd();

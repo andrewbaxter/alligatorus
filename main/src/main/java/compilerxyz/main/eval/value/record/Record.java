@@ -277,6 +277,16 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
 
         var fieldTypes = new TOrderedMap<ConstKey, RecordField>();
         for (var entry : fields) {
+            switch (entry.getValue()) {
+                case RecordField.EvalRes er -> {
+                    if (er.result().hasErrors()) {
+                        throw new IllegalStateException("Record::valueType: field '"
+                                + entry.getKey().constKeyToCanonical() + "' holds errors: "
+                                + er.result().errorsOpt().optUnwrap());
+                    }
+                }
+                case RecordField.Dynamic d -> {}
+            }
             var t = recordFieldType(entry.getValue());
             fieldTypes.put(entry.getKey(), new RecordField.Dynamic(t));
         }

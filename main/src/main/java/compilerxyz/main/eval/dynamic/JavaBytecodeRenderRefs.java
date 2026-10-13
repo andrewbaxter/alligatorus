@@ -16,6 +16,7 @@ public final class JavaBytecodeRenderRefs {
     private final TList<EvalContext.ExternalEntry> externals = new TList<>();
     private final TList<JavaStaticFieldRef> fieldRefs = new TList<>();
     private final TOrderedMap<DefSetId, DefinitionSet> defSets = new TOrderedMap<>();
+    private final TList<JavaStaticFieldRef> chunkFields = new TList<>();
 
     public JavaBytecodeRenderRefs(JavaInternalName owner, String prefix) {
         this.owner = owner;
@@ -35,12 +36,18 @@ public final class JavaBytecodeRenderRefs {
         return ref;
     }
 
+    JavaStaticFieldRef chunkField(JavaDataDescriptor descriptor) {
+        var ref = new JavaStaticFieldRef(owner, prefix + Prefixes.CHUNK_PREFIX + chunkFields.size(), descriptor);
+        chunkFields.add(ref);
+        return ref;
+    }
+
     void defSet(DefinitionSet set) {
         defSets.putIfAbsent(set.defSetId, set);
     }
 
     public boolean isEmpty() {
-        return externals.isEmpty() && defSets.isEmpty();
+        return externals.isEmpty() && defSets.isEmpty() && chunkFields.isEmpty();
     }
 
     public TList<EvalContext.ExternalEntry> externals() {
@@ -57,6 +64,10 @@ public final class JavaBytecodeRenderRefs {
             cw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, ref.name, ref.descriptor.value(), null, null)
                     .visitEnd();
             staticFieldValues.put(ref.name, externals.get(i).external().externalHostValue());
+        }
+        for (var ref : chunkFields) {
+            cw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, ref.name, ref.descriptor.value(), null, null)
+                    .visitEnd();
         }
     }
 }

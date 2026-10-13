@@ -98,6 +98,7 @@ public final class JavaAspectExtractor {
             throw new IllegalStateException("@Builtin on " + simpleName + " missing required uniqueId");
         }
         var uniqueId = Long.parseLong(uniqueIdStr);
+        var lift = !"false".equals(attrs.get("lift"));
         var classImports = buildImportMap(cu);
         var classFields = new TList<BuiltinInterfacesGen.DataField>();
         for (var f : clsDecl.getFields()) {
@@ -144,7 +145,8 @@ public final class JavaAspectExtractor {
                     classFields,
                     outerSimpleName,
                     outerSimpleName.optIsNone() ? Opt.none() : Opt.some(nestedName),
-                    identityToken));
+                    identityToken,
+                    lift));
         }
     }
 
@@ -160,6 +162,7 @@ public final class JavaAspectExtractor {
             throw new IllegalStateException("@Builtin on " + simpleName + " missing required uniqueId");
         }
         var uniqueId = Long.parseLong(uniqueIdStr);
+        var lift = !"false".equals(attrs.get("lift"));
         var importMap = buildImportMap(cu);
         var dataFields = new TList<BuiltinInterfacesGen.DataField>();
         var methods = new TList<Method>();
@@ -201,7 +204,8 @@ public final class JavaAspectExtractor {
                 dataFields,
                 outerSimpleName,
                 outerSimpleName.optIsNone() ? Opt.none() : Opt.some(nestedName),
-                false));
+                false,
+                lift));
     }
 
     public static boolean injectsEvalContext(NodeWithAnnotations<?> m, List<Parameter> params, String where) {

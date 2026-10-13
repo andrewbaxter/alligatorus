@@ -190,7 +190,15 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
         }
         var v = self.value().optUnwrap();
         if (v instanceof ValueObjectConst wrap) {
-            return EResult.ok((Type) wrap.data());
+            if (!(wrap.data() instanceof Type inner)) {
+                var dataDesc = wrap.data() instanceof ValueObjectConst innerWrap
+                        ? "value_object_const of " + innerWrap.type().typeDesc() + " over "
+                                + innerWrap.data().getClass().getName()
+                        : wrap.data().getClass().getName();
+                throw new IllegalStateException(typeDesc() + "::" + op + ": type value of "
+                        + wrap.type().typeDesc() + " does not hold a Type: " + dataDesc);
+            }
+            return EResult.ok(inner);
         }
         return EResult.err(loc, typeDesc() + "::" + op + ": expected ValueObjectConst, got " + v.getClass());
     }

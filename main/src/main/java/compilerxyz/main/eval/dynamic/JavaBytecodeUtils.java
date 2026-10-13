@@ -3,6 +3,7 @@ package compilerxyz.main.eval.dynamic;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.MethodNode;
@@ -66,6 +67,7 @@ public final class JavaBytecodeUtils {
             MethodVisitor mv,
             TList<JavaBytecodeSequence.InitialSlot> initialSlots,
             String context,
+            int access,
             JavaMethodDescriptor descriptor,
             JavaBytecodeRenderRefs refs,
             JavaBytecodeLocTable locTable) {
@@ -76,14 +78,36 @@ public final class JavaBytecodeUtils {
         } catch (RuntimeException e) {
             throw new IllegalStateException(
                     "bytecode rendering failed for " + context + ":\n"
-                            + dumpMethod(seq, initialSlots, descriptor, refs),
+                            + dumpMethod(seq, initialSlots, access, descriptor, refs),
                     e);
         }
         if (DUMP_BYTECODE) {
-            System.err.println("bytecode for " + context + ":\n" + dumpMethod(seq, initialSlots, descriptor, refs));
+            System.err.println(
+                    "bytecode for " + context + ":\n" + dumpMethod(seq, initialSlots, access, descriptor, refs));
         }
         if (VERIFY_BYTECODE) {
-            var dump = dumpMethod(seq, initialSlots, descriptor, refs);
+            var dump = dumpMethod(seq, initialSlots, access, descriptor, refs);
+            if (!dump.startsWith("analyzer: ok")) {
+                throw new IllegalStateException("bytecode verification failed for " + context + ":\n" + dump);
+            }
+        }
+    }
+
+    public static void renderMethodNode(
+            ClassWriter cw, String name, JavaMethodDescriptor descriptor, MethodNode node, String context) {
+        var access = Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC;
+        var mv = cw.visitMethod(access, name, descriptor.value(), null, null);
+        node.instructions.accept(mv);
+        for (var tcb : node.tryCatchBlocks) {
+            mv.visitTryCatchBlock(tcb.start.getLabel(), tcb.end.getLabel(), tcb.handler.getLabel(), tcb.type);
+        }
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+        if (DUMP_BYTECODE) {
+            System.err.println("bytecode for " + context + ":\n" + dumpNode(node, access, descriptor));
+        }
+        if (VERIFY_BYTECODE) {
+            var dump = dumpNode(node, access, descriptor);
             if (!dump.startsWith("analyzer: ok")) {
                 throw new IllegalStateException("bytecode verification failed for " + context + ":\n" + dump);
             }
@@ -93,15 +117,25 @@ public final class JavaBytecodeUtils {
     public static String dumpMethod(
             JavaBytecodeSequence seq,
             TList<JavaBytecodeSequence.InitialSlot> initialSlots,
+            int access,
             JavaMethodDescriptor descriptor,
             JavaBytecodeRenderRefs refs) {
-        var node = new MethodNode(Opcodes.ASM9, Opcodes.ACC_PUBLIC, "dump", descriptor.value(), null, null);
-        var sb = new StringBuilder();
+        var node = new MethodNode(Opcodes.ASM9, access, "dump", descriptor.value(), null, null);
         try {
             seq.renderInternal(node, initialSlots, refs, new JavaBytecodeLocTable());
         } catch (RuntimeException e) {
-            sb.append("render: ").append(e.getMessage()).append('\n');
+            return "render: " + e.getMessage() + "\n" + dumpNode(node, access, descriptor);
         }
+        return dumpNode(node, access, descriptor);
+    }
+
+    private static String dumpNode(MethodNode source, int access, JavaMethodDescriptor descriptor) {
+        var node = new MethodNode(Opcodes.ASM9, access, "dump", descriptor.value(), null, null);
+        source.instructions.accept(node);
+        for (var tcb : source.tryCatchBlocks) {
+            node.visitTryCatchBlock(tcb.start.getLabel(), tcb.end.getLabel(), tcb.handler.getLabel(), tcb.type);
+        }
+        var sb = new StringBuilder();
         node.maxLocals = 512;
         node.maxStack = 512;
         var analyzer = new Analyzer<>(new BasicVerifier());

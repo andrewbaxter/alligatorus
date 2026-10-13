@@ -508,7 +508,7 @@ public final class GenMain {
                         b.addStatement("trivialIdentityAspects.add($T.IdentityId)", self);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)), false)",
+                                        + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)), false, true)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -535,7 +535,7 @@ public final class GenMain {
                         BuiltinInterfacesGen.emitTypeHostRestamp(b, interfaceRef);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>none(), false)",
+                                        + "$T.<$T>none(), false, $L)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -543,7 +543,8 @@ public final class GenMain {
                                 BuiltinInterfacesGen.ILIST,
                                 BuiltinInterfacesGen.TYPE_OBJECT_CAST_FROM_RULE,
                                 BuiltinInterfacesGen.OPT,
-                                BuiltinInterfacesGen.OBJECT_ASPECT_SOURCE);
+                                BuiltinInterfacesGen.OBJECT_ASPECT_SOURCE,
+                                spec.lift());
                         b.addStatement(
                                 "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
                                         + "$T.NONE, $T.<$T>none())",
@@ -560,7 +561,7 @@ public final class GenMain {
                         BuiltinInterfacesGen.emitTypeHostRestamp(b, interfaceRef);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>some(new $T(new $T($LL), new $T($LL))), $L)",
+                                        + "$T.<$T>some(new $T(new $T($LL), new $T($LL))), $L, $L)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -574,7 +575,8 @@ public final class GenMain {
                                 spec.uniqueId(),
                                 BuiltinInterfacesGen.UNIQUE_BUILTIN,
                                 spec.uniqueId(),
-                                spec.identityToken());
+                                spec.identityToken(),
+                                spec.lift());
                         if (spec.isInterface()) {
                             b.addStatement(
                                     "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
@@ -1465,6 +1467,11 @@ public final class GenMain {
                         pathToLeaf,
                         "eval.aspect_initial_bind_id",
                         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectInitialBind")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_union_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectUnion")),
                         BuiltinTreeGen.TUC_TYPE_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,

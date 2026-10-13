@@ -13,4 +13,6 @@ public @interface BuiltinFull {
     int scopeId() default 0;
 
     long identityId() default 0;
+
+    boolean lift() default true;
 }
