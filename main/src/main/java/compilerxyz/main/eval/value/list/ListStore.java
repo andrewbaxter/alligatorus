@@ -4,4 +4,8 @@ public interface ListStore {
     int listStoreSize();
 
     Object listStoreBoxed(int index);
+
+    void listStorePushBoxed(Object value);
+
+    ListStore listStoreCopy();
 }

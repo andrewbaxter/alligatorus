@@ -17,6 +17,9 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.eval.dynamic.JvmSort;
+import compilerxyz.main.eval.value.ConstHost;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -24,7 +27,6 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactArrayTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactArrayValueCodec;
 import compilerxyz.main.safejson.JsonValue;
@@ -33,6 +35,7 @@ import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
+import java.lang.reflect.Array;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -77,21 +80,21 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
         return Opt.none();
     }
 
-    static TList<Value> elementsOf(Value value) {
-        return MustCast.mustCast(ValueArrayConst.class, value).elements();
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            var value = MustCast.mustCast(ValueArrayConst.class, self);
-            var array = value.type();
+            var value = MustCast.mustCast(ValueObjectConst.class, self);
+            var array = MustCast.mustCast(TypeArrayConst.class, value.type());
+            var host = value.data();
             var erb = new Erb(loc);
             var elementTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, array.elementType));
             var elementArts = new TList<Artifact>();
-            for (var element : elementsOf(value)) {
-                var elementArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, element));
+            for (int i = 0; i < Array.getLength(host); i++) {
+                var element =
+                        erb.mustErMaybeUnreachable(ConstHost.lift(xx, loc, array.elementType, Array.get(host, i)));
+                if (element.optIsNone()) continue;
+                var elementArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, element.optUnwrap()));
                 if (elementArt.optIsSome()) elementArts.add(elementArt.optUnwrap());
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
@@ -109,15 +112,22 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
                 return EResult.err(loc, "TypeArrayConst data: failed to parse ArtifactArrayValue: " + e.getMessage());
             }
             var erb = new Erb(loc);
-            var elementType = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.elementType()));
-            var elements = new TList<Value>(body.elements().size());
+            var elementTypeOpt =
+                    erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.elementType()));
+            if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+            var elementType = MustCast.mustCast(Type.class, elementTypeOpt.optUnwrap());
+            var hosts = new TList<Object>(body.elements().size());
             for (var elementArt : body.elements()) {
                 var element = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, elementArt));
-                if (element.optIsSome()) elements.add(ArtifactSupport.importedAsValue(element.optUnwrap()));
+                if (element.optIsNone()) continue;
+                var host = erb.mustErMaybeUnreachable(
+                        ConstHost.unlift(loc, ArtifactSupport.importedAsValue(element.optUnwrap())));
+                if (host.optIsSome()) hosts.add(host.optUnwrap());
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            return EResult.ok(new ValueArrayConst<>(
-                    new TypeArrayConst<>(MustCast.mustCast(Type.class, elementType.optUnwrap())), elements));
+            var array = Array.newInstance(ConstHost.hostClass(xx, JvmSort.descriptor(xx, elementType)), hosts.size());
+            for (int i = 0; i < hosts.size(); i++) Array.set(array, i, hosts.get(i));
+            return EResult.ok(new ValueObjectConst(new TypeArrayConst<>(elementType), array));
         }
     };
 

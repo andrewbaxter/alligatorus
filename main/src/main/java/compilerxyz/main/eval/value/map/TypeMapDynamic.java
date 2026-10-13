@@ -104,7 +104,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
             var keyLift = GenAspectLift.getMaybe(xx, keyType);
             var valueLift = GenAspectLift.getMaybe(xx, valueType);
             if (keyLift.optIsNone() || valueLift.optIsNone()) return Opt.none();
-            return Opt.some(new AspectLiftMapDynamic<>(this, keyLift.optUnwrap(), valueLift.optUnwrap()));
+            return Opt.some(new AspectLiftMapDynamic<>(this));
         }
         return Opt.none();
     }

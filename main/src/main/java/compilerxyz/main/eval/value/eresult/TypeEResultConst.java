@@ -12,19 +12,22 @@ import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.eval.value.ConstHost;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectUnion;
+import compilerxyz.main.gen.GenExprErr;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactEResultTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactEResultValueCodec;
 import compilerxyz.main.safejson.JsonValue;
@@ -76,30 +79,30 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
         return Opt.none();
     }
 
-    static Result<Value, TList<Value>> resultOf(Value value) {
-        return MustCast.mustCast(ValueEResultConst.class, value).result();
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            var value = MustCast.mustCast(ValueEResultConst.class, self);
-            var eresult = value.type();
+            var value = MustCast.mustCast(ValueObjectConst.class, self);
+            var eresult = MustCast.mustCast(TypeEResultConst.class, value.type());
+            var host = MustCast.mustCast(EResult.class, value.data());
             var erb = new Erb(loc);
             var elementTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, eresult.elementType));
             Opt<Artifact> okArt = Opt.none();
             var errArts = new TList<Artifact>();
-            switch (resultOf(value)) {
-                case Result.Ok<Value, TList<Value>> ok -> {
-                    var art = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, ok.value()));
-                    if (art.optIsSome()) okArt = Opt.some(art.optUnwrap());
+            if (host.hasErrors()) {
+                for (var e : MustCast.mustCast(TList.class, host.errorsOpt().optUnwrap())) {
+                    var lifted = erb.mustErMaybeUnreachable(ConstHost.lift(xx, loc, GenExprErr.dynamicType(), e));
+                    if (lifted.optIsNone()) continue;
+                    var art = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, lifted.optUnwrap()));
+                    if (art.optIsSome()) errArts.add(art.optUnwrap());
                 }
-                case Result.Err<Value, TList<Value>> err -> {
-                    for (var e : err.error()) {
-                        var art = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, e));
-                        if (art.optIsSome()) errArts.add(art.optUnwrap());
-                    }
+            } else {
+                var lifted = erb.mustErMaybeUnreachable(ConstHost.lift(
+                        xx, loc, eresult.elementType, host.requireValue("TypeEResultConst::export ok host")));
+                if (lifted.optIsSome()) {
+                    var art = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, lifted.optUnwrap()));
+                    if (art.optIsSome()) okArt = Opt.some(art.optUnwrap());
                 }
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
@@ -119,23 +122,29 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
             }
             var erb = new Erb(loc);
             var elementType = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.elementType()));
-            Result<Value, TList<Value>> result;
+            EResult<Object> host;
             if (body.ok().optIsSome()) {
                 var imported = erb.mustErMaybeUnreachable(
                         ArtifactSupport.importArtifact(xx, loc, body.ok().optUnwrap()));
                 if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-                result = new Result.Ok<>(ArtifactSupport.importedAsValue(imported.optUnwrap()));
+                var okHost = erb.mustErMaybeUnreachable(
+                        ConstHost.unlift(loc, ArtifactSupport.importedAsValue(imported.optUnwrap())));
+                if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+                host = EResult.ok(okHost.optUnwrap());
             } else {
-                var errs = new TList<Value>(body.errs().size());
+                var errs = new TList<ExprErr>(body.errs().size());
                 for (var errArt : body.errs()) {
                     var imported = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, errArt));
-                    if (imported.optIsSome()) errs.add(ArtifactSupport.importedAsValue(imported.optUnwrap()));
+                    if (imported.optIsNone()) continue;
+                    var errHost = erb.mustErMaybeUnreachable(
+                            ConstHost.unlift(loc, ArtifactSupport.importedAsValue(imported.optUnwrap())));
+                    if (errHost.optIsSome()) errs.add(MustCast.mustCast(ExprErr.class, errHost.optUnwrap()));
                 }
-                result = new Result.Err<>(errs);
+                host = EResult.errs(errs);
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            return EResult.ok(new ValueEResultConst<>(
-                    new TypeEResultConst<>(MustCast.mustCast(Type.class, elementType.optUnwrap())), result));
+            return EResult.ok(new ValueObjectConst(
+                    new TypeEResultConst<>(MustCast.mustCast(Type.class, elementType.optUnwrap())), host));
         }
     };
 

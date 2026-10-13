@@ -17,6 +17,8 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.eval.value.ConstHost;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -25,7 +27,6 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactMapTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactMapValueCodec;
 import compilerxyz.main.safejson.JsonValue;
@@ -34,6 +35,8 @@ import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TOrderedMap;
+import java.util.Map;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6162L)
@@ -79,23 +82,24 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
         return Opt.none();
     }
 
-    static TList<MapConstEntry> entriesOf(Value value) {
-        return MustCast.mustCast(ValueMapConst.class, value).entries();
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            var value = MustCast.mustCast(ValueMapConst.class, self);
-            var map = value.type();
+            var value = MustCast.mustCast(ValueObjectConst.class, self);
+            var map = MustCast.mustCast(TypeMapConst.class, value.type());
+            var host = MustCast.mustCast(TOrderedMap.class, value.data());
             var erb = new Erb(loc);
             var keyTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, map.keyType));
             var valueTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, map.valueType));
             var entryArts = new TList<ArtifactMapEntry>();
-            for (var entry : entriesOf(value)) {
-                var keyArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, entry.key()));
-                var valueArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, entry.value()));
+            for (var raw : host.entrySet()) {
+                var entry = MustCast.mustCast(Map.Entry.class, raw);
+                var key = erb.mustErMaybeUnreachable(ConstHost.lift(xx, loc, map.keyType, entry.getKey()));
+                var entryValue = erb.mustErMaybeUnreachable(ConstHost.lift(xx, loc, map.valueType, entry.getValue()));
+                if (key.optIsNone() || entryValue.optIsNone()) continue;
+                var keyArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, key.optUnwrap()));
+                var valueArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, entryValue.optUnwrap()));
                 if (keyArt.optIsSome() && valueArt.optIsSome()) {
                     entryArts.add(new ArtifactMapEntry(keyArt.optUnwrap(), valueArt.optUnwrap()));
                 }
@@ -117,22 +121,26 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
             var erb = new Erb(loc);
             var keyType = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.keyType()));
             var valueType = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.valueType()));
-            var entries = new TList<MapConstEntry>(body.entries().size());
+            var keys = new TList<Object>(body.entries().size());
+            var values = new TList<Object>(body.entries().size());
             for (var entryArt : body.entries()) {
                 var key = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, entryArt.key()));
                 var value = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, entryArt.value()));
-                if (key.optIsSome() && value.optIsSome()) {
-                    entries.add(new MapConstEntry(
-                            ArtifactSupport.importedAsValue(key.optUnwrap()),
-                            ArtifactSupport.importedAsValue(value.optUnwrap())));
-                }
+                if (key.optIsNone() || value.optIsNone()) continue;
+                var keyHost = erb.mustErMaybeUnreachable(
+                        ConstHost.unlift(loc, ArtifactSupport.importedAsValue(key.optUnwrap())));
+                var valueHost = erb.mustErMaybeUnreachable(
+                        ConstHost.unlift(loc, ArtifactSupport.importedAsValue(value.optUnwrap())));
+                if (keyHost.optIsNone() || valueHost.optIsNone()) continue;
+                keys.add(keyHost.optUnwrap());
+                values.add(valueHost.optUnwrap());
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            return EResult.ok(new ValueMapConst<>(
+            return EResult.ok(new ValueObjectConst(
                     new TypeMapConst<>(
                             MustCast.mustCast(Type.class, keyType.optUnwrap()),
                             MustCast.mustCast(Type.class, valueType.optUnwrap())),
-                    entries));
+                    ConstHost.hostMap(keys, values)));
         }
     };
 

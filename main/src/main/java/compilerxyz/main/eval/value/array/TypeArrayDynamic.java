@@ -97,8 +97,7 @@ public final class TypeArrayDynamic<T extends Type> implements Aspect, Type {
         }
         if (key.equals(GenAspectLift.AspectId)) {
             return switch (GenAspectLift.getMaybe(xx, elementType)) {
-                case Opt.Some<AspectLift> elementLift ->
-                    Opt.some(new AspectLiftArrayDynamic<>(this, elementLift.value()));
+                case Opt.Some<AspectLift> elementLift -> Opt.some(new AspectLiftArrayDynamic<>(this));
                 case Opt.None<AspectLift> none -> Opt.none();
             };
         }

@@ -17,6 +17,8 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.eval.value.ConstHost;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -27,7 +29,6 @@ import compilerxyz.main.gen.GenAspectListConst;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenLists;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactListTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactListValueCodec;
 import compilerxyz.main.safejson.JsonValue;
@@ -89,21 +90,30 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
         return Opt.none();
     }
 
-    static TList<Value> elementsOf(Value value) {
-        return MustCast.mustCast(ValueListConst.class, value).elements();
+    static TList<Object> hostElements(Object host) {
+        if (host instanceof ListStore store) {
+            var out = new TList<Object>(store.listStoreSize());
+            for (int i = 0; i < store.listStoreSize(); i++) out.add(store.listStoreBoxed(i));
+            return out;
+        }
+        var out = new TList<Object>();
+        for (var element : MustCast.mustCast(TList.class, host)) out.add(element);
+        return out;
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            var value = MustCast.mustCast(ValueListConst.class, self);
-            var list = value.type();
+            var value = MustCast.mustCast(ValueObjectConst.class, self);
+            var list = MustCast.mustCast(TypeListConst.class, value.type());
             var erb = new Erb(loc);
             var elementTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, list.elementType()));
             var elementArts = new TList<Artifact>();
-            for (var element : elementsOf(value)) {
-                var elementArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, element));
+            for (var host : hostElements(value.data())) {
+                var element = erb.mustErMaybeUnreachable(ConstHost.lift(xx, loc, list.elementType(), host));
+                if (element.optIsNone()) continue;
+                var elementArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, element.optUnwrap()));
                 if (elementArt.optIsSome()) elementArts.add(elementArt.optUnwrap());
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
@@ -121,15 +131,29 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
                 return EResult.err(loc, "TypeListConst data: failed to parse ArtifactListValue: " + e.getMessage());
             }
             var erb = new Erb(loc);
-            var elementType = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.elementType()));
-            var elements = new TList<Value>(body.elements().size());
+            var elementTypeOpt =
+                    erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.elementType()));
+            if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+            var elementType = MustCast.mustCast(Type.class, elementTypeOpt.optUnwrap());
+            var hosts = new TList<Object>(body.elements().size());
             for (var elementArt : body.elements()) {
                 var element = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, elementArt));
-                if (element.optIsSome()) elements.add(ArtifactSupport.importedAsValue(element.optUnwrap()));
+                if (element.optIsNone()) continue;
+                var host = erb.mustErMaybeUnreachable(
+                        ConstHost.unlift(loc, ArtifactSupport.importedAsValue(element.optUnwrap())));
+                if (host.optIsSome()) hosts.add(host.optUnwrap());
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            return EResult.ok(new ValueListConst<>(
-                    new TypeListConst<>(MustCast.mustCast(Type.class, elementType.optUnwrap())), elements));
+            Object host =
+                    switch (GenLists.listDynamic(xx, elementType)) {
+                        case TypeListSpecializedDynamic<?> spec -> {
+                            var store = spec.newStore();
+                            for (var element : hosts) store.listStorePushBoxed(element);
+                            yield store;
+                        }
+                        case TypeListBoxedDynamic<?> boxed -> hosts;
+                    };
+            return EResult.ok(new ValueObjectConst(new TypeListConst<>(elementType), host));
         }
     };
 

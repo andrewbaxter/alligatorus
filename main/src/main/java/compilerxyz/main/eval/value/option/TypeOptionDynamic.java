@@ -112,8 +112,7 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
         }
         if (key.equals(GenAspectLift.AspectId)) {
             return switch (GenAspectLift.getMaybe(xx, elementType)) {
-                case Opt.Some<AspectLift> elementLift ->
-                    Opt.some(new AspectLiftOptionDynamic<>(this, elementLift.value()));
+                case Opt.Some<AspectLift> elementLift -> Opt.some(new AspectLiftOptionDynamic<>(this));
                 case Opt.None<AspectLift> none -> Opt.none();
             };
         }

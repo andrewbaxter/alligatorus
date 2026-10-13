@@ -62,8 +62,7 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectLift.AspectId)) {
             return switch (GenAspectLift.getMaybe(xx, elementType)) {
-                case Opt.Some<AspectLift> elementLift ->
-                    Opt.some(new AspectLiftListBoxedDynamic<>(this, elementLift.value()));
+                case Opt.Some<AspectLift> elementLift -> Opt.some(new AspectLiftListBoxedDynamic<>(this));
                 case Opt.None<AspectLift> none -> Opt.none();
             };
         }

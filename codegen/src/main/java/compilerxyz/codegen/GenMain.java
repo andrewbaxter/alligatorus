@@ -1062,6 +1062,25 @@ public final class GenMain {
                                         .addParameter(TypeName.INT, "index")
                                         .addStatement("return get(index)")
                                         .build())
+                                .addMethod(MethodSpec.methodBuilder("listStorePushBoxed")
+                                        .addAnnotation(Override.class)
+                                        .addModifiers(Modifier.PUBLIC)
+                                        .addParameter(Object.class, "value")
+                                        .addStatement(
+                                                "push($L)",
+                                                store.javaPrim().equals(TypeName.BOOLEAN)
+                                                        ? "(Boolean) value"
+                                                        : "((Number) value)." + store.javaPrim() + "Value()")
+                                        .build())
+                                .addMethod(MethodSpec.methodBuilder("listStoreCopy")
+                                        .addAnnotation(Override.class)
+                                        .addModifiers(Modifier.PUBLIC)
+                                        .returns(ClassName.get("compilerxyz.main.eval.value.list", "ListStore"))
+                                        .addStatement("var out = new $L()", store.simple())
+                                        .addStatement("out.data = $T.copyOf(data, size)", Arrays.class)
+                                        .addStatement("out.size = size")
+                                        .addStatement("return out")
+                                        .build())
                                 .build();
                         break _storeClass;
                     }
