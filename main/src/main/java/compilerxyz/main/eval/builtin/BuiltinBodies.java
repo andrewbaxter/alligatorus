@@ -32,10 +32,12 @@ import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.main.eval.value.double_.TypeDoubleConst;
 import compilerxyz.main.eval.value.object.ArtifactExporterObjectConstPayload;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordField;
+import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleElement;
 import compilerxyz.main.gen.AspectBind;
@@ -429,5 +431,50 @@ public final class BuiltinBodies {
                     "builtin 5037 (expr_loc): staged payload is not Expr, got " + exprValue.getClass());
         }
         return exprAst.loc();
+    }
+
+    private static Expr exprOf(long scopeId, StagedExprCell staged) {
+        Object exprValue = staged.value();
+        if (!(exprValue instanceof Expr exprAst)) {
+            throw new AssertionError(
+                    "builtin " + scopeId + ": staged payload is not Expr, got " + exprValue.getClass());
+        }
+        return exprAst;
+    }
+
+    private static TList<Expr> exprsOf(long scopeId, TList<StagedExprCell> staged) {
+        var out = new TList<Expr>(staged.size());
+        for (var cell : staged) out.add(exprOf(scopeId, cell));
+        return out;
+    }
+
+    @BuiltinPath(value = "eval.expr_lit", scopeId = 5055L)
+    public static StagedExprCell exprLit(QExprId loc, Value value) {
+        return new StagedExprCell(new Expr(loc, new Expr.Literal(new Expr.LitValue(value))));
+    }
+
+    @BuiltinPath(value = "eval.expr_record", scopeId = 5056L)
+    public static StagedExprCell exprRecord(QExprId loc, TOrderedMap<ConstKey, StagedExprCell> entries) {
+        var out = new TList<Expr.RecordEntry>(entries.size());
+        for (var entry : entries.entrySet()) {
+            Value key =
+                    switch (entry.getKey()) {
+                        case ConstKey.Str str -> new ValueObjectConst(new TypeStringConst(), str.value());
+                        case ConstKey.Uint uint -> new ValueObjectConst(new TypeDoubleConst(), (double) uint.value());
+                    };
+            out.add(new Expr.RecordEntry(
+                    new Expr(loc, new Expr.Literal(new Expr.LitValue(key))), exprOf(5056L, entry.getValue())));
+        }
+        return new StagedExprCell(new Expr(loc, new Expr.Record(out)));
+    }
+
+    @BuiltinPath(value = "eval.expr_tuple", scopeId = 5057L)
+    public static StagedExprCell exprTuple(QExprId loc, TList<StagedExprCell> elements) {
+        return new StagedExprCell(new Expr(loc, new Expr.Tuple(exprsOf(5057L, elements))));
+    }
+
+    @BuiltinPath(value = "eval.expr_seq", scopeId = 5058L)
+    public static StagedExprCell exprSeq(QExprId loc, TList<StagedExprCell> exprs) {
+        return new StagedExprCell(new Expr(loc, new Expr.Seq(exprsOf(5058L, exprs))));
     }
 }
