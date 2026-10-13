@@ -7,6 +7,7 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
@@ -377,10 +378,21 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            if (!(self instanceof Record record)) {
-                return EResult.err(
-                        loc, "Record::exporterRootDelegateSelfExport: expected Record, got " + self.getClass());
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
+            Record record;
+            if (self instanceof Record r) {
+                record = r;
+            } else {
+                var liftRes = GenAspectLift.get(xx, loc, ofType.optUnwrap());
+                if (liftRes.hasErrors()) return liftRes.reerr();
+                var liftedRes =
+                        liftRes.requireValue("Record::export lift aspect").aspectLiftLift(xx, loc, self);
+                if (liftedRes.hasErrors()) return liftedRes.reerr();
+                record = MustCast.mustCast(Record.class, liftedRes.requireValue("Record::export lifted"));
             }
             var cell = record.artifactIdCell();
             return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
@@ -402,8 +414,8 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
                                 erb.errPush("Record field has no value to serialize");
                                 continue;
                             }
-                            var artOpt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(
-                                    xx, loc, cv.value().optUnwrap()));
+                            var artOpt = erb.mustErMaybeUnreachable(
+                                    Artifactable.exportValue(xx, loc, cv.value().optUnwrap()));
                             if (artOpt.optIsSome())
                                 fieldArts.put(key, new ArtifactRecordField(true, artOpt.optUnwrap()));
                         }
@@ -416,7 +428,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "Record requires an artifact id to deserialize");
@@ -448,7 +460,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
                                     var eRes = ArtifactSupport.independentFinalizeImportArtifact(
                                             xx2, loc2, entry.getValue().artifact());
                                     var ea = eRes.requireValue("Record::finalizer field exporter");
-                                    var v = ArtifactSupport.importedAsValue(ea);
+                                    var v = ea.asValue();
                                     fields.put(
                                             entry.getKey(),
                                             new RecordField.EvalRes(EResult.ok(

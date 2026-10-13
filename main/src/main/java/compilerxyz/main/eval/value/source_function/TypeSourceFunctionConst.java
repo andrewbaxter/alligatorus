@@ -7,6 +7,7 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.ArtifactExternal;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -79,7 +80,11 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof TypeSourceFunctionConst fc)) {
                 return EResult.err(
                         loc,
@@ -135,7 +140,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeSourceFunctionConst requires an artifact id to deserialize");
@@ -179,8 +184,9 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
                         }
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                             var defSetAny = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, body.defSet());
-                            var defSetVal =
-                                    defSetAny.requireValue("TypeSourceFunctionConst::finalizer defSet artifact");
+                            var defSetVal = defSetAny
+                                    .requireValue("TypeSourceFunctionConst::finalizer defSet artifact")
+                                    .data();
                             var set = MustCast.mustCast(DefinitionSet.class, defSetVal);
                             funcData.initSetReflectively(set);
                             var argRes =

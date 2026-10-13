@@ -7,6 +7,7 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -73,7 +74,11 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             if (self instanceof TypeSourceObjectNewDynamic dyn) {
                 self = new TypeTypeSourceObjectNewConst(dyn.type());
             }
@@ -94,7 +99,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeTypeSourceObjectNewConst requires an artifact id to deserialize");
@@ -121,8 +126,9 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
                         deps.add(objectArt);
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                             var parentAny = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, objectArt);
-                            var parentVal =
-                                    parentAny.requireValue("TypeTypeSourceObjectNewConst::finalizer parent object");
+                            var parentVal = parentAny
+                                    .requireValue("TypeTypeSourceObjectNewConst::finalizer parent object")
+                                    .data();
                             var dtData = MustCast.mustCast(TypeSourceObjectDynamic.class, parentVal);
                             dtData.newArtifactIdCell.set(idValue);
                             return new TypeTypeSourceObjectNewConst(dtData);

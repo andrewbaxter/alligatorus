@@ -7,6 +7,7 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.gen.codec.ArtifactExprErrCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
@@ -28,14 +29,18 @@ public record ExprErr(QExprId loc, TList<ExprSubErr> errors) implements Artifact
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             var err = MustCast.mustCast(ExprErr.class, self);
             return EResult.ok(
                     new Artifact.Body(makeBody.apply(ArtifactExprErrCodec.toValue(ArtifactExprErr.fromExprErr(err)))));
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactExprErr body;
             try {
@@ -43,7 +48,7 @@ public record ExprErr(QExprId loc, TList<ExprSubErr> errors) implements Artifact
             } catch (RuntimeException e) {
                 return EResult.err(loc, "ExprErr data: failed to parse ArtifactExprErr: " + e.getMessage());
             }
-            return EResult.ok(body.toExprErr());
+            return Imported.ok(body.toExprErr());
         }
     };
 

@@ -7,9 +7,11 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
+import compilerxyz.main.eval.Type;
 import compilerxyz.main.gen.codec.ArtifactDirCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -49,13 +51,17 @@ public record Dir(TOrderedMap<String, byte[]> files) implements Artifactable {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             var dir = MustCast.mustCast(Dir.class, self);
             return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactDirCodec.toValue(toArtifactDir(dir)))));
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactDir body;
             try {
@@ -63,7 +69,7 @@ public record Dir(TOrderedMap<String, byte[]> files) implements Artifactable {
             } catch (RuntimeException e) {
                 return EResult.err(loc, "Dir data: failed to parse ArtifactDir: " + e.getMessage());
             }
-            return EResult.ok(fromArtifactDir(body));
+            return Imported.ok(fromArtifactDir(body));
         }
     };
 }

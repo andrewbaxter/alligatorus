@@ -4,9 +4,9 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -211,13 +211,17 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             var type = MustCast.mustCast(TypeObjectConst.class, self);
             return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueString(type.externalHostClass.getName()))));
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             String className;
             switch (data) {
@@ -244,7 +248,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
                         loc, "TypeObjectConst::import: no registered dynamic type for host class " + className);
             }
             var td = MustCast.mustCast(TypeObjectDynamic.class, found.optUnwrap());
-            return EResult.ok(td.pairedConst());
+            return Imported.ok(td.pairedConst());
         }
     };
 }

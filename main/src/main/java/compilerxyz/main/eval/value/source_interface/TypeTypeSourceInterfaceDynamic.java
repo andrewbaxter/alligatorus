@@ -8,6 +8,7 @@ import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -153,7 +154,11 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
     public static final ExporterRootDelegate TYPE_DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             var tt = MustCast.mustCast(TypeTypeSourceInterfaceDynamic.class, self);
             Opt<Artifact> ifaceArt = Opt.none();
             if (tt.type.optIsSome()) {
@@ -166,7 +171,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactDataSourceInterfaceType body;
             try {
@@ -177,12 +182,13 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
                         "TypeTypeSourceInterfaceDynamic data: failed to parse ArtifactDataSourceInterfaceType: "
                                 + e.getMessage());
             }
-            if (body.interface_().optIsNone()) return EResult.ok(GENERIC);
+            if (body.interface_().optIsNone()) return Imported.ok(GENERIC);
             var iRes = ArtifactSupport.importArtifact(xx, loc, body.interface_().optUnwrap());
             if (iRes.hasErrors()) return iRes.reerr();
-            return EResult.ok(new TypeTypeSourceInterfaceDynamic(Opt.some(MustCast.mustCast(
+            return Imported.ok(new TypeTypeSourceInterfaceDynamic(Opt.some(MustCast.mustCast(
                     TypeSourceInterfaceDynamic.class,
-                    iRes.requireValue("TypeTypeSourceInterfaceDynamic::import interface")))));
+                    iRes.requireValue("TypeTypeSourceInterfaceDynamic::import interface")
+                            .data()))));
         }
     };
 }

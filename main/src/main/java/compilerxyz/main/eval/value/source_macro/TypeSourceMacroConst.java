@@ -7,6 +7,7 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
@@ -69,7 +70,11 @@ public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof TypeSourceMacroConst mc)) {
                 return EResult.err(
                         loc,
@@ -93,7 +98,7 @@ public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeSourceMacroConst requires an artifact id to deserialize");
@@ -126,7 +131,9 @@ public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type
                                     ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, body.function());
                             var function = MustCast.mustCast(
                                     TypeSourceFunctionConst.class,
-                                    functionAny.requireValue("TypeSourceMacroConst::finalizer function artifact"));
+                                    functionAny
+                                            .requireValue("TypeSourceMacroConst::finalizer function artifact")
+                                            .data());
                             var macroData = new SourceMacroData(DynRuntime.freshUnique(xx2.vx), function.data());
                             macroData.artifactIdCell.set(idValue);
                             if (body.exceptionType().optIsSome()) {

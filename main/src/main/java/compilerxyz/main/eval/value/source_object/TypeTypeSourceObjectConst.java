@@ -8,6 +8,7 @@ import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -64,7 +65,11 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type) implements
     public static final ExporterRootDelegate TYPE_DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             var oc = MustCast.mustCast(TypeTypeSourceObjectConst.class, self);
             var objRes = Artifactable.exportArtifact(xx, loc, oc.type);
             if (objRes.hasErrors()) return objRes.reerr();
@@ -74,7 +79,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type) implements
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactDataSourceObjectType body;
             try {
@@ -87,8 +92,10 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type) implements
             }
             var objRes = ArtifactSupport.importArtifact(xx, loc, body.object());
             if (objRes.hasErrors()) return objRes.reerr();
-            return EResult.ok(new TypeTypeSourceObjectConst(MustCast.mustCast(
-                    TypeSourceObjectDynamic.class, objRes.requireValue("TypeTypeSourceObjectConst::import object"))));
+            return Imported.ok(new TypeTypeSourceObjectConst(MustCast.mustCast(
+                    TypeSourceObjectDynamic.class,
+                    objRes.requireValue("TypeTypeSourceObjectConst::import object")
+                            .data())));
         }
     };
 

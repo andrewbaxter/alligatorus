@@ -8,6 +8,7 @@ import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -96,7 +97,11 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type) implements A
     public static final ExporterRootDelegate TYPE_DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             var uc = MustCast.mustCast(TypeTypeSourceUnionConst.class, self);
             var uRes = Artifactable.exportArtifact(xx, loc, uc.type);
             if (uRes.hasErrors()) return uRes.reerr();
@@ -105,7 +110,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type) implements A
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactDataSourceUnionType body;
             try {
@@ -118,8 +123,9 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type) implements A
             }
             var uRes = ArtifactSupport.importArtifact(xx, loc, body.union());
             if (uRes.hasErrors()) return uRes.reerr();
-            return EResult.ok(new TypeTypeSourceUnionConst(MustCast.mustCast(
-                    TypeSourceUnionDynamic.class, uRes.requireValue("TypeTypeSourceUnionConst::import union"))));
+            return Imported.ok(new TypeTypeSourceUnionConst(MustCast.mustCast(
+                    TypeSourceUnionDynamic.class,
+                    uRes.requireValue("TypeTypeSourceUnionConst::import union").data())));
         }
     };
 }

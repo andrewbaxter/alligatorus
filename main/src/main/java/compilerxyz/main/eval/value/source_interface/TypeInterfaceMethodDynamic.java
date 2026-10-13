@@ -8,6 +8,7 @@ import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
@@ -102,7 +103,11 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             var ref = MustCast.mustCast(TypeInterfaceMethodDynamic.class, self);
             var iface = ref.iface;
             var method = ref.method;
@@ -129,7 +134,7 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactDataDefSetInterfaceMethod body;
             try {
@@ -153,7 +158,7 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
                     var cell = InterfaceCell.ofBuiltin(builtinData.optUnwrap());
                     for (var m : cell.frozen().methods) {
                         if (m.name.equals(b.name())) {
-                            yield EResult.ok(new TypeInterfaceMethodDynamic(cell, m));
+                            yield Imported.ok(new TypeInterfaceMethodDynamic(cell, m));
                         }
                     }
                     throw new IllegalStateException("TypeInterfaceMethodDynamic: builtin interface " + b.iface()
@@ -175,7 +180,8 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
                                 ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                                     var ifaceAny =
                                             ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, user.iface());
-                                    var ifaceVal = ifaceAny.requireValue("TypeInterfaceMethodDynamic::finalizer iface");
+                                    var ifaceVal = ifaceAny.requireValue("TypeInterfaceMethodDynamic::finalizer iface")
+                                            .data();
                                     var cell = MustCast.mustCast(TypeSourceInterfaceDynamic.class, ifaceVal)
                                             .cell();
                                     var argRes = ArtifactSupport.independentFinalizeImportTypeArtifact(

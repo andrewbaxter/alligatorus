@@ -8,6 +8,7 @@ import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
@@ -18,8 +19,6 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.value.ConstHost;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -82,28 +81,26 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            var value = MustCast.mustCast(ValueObjectConst.class, self);
-            var eresult = MustCast.mustCast(TypeEResultConst.class, value.type());
-            var host = MustCast.mustCast(EResult.class, value.data());
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
+            var eresult = MustCast.mustCast(TypeEResultConst.class, ofType.optUnwrap());
+            var host = MustCast.mustCast(EResult.class, self);
             var erb = new Erb(loc);
             var elementTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, eresult.elementType));
             Opt<Artifact> okArt = Opt.none();
             var errArts = new TList<Artifact>();
             if (host.hasErrors()) {
                 for (var e : MustCast.mustCast(TList.class, host.errorsOpt().optUnwrap())) {
-                    var lifted = erb.mustErMaybeUnreachable(ConstHost.lift(xx, loc, GenExprErr.dynamicType(), e));
-                    if (lifted.optIsNone()) continue;
-                    var art = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, lifted.optUnwrap()));
+                    var art = erb.mustErMaybeUnreachable(Artifactable.exportData(xx, loc, GenExprErr.dynamicType(), e));
                     if (art.optIsSome()) errArts.add(art.optUnwrap());
                 }
             } else {
-                var lifted = erb.mustErMaybeUnreachable(ConstHost.lift(
+                var art = erb.mustErMaybeUnreachable(Artifactable.exportData(
                         xx, loc, eresult.elementType, host.requireValue("TypeEResultConst::export ok host")));
-                if (lifted.optIsSome()) {
-                    var art = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, lifted.optUnwrap()));
-                    if (art.optIsSome()) okArt = Opt.some(art.optUnwrap());
-                }
+                if (art.optIsSome()) okArt = Opt.some(art.optUnwrap());
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
             var body = new ArtifactEResultValue(elementTypeArt.optUnwrap(), okArt, errArts);
@@ -111,7 +108,7 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactEResultValue body;
             try {
@@ -127,31 +124,31 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
                 var imported = erb.mustErMaybeUnreachable(
                         ArtifactSupport.importArtifact(xx, loc, body.ok().optUnwrap()));
                 if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-                var okHost = erb.mustErMaybeUnreachable(
-                        ConstHost.unlift(loc, ArtifactSupport.importedAsValue(imported.optUnwrap())));
-                if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-                host = EResult.ok(okHost.optUnwrap());
+                host = EResult.ok(imported.optUnwrap().host());
             } else {
                 var errs = new TList<ExprErr>(body.errs().size());
                 for (var errArt : body.errs()) {
                     var imported = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, errArt));
                     if (imported.optIsNone()) continue;
-                    var errHost = erb.mustErMaybeUnreachable(
-                            ConstHost.unlift(loc, ArtifactSupport.importedAsValue(imported.optUnwrap())));
-                    if (errHost.optIsSome()) errs.add(MustCast.mustCast(ExprErr.class, errHost.optUnwrap()));
+                    errs.add(MustCast.mustCast(
+                            ExprErr.class, imported.optUnwrap().data()));
                 }
                 host = EResult.errs(errs);
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            return EResult.ok(new ValueObjectConst(
-                    new TypeEResultConst<>(MustCast.mustCast(Type.class, elementType.optUnwrap())), host));
+            return Imported.okValue(
+                    new TypeEResultConst<>(elementType.optUnwrap().asType()), host);
         }
     };
 
     public static final ExporterRootDelegate TYPE_DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             var eresult = MustCast.mustCast(TypeEResultConst.class, self);
             return ArtifactSupport.implExportIndependentArtifact(xx, eresult.artifactIdCell, () -> {
                 var elementArtRes = Artifactable.exportArtifact(xx, loc, eresult.elementType);
@@ -162,7 +159,7 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeEResultConst requires an artifact id to deserialize");

@@ -4,9 +4,9 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -36,7 +36,6 @@ import compilerxyz.main.eval.value.numeric.AspectOperatorSubNumeric;
 import compilerxyz.main.eval.value.numeric.AspectOperatorUshrNumeric;
 import compilerxyz.main.eval.value.numeric.AspectOperatorXorNumeric;
 import compilerxyz.main.eval.value.numeric.Numerics;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -175,20 +174,21 @@ public record TypeDoubleConst() implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            var dv = MustCast.mustCast(
-                    Number.class,
-                    MustCast.mustCast(ValueObjectConst.class, self).data());
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
+            var dv = MustCast.mustCast(Number.class, self);
             JsonValue data = new JsonValueNumberFloat(dv.doubleValue());
             return EResult.ok(new Artifact.Body(makeBody.apply(data)));
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
-                case JsonValueNumberFloat n ->
-                    EResult.ok(new ValueObjectConst(new TypeDoubleConst(), (double) n.value()));
+                case JsonValueNumberFloat n -> Imported.okValue(new TypeDoubleConst(), (double) n.value());
                 default ->
                     EResult.err(loc, "TypeDoubleConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
             };

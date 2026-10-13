@@ -9,6 +9,7 @@ import compilerxyz.main.artifact.ArtifactSupport.ArtifactIdHolder;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
@@ -205,7 +206,11 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             var tu = MustCast.mustCast(TypeSourceUnionDynamic.class, self);
             var set = tu.set;
             if (set == null) {
@@ -238,7 +243,7 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeTypeSourceUnionConst requires an artifact id to deserialize");
@@ -273,8 +278,9 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
                         for (var v : body.variants()) deps.add(v.type());
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                             var defSetAny = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, body.defSet());
-                            var defSetVal =
-                                    defSetAny.requireValue("TypeTypeSourceUnionConst::finalizer defSet artifact");
+                            var defSetVal = defSetAny
+                                    .requireValue("TypeTypeSourceUnionConst::finalizer defSet artifact")
+                                    .data();
                             if (!(defSetVal instanceof DefinitionSet set)) {
                                 throw new IllegalStateException(
                                         "TypeTypeSourceUnionConst finalizer: defSet artifact resolved to "

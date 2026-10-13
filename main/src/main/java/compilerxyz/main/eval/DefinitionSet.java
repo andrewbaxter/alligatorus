@@ -10,6 +10,7 @@ import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.definition_set.ArtifactDataDefSet;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
@@ -891,7 +892,11 @@ public final class DefinitionSet implements Artifactable {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             var set = mustCast(DefinitionSet.class, self);
             return ArtifactSupport.implExportIndependentArtifact(xx, set.artifactIdCell, () -> {
                 var erb = new Erb(loc);
@@ -935,7 +940,7 @@ public final class DefinitionSet implements Artifactable {
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "DefinitionSet requires an artifact id to deserialize");
@@ -968,14 +973,16 @@ public final class DefinitionSet implements Artifactable {
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                             for (var dtArt : body.objects()) {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, dtArt);
-                                var v = any.requireValue("DefinitionSet::finalizer object artifact");
+                                var v = any.requireValue("DefinitionSet::finalizer object artifact")
+                                        .data();
                                 TypeSourceObjectDynamic dtData;
                                 dtData = mustCast(TypeSourceObjectDynamic.class, v);
                                 set.objects.add(dtData);
                             }
                             for (var fArt : body.functions()) {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, fArt);
-                                var v = any.requireValue("DefinitionSet::finalizer function artifact");
+                                var v = any.requireValue("DefinitionSet::finalizer function artifact")
+                                        .data();
                                 SourceFunctionData fData;
                                 fData = mustCast(TypeSourceFunctionConst.class, v)
                                         .data();
@@ -983,20 +990,23 @@ public final class DefinitionSet implements Artifactable {
                             }
                             for (var iArt : body.interfaces()) {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, iArt);
-                                var v = any.requireValue("DefinitionSet::finalizer interface artifact");
+                                var v = any.requireValue("DefinitionSet::finalizer interface artifact")
+                                        .data();
                                 set.interfaces.add(mustCast(TypeSourceInterfaceDynamic.class, v)
                                         .cell());
                             }
                             for (var uArt : body.unions()) {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, uArt);
-                                var v = any.requireValue("DefinitionSet::finalizer union artifact");
+                                var v = any.requireValue("DefinitionSet::finalizer union artifact")
+                                        .data();
                                 TypeSourceUnionDynamic uData;
                                 uData = mustCast(TypeSourceUnionDynamic.class, v);
                                 set.unions.add(uData);
                             }
                             for (var dep : body.dependencies()) {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, dep);
-                                var v = any.requireValue("DefinitionSet::finalizer dependency artifact");
+                                var v = any.requireValue("DefinitionSet::finalizer dependency artifact")
+                                        .data();
                                 var depSet = mustCast(DefinitionSet.class, v);
                                 set.dependencies.putIfAbsent(depSet.defSetId, depSet);
                             }

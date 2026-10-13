@@ -7,9 +7,11 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
+import compilerxyz.main.eval.Type;
 import compilerxyz.main.gen.codec.ArtifactAppCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -38,13 +40,17 @@ public record App(Opt<String> executor, byte[] bytes) implements Artifactable {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             var app = MustCast.mustCast(App.class, self);
             return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactAppCodec.toValue(toArtifactApp(app)))));
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactApp body;
             try {
@@ -52,7 +58,7 @@ public record App(Opt<String> executor, byte[] bytes) implements Artifactable {
             } catch (RuntimeException e) {
                 return EResult.err(loc, "App data: failed to parse ArtifactApp: " + e.getMessage());
             }
-            return EResult.ok(fromArtifactApp(body));
+            return Imported.ok(fromArtifactApp(body));
         }
     };
 }

@@ -202,8 +202,8 @@ public final class CompileModule {
                                     cix.localData);
                         }
                         var exportErrors = new TList<ExprErr>();
-                        var exportArt = Artifactable.exportArtifact(
-                                xx, rootLoc, ok.value().optUnwrap());
+                        var exportArt =
+                                Artifactable.exportValue(xx, rootLoc, ok.value().optUnwrap());
                         if (exportArt.hasErrors()) {
                             exportArt.drainInto(exportErrors);
                             return new CompileModuleResult(

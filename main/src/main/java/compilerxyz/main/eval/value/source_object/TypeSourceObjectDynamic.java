@@ -8,6 +8,7 @@ import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.ArtifactExternal;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.DefSetId;
@@ -262,7 +263,11 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
             var dt = MustCast.mustCast(TypeSourceObjectDynamic.class, self);
             var set = dt.set;
             if (set == null) {
@@ -344,7 +349,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeTypeSourceObjectConst requires an artifact id to deserialize");
@@ -409,8 +414,9 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                         }
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                             var defSetAny = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, body.defSet());
-                            var defSetVal =
-                                    defSetAny.requireValue("TypeTypeSourceObjectConst::finalizer defSet artifact");
+                            var defSetVal = defSetAny
+                                    .requireValue("TypeTypeSourceObjectConst::finalizer defSet artifact")
+                                    .data();
                             var set = MustCast.mustCast(DefinitionSet.class, defSetVal);
                             dt.initSetReflectively(set);
                             dt.setId = set.defSetId;
@@ -442,16 +448,18 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                             for (var impl : body.interfaceImpls()) {
                                 var ifaceAny =
                                         ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, impl.iface());
-                                var ifaceVal =
-                                        ifaceAny.requireValue("TypeTypeSourceObjectConst::finalizer iface artifact");
+                                var ifaceVal = ifaceAny.requireValue(
+                                                "TypeTypeSourceObjectConst::finalizer iface artifact")
+                                        .data();
                                 var iface = MustCast.mustCast(TypeSourceInterfaceDynamic.class, ifaceVal)
                                         .cell();
                                 var implData = new SourceObjectInterfaceImplData(iface);
                                 for (var mi : impl.methodImpls()) {
                                     var methodAny = ArtifactSupport.independentFinalizeImportArtifact(
                                             xx2, loc2, mi.interfaceMethod());
-                                    var methodVal = methodAny.requireValue(
-                                            "TypeTypeSourceObjectConst::finalizer iface method artifact");
+                                    var methodVal = methodAny
+                                            .requireValue("TypeTypeSourceObjectConst::finalizer iface method artifact")
+                                            .data();
                                     var mid = new SourceObjectInterfaceMethodImplData(
                                             MustCast.mustCast(TypeInterfaceMethodDynamic.class, methodVal)
                                                     .method(),

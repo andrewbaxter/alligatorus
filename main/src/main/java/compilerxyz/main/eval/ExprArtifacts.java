@@ -131,7 +131,7 @@ public final class ExprArtifacts {
                     return EResult.errs(errors);
                 }
                 var exporterAny = imported.requireValue("ExprArtifacts::exprFromArtifact Literal imported");
-                var litVal = ArtifactSupport.importedAsValue(exporterAny);
+                var litVal = exporterAny.asValue();
                 var expr = new Expr(loc, new Expr.Literal(new Expr.LitValue(litVal)));
                 return EResult.ok(expr);
             }
@@ -410,7 +410,7 @@ public final class ExprArtifacts {
             case Expr.Literal l -> {
                 var value = l.value().litValueValue();
                 var errors = new TList<ExprErr>();
-                var artRes = Artifactable.exportArtifact(xx, expr.loc(), value);
+                var artRes = Artifactable.exportValue(xx, expr.loc(), value);
                 if (artRes.hasErrors()) {
                     artRes.drainInto(errors);
                     return EResult.errs(errors);

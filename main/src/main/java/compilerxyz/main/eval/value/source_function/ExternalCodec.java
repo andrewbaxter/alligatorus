@@ -41,6 +41,14 @@ public final class ExternalCodec {
                 }
                 var exprArt = exprArtRes.requireValue("ExternalCodec::export StagedExpr artifact");
                 out.add(new ArtifactExternal.StagedExpr(exprArt));
+            } else if (host instanceof StagedExprCell cell && cell.value() instanceof Value lowered) {
+                var artRes = Artifactable.exportValue(xx, loc, lowered);
+                if (artRes.hasErrors()) {
+                    artRes.drainInto(errors);
+                    return EResult.errs(errors);
+                }
+                out.add(new ArtifactExternal.Exported(
+                        artRes.requireValue("ExternalCodec::export lowered value artifact"), true));
             } else if (host instanceof StagedExprCell cell && cell.value() instanceof Artifactable lowered) {
                 var artRes = Artifactable.exportArtifact(xx, loc, lowered);
                 if (artRes.hasErrors()) {
@@ -123,20 +131,20 @@ public final class ExternalCodec {
                     }
                     var imported = importedRes.requireValue("ExternalCodec::import exported external");
                     if (ex.lowered()) {
-                        var cell = new StagedExprCell(imported);
+                        var cell =
+                                new StagedExprCell(imported.type().optIsSome() ? imported.asValue() : imported.data());
                         out.add(new EvalContext.ExternalEntry(
                                 new BindingId(), new TypeExpr(), new External(StagedExprCell.class, cell)));
                     } else {
+                        var data = imported.data();
                         var entryType =
-                                switch (imported) {
+                                switch (data) {
                                     case Type t -> t;
                                     case Value v -> v.valueType();
-                                    default ->
-                                        throw new IllegalStateException(
-                                                "exported external is neither Type nor Value: " + imported.getClass());
+                                    default -> imported.type().optUnwrap();
                                 };
                         out.add(new EvalContext.ExternalEntry(
-                                new BindingId(), entryType, new External(imported.getClass(), imported)));
+                                new BindingId(), entryType, new External(data.getClass(), data)));
                     }
                 }
                 case ArtifactExternal.UniqueRef uq -> {

@@ -8,6 +8,7 @@ import compilerxyz.main.artifact.ArtifactJson;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -626,10 +627,21 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            if (!(self instanceof Tuple tuple)) {
-                return EResult.err(
-                        loc, "Tuple::exporterRootDelegateSelfExport: expected Tuple self, got " + self.getClass());
+                ExprContext xx,
+                QExprId loc,
+                Opt<Type> ofType,
+                Object self,
+                Function<JsonValue, ArtifactBody> makeBody) {
+            Tuple tuple;
+            if (self instanceof Tuple t) {
+                tuple = t;
+            } else {
+                var liftRes = GenAspectLift.get(xx, loc, ofType.optUnwrap());
+                if (liftRes.hasErrors()) return liftRes.reerr();
+                var liftedRes =
+                        liftRes.requireValue("Tuple::export lift aspect").aspectLiftLift(xx, loc, self);
+                if (liftedRes.hasErrors()) return liftedRes.reerr();
+                tuple = MustCast.mustCast(Tuple.class, liftedRes.requireValue("Tuple::export lifted"));
             }
             var cell = tuple.artifactIdCell();
             return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
@@ -661,7 +673,7 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "Tuple requires an artifact id to deserialize");

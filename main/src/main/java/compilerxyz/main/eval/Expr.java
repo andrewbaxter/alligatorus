@@ -1,7 +1,5 @@
 package compilerxyz.main.eval;
 
-import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.value.expr.TypeExpr;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.syntax.BinaryOperator;
@@ -81,10 +79,5 @@ public record Expr(QExprId loc, Variant variant) implements Value {
 
     public sealed interface Module {
         record V1(SourceId source, TList<Expr> exprs) implements Module {}
-    }
-
-    @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return Artifactable.exporterOfType(xx, loc, valueType());
     }
 }
