@@ -10,19 +10,16 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.builtin.Zbase32;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
-import compilerxyz.main.eval.value.byte_.TypeByteConst;
 import compilerxyz.main.eval.value.byte_.TypeByteDynamic;
 import compilerxyz.main.eval.value.list.TypeListConst;
-import compilerxyz.main.eval.value.list.ValueListConst;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenLists;
-import compilerxyz.main.gen.Value;
+import compilerxyz.main.gen.ListStoreByte;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.TList;
 
 public final class AspectFunctionZbase32Decode implements AspectFunction {
     public static final AspectFunctionZbase32Decode INSTANCE = new AspectFunctionZbase32Decode();
@@ -45,15 +42,13 @@ public final class AspectFunctionZbase32Decode implements AspectFunction {
             } catch (IllegalArgumentException e) {
                 return EResult.err(loc, "zbase32.decode: " + e.getMessage());
             }
-            var elements = new TList<Value>(bytes.length);
-            for (var b : bytes) {
-                elements.add(new ValueObjectConst(new TypeByteConst(), b));
-            }
+            var store = new ListStoreByte();
+            for (var b : bytes) store.push(b);
             var listType = new TypeListConst<>(new TypeByteDynamic());
             var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
             if (concatRes.hasErrors()) return concatRes.reerr();
             return EResult.ok(new CodeValue(
-                    concatRes.requireValue("concat"), EvalOutcome.ofValue(new ValueListConst<>(listType, elements))));
+                    concatRes.requireValue("concat"), EvalOutcome.ofValue(new ValueObjectConst(listType, store))));
         }
         if (GenAspectStringDynamic.getMaybe(xx, argType).optIsSome()) {
             var argRes = DynUtil.materialize(xx, loc, argument);

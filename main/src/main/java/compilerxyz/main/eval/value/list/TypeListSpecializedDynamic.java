@@ -27,6 +27,7 @@ import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -56,6 +57,18 @@ public final class TypeListSpecializedDynamic<T extends Type> implements Aspect,
         return JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(elementDescriptor(xx)));
     }
 
+    public ListStore newStore() {
+        try {
+            return MustCast.mustCast(
+                    ListStore.class,
+                    Class.forName(storeName.value.replace('/', '.'))
+                            .getDeclaredConstructor()
+                            .newInstance());
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("list store " + storeName.value + " cannot be constructed", e);
+        }
+    }
+
     public JavaDataDescriptor storeDescriptor() {
         return JavaDataDescriptor.fromInternalName(storeName);
     }
@@ -79,8 +92,7 @@ public final class TypeListSpecializedDynamic<T extends Type> implements Aspect,
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectLift.AspectId)) {
             return switch (GenAspectLift.getMaybe(xx, elementType)) {
-                case Opt.Some<AspectLift> elementLift ->
-                    Opt.some(new AspectLiftListSpecializedDynamic<>(this, elementLift.value()));
+                case Opt.Some<AspectLift> elementLift -> Opt.some(new AspectLiftListSpecializedDynamic<>(this));
                 case Opt.None<AspectLift> none -> Opt.none();
             };
         }

@@ -17,7 +17,8 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.expr.StagedExprCell;
-import compilerxyz.main.eval.value.array.ValueArrayConst;
+import compilerxyz.main.eval.value.ConstHost;
+import compilerxyz.main.eval.value.list.ListStore;
 import compilerxyz.main.eval.value.map.TypeMapDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectDynamicBoxed;
@@ -30,6 +31,7 @@ import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
+import java.lang.reflect.Array;
 import java.util.Iterator;
 
 public final class DynRuntime {
@@ -132,52 +134,43 @@ public final class DynRuntime {
     }
 
     @CodegenDescriptor
-    public static Object arrayConst(StagedExprCell cell, String elementDescriptor) {
-        var elements = MustCast.mustCast(ValueArrayConst.class, cell.value()).elements();
-        var n = elements.size();
-        switch (elementDescriptor) {
-            case "B" -> {
-                var out = new byte[n];
-                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Byte.class, constData(elements.get(i)));
-                return out;
-            }
-            case "S" -> {
-                var out = new short[n];
-                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Short.class, constData(elements.get(i)));
-                return out;
-            }
-            case "I" -> {
-                var out = new int[n];
-                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Integer.class, constData(elements.get(i)));
-                return out;
-            }
-            case "J" -> {
-                var out = new long[n];
-                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Long.class, constData(elements.get(i)));
-                return out;
-            }
-            case "F" -> {
-                var out = new float[n];
-                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Float.class, constData(elements.get(i)));
-                return out;
-            }
-            case "D" -> {
-                var out = new double[n];
-                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Double.class, constData(elements.get(i)));
-                return out;
-            }
-            case "Z" -> {
-                var out = new boolean[n];
-                for (int i = 0; i < n; i++) out[i] = MustCast.mustCast(Boolean.class, constData(elements.get(i)));
-                return out;
-            }
-            default ->
-                throw new IllegalStateException("DynRuntime.arrayConst: not a primitive element: " + elementDescriptor);
-        }
+    public static Object constHost(StagedExprCell cell) {
+        return copyHost(MustCast.mustCast(ValueObjectConst.class, cell.value()).data());
     }
 
-    private static Object constData(Object element) {
-        return MustCast.mustCast(ValueObjectConst.class, element).data();
+    private static Object copyHost(Object host) {
+        return switch (host) {
+            case TList<?> list -> {
+                var out = new TList<Object>(list.size());
+                for (var element : list) out.add(copyHost(element));
+                yield out;
+            }
+            case TOrderedMap<?, ?> map -> {
+                var keys = new TList<Object>(map.size());
+                var values = new TList<Object>(map.size());
+                for (var entry : map.entrySet()) {
+                    keys.add(entry.getKey());
+                    values.add(copyHost(entry.getValue()));
+                }
+                yield ConstHost.hostMap(keys, values);
+            }
+            case ListStore store -> store.listStoreCopy();
+            case Opt.Some<?> some -> Opt.some(copyHost(some.value()));
+            case EResult<?> result ->
+                result.hasErrors() ? result : EResult.ok(copyHost(result.requireValue("DynRuntime::constHost ok")));
+            default -> {
+                if (!host.getClass().isArray()) yield host;
+                var n = Array.getLength(host);
+                var component = host.getClass().getComponentType();
+                var out = Array.newInstance(component, n);
+                if (component.isPrimitive()) {
+                    System.arraycopy(host, 0, out, 0, n);
+                } else {
+                    for (int i = 0; i < n; i++) Array.set(out, i, copyHost(Array.get(host, i)));
+                }
+                yield out;
+            }
+        };
     }
 
     @CodegenDescriptor

@@ -95,7 +95,7 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
             var elementLift = GenAspectLift.getMaybe(xx, elementType);
             var errLift = GenAspectLift.getMaybe(xx, GenExprErr.dynamicType());
             if (elementLift.optIsNone() || errLift.optIsNone()) return Opt.none();
-            return Opt.some(new AspectLiftEResultDynamic<>(this, elementLift.optUnwrap(), errLift.optUnwrap()));
+            return Opt.some(new AspectLiftEResultDynamic<>(this));
         }
         return Opt.none();
     }

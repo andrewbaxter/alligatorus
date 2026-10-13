@@ -34,7 +34,9 @@ public final class AspectFunctionSourceSha256 implements AspectFunction {
                 return EResult.err(loc, "source.sha256: expected a const list of bytes");
             }
         }
-        var elements = listSome.value().aspectListConstElements(val);
+        var elementsRes = listSome.value().aspectListConstElements(xx, loc, val);
+        if (elementsRes.hasErrors()) return elementsRes.reerr();
+        var elements = elementsRes.requireValue("source.sha256 elements");
         var bytes = new byte[elements.size()];
         for (var i = 0; i < elements.size(); i++) {
             var elem = elements.get(i);

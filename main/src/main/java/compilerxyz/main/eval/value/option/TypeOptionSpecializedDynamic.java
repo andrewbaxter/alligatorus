@@ -29,6 +29,7 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -60,6 +61,18 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
 
     public JavaDataDescriptor elementDescriptor(ExprContext xx) {
         return GenAspectConsumeDynamic.getMaybe(xx, elementType).optUnwrap().aspectConsumeDynamicJvmClass(xx);
+    }
+
+    public OptionStore storeFromBoxed(Opt<Object> payload) {
+        try {
+            return MustCast.mustCast(
+                    OptionStore.class,
+                    Class.forName(storeName.value.replace('/', '.'))
+                            .getMethod("fromOpt", Opt.class)
+                            .invoke(null, payload));
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("option store " + storeName.value + " cannot be constructed", e);
+        }
     }
 
     @Override
@@ -108,8 +121,7 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
         }
         if (key.equals(GenAspectLift.AspectId)) {
             return switch (GenAspectLift.getMaybe(xx, elementType)) {
-                case Opt.Some<AspectLift> elementLift ->
-                    Opt.some(new AspectLiftOptionSpecializedDynamic<>(this, elementLift.value()));
+                case Opt.Some<AspectLift> elementLift -> Opt.some(new AspectLiftOptionSpecializedDynamic<>(this));
                 case Opt.None<AspectLift> none -> Opt.none();
             };
         }
