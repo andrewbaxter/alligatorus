@@ -103,7 +103,7 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
             var hosts = new TList<Object>(body.elements().size());
             for (var elementArt : body.elements()) {
                 var element = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, elementArt));
-                if (element.optIsSome()) hosts.add(ConstHost.hostOf(element.optUnwrap()));
+                if (element.optIsSome()) hosts.add(element.optUnwrap());
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
             var array = Array.newInstance(ConstHost.hostClass(xx, JvmSort.descriptor(xx, elementType)), hosts.size());

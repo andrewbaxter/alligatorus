@@ -29,6 +29,20 @@ public final class CompositeClassEmitter {
         return JvmSort.descriptor(xx, t);
     }
 
+    public static Object construct(ExprContext xx, TList<Type> sortedTypes, Object[] slotValues) {
+        var klass = getOrEmit(xx, sortedTypes);
+        for (var ctor : klass.getConstructors()) {
+            if (ctor.getParameterCount() != slotValues.length) continue;
+            try {
+                return ctor.newInstance(slotValues);
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException(
+                        "CompositeClassEmitter: " + klass.getName() + " construction failed", e);
+            }
+        }
+        throw new IllegalStateException("CompositeClassEmitter: " + klass.getName() + " has no slot constructor");
+    }
+
     public static Class<?> getOrEmit(ExprContext xx, TList<Type> sortedTypes) {
         var slotDescs = new TList<JavaDataDescriptor>(sortedTypes.size());
         for (var t : sortedTypes) slotDescs.add(slotDescriptor(xx, t));

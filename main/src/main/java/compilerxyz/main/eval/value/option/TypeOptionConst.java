@@ -17,7 +17,6 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.value.ConstHost;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -103,7 +102,7 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
             if (body.payload().optIsSome()) {
                 var imported = erb.mustErMaybeUnreachable(
                         ArtifactSupport.importArtifact(xx, loc, body.payload().optUnwrap()));
-                if (imported.optIsSome()) payload = Opt.some(ConstHost.hostOf(imported.optUnwrap()));
+                if (imported.optIsSome()) payload = Opt.some(imported.optUnwrap());
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
             Object host =

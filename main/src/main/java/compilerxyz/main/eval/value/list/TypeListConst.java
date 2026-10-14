@@ -17,7 +17,6 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.value.ConstHost;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -123,7 +122,7 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
             var hosts = new TList<Object>(body.elements().size());
             for (var elementArt : body.elements()) {
                 var element = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, elementArt));
-                if (element.optIsSome()) hosts.add(ConstHost.hostOf(element.optUnwrap()));
+                if (element.optIsSome()) hosts.add(element.optUnwrap());
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
             Object host =

@@ -18,7 +18,6 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.value.ConstHost;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -100,7 +99,7 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
                 var imported = erb.mustErMaybeUnreachable(
                         ArtifactSupport.importArtifact(xx, loc, body.ok().optUnwrap()));
                 if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-                host = EResult.ok(ConstHost.hostOf(imported.optUnwrap()));
+                host = EResult.ok(imported.optUnwrap());
             } else {
                 var errs = new TList<ExprErr>(body.errs().size());
                 for (var errArt : body.errs()) {

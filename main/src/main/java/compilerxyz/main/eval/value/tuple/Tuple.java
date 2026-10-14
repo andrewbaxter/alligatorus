@@ -32,6 +32,7 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
+import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectTuple;
 import compilerxyz.main.gen.AspectType;
@@ -49,6 +50,7 @@ import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.gen.codec.ArtifactTupleDataCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueArray;
 import compilerxyz.main.safejson.JsonValueBoolean;
@@ -252,6 +254,65 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
                         + selfValue.optUnwrap().getClass());
         };
     }
+
+    public static Object compositeOf(ExprContext xx, Tuple declared, Tuple value) {
+        var slotTypes = new TList<Type>();
+        var slotIndices = new TList<Integer>();
+        for (int i = 0; i < declared.elements().size(); i++) {
+            switch (declared.elements().get(i)) {
+                case TupleElement.Dynamic d -> {
+                    slotTypes.add(d.type());
+                    slotIndices.add(i);
+                }
+                case TupleElement.EvalRes held -> {}
+            }
+        }
+        var slotInfo = sortTupleSlots(xx, slotTypes);
+        var args = new Object[slotTypes.size()];
+        for (int j = 0; j < slotTypes.size(); j++) {
+            var index = slotIndices.get(j);
+            var elementValue =
+                    switch (value.elements().get(index)) {
+                        case TupleElement.EvalRes held ->
+                            held.result()
+                                    .requireValue("Tuple::compositeOf element result")
+                                    .value()
+                                    .optUnwrap();
+                        case TupleElement.Dynamic d ->
+                            throw new IllegalStateException(
+                                    "Tuple::compositeOf: imported tuple element " + index + " has no value");
+                    };
+            args[slotInfo.slotOfKey().getOpt(j).optUnwrap()] = Record.hostOf(xx, slotTypes.get(j), elementValue);
+        }
+        return CompositeClassEmitter.construct(xx, slotInfo.sortedTypes(), args);
+    }
+
+    public static final ExporterRootDelegate DATA_DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            return EResult.err(loc, "tuple data is exported through its type");
+        }
+
+        @Override
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            ArtifactTupleData body;
+            try {
+                body = ArtifactTupleDataCodec.fromValue(data);
+            } catch (RuntimeException e) {
+                return EResult.err(loc, "tuple data: failed to parse ArtifactTupleData: " + e.getMessage());
+            }
+            var erb = new Erb(loc);
+            var declared = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.type()));
+            var value = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.value()));
+            if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+            return EResult.ok(compositeOf(
+                    xx,
+                    MustCast.mustCast(Tuple.class, declared.optUnwrap()),
+                    MustCast.mustCast(Tuple.class, value.optUnwrap())));
+        }
+    };
 
     private static CompositeSlotSort.Result<Integer> sortTupleSlots(ExprContext xx, TList<Type> types) {
         var entries = new TOrderedMap<Integer, Type>();

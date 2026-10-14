@@ -39,16 +39,13 @@ public final class Exporters {
         return exporterRes.requireValue("Exporters::exportData exporter").artifactExporterExport(xx, loc, data);
     }
 
-    public static Type constFormOf(ExprContext xx, Type type) {
-        var constForm = GenAspectDynamicConst.getMaybe(xx, type);
-        if (constForm.optIsSome() && GenAspectArtifact.getMaybe(xx, type).optIsNone()) {
-            return constForm.optUnwrap().aspectDynamicConstConstForm();
-        }
-        return type;
-    }
-
     public static EResult<ArtifactExporter> exporterOfType(ExprContext xx, QExprId loc, Type type) {
-        var asp = GenAspectArtifact.get(xx, loc, constFormOf(xx, type));
+        var constForm = GenAspectDynamicConst.getMaybe(xx, type);
+        var dataType =
+                constForm.optIsSome() && GenAspectArtifact.getMaybe(xx, type).optIsNone()
+                        ? constForm.optUnwrap().aspectDynamicConstConstForm()
+                        : type;
+        var asp = GenAspectArtifact.get(xx, loc, dataType);
         if (asp.hasErrors()) return asp.reerr();
         return EResult.ok(asp.requireValue("Exporters::exporterOfType aspect").aspectArtifactExporter());
     }

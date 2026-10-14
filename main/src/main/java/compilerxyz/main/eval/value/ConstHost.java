@@ -14,23 +14,13 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.expr.TypeExpr;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenCodegenDescriptors;
-import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.lang.reflect.Array;
 
 public final class ConstHost {
     private ConstHost() {}
-
-    public static Object hostOf(Object imported) {
-        if (imported instanceof Value && !(imported instanceof ValueObjectConst)) {
-            throw new IllegalStateException(
-                    "imported " + imported.getClass().getName() + " has no host form to hold in a constant collection");
-        }
-        return imported;
-    }
 
     public static <K, V> TOrderedMap<K, V> hostMap(TList<K> keys, TList<V> values) {
         var out = new TOrderedMap<K, V>();

@@ -285,6 +285,12 @@ public enum ExporterRoot implements ArtifactExporter {
             return Record.DELEGATE;
         }
     },
+    RECORD_DATA("record_data") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return Record.DATA_DELEGATE;
+        }
+    },
     STRING_CONST("string_const") {
         @Override
         ExporterRootDelegate delegate() {
@@ -295,6 +301,12 @@ public enum ExporterRoot implements ArtifactExporter {
         @Override
         ExporterRootDelegate delegate() {
             return Tuple.DELEGATE;
+        }
+    },
+    TUPLE_DATA("tuple_data") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return Tuple.DATA_DELEGATE;
         }
     },
     UNIQUE("unique") {

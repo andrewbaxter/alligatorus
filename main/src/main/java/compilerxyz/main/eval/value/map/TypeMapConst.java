@@ -101,8 +101,8 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
                 var key = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, entryArt.key()));
                 var value = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, entryArt.value()));
                 if (key.optIsNone() || value.optIsNone()) continue;
-                keys.add(ConstHost.hostOf(key.optUnwrap()));
-                values.add(ConstHost.hostOf(value.optUnwrap()));
+                keys.add(key.optUnwrap());
+                values.add(value.optUnwrap());
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
             return EResult.ok(ConstHost.hostMap(keys, values));

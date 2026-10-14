@@ -33,6 +33,8 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
+import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.GenAspectArtifact;
@@ -50,6 +52,7 @@ import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.gen.codec.ArtifactRecordDataCodec;
 import compilerxyz.main.gen.codec.ArtifactRecordTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -647,6 +650,71 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
                 Code.target(b.code()),
                 EvalOutcome.ofValue(new ValueDynamic(new ValueDynamicSource.Reg(newObj), new Record(destFields)))));
     }
+
+    public static Object hostOf(ExprContext xx, Type declared, Value value) {
+        return switch (value) {
+            case ValueObjectConst voc -> voc.data();
+            case Record r -> compositeOf(xx, MustCast.mustCast(Record.class, declared), r);
+            case Tuple t -> Tuple.compositeOf(xx, MustCast.mustCast(Tuple.class, declared), t);
+            default ->
+                throw new IllegalStateException(
+                        "imported " + value.getClass().getName() + " has no host form for " + declared.typeDesc());
+        };
+    }
+
+    public static Object compositeOf(ExprContext xx, Record declared, Record value) {
+        var slotTypes = slotFieldTypes(declared.fields());
+        var slotInfo = computeSlotInfoFromTypes(xx, slotTypes);
+        var args = new Object[slotInfo.sortedTypes().size()];
+        for (var entry : slotInfo.slotOfKey().entrySet()) {
+            var key = entry.getKey();
+            var field = value.fields().getOpt(key);
+            if (field.optIsNone()) {
+                throw new IllegalStateException(
+                        "Record::compositeOf: imported record has no field '" + key.constKeyToCanonical() + "'");
+            }
+            var fieldValue =
+                    switch (field.optUnwrap()) {
+                        case RecordField.EvalRes held ->
+                            held.result()
+                                    .requireValue("Record::compositeOf field result")
+                                    .value()
+                                    .optUnwrap();
+                        case RecordField.Dynamic d ->
+                            throw new IllegalStateException("Record::compositeOf: imported record field '"
+                                    + key.constKeyToCanonical() + "' has no value");
+                    };
+            args[entry.getValue()] = hostOf(xx, slotTypes.getOpt(key).optUnwrap(), fieldValue);
+        }
+        return CompositeClassEmitter.construct(xx, slotInfo.sortedTypes(), args);
+    }
+
+    public static final ExporterRootDelegate DATA_DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            return EResult.err(loc, "record data is exported through its type");
+        }
+
+        @Override
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            ArtifactRecordData body;
+            try {
+                body = ArtifactRecordDataCodec.fromValue(data);
+            } catch (RuntimeException e) {
+                return EResult.err(loc, "record data: failed to parse ArtifactRecordData: " + e.getMessage());
+            }
+            var erb = new Erb(loc);
+            var declared = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.type()));
+            var value = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.value()));
+            if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+            return EResult.ok(compositeOf(
+                    xx,
+                    MustCast.mustCast(Record.class, declared.optUnwrap()),
+                    MustCast.mustCast(Record.class, value.optUnwrap())));
+        }
+    };
 
     static TOrderedMap<ConstKey, Type> slotFieldTypes(IOrderedMap<ConstKey, RecordField> fields) {
         var out = new TOrderedMap<ConstKey, Type>();
