@@ -37,6 +37,7 @@ import compilerxyz.main.eval.value.object.ArtifactExporterObjectConstPayload;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordField;
+import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleElement;
 import compilerxyz.main.gen.AspectBind;
@@ -57,6 +58,7 @@ import compilerxyz.prelude.annotations.BuiltinEvalContext;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.IOrderedMap;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
@@ -97,6 +99,11 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.exporter_object_const", scopeId = 5041L)
     public static ArtifactExporter exporterObjectConst(Type payloadType) {
         return new ArtifactExporterObjectConstPayload(payloadType);
+    }
+
+    @BuiltinPath(value = "eval.source_object_exporter", scopeId = 5059L)
+    public static ArtifactExporter sourceObjectExporter(Type type) {
+        return MustCast.mustCast(TypeSourceObjectDynamic.class, type).instanceExporter();
     }
 
     @BuiltinPath(value = "log", scopeId = 5001L)

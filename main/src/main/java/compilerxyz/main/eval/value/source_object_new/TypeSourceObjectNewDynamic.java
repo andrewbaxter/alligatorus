@@ -108,7 +108,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type) implement
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.SOURCE_OBJECT_NEW_CONST);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.SOURCE_OBJECT_NEW_CONST);
     }
 }

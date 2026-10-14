@@ -138,7 +138,7 @@ public record TypeBoolDynamicBox() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 }

@@ -41,8 +41,8 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.OPTION_VARIANT_CONSTRUCTOR_DYNAMIC);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.OPTION_VARIANT_CONSTRUCTOR_DYNAMIC);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {

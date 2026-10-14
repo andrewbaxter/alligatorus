@@ -26,7 +26,6 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaClassCompiled;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
-import compilerxyz.main.eval.value.AspectDynamicConstOf;
 import compilerxyz.main.eval.value.code.TypeCodeDynamic;
 import compilerxyz.main.eval.value.source_function.ExternalCodec;
 import compilerxyz.main.eval.value.source_interface.TypeInterfaceMethodDynamic;
@@ -35,7 +34,6 @@ import compilerxyz.main.gen.GenAspect;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
@@ -74,6 +72,13 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
 
     public Opt<JavaClassCompiled> compiledClass = Opt.none();
     public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
+
+    public ArtifactExporter instanceExporter() {
+        if (compiledClass.optIsNone()) {
+            throw new IllegalStateException(typeDesc() + "::instanceExporter: object is not finished");
+        }
+        return new ArtifactExporterSourceObject(this);
+    }
 
     public TypeSourceObjectDynamic(DefSetId setId, String name, Unique identity, DefinitionSet set, String binaryName) {
         this.setId = setId;
@@ -117,15 +122,12 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.SOURCE_OBJECT_CONST);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.SOURCE_OBJECT_CONST);
     }
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenAspectDynamicConst.AspectId)) {
-            return Opt.some(new AspectDynamicConstOf(new TypeSourceObjectConst(this)));
-        }
         if (key.equals(GenAspectInitialBind.AspectId)) {
             return Opt.some(new AspectInitialBindSourceObjectDynamic(this));
         }
@@ -268,9 +270,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
-            var dt = self instanceof TypeSourceObjectConst c
-                    ? c.dynamic()
-                    : MustCast.mustCast(TypeSourceObjectDynamic.class, self);
+            var dt = MustCast.mustCast(TypeSourceObjectDynamic.class, self);
             var set = dt.set;
             if (set == null) {
                 return EResult.err(

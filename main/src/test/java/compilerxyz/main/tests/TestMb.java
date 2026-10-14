@@ -575,4 +575,20 @@ public final class TestMb {
         return call(
                 field(aspectRef, str(method)), callArg.optIsSome() ? tupleOf(receiver, callArg.optUnwrap()) : receiver);
     }
+
+    public SourceExpr instanceExporter(String builderVar) {
+        return call(builtin("eval", "source_object_exporter"), lower(field(scopeUse(builderVar), str("type"))));
+    }
+
+    public SourceExpr valueExporterImpl(String builderVar) {
+        return call(
+                field(call(typesEresult(), builtin("eval", "artifact_exporter")), str("ok")),
+                instanceExporter(builderVar));
+    }
+
+    public SourceExpr typeExporterImpl(String builderVar) {
+        return call(
+                field(call(typesOption(), builtin("eval", "artifact_exporter")), str("some")),
+                instanceExporter(builderVar));
+    }
 }

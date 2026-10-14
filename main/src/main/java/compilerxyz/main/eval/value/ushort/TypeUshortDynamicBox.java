@@ -124,7 +124,7 @@ public record TypeUshortDynamicBox() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.USHORT_DYNAMIC_BOX);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.USHORT_DYNAMIC_BOX);
     }
 }

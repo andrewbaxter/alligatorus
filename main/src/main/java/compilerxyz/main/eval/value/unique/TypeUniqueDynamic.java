@@ -334,7 +334,7 @@ public record TypeUniqueDynamic() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.UNIQUE_TYPE);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.UNIQUE_TYPE);
     }
 }

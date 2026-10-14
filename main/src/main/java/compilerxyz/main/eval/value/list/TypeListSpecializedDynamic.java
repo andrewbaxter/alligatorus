@@ -2,6 +2,7 @@ package compilerxyz.main.eval.value.list;
 
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -47,6 +48,11 @@ public final class TypeListSpecializedDynamic<T extends Type> implements Aspect,
     @Override
     public ArtifactSupport.ArtifactIdHolder listDynamicArtifactIdCell() {
         return artifactIdCell;
+    }
+
+    @Override
+    public Type listDynamicElementType() {
+        return elementType;
     }
 
     public JavaDataDescriptor elementDescriptor(ExprContext xx) {
@@ -163,9 +169,7 @@ public final class TypeListSpecializedDynamic<T extends Type> implements Aspect,
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return new AspectDynamicConstListSpecializedDynamic<>(this)
-                .aspectDynamicConstConstForm()
-                .typeExporter(xx, loc);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.LIST_DYNAMIC);
     }
 }

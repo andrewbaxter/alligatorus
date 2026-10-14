@@ -201,7 +201,7 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.OPTION_CONST_TYPE);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.OPTION_CONST_TYPE);
     }
 }

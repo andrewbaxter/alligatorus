@@ -222,7 +222,7 @@ public record TypeUbyteConst() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.UBYTE_CONST_TYPE);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.UBYTE_CONST_TYPE);
     }
 }

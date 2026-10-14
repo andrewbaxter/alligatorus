@@ -4,14 +4,12 @@ import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
-import compilerxyz.prelude.annotations.HostOnly;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 2002L, scopeId = 3002)
 @BuiltinPath("eval.type")
 public interface Type {
-    @HostOnly
-    EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc);
+    Opt<ArtifactExporter> typeExporter();
 
     boolean typeIsEqual(ExprContext xx, Type other);
 

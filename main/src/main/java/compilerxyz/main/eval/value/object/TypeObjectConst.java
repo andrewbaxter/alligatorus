@@ -203,8 +203,8 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.TYPE_OBJECT_CONST);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.TYPE_OBJECT_CONST);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {

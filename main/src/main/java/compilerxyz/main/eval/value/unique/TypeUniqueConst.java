@@ -4,6 +4,7 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -134,7 +135,7 @@ public record TypeUniqueConst() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.UNIQUE_CONST_TYPE);
     }
 }

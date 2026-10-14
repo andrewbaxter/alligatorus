@@ -263,7 +263,7 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(AspectArtifactSourceInterfaceDynamic.INSTANCE.aspectArtifactExporter());
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(AspectArtifactSourceInterfaceDynamic.INSTANCE.aspectArtifactExporter());
     }
 }

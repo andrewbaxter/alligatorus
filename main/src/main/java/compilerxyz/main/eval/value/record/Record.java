@@ -5,6 +5,7 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.Code;
@@ -861,12 +862,12 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return Exporters.exporterOfType(xx, loc, valueType());
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.RECORD);
     }
 
     @Override
     public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
-        return typeExporter(xx, loc);
+        return Exporters.typeExporter(loc, this);
     }
 }

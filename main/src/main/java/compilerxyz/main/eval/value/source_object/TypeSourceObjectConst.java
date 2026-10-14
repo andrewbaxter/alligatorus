@@ -1,6 +1,13 @@
 package compilerxyz.main.eval.value.source_object;
 
+import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ArtifactIdSource;
+import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -19,8 +26,12 @@ import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.gen.codec.ArtifactSourceObjectConstTypeCodec;
+import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
+import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6137L)
 public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic) implements Aspect, Type {
@@ -45,7 +56,7 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic) implements 
             return Opt.some(AspectBindViaTarget.INSTANCE);
         }
         if (key.equals(GenAspectArtifact.AspectId)) {
-            return Opt.some(AspectArtifactSourceObjectConst.INSTANCE);
+            return Opt.some(new AspectArtifactSourceObjectConst(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_OBJECT_CONST_IDENTITY) || key.equals(dynamic.identity)) {
             return Opt.some(this);
@@ -94,7 +105,37 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic) implements 
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return dynamic.typeExporter(xx, loc);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.SOURCE_OBJECT_CONST_TYPE);
     }
+
+    public static final ExporterRootDelegate TYPE_DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            var type = MustCast.mustCast(TypeSourceObjectConst.class, self);
+            var dynamicArtRes = Exporters.exportType(xx, loc, type.dynamic);
+            if (dynamicArtRes.hasErrors()) return dynamicArtRes.reerr();
+            var body = new ArtifactSourceObjectConstType(
+                    dynamicArtRes.requireValue("TypeSourceObjectConst::export dynamic"));
+            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactSourceObjectConstTypeCodec.toValue(body))));
+        }
+
+        @Override
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            ArtifactSourceObjectConstType body;
+            try {
+                body = ArtifactSourceObjectConstTypeCodec.fromValue(data);
+            } catch (RuntimeException e) {
+                return EResult.err(
+                        loc,
+                        "TypeSourceObjectConst data: failed to parse ArtifactSourceObjectConstType: " + e.getMessage());
+            }
+            var dynamicRes = ArtifactSupport.importArtifact(xx, loc, body.dynamic());
+            if (dynamicRes.hasErrors()) return dynamicRes.reerr();
+            return EResult.ok(new TypeSourceObjectConst(MustCast.mustCast(
+                    TypeSourceObjectDynamic.class, dynamicRes.requireValue("TypeSourceObjectConst::import dynamic"))));
+        }
+    };
 }

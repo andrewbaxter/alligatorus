@@ -74,9 +74,9 @@ public record ValueObjectConst(Type type, Object data) implements Value {
             var dataRes = ArtifactSupport.importArtifact(xx, loc, body.data());
             dataRes.drainInto(errors);
             if (!errors.isEmpty()) return EResult.errs(errors);
-            var type = MustCast.mustCast(Type.class, typeRes.requireValue("ValueObjectConst::import type"));
             return EResult.ok(new ValueObjectConst(
-                    Exporters.constFormOf(xx, type), dataRes.requireValue("ValueObjectConst::import data")));
+                    MustCast.mustCast(Type.class, typeRes.requireValue("ValueObjectConst::import type")),
+                    dataRes.requireValue("ValueObjectConst::import data")));
         }
     };
 

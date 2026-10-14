@@ -2,6 +2,7 @@ package compilerxyz.main.eval.value.expr;
 
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalOutcome;
@@ -108,12 +109,12 @@ public record TypeExpr() implements Aspect, Type, Value {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.EXPR);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.EXPR);
     }
 
     @Override
     public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
-        return typeExporter(xx, loc);
+        return Exporters.typeExporter(loc, this);
     }
 }

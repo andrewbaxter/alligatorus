@@ -2,8 +2,6 @@ package compilerxyz.main.eval.dynamic;
 
 import static compilerxyz.prelude.util.MustCast.mustCast;
 
-import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.CompileId;
@@ -54,11 +52,6 @@ public final class DynRuntime {
             }
         }
         return new TypeMapDynamic<>(keyType, valueType);
-    }
-
-    @CodegenDescriptor
-    public static EResult<ArtifactExporter> sourceObjectTypeExporter() {
-        return EResult.ok(ExporterRoot.SOURCE_OBJECT_TYPE_INSTANCE);
     }
 
     @CodegenDescriptor

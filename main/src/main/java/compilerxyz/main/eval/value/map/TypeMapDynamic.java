@@ -1,7 +1,13 @@
 package compilerxyz.main.eval.value.map;
 
+import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
@@ -37,13 +43,18 @@ import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.gen.codec.ArtifactMapTypeCodec;
+import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
+import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.util.Map;
+import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6122L)
 public final class TypeMapDynamic<K extends Type, V extends Type> implements Aspect, Type {
@@ -251,9 +262,64 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return new AspectDynamicConstMapDynamic<>(this)
-                .aspectDynamicConstConstForm()
-                .typeExporter(xx, loc);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.MAP_DYNAMIC);
     }
+
+    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            var map = MustCast.mustCast(TypeMapDynamic.class, self);
+            return ArtifactSupport.implExportIndependentArtifact(xx, map.artifactIdCell, () -> {
+                var erb = new Erb(loc);
+                var keyArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, map.keyType));
+                var valueArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, map.valueType));
+                if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+                var body = new ArtifactMapType(keyArt.optUnwrap(), valueArt.optUnwrap());
+                return EResult.ok(makeBody.apply(ArtifactMapTypeCodec.toValue(body)));
+            });
+        }
+
+        @Override
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            if (id.optIsNone()) {
+                return EResult.err(loc, "TypeMapDynamic requires an artifact id to deserialize");
+            }
+            var idValue = id.optUnwrap();
+            return ArtifactSupport.implImportIndependentArtifact(
+                    xx,
+                    loc,
+                    idValue,
+                    data,
+                    (raw) -> {
+                        ArtifactMapType body;
+                        try {
+                            body = ArtifactMapTypeCodec.fromValue(raw);
+                        } catch (RuntimeException e) {
+                            return new Result.Err<>(
+                                    "TypeMapDynamic data: failed to parse ArtifactMapType: " + e.getMessage());
+                        }
+                        return new Result.Ok<>(body);
+                    },
+                    (body) -> {
+                        var deps = new TList<Artifact>();
+                        deps.add(body.keyType());
+                        deps.add(body.valueType());
+                        ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
+                            var keyRes =
+                                    ArtifactSupport.independentFinalizeImportTypeArtifact(xx2, loc2, body.keyType());
+                            var keyT = keyRes.requireValue("TypeMapDynamic::finalizer key type");
+                            var valueRes =
+                                    ArtifactSupport.independentFinalizeImportTypeArtifact(xx2, loc2, body.valueType());
+                            var valueT = valueRes.requireValue("TypeMapDynamic::finalizer value type");
+                            var out = new TypeMapDynamic(keyT, valueT);
+                            out.artifactIdCell.set(idValue);
+                            return out;
+                        };
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.none(), deps, fin));
+                    });
+        }
+    };
 }

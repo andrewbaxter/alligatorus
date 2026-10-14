@@ -173,7 +173,7 @@ public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(AspectArtifactSourceMacroConst.INSTANCE.aspectArtifactExporter());
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(AspectArtifactSourceMacroConst.INSTANCE.aspectArtifactExporter());
     }
 }

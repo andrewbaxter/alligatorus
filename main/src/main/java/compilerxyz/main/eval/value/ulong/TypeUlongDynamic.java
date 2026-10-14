@@ -190,8 +190,8 @@ public record TypeUlongDynamic() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.ULONG_DYNAMIC);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.ULONG_DYNAMIC);
     }
 
     @Override

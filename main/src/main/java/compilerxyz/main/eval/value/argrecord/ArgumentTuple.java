@@ -79,12 +79,12 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes) i
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return Exporters.exporterOfType(xx, loc, valueType());
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 
     @Override
     public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
-        return typeExporter(xx, loc);
+        return Exporters.typeExporter(loc, this);
     }
 }

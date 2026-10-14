@@ -496,6 +496,7 @@ public final class T0170NodejsTest {
                 targetVar,
                 mb.evalType(),
                 TList.of(
+                        rp("exporter", mb.typeExporterImpl(targetVar)),
                         rp("desc", mb.str(desc)),
                         rp("aspect", dispatch),
                         rp("can_cast_from", mb.bool(false)),
@@ -646,7 +647,12 @@ public final class T0170NodejsTest {
                         new TestMb.RecordPair("description", mb.optNoneString())))));
 
         exprs.add(implInterface(
-                mb, "nvalue", mb.evalValue(), TList.of(rp("type", mb.field(mb.scopeUse("inner"), mb.str("type"))))));
+                mb,
+                "nvalue",
+                mb.evalValue(),
+                TList.of(
+                        rp("type", mb.field(mb.scopeUse("inner"), mb.str("type"))),
+                        rp("exporter", mb.valueExporterImpl("nvalue")))));
         exprs.add(mb.bind(
                 "aspect_consume_nodejs", mb.call(mb.field(mb.scopeUse("d"), mb.str("interface")), mb.tupleOf())));
         exprs.add(mb.call(

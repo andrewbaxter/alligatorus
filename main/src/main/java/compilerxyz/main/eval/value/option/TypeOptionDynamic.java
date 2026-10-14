@@ -145,8 +145,8 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.OPTION_DYNAMIC);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.OPTION_DYNAMIC);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {

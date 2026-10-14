@@ -11,8 +11,14 @@ import compilerxyz.main.gen.Value;
 public final class Exporters {
     private Exporters() {}
 
+    public static EResult<ArtifactExporter> typeExporter(QExprId loc, Type type) {
+        var exporter = type.typeExporter();
+        if (exporter.optIsNone()) return EResult.err(loc, "type " + type.typeDesc() + " is not exportable");
+        return EResult.ok(exporter.optUnwrap());
+    }
+
     public static EResult<Artifact> exportType(ExprContext xx, QExprId loc, Type type) {
-        var exporterRes = type.typeExporter(xx, loc);
+        var exporterRes = typeExporter(loc, type);
         if (exporterRes.hasErrors()) return exporterRes.reerr();
         return exporterRes.requireValue("Exporters::exportType exporter").artifactExporterExport(xx, loc, type);
     }

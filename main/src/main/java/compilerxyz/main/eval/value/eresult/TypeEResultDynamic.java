@@ -161,8 +161,8 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.ERESULT_DYNAMIC);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.ERESULT_DYNAMIC);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {

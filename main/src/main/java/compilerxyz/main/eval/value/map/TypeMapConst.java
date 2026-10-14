@@ -21,7 +21,6 @@ import compilerxyz.main.eval.value.ConstHost;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
@@ -114,8 +113,6 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
-            var selfDc = GenAspectDynamicConst.getMaybe(xx, MustCast.mustCast(Type.class, self));
-            if (selfDc.optIsSome()) self = selfDc.optUnwrap().aspectDynamicConstConstForm();
             var map = MustCast.mustCast(TypeMapConst.class, self);
             var cell = map.artifactIdCell;
             return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
@@ -161,7 +158,7 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
                             var valueRes =
                                     ArtifactSupport.independentFinalizeImportTypeArtifact(xx2, loc2, body.valueType());
                             var valueT = valueRes.requireValue("TypeMapConst::finalizer value type");
-                            var out = new TypeMapDynamic(keyT, valueT);
+                            var out = new TypeMapConst<>(keyT, valueT);
                             out.artifactIdCell.set(idValue);
                             return out;
                         };
@@ -201,7 +198,7 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.MAP_CONST_TYPE);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.MAP_CONST_TYPE);
     }
 }

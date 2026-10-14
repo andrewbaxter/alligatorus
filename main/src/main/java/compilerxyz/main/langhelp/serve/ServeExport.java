@@ -80,8 +80,7 @@ public final class ServeExport {
                 case Result.Err<ArtifactValueObjectConst, String> err -> Opt.none();
             };
         }
-        if (tag.equals(ExporterRoot.SOURCE_OBJECT_VALUE_CONST.exporterRootTag())
-                || tag.equals(ExporterRoot.SOURCE_OBJECT_TYPE_INSTANCE.exporterRootTag())) {
+        if (tag.equals(ExporterRoot.SOURCE_OBJECT_VALUE_CONST.exporterRootTag())) {
             return switch (decode(
                     "source object instance",
                     () -> ValueSourceObjectConstArtifactValueSourceObjectCodec.fromValue(
@@ -111,8 +110,7 @@ public final class ServeExport {
                 current = inner.optUnwrap();
                 continue;
             }
-            if (!tag.equals(ExporterRoot.SOURCE_OBJECT_VALUE_CONST.exporterRootTag())
-                    && !tag.equals(ExporterRoot.SOURCE_OBJECT_TYPE_INSTANCE.exporterRootTag())) {
+            if (!tag.equals(ExporterRoot.SOURCE_OBJECT_VALUE_CONST.exporterRootTag())) {
                 return Opt.some(new Export(tag, Opt.none(), Opt.none()));
             }
             ArtifactValueSourceObject instance;

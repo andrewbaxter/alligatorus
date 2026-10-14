@@ -123,7 +123,7 @@ public record TypeBoolConst() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.BOOL_CONST_TYPE);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.BOOL_CONST_TYPE);
     }
 }

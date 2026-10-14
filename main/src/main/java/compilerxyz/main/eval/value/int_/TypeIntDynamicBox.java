@@ -124,7 +124,7 @@ public record TypeIntDynamicBox() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.INT_DYNAMIC_BOX);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.INT_DYNAMIC_BOX);
     }
 }

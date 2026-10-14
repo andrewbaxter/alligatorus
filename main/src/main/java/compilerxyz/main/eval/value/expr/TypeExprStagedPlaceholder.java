@@ -1,6 +1,7 @@
 package compilerxyz.main.eval.value.expr;
 
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -73,12 +74,12 @@ public record TypeExprStagedPlaceholder() implements Aspect, Type, Value {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 
     @Override
     public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
-        return typeExporter(xx, loc);
+        return Exporters.typeExporter(loc, this);
     }
 }

@@ -176,7 +176,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type, int varia
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(AspectArtifactTypeSourceUnionNewConst.INSTANCE.aspectArtifactExporter());
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(AspectArtifactTypeSourceUnionNewConst.INSTANCE.aspectArtifactExporter());
     }
 }

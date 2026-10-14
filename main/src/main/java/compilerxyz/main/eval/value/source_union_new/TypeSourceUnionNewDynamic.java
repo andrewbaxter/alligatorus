@@ -52,8 +52,8 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type, int variant
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.SOURCE_UNION_NEW_CONST);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.SOURCE_UNION_NEW_CONST);
     }
 
     record SourceUnionNewConstBinding(Value value) implements Binding {

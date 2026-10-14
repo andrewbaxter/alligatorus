@@ -22,11 +22,16 @@ public final class T0021ObjectValueTypeTest {
                         e.let("d", e.define()),
                         e.let("o", e.defObject(e.v("d"), "self typed")),
                         e.objectImpl(e.v("o"), e.tup()),
-                        e.implInterface(e.v("o"), e.mb.evalValue(), e.p("type", e.v("outer"))),
+                        e.implInterface(
+                                e.v("o"),
+                                e.mb.evalValue(),
+                                e.p("type", e.v("outer")),
+                                e.p("exporter", e.mb.valueExporterImpl("o"))),
                         e.implInterface(
                                 e.v("o"),
                                 e.mb.evalType(),
                                 e.p("desc", e.s("self typed")),
+                                e.p("exporter", e.mb.typeExporterImpl("o")),
                                 e.p("aspect", e.optNone(e.mb.typesAspect())),
                                 e.p("can_cast_from", e.b(false)),
                                 e.p("cast_from", e.mb.panic(e.s("cast_to unreachable"))),

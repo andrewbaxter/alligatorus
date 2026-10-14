@@ -527,6 +527,23 @@ public final class T0105ExportRoundTripTest {
     }
 
     @Test
+    public void test01950LoweredUniqueRoundTrips() {
+        var e = new TestMbShorthand();
+        var lib = e.lower(e.seq(
+                e.let("u", e.call(e.mb.builtin("eval", "fresh_unique"), e.tup())),
+                e.ret(e.rec(e.p("u", e.v("u")), e.p("w", e.v("u"))))));
+        var main = e.seq(
+                importLib(e),
+                e.call(
+                        e.mb.log(),
+                        e.ifElse(
+                                e.mb.operatorEq(e.fld(e.v("r"), "u"), e.fld(e.v("r"), "w")),
+                                e.dstr("same"),
+                                e.dstr("different"))));
+        assertEquals(TList.of("same"), compileLogs(e, lib, main));
+    }
+
+    @Test
     public void test02000InstanceWithContainerFieldsRoundTrips() {
         var e = new TestMbShorthand();
         var strT = e.mb.typesString();

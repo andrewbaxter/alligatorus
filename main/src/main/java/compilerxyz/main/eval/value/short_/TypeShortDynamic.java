@@ -190,8 +190,8 @@ public record TypeShortDynamic() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.SHORT_DYNAMIC);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.SHORT_DYNAMIC);
     }
 
     @Override

@@ -196,7 +196,7 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.ERESULT_CONST_TYPE);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.ERESULT_CONST_TYPE);
     }
 }

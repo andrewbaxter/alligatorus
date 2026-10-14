@@ -40,7 +40,6 @@ import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetCodec;
@@ -386,14 +385,6 @@ public final class DefinitionSet implements ExportableObject {
                 var staticFieldValues = new TOrderedMap<String, Object>();
                 soeCw.visitField(
                                 Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
-                                SourceObjectEmitter.SOURCE_OBJECT_DATA_FIELD,
-                                JvmConstants.DESC_OBJECT.value(),
-                                null,
-                                null)
-                        .visitEnd();
-                staticFieldValues.put(SourceObjectEmitter.SOURCE_OBJECT_DATA_FIELD, obj);
-                soeCw.visitField(
-                                Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
                                 EvalRootEmitter.EXPR_CONTEXT_FIELD,
                                 EvalRootEmitter.DESC_EXPR_CONTEXT.value(),
                                 null,
@@ -668,23 +659,6 @@ public final class DefinitionSet implements ExportableObject {
                                 JavaBytecodeUtils.renderMethod(ehaSeq, ehaMv, TList.of(), soeInternalName, soeLocTable);
                             }
                         }
-                    }
-                }
-                {
-                    var aeDescriptor = JavaMethodDescriptor.fromParts(
-                            JavaDataDescriptor.fromClass(EResult.class),
-                            JavaDataDescriptor.fromClass(ExprContext.class),
-                            JavaDataDescriptor.fromClass(QExprId.class));
-                    var aeNames = new TList<String>();
-                    if (objectImplements(obj, Value.class)) aeNames.add("valueExporter");
-                    if (objectImplements(obj, Type.class)) aeNames.add("typeExporter");
-                    for (var aeName : aeNames) {
-                        var aeMv = soeCw.visitMethod(Opcodes.ACC_PUBLIC, aeName, aeDescriptor.value(), null, null);
-                        var aeSeq = new JavaBytecodeSequence();
-                        var ab = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
-                        ab.ret(ab.invokeStatic(GenCodegenDescriptors.DYN_RUNTIME_SOURCE_OBJECT_TYPE_EXPORTER));
-                        aeSeq.add(ab.code());
-                        JavaBytecodeUtils.renderMethod(aeSeq, aeMv, TList.of(), soeInternalName, soeLocTable);
                     }
                 }
                 soeCw.visitEnd();

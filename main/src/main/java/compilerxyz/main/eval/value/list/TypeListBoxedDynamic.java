@@ -1,7 +1,14 @@
 package compilerxyz.main.eval.value.list;
 
+import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ArtifactIdSource;
+import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.ArtifactSupport.ArtifactIdHolder;
+import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
@@ -32,11 +39,16 @@ import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStringDynamic;
+import compilerxyz.main.gen.GenLists;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.gen.codec.ArtifactListTypeCodec;
+import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
+import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6117L)
 public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListDynamic {
@@ -51,6 +63,11 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
     @Override
     public ArtifactIdHolder listDynamicArtifactIdCell() {
         return artifactIdCell;
+    }
+
+    @Override
+    public Type listDynamicElementType() {
+        return elementType;
     }
 
     @Override
@@ -194,9 +211,63 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return new AspectDynamicConstListBoxedDynamic<>(this)
-                .aspectDynamicConstConstForm()
-                .typeExporter(xx, loc);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.LIST_DYNAMIC);
     }
+
+    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            if (!(self instanceof ListDynamic list)) {
+                return EResult.err(
+                        loc,
+                        "TypeListBoxedDynamic::exporterRootDelegateSelfExport: expected a dynamic list type, got "
+                                + self.getClass());
+            }
+            return ArtifactSupport.implExportIndependentArtifact(xx, list.listDynamicArtifactIdCell(), () -> {
+                var elementArtRes = Exporters.exportType(xx, loc, list.listDynamicElementType());
+                if (elementArtRes.hasErrors()) return elementArtRes.reerr();
+                var body = new ArtifactListType(elementArtRes.requireValue("TypeListBoxedDynamic::export element"));
+                return EResult.ok(makeBody.apply(ArtifactListTypeCodec.toValue(body)));
+            });
+        }
+
+        @Override
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            if (id.optIsNone()) {
+                return EResult.err(loc, "TypeListBoxedDynamic requires an artifact id to deserialize");
+            }
+            var idValue = id.optUnwrap();
+            return ArtifactSupport.implImportIndependentArtifact(
+                    xx,
+                    loc,
+                    idValue,
+                    data,
+                    (raw) -> {
+                        ArtifactListType body;
+                        try {
+                            body = ArtifactListTypeCodec.fromValue(raw);
+                        } catch (RuntimeException e) {
+                            return new Result.Err<>(
+                                    "TypeListBoxedDynamic data: failed to parse ArtifactListType: " + e.getMessage());
+                        }
+                        return new Result.Ok<>(body);
+                    },
+                    (body) -> {
+                        var deps = new TList<Artifact>();
+                        deps.add(body.elementType());
+                        ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
+                            var elementRes = ArtifactSupport.independentFinalizeImportTypeArtifact(
+                                    xx2, loc2, body.elementType());
+                            var elementT = elementRes.requireValue("TypeListBoxedDynamic::finalizer element type");
+                            var out = GenLists.listDynamic(xx2, elementT);
+                            out.listDynamicArtifactIdCell().set(idValue);
+                            return out;
+                        };
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.none(), deps, fin));
+                    });
+        }
+    };
 }

@@ -124,7 +124,7 @@ public record TypeLongDynamicBox() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.LONG_DYNAMIC_BOX);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.LONG_DYNAMIC_BOX);
     }
 }

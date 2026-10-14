@@ -165,7 +165,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(AspectArtifactTypeSourceObjectNewConst.INSTANCE.aspectArtifactExporter());
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(AspectArtifactTypeSourceObjectNewConst.INSTANCE.aspectArtifactExporter());
     }
 }

@@ -104,6 +104,8 @@ public final class T0120ImplTypeTest {
                                                         mb,
                                                         TList.of(
                                                                 new TestMb.RecordPair(
+                                                                        "exporter", mb.typeExporterImpl("u")),
+                                                                new TestMb.RecordPair(
                                                                         "can_cast_from",
                                                                         mb.seqOf(
                                                                                 mb.return_(

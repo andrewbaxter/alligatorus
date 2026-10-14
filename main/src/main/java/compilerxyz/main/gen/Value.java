@@ -7,12 +7,10 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
-import compilerxyz.prelude.annotations.HostOnly;
 
 @BuiltinFull(uniqueId = 2001L, scopeId = 3001)
 @BuiltinPath("eval.value")
 public interface Value {
-    @HostOnly
     EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc);
 
     Type valueType();

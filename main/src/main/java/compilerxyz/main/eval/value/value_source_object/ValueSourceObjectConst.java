@@ -17,7 +17,6 @@ import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.empty.ValueEmpty;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
@@ -43,20 +42,7 @@ public final class ValueSourceObjectConst {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
-            TypeSourceObjectDynamic tsod;
-            try {
-                tsod = MustCast.mustCast(
-                        TypeSourceObjectDynamic.class,
-                        self.getClass()
-                                .getField(SourceObjectEmitter.SOURCE_OBJECT_DATA_FIELD)
-                                .get(null));
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                throw new IllegalStateException(
-                        "ValueSourceObjectConst::DELEGATE: " + self.getClass().getName()
-                                + " is not a source-object instance",
-                        e);
-            }
-            return exportInstance(xx, loc, tsod, self, makeBody);
+            return EResult.err(loc, "a source object instance is exported through its type");
         }
 
         @Override
@@ -65,49 +51,6 @@ public final class ValueSourceObjectConst {
             return importInstance(xx, loc, data);
         }
     };
-
-    private static EResult<Artifact> exportInstance(
-            ExprContext xx,
-            QExprId loc,
-            TypeSourceObjectDynamic tsod,
-            Object instance,
-            Function<JsonValue, ArtifactBody> makeBody) {
-        Object underlyingHost;
-        try {
-            var field = instance.getClass().getField(SourceObjectEmitter.DATA_INSTANCE_FIELD);
-            underlyingHost = field.get(instance);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            return EResult.err(
-                    loc,
-                    "ValueSourceObjectConst::exporterRootDelegateSelfExport: source-object instance "
-                            + instance.getClass().getName() + " missing "
-                            + SourceObjectEmitter.DATA_INSTANCE_FIELD + " field");
-        }
-        if (tsod.underlyingType.optIsNone()) {
-            return EResult.err(
-                    loc,
-                    "ValueSourceObjectConst::exporterRootDelegateSelfExport: object underlying type not finalised");
-        }
-        var ut = tsod.underlyingType.optUnwrap();
-        var errors = new TList<ExprErr>();
-        var typeArtRes = Exporters.exportType(xx, loc, tsod);
-        if (typeArtRes.hasErrors()) {
-            typeArtRes.drainInto(errors);
-            return EResult.errs(errors);
-        }
-        var typeArt = typeArtRes.requireValue("ValueSourceObjectConst::exporterExport type artifact");
-        var underArtRes = Exporters.exportData(xx, loc, ut, underlyingHost);
-        if (underArtRes.hasErrors()) {
-            underArtRes.drainInto(errors);
-            return EResult.errs(errors);
-        }
-        var underArt = underArtRes.requireValue("ValueSourceObjectConst::exporterExport underlying artifact");
-        var body = new ArtifactValueSourceObject(typeArt, underArt);
-        var artifact =
-                new Artifact.Body(makeBody.apply(ValueSourceObjectConstArtifactValueSourceObjectCodec.toValue(body)));
-        if (errors.isEmpty()) return EResult.ok(artifact);
-        return EResult.mixed(artifact, errors);
-    }
 
     private static EResult<Object> importInstance(ExprContext xx, QExprId loc, JsonValue data) {
         ArtifactValueSourceObject body;

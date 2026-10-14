@@ -123,7 +123,7 @@ public record TypeFloatDynamicBox() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.FLOAT_DYNAMIC_BOX);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.FLOAT_DYNAMIC_BOX);
     }
 }

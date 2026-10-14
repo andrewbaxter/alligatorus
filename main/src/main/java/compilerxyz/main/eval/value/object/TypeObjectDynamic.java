@@ -159,8 +159,8 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
     }
 
     @Override
-    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.OBJECT_DYNAMIC);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.OBJECT_DYNAMIC);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
