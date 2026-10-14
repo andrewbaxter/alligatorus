@@ -5,10 +5,9 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
@@ -35,8 +34,6 @@ import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
-import compilerxyz.prelude.util.TOrderedMap;
-import java.util.Map;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6162L)
@@ -74,7 +71,7 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
             return Opt.some(new AspectBindMapConst<>(this));
         }
         if (key.equals(GenAspectArtifact.AspectId)) {
-            return Opt.some(AspectArtifactMapConst.INSTANCE);
+            return Opt.some(new AspectArtifactMapConst<>(this));
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);
@@ -85,33 +82,12 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
-            var map = MustCast.mustCast(TypeMapConst.class, ofType.optUnwrap());
-            var host = MustCast.mustCast(TOrderedMap.class, self);
-            var erb = new Erb(loc);
-            var keyTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, map.keyType));
-            var valueTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, map.valueType));
-            var entryArts = new TList<ArtifactMapEntry>();
-            for (var raw : host.entrySet()) {
-                var entry = MustCast.mustCast(Map.Entry.class, raw);
-                var keyArt = erb.mustErMaybeUnreachable(Artifactable.exportData(xx, loc, map.keyType, entry.getKey()));
-                var valueArt =
-                        erb.mustErMaybeUnreachable(Artifactable.exportData(xx, loc, map.valueType, entry.getValue()));
-                if (keyArt.optIsSome() && valueArt.optIsSome()) {
-                    entryArts.add(new ArtifactMapEntry(keyArt.optUnwrap(), valueArt.optUnwrap()));
-                }
-            }
-            if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            var body = new ArtifactMapValue(keyTypeArt.optUnwrap(), valueTypeArt.optUnwrap(), entryArts);
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactMapValueCodec.toValue(body))));
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            return EResult.err(loc, "TypeMapConst data is exported through its type");
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactMapValue body;
             try {
@@ -120,41 +96,32 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
                 return EResult.err(loc, "TypeMapConst data: failed to parse ArtifactMapValue: " + e.getMessage());
             }
             var erb = new Erb(loc);
-            var keyType = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.keyType()));
-            var valueType = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.valueType()));
             var keys = new TList<Object>(body.entries().size());
             var values = new TList<Object>(body.entries().size());
             for (var entryArt : body.entries()) {
                 var key = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, entryArt.key()));
                 var value = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, entryArt.value()));
                 if (key.optIsNone() || value.optIsNone()) continue;
-                keys.add(key.optUnwrap().host());
-                values.add(value.optUnwrap().host());
+                keys.add(ConstHost.hostOf(key.optUnwrap()));
+                values.add(ConstHost.hostOf(value.optUnwrap()));
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            return Imported.okValue(
-                    new TypeMapConst<>(
-                            keyType.optUnwrap().asType(), valueType.optUnwrap().asType()),
-                    ConstHost.hostMap(keys, values));
+            return EResult.ok(ConstHost.hostMap(keys, values));
         }
     };
 
     public static final ExporterRootDelegate TYPE_DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var selfDc = GenAspectDynamicConst.getMaybe(xx, MustCast.mustCast(Type.class, self));
             if (selfDc.optIsSome()) self = selfDc.optUnwrap().aspectDynamicConstConstForm();
             var map = MustCast.mustCast(TypeMapConst.class, self);
             var cell = map.artifactIdCell;
             return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
                 var erb = new Erb(loc);
-                var keyArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, map.keyType));
-                var valueArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, map.valueType));
+                var keyArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, map.keyType));
+                var valueArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, map.valueType));
                 if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
                 var body = new ArtifactMapType(keyArt.optUnwrap(), valueArt.optUnwrap());
                 return EResult.ok(makeBody.apply(ArtifactMapTypeCodec.toValue(body)));
@@ -162,7 +129,7 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeMapConst requires an artifact id to deserialize");
@@ -234,7 +201,7 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.MAP_CONST_TYPE);
     }
 }

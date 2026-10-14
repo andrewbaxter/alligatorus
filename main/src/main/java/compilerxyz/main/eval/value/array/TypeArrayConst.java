@@ -5,10 +5,9 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
@@ -72,7 +71,7 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
             return Opt.some(new AspectBindArrayConst<>(this));
         }
         if (key.equals(GenAspectArtifact.AspectId)) {
-            return Opt.some(AspectArtifactArrayConst.INSTANCE);
+            return Opt.some(new AspectArtifactArrayConst<>(this));
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);
@@ -83,28 +82,12 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
-            var array = MustCast.mustCast(TypeArrayConst.class, ofType.optUnwrap());
-            var host = self;
-            var erb = new Erb(loc);
-            var elementTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, array.elementType));
-            var elementArts = new TList<Artifact>();
-            for (int i = 0; i < Array.getLength(host); i++) {
-                var elementArt = erb.mustErMaybeUnreachable(
-                        Artifactable.exportData(xx, loc, array.elementType, Array.get(host, i)));
-                if (elementArt.optIsSome()) elementArts.add(elementArt.optUnwrap());
-            }
-            if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            var body = new ArtifactArrayValue(elementTypeArt.optUnwrap(), elementArts);
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactArrayValueCodec.toValue(body))));
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            return EResult.err(loc, "TypeArrayConst data is exported through its type");
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactArrayValue body;
             try {
@@ -116,16 +99,16 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
             var elementTypeOpt =
                     erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.elementType()));
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            var elementType = elementTypeOpt.optUnwrap().asType();
+            var elementType = MustCast.mustCast(Type.class, elementTypeOpt.optUnwrap());
             var hosts = new TList<Object>(body.elements().size());
             for (var elementArt : body.elements()) {
                 var element = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, elementArt));
-                if (element.optIsSome()) hosts.add(element.optUnwrap().host());
+                if (element.optIsSome()) hosts.add(ConstHost.hostOf(element.optUnwrap()));
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
             var array = Array.newInstance(ConstHost.hostClass(xx, JvmSort.descriptor(xx, elementType)), hosts.size());
             for (int i = 0; i < hosts.size(); i++) Array.set(array, i, hosts.get(i));
-            return Imported.okValue(new TypeArrayConst<>(elementType), array);
+            return EResult.ok(array);
         }
     };
 
@@ -136,14 +119,14 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
             Type elementType,
             Function<JsonValue, ArtifactBody> makeBody) {
         return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
-            var elementArtRes = Artifactable.exportArtifact(xx, loc, elementType);
+            var elementArtRes = Exporters.exportType(xx, loc, elementType);
             if (elementArtRes.hasErrors()) return elementArtRes.reerr();
             var body = new ArtifactArrayType(elementArtRes.requireValue("array type::export element"));
             return EResult.ok(makeBody.apply(ArtifactArrayTypeCodec.toValue(body)));
         });
     }
 
-    static EResult<Imported> importType(
+    static EResult<Object> importType(
             ExprContext xx,
             QExprId loc,
             Opt<ArtifactIdSource> id,
@@ -182,17 +165,13 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
     public static final ExporterRootDelegate TYPE_DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var array = MustCast.mustCast(TypeArrayConst.class, self);
             return exportType(xx, loc, array.artifactIdCell, array.elementType, makeBody);
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return importType(xx, loc, id, data, (elementType, idValue) -> {
                 var out = new TypeArrayConst<>(elementType);
@@ -232,7 +211,7 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.ARRAY_CONST_TYPE);
     }
 }

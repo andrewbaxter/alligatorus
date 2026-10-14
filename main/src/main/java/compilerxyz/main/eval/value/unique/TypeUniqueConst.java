@@ -5,7 +5,6 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -38,17 +37,13 @@ public record TypeUniqueConst() implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var u = MustCast.mustCast(Unique.class, self);
             return EResult.ok(new Artifact.Body(makeBody.apply(TypeUniqueDynamic.encodeUnique(u))));
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
                 case JsonValueObject obj -> {
@@ -56,8 +51,7 @@ public record TypeUniqueConst() implements Aspect, Type {
                     if (decoded.hasErrors()) {
                         yield EResult.err(loc, "TypeUniqueConst::exporterRootDelegateSelfFromArtifactData: malformed");
                     }
-                    yield Imported.okValue(
-                            new TypeUniqueConst(),
+                    yield EResult.ok(
                             decoded.requireValue("TypeUniqueConst::exporterRootDelegateSelfFromArtifactData decoded"));
                 }
                 case JsonValueNull ignored ->
@@ -140,7 +134,7 @@ public record TypeUniqueConst() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

@@ -7,7 +7,6 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
@@ -217,24 +216,20 @@ public final class TypeArrayDynamic<T extends Type> implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.ARRAY_DYNAMIC);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var array = MustCast.mustCast(TypeArrayDynamic.class, self);
             return TypeArrayConst.exportType(xx, loc, array.artifactIdCell, array.elementType, makeBody);
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return TypeArrayConst.importType(xx, loc, id, data, (elementType, idValue) -> {
                 var out = new TypeArrayDynamic<>(elementType);

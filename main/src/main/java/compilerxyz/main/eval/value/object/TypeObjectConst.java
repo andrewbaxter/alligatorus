@@ -6,7 +6,6 @@ import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -204,24 +203,20 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.TYPE_OBJECT_CONST);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var type = MustCast.mustCast(TypeObjectConst.class, self);
             return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueString(type.externalHostClass.getName()))));
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             String className;
             switch (data) {
@@ -248,7 +243,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
                         loc, "TypeObjectConst::import: no registered dynamic type for host class " + className);
             }
             var td = MustCast.mustCast(TypeObjectDynamic.class, found.optUnwrap());
-            return Imported.ok(td.pairedConst());
+            return EResult.ok(td.pairedConst());
         }
     };
 }

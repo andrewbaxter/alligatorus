@@ -1,16 +1,13 @@
 package compilerxyz.main.eval.value.map;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.eval.Type;
 import compilerxyz.main.gen.AspectArtifact;
 
-public final class AspectArtifactMapConst implements AspectArtifact {
-    public static final AspectArtifactMapConst INSTANCE = new AspectArtifactMapConst();
-
-    private AspectArtifactMapConst() {}
-
+public record AspectArtifactMapConst<K extends Type, V extends Type>(TypeMapConst<K, V> type)
+        implements AspectArtifact {
     @Override
     public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.MAP_CONST;
+        return new ArtifactExporterMapConst<>(type);
     }
 }

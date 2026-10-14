@@ -1,16 +1,12 @@
 package compilerxyz.main.eval.value.array;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.eval.Type;
 import compilerxyz.main.gen.AspectArtifact;
 
-public final class AspectArtifactArrayConst implements AspectArtifact {
-    public static final AspectArtifactArrayConst INSTANCE = new AspectArtifactArrayConst();
-
-    private AspectArtifactArrayConst() {}
-
+public record AspectArtifactArrayConst<T extends Type>(TypeArrayConst<T> type) implements AspectArtifact {
     @Override
     public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.ARRAY_CONST;
+        return new ArtifactExporterArrayConst<>(type);
     }
 }

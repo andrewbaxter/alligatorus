@@ -5,10 +5,9 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
@@ -18,6 +17,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.eval.value.ConstHost;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -70,7 +70,7 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
             return Opt.some(new AspectBindOptionConst<>(this));
         }
         if (key.equals(GenAspectArtifact.AspectId)) {
-            return Opt.some(AspectArtifactOptionConst.INSTANCE);
+            return Opt.some(new AspectArtifactOptionConst<>(this));
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);
@@ -78,37 +78,15 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
         return Opt.none();
     }
 
-    static Opt<Object> payloadOf(Object host) {
-        if (host instanceof OptionStore store) return store.optionStoreBoxed();
-        var opt = MustCast.mustCast(Opt.class, host);
-        return opt.optIsSome() ? Opt.some(opt.optUnwrap()) : Opt.none();
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
-            var option = MustCast.mustCast(TypeOptionConst.class, ofType.optUnwrap());
-            var erb = new Erb(loc);
-            var elementTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, option.elementType));
-            Opt<Artifact> payloadArt = Opt.none();
-            var payload = payloadOf(self);
-            if (payload.optIsSome()) {
-                var art = erb.mustErMaybeUnreachable(
-                        Artifactable.exportData(xx, loc, option.elementType, payload.optUnwrap()));
-                if (art.optIsSome()) payloadArt = Opt.some(art.optUnwrap());
-            }
-            if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            var body = new ArtifactOptionValue(elementTypeArt.optUnwrap(), payloadArt);
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactOptionValueCodec.toValue(body))));
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            return EResult.err(loc, "TypeOptionConst data is exported through its type");
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactOptionValue body;
             try {
@@ -120,13 +98,12 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
             var elementTypeOpt =
                     erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.elementType()));
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            var elementType = elementTypeOpt.optUnwrap().asType();
+            var elementType = MustCast.mustCast(Type.class, elementTypeOpt.optUnwrap());
             Opt<Object> payload = Opt.none();
             if (body.payload().optIsSome()) {
                 var imported = erb.mustErMaybeUnreachable(
                         ArtifactSupport.importArtifact(xx, loc, body.payload().optUnwrap()));
-                if (imported.optIsSome())
-                    payload = Opt.some(imported.optUnwrap().host());
+                if (imported.optIsSome()) payload = Opt.some(ConstHost.hostOf(imported.optUnwrap()));
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
             Object host =
@@ -134,21 +111,17 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
                         case TypeOptionSpecializedDynamic<?> spec -> spec.storeFromBoxed(payload);
                         case TypeOptionDynamic<?> boxed -> payload;
                     };
-            return Imported.okValue(new TypeOptionConst<>(elementType), host);
+            return EResult.ok(host);
         }
     };
 
     public static final ExporterRootDelegate TYPE_DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var option = MustCast.mustCast(TypeOptionConst.class, self);
             return ArtifactSupport.implExportIndependentArtifact(xx, option.artifactIdCell, () -> {
-                var elementArtRes = Artifactable.exportArtifact(xx, loc, option.elementType);
+                var elementArtRes = Exporters.exportType(xx, loc, option.elementType);
                 if (elementArtRes.hasErrors()) return elementArtRes.reerr();
                 var body = new ArtifactOptionType(elementArtRes.requireValue("TypeOptionConst::export element"));
                 return EResult.ok(makeBody.apply(ArtifactOptionTypeCodec.toValue(body)));
@@ -156,7 +129,7 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeOptionConst requires an artifact id to deserialize");
@@ -228,7 +201,7 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.OPTION_CONST_TYPE);
     }
 }

@@ -251,9 +251,9 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return new AspectDynamicConstMapDynamic<>(this)
                 .aspectDynamicConstConstForm()
-                .artifactableExporter(xx, loc);
+                .typeExporter(xx, loc);
     }
 }

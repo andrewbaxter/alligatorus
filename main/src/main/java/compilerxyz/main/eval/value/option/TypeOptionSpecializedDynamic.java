@@ -194,7 +194,7 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.OPTION_DYNAMIC);
     }
 }

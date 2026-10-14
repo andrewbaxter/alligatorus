@@ -163,9 +163,9 @@ public final class TypeListSpecializedDynamic<T extends Type> implements Aspect,
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return new AspectDynamicConstListSpecializedDynamic<>(this)
                 .aspectDynamicConstConstForm()
-                .artifactableExporter(xx, loc);
+                .typeExporter(xx, loc);
     }
 }

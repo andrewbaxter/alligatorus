@@ -6,7 +6,6 @@ import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.EResult;
@@ -89,18 +88,14 @@ public record TypeUniqueDynamic() implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var u = MustCast.mustCast(Unique.class, self);
             JsonValue data = encodeUnique(u);
             return EResult.ok(new Artifact.Body(makeBody.apply(data)));
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
                 case JsonValueObject obj -> {
@@ -109,10 +104,8 @@ public record TypeUniqueDynamic() implements Aspect, Type {
                         yield EResult.err(
                                 loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: malformed");
                     }
-                    yield Imported.okValue(
-                            new TypeUniqueDynamic(),
-                            decoded.requireValue(
-                                    "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData decoded"));
+                    yield EResult.ok(decoded.requireValue(
+                            "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData decoded"));
                 }
                 case JsonValueNull ignored ->
                     EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
@@ -341,7 +334,7 @@ public record TypeUniqueDynamic() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.UNIQUE_TYPE);
     }
 }

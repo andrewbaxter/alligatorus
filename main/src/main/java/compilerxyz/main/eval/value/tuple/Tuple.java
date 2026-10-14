@@ -6,9 +6,8 @@ import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactJson;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -351,7 +350,7 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
             return Opt.some(new AspectBindTuple(this));
         }
         if (key.equals(GenAspectArtifact.AspectId)) {
-            return Opt.some(AspectArtifactTuple.INSTANCE);
+            return Opt.some(new AspectArtifactTuple(this));
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(this);
@@ -627,21 +626,12 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
-            Tuple tuple;
-            if (self instanceof Tuple t) {
-                tuple = t;
-            } else {
-                var liftRes = GenAspectLift.get(xx, loc, ofType.optUnwrap());
-                if (liftRes.hasErrors()) return liftRes.reerr();
-                var liftedRes =
-                        liftRes.requireValue("Tuple::export lift aspect").aspectLiftLift(xx, loc, self);
-                if (liftedRes.hasErrors()) return liftedRes.reerr();
-                tuple = MustCast.mustCast(Tuple.class, liftedRes.requireValue("Tuple::export lifted"));
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            if (!(self instanceof Tuple tuple)) {
+                return EResult.err(
+                        loc,
+                        "Tuple::exporterRootDelegateSelfExport: expected Tuple, got "
+                                + self.getClass().getName());
             }
             var cell = tuple.artifactIdCell();
             return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
@@ -662,7 +652,7 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
                             elemType = cv.value().optUnwrap().valueType();
                         }
                     }
-                    var artOpt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, elemType));
+                    var artOpt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, elemType));
                     if (artOpt.optIsSome()) elementArtifacts.add(artOpt.optUnwrap());
                 }
                 if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
@@ -673,7 +663,7 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "Tuple requires an artifact id to deserialize");
@@ -817,7 +807,12 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return Artifactable.exporterOfType(xx, loc, valueType());
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
+        return Exporters.exporterOfType(xx, loc, valueType());
+    }
+
+    @Override
+    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
+        return typeExporter(xx, loc);
     }
 }

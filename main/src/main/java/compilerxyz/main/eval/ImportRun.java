@@ -7,10 +7,12 @@ import compilerxyz.main.eval.value.source.SourceSpecValue;
 import compilerxyz.main.eval.value.source.TypeBundle;
 import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
+import compilerxyz.main.gen.Value;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.SourceModuleToModule;
 import compilerxyz.main.langhelp.Sources;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.io.IOException;
@@ -165,7 +167,7 @@ public final class ImportRun {
                 }
                 var exporterRes = erb.mustEr(ArtifactSupport.importArtifact(xx, loc, artifact));
                 if (exporterRes.optIsNone()) yield EResult.errs(erb.errors());
-                var value = exporterRes.optUnwrap().asValue();
+                var value = MustCast.mustCast(Value.class, exporterRes.optUnwrap());
                 var cv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
                 var valueType = value.valueType();
                 var pdRes = erb.mustEr(GenAspectPostDeserialize.get(xx, loc, valueType));

@@ -5,10 +5,9 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
@@ -18,6 +17,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.eval.value.ConstHost;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -78,7 +78,7 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
             return Opt.some(new AspectBindListConst<>(this));
         }
         if (key.equals(GenAspectArtifact.AspectId)) {
-            return Opt.some(AspectArtifactListConst.INSTANCE);
+            return Opt.some(new AspectArtifactListConst<>(this));
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(this);
@@ -103,26 +103,12 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
-            var list = MustCast.mustCast(TypeListConst.class, ofType.optUnwrap());
-            var erb = new Erb(loc);
-            var elementTypeArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, list.elementType()));
-            var elementArts = new TList<Artifact>();
-            for (var host : hostElements(self)) {
-                var elementArt = erb.mustErMaybeUnreachable(Artifactable.exportData(xx, loc, list.elementType(), host));
-                if (elementArt.optIsSome()) elementArts.add(elementArt.optUnwrap());
-            }
-            if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            var body = new ArtifactListValue(elementTypeArt.optUnwrap(), elementArts);
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactListValueCodec.toValue(body))));
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            return EResult.err(loc, "TypeListConst data is exported through its type");
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactListValue body;
             try {
@@ -134,11 +120,11 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
             var elementTypeOpt =
                     erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.elementType()));
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            var elementType = elementTypeOpt.optUnwrap().asType();
+            var elementType = MustCast.mustCast(Type.class, elementTypeOpt.optUnwrap());
             var hosts = new TList<Object>(body.elements().size());
             for (var elementArt : body.elements()) {
                 var element = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, elementArt));
-                if (element.optIsSome()) hosts.add(element.optUnwrap().host());
+                if (element.optIsSome()) hosts.add(ConstHost.hostOf(element.optUnwrap()));
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
             Object host =
@@ -150,24 +136,20 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
                         }
                         case TypeListBoxedDynamic<?> boxed -> hosts;
                     };
-            return Imported.okValue(new TypeListConst<>(elementType), host);
+            return EResult.ok(host);
         }
     };
 
     public static final ExporterRootDelegate TYPE_DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var selfDc = GenAspectDynamicConst.getMaybe(xx, MustCast.mustCast(Type.class, self));
             if (selfDc.optIsSome()) self = selfDc.optUnwrap().aspectDynamicConstConstForm();
             var list = MustCast.mustCast(TypeListConst.class, self);
             var cell = list.artifactIdCell;
             return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
-                var elementArtRes = Artifactable.exportArtifact(xx, loc, list.elementType());
+                var elementArtRes = Exporters.exportType(xx, loc, list.elementType());
                 if (elementArtRes.hasErrors()) return elementArtRes.reerr();
                 var body = new ArtifactListType(elementArtRes.requireValue("TypeListConst::export element"));
                 return EResult.ok(makeBody.apply(ArtifactListTypeCodec.toValue(body)));
@@ -175,7 +157,7 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeListConst requires an artifact id to deserialize");
@@ -248,7 +230,7 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.LIST_CONST_TYPE);
     }
 }

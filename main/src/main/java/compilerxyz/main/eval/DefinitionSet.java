@@ -7,10 +7,10 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.ExportableObject;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.definition_set.ArtifactDataDefSet;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
@@ -55,7 +55,7 @@ import java.util.function.Function;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
-public final class DefinitionSet implements Artifactable {
+public final class DefinitionSet implements ExportableObject {
     public static Type dynamicType() {
         return GenType.dynamicType();
     }
@@ -671,26 +671,18 @@ public final class DefinitionSet implements Artifactable {
                     }
                 }
                 {
-                    var implementsValue = objectImplements(obj, Value.class);
-                    var implementsType = objectImplements(obj, Type.class);
-                    if (implementsValue || implementsType) {
-                        var aeDescriptor = JavaMethodDescriptor.fromParts(
-                                JavaDataDescriptor.fromClass(EResult.class),
-                                JavaDataDescriptor.fromClass(ExprContext.class),
-                                JavaDataDescriptor.fromClass(QExprId.class));
-                        var aeMv = soeCw.visitMethod(
-                                Opcodes.ACC_PUBLIC, "artifactableExporter", aeDescriptor.value(), null, null);
+                    var aeDescriptor = JavaMethodDescriptor.fromParts(
+                            JavaDataDescriptor.fromClass(EResult.class),
+                            JavaDataDescriptor.fromClass(ExprContext.class),
+                            JavaDataDescriptor.fromClass(QExprId.class));
+                    var aeNames = new TList<String>();
+                    if (objectImplements(obj, Value.class)) aeNames.add("valueExporter");
+                    if (objectImplements(obj, Type.class)) aeNames.add("typeExporter");
+                    for (var aeName : aeNames) {
+                        var aeMv = soeCw.visitMethod(Opcodes.ACC_PUBLIC, aeName, aeDescriptor.value(), null, null);
                         var aeSeq = new JavaBytecodeSequence();
                         var ab = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
-                        if (implementsValue) {
-                            var aeSelf = ab.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName));
-                            var aeXx = ab.loadIndexed(1, JavaDataDescriptor.fromClass(ExprContext.class));
-                            var aeLoc = ab.loadIndexed(2, JavaDataDescriptor.fromClass(QExprId.class));
-                            ab.ret(ab.invokeStatic(
-                                    GenCodegenDescriptors.DYN_RUNTIME_SOURCE_OBJECT_EXPORTER, aeSelf, aeXx, aeLoc));
-                        } else {
-                            ab.ret(ab.invokeStatic(GenCodegenDescriptors.DYN_RUNTIME_SOURCE_OBJECT_TYPE_EXPORTER));
-                        }
+                        ab.ret(ab.invokeStatic(GenCodegenDescriptors.DYN_RUNTIME_SOURCE_OBJECT_TYPE_EXPORTER));
                         aeSeq.add(ab.code());
                         JavaBytecodeUtils.renderMethod(aeSeq, aeMv, TList.of(), soeInternalName, soeLocTable);
                     }
@@ -885,46 +877,41 @@ public final class DefinitionSet implements Artifactable {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.DEFINITION_SET);
+    public ArtifactExporter exportableObjectExporter() {
+        return ExporterRoot.DEFINITION_SET;
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var set = mustCast(DefinitionSet.class, self);
             return ArtifactSupport.implExportIndependentArtifact(xx, set.artifactIdCell, () -> {
                 var erb = new Erb(loc);
                 var objects = new TList<Artifact>(set.objects.size());
                 for (var dt : set.objects) {
-                    var art = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, dt));
+                    var art = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, dt));
                     if (art.optIsSome()) objects.add(art.optUnwrap());
                 }
                 var functions = new TList<Artifact>(set.functions.size());
                 for (var f : set.functions) {
-                    var art = erb.mustErMaybeUnreachable(
-                            Artifactable.exportArtifact(xx, loc, new TypeSourceFunctionConst(f)));
+                    var art = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, new TypeSourceFunctionConst(f)));
                     if (art.optIsSome()) functions.add(art.optUnwrap());
                 }
                 var interfaces = new TList<Artifact>(set.interfaces.size());
                 for (var i : set.interfaces) {
                     var art = erb.mustErMaybeUnreachable(
-                            Artifactable.exportArtifact(xx, loc, new TypeSourceInterfaceDynamic(i)));
+                            Exporters.exportType(xx, loc, new TypeSourceInterfaceDynamic(i)));
                     if (art.optIsSome()) interfaces.add(art.optUnwrap());
                 }
                 var unions = new TList<Artifact>(set.unions.size());
                 for (var u : set.unions) {
-                    var art = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, u));
+                    var art = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, u));
                     if (art.optIsSome()) unions.add(art.optUnwrap());
                 }
                 var dependencies = new TList<Artifact>(set.dependencies.size());
                 for (var entry : set.dependencies.entrySet()) {
-                    var art = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, entry.getValue()));
+                    var art = erb.mustErMaybeUnreachable(Exporters.exportObject(xx, loc, entry.getValue()));
                     if (art.optIsSome()) dependencies.add(art.optUnwrap());
                 }
                 if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
@@ -940,7 +927,7 @@ public final class DefinitionSet implements Artifactable {
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "DefinitionSet requires an artifact id to deserialize");
@@ -973,16 +960,14 @@ public final class DefinitionSet implements Artifactable {
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                             for (var dtArt : body.objects()) {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, dtArt);
-                                var v = any.requireValue("DefinitionSet::finalizer object artifact")
-                                        .data();
+                                var v = any.requireValue("DefinitionSet::finalizer object artifact");
                                 TypeSourceObjectDynamic dtData;
                                 dtData = mustCast(TypeSourceObjectDynamic.class, v);
                                 set.objects.add(dtData);
                             }
                             for (var fArt : body.functions()) {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, fArt);
-                                var v = any.requireValue("DefinitionSet::finalizer function artifact")
-                                        .data();
+                                var v = any.requireValue("DefinitionSet::finalizer function artifact");
                                 SourceFunctionData fData;
                                 fData = mustCast(TypeSourceFunctionConst.class, v)
                                         .data();
@@ -990,23 +975,20 @@ public final class DefinitionSet implements Artifactable {
                             }
                             for (var iArt : body.interfaces()) {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, iArt);
-                                var v = any.requireValue("DefinitionSet::finalizer interface artifact")
-                                        .data();
+                                var v = any.requireValue("DefinitionSet::finalizer interface artifact");
                                 set.interfaces.add(mustCast(TypeSourceInterfaceDynamic.class, v)
                                         .cell());
                             }
                             for (var uArt : body.unions()) {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, uArt);
-                                var v = any.requireValue("DefinitionSet::finalizer union artifact")
-                                        .data();
+                                var v = any.requireValue("DefinitionSet::finalizer union artifact");
                                 TypeSourceUnionDynamic uData;
                                 uData = mustCast(TypeSourceUnionDynamic.class, v);
                                 set.unions.add(uData);
                             }
                             for (var dep : body.dependencies()) {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, dep);
-                                var v = any.requireValue("DefinitionSet::finalizer dependency artifact")
-                                        .data();
+                                var v = any.requireValue("DefinitionSet::finalizer dependency artifact");
                                 var depSet = mustCast(DefinitionSet.class, v);
                                 set.dependencies.putIfAbsent(depSet.defSetId, depSet);
                             }

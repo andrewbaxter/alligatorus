@@ -67,7 +67,7 @@ public record TypeSourceSha256() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

@@ -289,6 +289,7 @@ public final class GenMain {
                                     var methods = new TList<Method>();
                                     for (var m : ifaceDecl.getMethods()) {
                                         if (!m.isAbstract()) continue;
+                                        if (m.getAnnotationByName("HostOnly").isPresent()) continue;
                                         String javaMethodName = m.getNameAsString();
                                         String interfaceSimpleName = simpleName;
                                         String deriveSourceName;

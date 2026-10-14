@@ -6,7 +6,6 @@ import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -160,18 +159,14 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.OBJECT_DYNAMIC);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof TypeObjectDynamic obj)) {
                 return EResult.err(
                         loc,
@@ -183,7 +178,7 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             JsonValueString s;
             switch (data) {
@@ -209,7 +204,7 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
                 return EResult.err(
                         loc, "TypeObjectDynamic::import: no registered dynamic type for host class " + s.value());
             }
-            return Imported.ok(found.optUnwrap());
+            return EResult.ok(found.optUnwrap());
         }
     };
 

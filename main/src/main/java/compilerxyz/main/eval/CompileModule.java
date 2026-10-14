@@ -2,7 +2,7 @@ package compilerxyz.main.eval;
 
 import static compilerxyz.prelude.util.MustCast.mustCast;
 
-import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeDynamicReg;
 import compilerxyz.main.eval.dynamic.DynUtil;
@@ -203,7 +203,7 @@ public final class CompileModule {
                         }
                         var exportErrors = new TList<ExprErr>();
                         var exportArt =
-                                Artifactable.exportValue(xx, rootLoc, ok.value().optUnwrap());
+                                Exporters.exportValue(xx, rootLoc, ok.value().optUnwrap());
                         if (exportArt.hasErrors()) {
                             exportArt.drainInto(exportErrors);
                             return new CompileModuleResult(

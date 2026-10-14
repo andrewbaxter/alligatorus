@@ -94,7 +94,7 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic) implements 
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return dynamic.artifactableExporter(xx, loc);
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
+        return dynamic.typeExporter(xx, loc);
     }
 }

@@ -4,10 +4,9 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.ExportableObject;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
 import compilerxyz.main.gen.codec.ArtifactExprErrCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
@@ -20,27 +19,23 @@ import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6027L)
 @BuiltinPath("types.expr_err")
-public record ExprErr(QExprId loc, TList<ExprSubErr> errors) implements Artifactable {
+public record ExprErr(QExprId loc, TList<ExprSubErr> errors) implements ExportableObject {
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.EXPR_ERR);
+    public ArtifactExporter exportableObjectExporter() {
+        return ExporterRoot.EXPR_ERR;
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var err = MustCast.mustCast(ExprErr.class, self);
             return EResult.ok(
                     new Artifact.Body(makeBody.apply(ArtifactExprErrCodec.toValue(ArtifactExprErr.fromExprErr(err)))));
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactExprErr body;
             try {
@@ -48,7 +43,7 @@ public record ExprErr(QExprId loc, TList<ExprSubErr> errors) implements Artifact
             } catch (RuntimeException e) {
                 return EResult.err(loc, "ExprErr data: failed to parse ArtifactExprErr: " + e.getMessage());
             }
-            return Imported.ok(body.toExprErr());
+            return EResult.ok(body.toExprErr());
         }
     };
 

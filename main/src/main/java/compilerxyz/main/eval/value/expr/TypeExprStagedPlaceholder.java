@@ -73,7 +73,12 @@ public record TypeExprStagedPlaceholder() implements Aspect, Type, Value {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.err(loc, typeDesc() + " is not exportable");
+    }
+
+    @Override
+    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
+        return typeExporter(xx, loc);
     }
 }

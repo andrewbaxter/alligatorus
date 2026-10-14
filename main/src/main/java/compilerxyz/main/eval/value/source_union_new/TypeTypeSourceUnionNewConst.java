@@ -5,9 +5,8 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -70,11 +69,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type, int varia
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             if (self instanceof TypeSourceUnionNewDynamic dyn) {
                 self = new TypeTypeSourceUnionNewConst(dyn.type(), dyn.variantIndex());
             }
@@ -93,7 +88,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type, int varia
             }
             var variant = tu.variants.get(variantIndex);
             return ArtifactSupport.implExportIndependentArtifact(xx, variant.newArtifactIdCell, () -> {
-                var tuArtRes = Artifactable.exportArtifact(xx, loc, tu);
+                var tuArtRes = Exporters.exportType(xx, loc, tu);
                 if (tuArtRes.hasErrors()) return tuArtRes.reerr();
                 var body = new ArtifactDataSourceUnionNew(
                         tuArtRes.requireValue("TypeTypeSourceUnionNewConst::export union"), variantIndex);
@@ -102,7 +97,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type, int varia
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeTypeSourceUnionNewConst requires an artifact id to deserialize");
@@ -130,9 +125,8 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type, int varia
                         deps.add(tuArt);
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                             var parentAny = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, tuArt);
-                            var parentVal = parentAny
-                                    .requireValue("TypeTypeSourceUnionNewConst::finalizer parent union")
-                                    .data();
+                            var parentVal =
+                                    parentAny.requireValue("TypeTypeSourceUnionNewConst::finalizer parent union");
                             var tuData = MustCast.mustCast(TypeSourceUnionDynamic.class, parentVal);
                             if (variantIndex >= 0 && variantIndex < tuData.variants.size()) {
                                 tuData.variants
@@ -182,7 +176,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type, int varia
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(AspectArtifactTypeSourceUnionNewConst.INSTANCE.aspectArtifactExporter());
     }
 }

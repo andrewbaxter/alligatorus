@@ -6,10 +6,9 @@ import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.ArtifactSupport.ArtifactIdHolder;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
@@ -133,7 +132,7 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.SOURCE_UNION_CONST);
     }
 
@@ -206,11 +205,7 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var tu = MustCast.mustCast(TypeSourceUnionDynamic.class, self);
             var set = tu.set;
             if (set == null) {
@@ -221,10 +216,10 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
             }
             return ArtifactSupport.implExportIndependentArtifact(xx, tu.artifactIdCell, () -> {
                 var erb = new Erb(loc);
-                var defSetArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, set));
+                var defSetArt = erb.mustErMaybeUnreachable(Exporters.exportObject(xx, loc, set));
                 var variantsOut = new TList<ArtifactDataSourceUnionVariant>();
                 for (var v : tu.variants) {
-                    var tArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, v.type));
+                    var tArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, v.type));
                     if (tArt.optIsSome()) {
                         variantsOut.add(new ArtifactDataSourceUnionVariant(v.tag, tArt.optUnwrap()));
                     }
@@ -243,7 +238,7 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeTypeSourceUnionConst requires an artifact id to deserialize");
@@ -278,9 +273,8 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
                         for (var v : body.variants()) deps.add(v.type());
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                             var defSetAny = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, body.defSet());
-                            var defSetVal = defSetAny
-                                    .requireValue("TypeTypeSourceUnionConst::finalizer defSet artifact")
-                                    .data();
+                            var defSetVal =
+                                    defSetAny.requireValue("TypeTypeSourceUnionConst::finalizer defSet artifact");
                             if (!(defSetVal instanceof DefinitionSet set)) {
                                 throw new IllegalStateException(
                                         "TypeTypeSourceUnionConst finalizer: defSet artifact resolved to "

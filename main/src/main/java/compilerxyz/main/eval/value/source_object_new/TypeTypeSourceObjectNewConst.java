@@ -5,9 +5,8 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -74,11 +73,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             if (self instanceof TypeSourceObjectNewDynamic dyn) {
                 self = new TypeTypeSourceObjectNewConst(dyn.type());
             }
@@ -90,7 +85,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
             }
             var dt = oc.type;
             return ArtifactSupport.implExportIndependentArtifact(xx, dt.newArtifactIdCell, () -> {
-                var objectArtRes = Artifactable.exportArtifact(xx, loc, dt);
+                var objectArtRes = Exporters.exportType(xx, loc, dt);
                 if (objectArtRes.hasErrors()) return objectArtRes.reerr();
                 var body = new ArtifactDataSourceObjectNew(
                         objectArtRes.requireValue("TypeTypeSourceObjectNewConst::export object"));
@@ -99,7 +94,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeTypeSourceObjectNewConst requires an artifact id to deserialize");
@@ -126,9 +121,8 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
                         deps.add(objectArt);
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                             var parentAny = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, objectArt);
-                            var parentVal = parentAny
-                                    .requireValue("TypeTypeSourceObjectNewConst::finalizer parent object")
-                                    .data();
+                            var parentVal =
+                                    parentAny.requireValue("TypeTypeSourceObjectNewConst::finalizer parent object");
                             var dtData = MustCast.mustCast(TypeSourceObjectDynamic.class, parentVal);
                             dtData.newArtifactIdCell.set(idValue);
                             return new TypeTypeSourceObjectNewConst(dtData);
@@ -171,7 +165,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(AspectArtifactTypeSourceObjectNewConst.INSTANCE.aspectArtifactExporter());
     }
 }

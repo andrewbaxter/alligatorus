@@ -89,7 +89,7 @@ import compilerxyz.prelude.util.TMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public enum ExporterRoot implements ArtifactExporter, Artifactable {
+public enum ExporterRoot implements ArtifactExporter {
     BOOL_CONST("bool_const") {
         @Override
         ExporterRootDelegate delegate() {
@@ -333,7 +333,7 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
     SOURCE_OBJECT_TYPE_INSTANCE("source_object_type_instance") {
         @Override
         ExporterRootDelegate delegate() {
-            return ValueSourceObjectConst.TYPE_INSTANCE_DELEGATE;
+            return ValueSourceObjectConst.DELEGATE;
         }
     },
     SOURCE_OBJECT_NEW_CONST("source_object_new_const") {
@@ -358,12 +358,6 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return ValueObjectConst.DELEGATE;
-        }
-    },
-    OBJECT_CONST_PAYLOAD("object_const_payload") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return ValueObjectConst.PAYLOAD_DELEGATE;
         }
     },
     TYPE_OBJECT_CONST("type_object_const") {
@@ -649,11 +643,6 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         return tag;
     }
 
-    @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ROOT);
-    }
-
     private static final IMap<String, ExporterRoot> BY_TAG;
 
     static {
@@ -671,24 +660,24 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         return BY_TAG.getOpt(tag);
     }
 
-    @Override
-    public EResult<Artifact> artifactExporterExport(ExprContext xx, QExprId loc, Opt<Type> ofType, Object self) {
-        var me = this;
-        Function<JsonValue, ArtifactBody> makeBody = (data) -> {
-            ArtifactBodyExporter exporter;
-            if (me == ROOT) {
-                exporter = new ArtifactBodyExporter.Root();
-            } else {
-                exporter = new ArtifactBodyExporter.Body(
-                        new ArtifactBody(new JsonValueString(me.tag), new ArtifactBodyExporter.Root()));
-            }
-            return new ArtifactBody(data, exporter);
-        };
-        return delegate().exporterRootDelegateSelfExport(xx, loc, ofType, self, makeBody);
+    public ArtifactBody body(JsonValue data) {
+        ArtifactBodyExporter exporter;
+        if (this == ROOT) {
+            exporter = new ArtifactBodyExporter.Root();
+        } else {
+            exporter = new ArtifactBodyExporter.Body(
+                    new ArtifactBody(new JsonValueString(tag), new ArtifactBodyExporter.Root()));
+        }
+        return new ArtifactBody(data, exporter);
     }
 
     @Override
-    public EResult<Imported> artifactExporterImportFromData(
+    public EResult<Artifact> artifactExporterExport(ExprContext xx, QExprId loc, Object self) {
+        return delegate().exporterRootDelegateSelfExport(xx, loc, self, this::body);
+    }
+
+    @Override
+    public EResult<Object> artifactExporterImportFromData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
         return delegate().exporterRootDelegateSelfFromArtifactData(xx, loc, id, data);
     }
@@ -697,19 +686,15 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         return new ExporterRootDelegate() {
             @Override
             public EResult<Artifact> exporterRootDelegateSelfExport(
-                    ExprContext xx,
-                    QExprId loc,
-                    Opt<Type> ofType,
-                    Object self,
-                    Function<JsonValue, ArtifactBody> makeBody) {
+                    ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
                 return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueNull())));
             }
 
             @Override
-            public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+            public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                     ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
                 return switch (data) {
-                    case JsonValueNull ignored -> Imported.ok(make.get());
+                    case JsonValueNull ignored -> EResult.ok(make.get());
                     case JsonValueBoolean ignored -> EResult.err(loc, "nullary type: expected null, got " + data);
                     case JsonValueNumber ignored -> EResult.err(loc, "nullary type: expected null, got " + data);
                     case JsonValueString ignored -> EResult.err(loc, "nullary type: expected null, got " + data);
@@ -723,17 +708,13 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
     private static final ExporterRootDelegate ROOT_DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var er = mustCast(ExporterRoot.class, self);
             return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueString(er.tag))));
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             JsonValueString s;
             switch (data) {
@@ -755,7 +736,7 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
                 }
             }
             return switch (fromTag(s.value())) {
-                case Opt.Some<ExporterRoot> some -> Imported.ok(some.value());
+                case Opt.Some<ExporterRoot> some -> EResult.ok(some.value());
                 case Opt.None<ExporterRoot> n ->
                     EResult.err(loc, "ExporterRoot::ROOT::import: unknown tag " + s.value());
             };

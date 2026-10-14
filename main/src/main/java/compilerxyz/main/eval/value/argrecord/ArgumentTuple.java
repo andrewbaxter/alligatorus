@@ -1,7 +1,7 @@
 package compilerxyz.main.eval.value.argrecord;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -79,7 +79,12 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes) i
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return Artifactable.exporterOfType(xx, loc, valueType());
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
+        return Exporters.exporterOfType(xx, loc, valueType());
+    }
+
+    @Override
+    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
+        return typeExporter(xx, loc);
     }
 }

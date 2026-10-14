@@ -5,10 +5,9 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Imported;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -146,18 +145,14 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+    public EResult<ArtifactExporter> typeExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.OPTION_DYNAMIC);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx,
-                QExprId loc,
-                Opt<Type> ofType,
-                Object self,
-                Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof OptionDynamic option)) {
                 return EResult.err(
                         loc,
@@ -166,7 +161,7 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
             }
             var cell = option.optionDynamicArtifactIdCell();
             return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
-                var elementArtRes = Artifactable.exportArtifact(xx, loc, option.optionDynamicElementType());
+                var elementArtRes = Exporters.exportType(xx, loc, option.optionDynamicElementType());
                 if (elementArtRes.hasErrors()) return elementArtRes.reerr();
                 var body = new ArtifactOptionType(elementArtRes.requireValue("TypeOptionDynamic::export element"));
                 return EResult.ok(makeBody.apply(ArtifactOptionTypeCodec.toValue(body)));
@@ -174,7 +169,7 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
         }
 
         @Override
-        public EResult<Imported> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeOptionDynamic requires an artifact id to deserialize");
