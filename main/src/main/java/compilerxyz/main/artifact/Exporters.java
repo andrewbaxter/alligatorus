@@ -5,7 +5,6 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.gen.GenAspectArtifact;
-import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.Value;
 
 public final class Exporters {
@@ -40,12 +39,7 @@ public final class Exporters {
     }
 
     public static EResult<ArtifactExporter> exporterOfType(ExprContext xx, QExprId loc, Type type) {
-        var constForm = GenAspectDynamicConst.getMaybe(xx, type);
-        var dataType =
-                constForm.optIsSome() && GenAspectArtifact.getMaybe(xx, type).optIsNone()
-                        ? constForm.optUnwrap().aspectDynamicConstConstForm()
-                        : type;
-        var asp = GenAspectArtifact.get(xx, loc, dataType);
+        var asp = GenAspectArtifact.get(xx, loc, type);
         if (asp.hasErrors()) return asp.reerr();
         return EResult.ok(asp.requireValue("Exporters::exporterOfType aspect").aspectArtifactExporter());
     }

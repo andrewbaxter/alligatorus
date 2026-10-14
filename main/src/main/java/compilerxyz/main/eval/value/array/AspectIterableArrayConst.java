@@ -9,10 +9,11 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.gen.AspectIterable;
 import compilerxyz.main.gen.Binding;
 
-public record AspectIterableArrayConst<T extends Type>(TypeArrayConst<T> type) implements AspectIterable {
+public record AspectIterableArrayConst<T extends Type>(TypeArrayConst<T> type, TypeArrayDynamic<Type> dynamic)
+        implements AspectIterable {
 
-    private AspectIterableArrayDynamic<T> dynamicIterable() {
-        return new AspectIterableArrayDynamic<>(new TypeArrayDynamic<>(type.elementType));
+    private AspectIterableArrayDynamic<Type> dynamicIterable() {
+        return new AspectIterableArrayDynamic<>(dynamic);
     }
 
     @Override
@@ -22,7 +23,7 @@ public record AspectIterableArrayConst<T extends Type>(TypeArrayConst<T> type) i
 
     @Override
     public Type aspectIterableElementType() {
-        return type.elementType;
+        return dynamic.elementType;
     }
 
     @Override

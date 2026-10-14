@@ -4,6 +4,7 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.Value;
@@ -18,6 +19,7 @@ public record AspectLiftArrayDynamic<T extends Type>(TypeArrayDynamic<T> type) i
                     "TypeArrayDynamic::lift: expected an array, got "
                             + externalHostValue.getClass().getName());
         }
-        return EResult.ok(new ValueObjectConst(new TypeArrayConst<>(type.elementType), externalHostValue));
+        return EResult.ok(new ValueObjectConst(
+                new TypeArrayConst<>(TypeForms.constForm(xx, type.elementType)), externalHostValue));
     }
 }

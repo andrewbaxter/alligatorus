@@ -19,8 +19,10 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.ConstHost;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
+import compilerxyz.main.gen.GenAspectConstDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectIterable;
@@ -55,6 +57,9 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectConstDynamic.AspectId)) {
+            return Opt.some(new AspectConstDynamicArrayConst<>(this));
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_ARRAY_CONST_IDENTITY)) {
             return Opt.some(this);
         }
@@ -62,7 +67,8 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
             return Opt.some(new AspectFieldArrayConst<>(this));
         }
         if (key.equals(GenAspectIterable.AspectId)) {
-            return Opt.some(new AspectIterableArrayConst<>(this));
+            return Opt.some(new AspectIterableArrayConst<>(
+                    this, new TypeArrayDynamic<>(TypeForms.dynamicForm(xx, elementType))));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicArrayConst<>(this));
@@ -106,7 +112,9 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
                 if (element.optIsSome()) hosts.add(element.optUnwrap());
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            var array = Array.newInstance(ConstHost.hostClass(xx, JvmSort.descriptor(xx, elementType)), hosts.size());
+            var array = Array.newInstance(
+                    ConstHost.hostClass(xx, JvmSort.descriptor(xx, TypeForms.dynamicForm(xx, elementType))),
+                    hosts.size());
             for (int i = 0; i < hosts.size(); i++) Array.set(array, i, hosts.get(i));
             return EResult.ok(array);
         }
@@ -202,7 +210,7 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return new TypeArrayDynamic<>(elementType).typeIsEqual(xx, destType);
+        return new TypeArrayDynamic<>(TypeForms.dynamicForm(xx, elementType)).typeIsEqual(xx, destType);
     }
 
     @Override

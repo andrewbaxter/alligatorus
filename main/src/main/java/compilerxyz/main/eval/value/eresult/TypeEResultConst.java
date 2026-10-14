@@ -18,8 +18,10 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
+import compilerxyz.main.gen.GenAspectConstDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
@@ -52,11 +54,15 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectConstDynamic.AspectId)) {
+            return Opt.some(new AspectConstDynamicEResultConst<>(this));
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_E_RESULT_CONST_IDENTITY)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectUnion.AspectId)) {
-            return Opt.some(new AspectUnionEResultDynamic<>(new TypeEResultDynamic<>(elementType)));
+            return Opt.some(
+                    new AspectUnionEResultDynamic<>(new TypeEResultDynamic<>(TypeForms.dynamicForm(xx, elementType))));
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldEResultConst<>(this));
@@ -186,7 +192,7 @@ public final class TypeEResultConst<T extends Type> implements Aspect, Type {
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return new TypeEResultDynamic<>(elementType).typeIsEqual(xx, destType);
+        return new TypeEResultDynamic<>(TypeForms.dynamicForm(xx, elementType)).typeIsEqual(xx, destType);
     }
 
     @Override

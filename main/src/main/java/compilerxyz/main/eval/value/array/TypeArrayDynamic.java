@@ -26,7 +26,6 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmSort;
-import compilerxyz.main.eval.value.AspectDynamicConstOf;
 import compilerxyz.main.eval.value.int_.TypeIntDynamic;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.GenAspectBind;
@@ -68,7 +67,7 @@ public final class TypeArrayDynamic<T extends Type> implements Aspect, Type {
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectDynamicConst.AspectId)) {
-            return Opt.some(new AspectDynamicConstOf(new TypeArrayConst<>(elementType)));
+            return Opt.some(new AspectDynamicConstArrayDynamic<>(this));
         }
         if (key.equals(GenAspectInitialBind.AspectId)) {
             return Opt.some(new AspectInitialBindArrayDynamic<>(this));

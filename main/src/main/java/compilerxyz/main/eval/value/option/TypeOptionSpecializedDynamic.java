@@ -18,7 +18,6 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.value.AspectDynamicConstOf;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
@@ -98,7 +97,7 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectDynamicConst.AspectId)) {
-            return Opt.some(new AspectDynamicConstOf(new TypeOptionConst<>(elementType)));
+            return Opt.some(new AspectDynamicConstOptionDynamic(this));
         }
         if (key.equals(GenAspectInitialBind.AspectId)) {
             return Opt.some(new AspectInitialBindOptionDynamic(this));

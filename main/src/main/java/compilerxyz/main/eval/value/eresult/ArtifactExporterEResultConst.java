@@ -10,6 +10,7 @@ import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.gen.GenExprErr;
 import compilerxyz.main.gen.codec.ArtifactEResultValueCodec;
 import compilerxyz.main.safejson.JsonValue;
@@ -28,7 +29,8 @@ public record ArtifactExporterEResultConst<T extends Type>(TypeEResultConst<T> t
         var errArts = new TList<Artifact>();
         if (host.hasErrors()) {
             for (var e : MustCast.mustCast(TList.class, host.errorsOpt().optUnwrap())) {
-                var art = erb.mustErMaybeUnreachable(Exporters.exportData(xx, loc, GenExprErr.dynamicType(), e));
+                var art = erb.mustErMaybeUnreachable(
+                        Exporters.exportData(xx, loc, TypeForms.constForm(xx, GenExprErr.dynamicType()), e));
                 if (art.optIsSome()) errArts.add(art.optUnwrap());
             }
         } else {

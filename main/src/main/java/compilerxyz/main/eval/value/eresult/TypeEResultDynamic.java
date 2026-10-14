@@ -18,7 +18,6 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.AspectSetDynamicDefault;
-import compilerxyz.main.eval.value.AspectDynamicConstOf;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -67,7 +66,7 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectDynamicConst.AspectId)) {
-            return Opt.some(new AspectDynamicConstOf(new TypeEResultConst<>(elementType())));
+            return Opt.some(new AspectDynamicConstEResultDynamic<>(this));
         }
         if (key.equals(GenAspectInitialBind.AspectId)) {
             return Opt.some(new AspectInitialBindEResultDynamic<>(this));

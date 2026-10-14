@@ -18,8 +18,10 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.value.ConstHost;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
+import compilerxyz.main.gen.GenAspectConstDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectIterable;
@@ -54,6 +56,9 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectConstDynamic.AspectId)) {
+            return Opt.some(new AspectConstDynamicMapConst<>(this));
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_MAP_CONST_IDENTITY)) {
             return Opt.some(this);
         }
@@ -61,7 +66,9 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
             return Opt.some(new AspectFieldMapConst<>(this));
         }
         if (key.equals(GenAspectIterable.AspectId)) {
-            return Opt.some(new AspectIterableMapConst<>(this));
+            return Opt.some(new AspectIterableMapConst<>(
+                    this,
+                    new TypeMapDynamic<>(TypeForms.dynamicForm(xx, keyType), TypeForms.dynamicForm(xx, valueType))));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicMapConst<>(this));
@@ -189,7 +196,8 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return new TypeMapDynamic<>(keyType, valueType).typeIsEqual(xx, destType);
+        return new TypeMapDynamic<>(TypeForms.dynamicForm(xx, keyType), TypeForms.dynamicForm(xx, valueType))
+                .typeIsEqual(xx, destType);
     }
 
     @Override

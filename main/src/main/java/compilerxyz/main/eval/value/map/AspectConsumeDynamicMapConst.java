@@ -8,6 +8,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ConstHost;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.prelude.util.TOrderedMap;
 
@@ -22,6 +23,10 @@ public record AspectConsumeDynamicMapConst<K extends Type, V extends Type>(TypeM
     @Override
     public EResult<CodeValue> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
         return ConstHost.loadDynamic(
-                loc, cv, aspectConsumeDynamicJvmClass(xx), new TypeMapDynamic<>(type.keyType, type.valueType));
+                loc,
+                cv,
+                aspectConsumeDynamicJvmClass(xx),
+                new TypeMapDynamic<>(
+                        TypeForms.dynamicForm(xx, type.keyType), TypeForms.dynamicForm(xx, type.valueType)));
     }
 }

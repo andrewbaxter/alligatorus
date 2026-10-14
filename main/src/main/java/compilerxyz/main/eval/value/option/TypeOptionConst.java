@@ -17,8 +17,10 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
+import compilerxyz.main.gen.GenAspectConstDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
@@ -52,12 +54,16 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectConstDynamic.AspectId)) {
+            return Opt.some(new AspectConstDynamicOptionConst<>(this));
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_OPTION_CONST_IDENTITY)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectUnion.AspectId)) {
-            return Opt.some(GenAspectUnion.getMaybe(xx, GenOptions.optionDynamic(xx, elementType))
-                    .optUnwrap());
+            return Opt.some(
+                    GenAspectUnion.getMaybe(xx, GenOptions.optionDynamic(xx, TypeForms.dynamicForm(xx, elementType)))
+                            .optUnwrap());
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldOptionConst<>(this));
@@ -106,7 +112,7 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
             Object host =
-                    switch (GenOptions.optionDynamic(xx, elementType)) {
+                    switch (GenOptions.optionDynamic(xx, TypeForms.dynamicForm(xx, elementType))) {
                         case TypeOptionSpecializedDynamic<?> spec -> spec.storeFromBoxed(payload);
                         case TypeOptionDynamic<?> boxed -> payload;
                     };
@@ -186,7 +192,7 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        var dynamic = GenOptions.optionDynamic(xx, elementType);
+        var dynamic = GenOptions.optionDynamic(xx, TypeForms.dynamicForm(xx, elementType));
         return dynamic.typeIsEqual(xx, destType) || dynamic.typeCanCastTo(xx, loc, destType);
     }
 
@@ -194,7 +200,7 @@ public final class TypeOptionConst<T extends Type> implements Aspect, Type {
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         var dynamicRes = new AspectConsumeDynamicOptionConst<>(this).aspectConsumeDynamicToDynamic(xx, loc, cv);
         if (dynamicRes.hasErrors()) return dynamicRes.reerr();
-        var dynamic = GenOptions.optionDynamic(xx, elementType);
+        var dynamic = GenOptions.optionDynamic(xx, TypeForms.dynamicForm(xx, elementType));
         if (dynamic.typeIsEqual(xx, destType)) return dynamicRes;
         return dynamic.typeCastTo(xx, loc, dynamicRes.requireValue("TypeOptionConst::castTo dynamic"), destType);
     }

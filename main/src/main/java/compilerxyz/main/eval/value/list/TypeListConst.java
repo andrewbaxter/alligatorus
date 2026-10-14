@@ -17,8 +17,10 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
+import compilerxyz.main.gen.GenAspectConstDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectIterable;
@@ -57,6 +59,9 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectConstDynamic.AspectId)) {
+            return Opt.some(new AspectConstDynamicListConst<>(this));
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_CONST_IDENTITY)) {
             return Opt.some(this);
         }
@@ -126,7 +131,7 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
             Object host =
-                    switch (GenLists.listDynamic(xx, elementType)) {
+                    switch (GenLists.listDynamic(xx, TypeForms.dynamicForm(xx, elementType))) {
                         case TypeListSpecializedDynamic<?> spec -> {
                             var store = spec.newStore();
                             for (var element : hosts) store.listStorePushBoxed(element);
@@ -217,7 +222,8 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
         return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_LIST_BOXED_DYNAMIC_IDENTITY)
                         .optIsSome()
-                || GenLists.listDynamic(xx, elementType).typeIsEqual(xx, destType);
+                || GenLists.listDynamic(xx, TypeForms.dynamicForm(xx, elementType))
+                        .typeIsEqual(xx, destType);
     }
 
     @Override
