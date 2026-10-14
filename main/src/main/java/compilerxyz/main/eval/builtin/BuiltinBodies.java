@@ -33,6 +33,7 @@ import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.main.eval.value.empty.ValueEmpty;
 import compilerxyz.main.eval.value.object.ArtifactExporterObjectConstPayload;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.record.Record;
@@ -377,6 +378,11 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.value_object_const", scopeId = 5038L)
     public static ValueObjectConst valueObjectConst(Type type, Object data) {
         return new ValueObjectConst(type, data);
+    }
+
+    @BuiltinPath(value = "eval.value_empty", scopeId = 5060L)
+    public static Value valueEmpty(Type type) {
+        return new ValueEmpty(type);
     }
 
     @BuiltinPath(value = "eval.binding_dynamic", scopeId = 5045L)

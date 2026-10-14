@@ -38,7 +38,6 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenCodegenDescriptors;
@@ -163,9 +162,6 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
             }
             if (ifaceIdentity.equals(GenAspectLift.IdentityId) && key.equals(GenAspectLift.AspectId)) {
                 return Opt.some(new AspectLiftSourceObjectDynamic(this));
-            }
-            if (ifaceIdentity.equals(GenAspectFunction.IdentityId) && key.equals(GenAspectFunction.AspectId)) {
-                return Opt.some(new AspectFunctionSourceObjectDynamic(this));
             }
         }
         if (key.equals(GenAspectLift.AspectId)) {
