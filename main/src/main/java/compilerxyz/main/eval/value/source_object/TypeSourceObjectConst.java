@@ -19,6 +19,8 @@ import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.value.AspectConstDynamicOf;
+import compilerxyz.main.eval.value.TypeOfTypeCast;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConstDynamic;
@@ -104,6 +106,12 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic) implements 
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+        if (TypeOfTypeCast.canCastTo(xx, destType)
+                && cv.value().optIsSome()
+                && cv.value().optUnwrap() instanceof ValueObjectConst instance
+                && instance.data() instanceof Type held) {
+            return TypeOfTypeCast.castTo(xx, loc, cv, destType, held);
+        }
         var dynRes = new AspectConsumeDynamicSourceObjectConst(this).aspectConsumeDynamicToDynamic(xx, loc, cv);
         if (dynRes.hasErrors()) return dynRes.reerr();
         return dynamic.typeCastTo(xx, loc, dynRes.requireValue(typeDesc() + "::typeCastTo materialize"), destType);

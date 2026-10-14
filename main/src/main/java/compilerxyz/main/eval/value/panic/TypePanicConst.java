@@ -15,7 +15,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("panic")
-@BuiltinFull(uniqueId = 6133L)
+@BuiltinFull(uniqueId = 6133L, function = true)
 public record TypePanicConst() implements Aspect, Type {
 
     @Override

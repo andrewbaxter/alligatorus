@@ -35,7 +35,7 @@ import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6028L)
+@BuiltinFull(uniqueId = 6028L, function = true)
 public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type {
 
     @Override

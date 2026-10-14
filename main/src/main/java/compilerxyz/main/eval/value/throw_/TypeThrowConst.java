@@ -15,7 +15,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("throw")
-@BuiltinFull(uniqueId = 6146L)
+@BuiltinFull(uniqueId = 6146L, function = true)
 public record TypeThrowConst() implements Aspect, Type {
 
     @Override

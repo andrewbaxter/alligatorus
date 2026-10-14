@@ -17,7 +17,7 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6197L)
+@BuiltinFull(uniqueId = 6197L, function = true)
 public record TypeInterfaceMethodBuiltin(TypeObjectDynamic receiverType, String name, TypeMethodDynamic method)
         implements Aspect, Type {
 

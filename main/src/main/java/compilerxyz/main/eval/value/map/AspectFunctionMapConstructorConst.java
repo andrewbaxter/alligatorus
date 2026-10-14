@@ -98,12 +98,12 @@ public record AspectFunctionMapConstructorConst(TypeMapConstructorConst type) im
         if (keyBoxedRes.hasErrors()) return keyBoxedRes.reerr();
         var valueBoxedRes = DynUtil.requireBoxedTypeArgument(xx, loc, "map value type", valueType);
         if (valueBoxedRes.hasErrors()) return valueBoxedRes.reerr();
-        Type mapType = new TypeMapDynamic(keyType, valueType);
+        var mapType = new TypeMapDynamic<>(keyType, valueType);
         var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
         if (concatRes.hasErrors()) return concatRes.reerr();
         return EResult.ok(new CodeValue(
                 concatRes.requireValue("concat"),
-                EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), mapType))));
+                EvalOutcome.ofValue(new ValueObjectConst(new TypeTypeMap<>(mapType), mapType))));
     }
 
     @Override

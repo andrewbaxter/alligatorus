@@ -23,7 +23,8 @@ public final class BuiltinInterfacesGen {
             Opt<String> outerSimpleName,
             Opt<String> nestedSimpleName,
             boolean identityToken,
-            boolean lift) {
+            boolean lift,
+            boolean function) {
         public BuiltinSpec(
                 String simpleName,
                 String pkg,
@@ -45,7 +46,8 @@ public final class BuiltinInterfacesGen {
                     Opt.none(),
                     Opt.none(),
                     false,
-                    true);
+                    true,
+                    false);
         }
     }
 

@@ -28,6 +28,11 @@ public final class BuiltinTreeGen {
     private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.prelude.util", "TOrderedMap");
     private static final ClassName ARGUMENT_ENTRY =
             ClassName.get("compilerxyz.main.eval.value.argrecord", "ArgumentEntry");
+    private static final ClassName VALUE = ClassName.get("compilerxyz.main.gen", "Value");
+    private static final ClassName VALUE_EMPTY = ClassName.get("compilerxyz.main.eval.value.empty", "ValueEmpty");
+    private static final ClassName VALUE_OBJECT_CONST =
+            ClassName.get("compilerxyz.main.eval.value.object", "ValueObjectConst");
+    private static final ClassName BINDING_VALUE = ClassName.get("compilerxyz.main.eval.binding", "BindingValue");
     private static final ClassName TYPE_ARGUMENT_RECORD =
             ClassName.get("compilerxyz.main.eval.value.argrecord", "TypeArgumentRecord");
     private static final ClassName ARGUMENT_RECORD_BINDING =
@@ -50,12 +55,7 @@ public final class BuiltinTreeGen {
 
     public record Branch(TList<Child> children) implements NodeSpec {}
 
-    public record LeafSpec(CodeBlock data, CodeBlock type) implements NodeSpec {
-
-        public static LeafSpec of(CodeBlock data, CodeBlock type) {
-            return new LeafSpec(data, type);
-        }
-    }
+    public record LeafSpec(CodeBlock data, CodeBlock type, boolean function) implements NodeSpec {}
 
     public static final class EmitState {
         int counter = 0;
@@ -73,6 +73,10 @@ public final class BuiltinTreeGen {
                 st.body.addStatement("var $N = new $T<$T, $T>()", fields, TORDERED_MAP, CONST_KEY, ARGUMENT_ENTRY);
                 for (var c : b.children()) {
                     var childVars = emitNode(c.node(), st);
+                    if (childVars.length == 1) {
+                        st.body.addStatement("$N.put(new $T($S), $N)", fields, CONST_KEY_STR, c.name(), childVars[0]);
+                        continue;
+                    }
                     st.body.addStatement(
                             "$N.put(new $T($S), new $T($N, $N))",
                             fields,
@@ -92,18 +96,29 @@ public final class BuiltinTreeGen {
                 CodeBlock innerExpr = ls.data();
                 CodeBlock valueTypeExpr = ls.type();
 
-                var type = st.next("type");
-                var wrapper = st.next("wrapper");
-                var binding = st.next("binding");
-                st.body.addStatement("$T $N = $L", Object.class, type, innerExpr);
-                st.body.addStatement("$T $N = ($T) $L", TYPE, wrapper, TYPE, valueTypeExpr);
+                var value = st.next("value");
+                var entry = st.next("entry");
+                if (ls.function()) {
+                    st.body.addStatement("$T $N = new $T($L)", VALUE, value, VALUE_EMPTY, innerExpr);
+                } else {
+                    st.body.addStatement(
+                            "$T $N = new $T(($T) $L, $L)",
+                            VALUE,
+                            value,
+                            VALUE_OBJECT_CONST,
+                            TYPE,
+                            valueTypeExpr,
+                            innerExpr);
+                }
                 st.body.addStatement(
-                        "$T $N = new compilerxyz.main.eval.binding.BindingObjectConst($N, $N)",
-                        BINDING,
-                        binding,
-                        wrapper,
-                        type);
-                yield new String[] {binding, wrapper};
+                        "$T $N = new $T(new $T($N), $N.valueType())",
+                        ARGUMENT_ENTRY,
+                        entry,
+                        ARGUMENT_ENTRY,
+                        BINDING_VALUE,
+                        value,
+                        value);
+                yield new String[] {entry};
             }
         };
     }
@@ -112,7 +127,7 @@ public final class BuiltinTreeGen {
             ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName");
 
     public static void addSpecial(LinkedHashMap<String, LeafSpec> m, String path, CodeBlock data, CodeBlock type) {
-        if (m.put(path, LeafSpec.of(data, type)) != null) {
+        if (m.put(path, new LeafSpec(data, type, false)) != null) {
             throw new IllegalStateException("duplicate special path: " + path);
         }
     }

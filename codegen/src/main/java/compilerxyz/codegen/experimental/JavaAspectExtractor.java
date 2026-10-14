@@ -99,6 +99,7 @@ public final class JavaAspectExtractor {
         }
         var uniqueId = Long.parseLong(uniqueIdStr);
         var lift = !"false".equals(attrs.get("lift"));
+        var function = "true".equals(attrs.get("function"));
         var classImports = buildImportMap(cu);
         var classFields = new TList<BuiltinInterfacesGen.DataField>();
         for (var f : clsDecl.getFields()) {
@@ -146,7 +147,8 @@ public final class JavaAspectExtractor {
                     outerSimpleName,
                     outerSimpleName.optIsNone() ? Opt.none() : Opt.some(nestedName),
                     identityToken,
-                    lift));
+                    lift,
+                    function));
         }
     }
 
@@ -163,6 +165,7 @@ public final class JavaAspectExtractor {
         }
         var uniqueId = Long.parseLong(uniqueIdStr);
         var lift = !"false".equals(attrs.get("lift"));
+        var function = "true".equals(attrs.get("function"));
         var importMap = buildImportMap(cu);
         var dataFields = new TList<BuiltinInterfacesGen.DataField>();
         var methods = new TList<Method>();
@@ -205,7 +208,8 @@ public final class JavaAspectExtractor {
                 outerSimpleName,
                 outerSimpleName.optIsNone() ? Opt.none() : Opt.some(nestedName),
                 false,
-                lift));
+                lift,
+                function));
     }
 
     public static boolean injectsEvalContext(NodeWithAnnotations<?> m, List<Parameter> params, String where) {

@@ -1,7 +1,13 @@
 package compilerxyz.main.eval.value.source_object_new;
 
+import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ArtifactIdSource;
+import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -21,11 +27,16 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.gen.codec.ArtifactDataSourceObjectNewCodec;
+import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
+import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6139L)
+@BuiltinFull(uniqueId = 6139L, function = true)
 public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type) implements Aspect, Type {
 
     @Override
@@ -107,8 +118,61 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type) implement
                 getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
     }
 
+    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            var dt = MustCast.mustCast(TypeSourceObjectNewDynamic.class, self).type;
+            return ArtifactSupport.implExportIndependentArtifact(xx, dt.newArtifactIdCell, () -> {
+                var objectArtRes = Exporters.exportType(xx, loc, dt);
+                if (objectArtRes.hasErrors()) return objectArtRes.reerr();
+                var body = new ArtifactDataSourceObjectNew(
+                        objectArtRes.requireValue("TypeSourceObjectNewDynamic::export object"));
+                return EResult.ok(makeBody.apply(ArtifactDataSourceObjectNewCodec.toValue(body)));
+            });
+        }
+
+        @Override
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            if (id.optIsNone()) {
+                return EResult.err(loc, "TypeSourceObjectNewDynamic requires an artifact id to deserialize");
+            }
+            var idValue = id.optUnwrap();
+            return ArtifactSupport.implImportIndependentArtifact(
+                    xx,
+                    loc,
+                    idValue,
+                    data,
+                    (raw) -> {
+                        ArtifactDataSourceObjectNew body;
+                        try {
+                            body = ArtifactDataSourceObjectNewCodec.fromValue(raw);
+                        } catch (RuntimeException e) {
+                            return new Result.Err<>("TypeSourceObjectNewDynamic data: failed to parse "
+                                    + "ArtifactDataSourceObjectNew: " + e.getMessage());
+                        }
+                        return new Result.Ok<>(body);
+                    },
+                    (body) -> {
+                        var objectArt = body.object();
+                        var deps = new TList<Artifact>();
+                        deps.add(objectArt);
+                        ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
+                            var parentAny = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, objectArt);
+                            var parentVal =
+                                    parentAny.requireValue("TypeSourceObjectNewDynamic::finalizer parent object");
+                            var dtData = MustCast.mustCast(TypeSourceObjectDynamic.class, parentVal);
+                            dtData.newArtifactIdCell.set(idValue);
+                            return new TypeSourceObjectNewDynamic(dtData);
+                        };
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.none(), deps, fin));
+                    });
+        }
+    };
+
     @Override
     public Opt<ArtifactExporter> typeExporter() {
-        return Opt.some(ExporterRoot.SOURCE_OBJECT_NEW_CONST);
+        return Opt.some(ExporterRoot.SOURCE_OBJECT_NEW);
     }
 }

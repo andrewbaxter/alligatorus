@@ -2,6 +2,7 @@ package compilerxyz.main.eval;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.eval.value.empty.ValueEmpty;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.source.SourceSpecValue;
 import compilerxyz.main.eval.value.source.TypeBundle;
@@ -140,10 +141,8 @@ public final class ImportRun {
     public static EResult<CodeValue> outcomeValue(ExprContext xx, QExprId loc, SpecOutcome outcome) {
         return switch (outcome) {
             case SpecOutcome.BundleOut b ->
-                EResult.ok(new CodeValue(
-                        Code.none(loc),
-                        EvalOutcome.ofValue(
-                                new ValueObjectConst(ValueObjectConst.plainTypeType(), new TypeBundle(b.base())))));
+                EResult.ok(
+                        new CodeValue(Code.none(loc), EvalOutcome.ofValue(new ValueEmpty(new TypeBundle(b.base())))));
             case SpecOutcome.ModuleOut m -> {
                 switch (m.abs()) {
                     case SourceSpecAbsolute.Local ignored -> xx.vx.ix.localDependencies.add(m.compileId());

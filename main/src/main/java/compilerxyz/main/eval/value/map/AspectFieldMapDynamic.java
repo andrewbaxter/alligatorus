@@ -5,14 +5,12 @@ import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.Eval;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.map.TypeMapDynamic.FieldSpec;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -32,10 +30,6 @@ public record AspectFieldMapDynamic<K extends Type, V extends Type>(TypeMapDynam
         if (specOpt.optIsSome()) {
             var spec = specOpt.optUnwrap();
             return switch (spec) {
-                case FieldSpec.Factory f ->
-                    EResult.ok(new CodeValue(
-                            self.code(),
-                            EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), f.type()))));
                 case FieldSpec.GetFn g -> {
                     if (self.value().optIsNone() || !(self.value().optUnwrap() instanceof ValueDynamic fnSelfVdg)) {
                         yield EResult.err(loc, "TypeMapDynamic::field: fn receiver has no dynamic source");

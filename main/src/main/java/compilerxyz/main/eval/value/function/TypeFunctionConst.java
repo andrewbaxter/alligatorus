@@ -22,7 +22,7 @@ import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
-@BuiltinFull(uniqueId = 6110L)
+@BuiltinFull(uniqueId = 6110L, function = true)
 public record TypeFunctionConst(
         TList<FunctionParam> params, Opt<Type> ret, JavaInternalName klass, String methodName, boolean needsEvalContext)
         implements Aspect, Type {

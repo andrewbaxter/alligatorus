@@ -18,7 +18,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("types.map")
-@BuiltinFull(uniqueId = 6121L)
+@BuiltinFull(uniqueId = 6121L, function = true)
 public record TypeMapConstructorConst() implements Aspect, Type {
 
     @Override

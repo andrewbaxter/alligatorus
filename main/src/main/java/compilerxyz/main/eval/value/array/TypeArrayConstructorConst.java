@@ -18,7 +18,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("types.array")
-@BuiltinFull(uniqueId = 6460L)
+@BuiltinFull(uniqueId = 6460L, function = true)
 public record TypeArrayConstructorConst() implements Aspect, Type {
 
     @Override

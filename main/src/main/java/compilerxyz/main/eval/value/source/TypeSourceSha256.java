@@ -16,7 +16,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("source.sha256")
-@BuiltinFull(uniqueId = 6159L)
+@BuiltinFull(uniqueId = 6159L, function = true)
 public record TypeSourceSha256() implements Aspect, Type {
 
     @Override

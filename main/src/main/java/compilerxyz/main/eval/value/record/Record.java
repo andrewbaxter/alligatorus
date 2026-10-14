@@ -904,7 +904,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
             }
             var fieldCast = elemCv.value().optUnwrap().valueType().typeCastTo(xx, loc, elemCv, destType);
             if (fieldCast.hasErrors()) return fieldCast.reerr();
-            var fieldReg = DynUtil.valueReg(loc, fieldCast.requireValue("Record::typeCastTo field cast"));
+            var fieldReg = DynUtil.materialize(xx, loc, fieldCast.requireValue("Record::typeCastTo field cast"));
             if (fieldReg.hasErrors()) return fieldReg.reerr();
             elems.add(b.constString(keyStr.value()));
             elems.add(b.reg(fieldReg.requireValue("Record::typeCastTo field reg")));

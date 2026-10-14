@@ -22,6 +22,7 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.AspectDynamicConstOf;
+import compilerxyz.main.eval.value.function.AspectLiftFunctionType;
 import compilerxyz.main.eval.value.source_interface.InterfaceCell;
 import compilerxyz.main.gen.GenAspectAspect;
 import compilerxyz.main.gen.GenAspectBind;
@@ -220,6 +221,9 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
             return Opt.some(this);
         }
         if (key.equals(GenAspectLift.AspectId) && meta.liftable()) {
+            if (meta.function()) {
+                return Opt.some(AspectLiftFunctionType.INSTANCE);
+            }
             return Opt.some(new AspectLiftObjectDynamic(this));
         }
         if (key.equals(GenAspectBindDynamic.AspectId)) {

@@ -14,7 +14,7 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6124L)
+@BuiltinFull(uniqueId = 6124L, function = true)
 public record TypeMapGetFnDynamic(Type keyType, Type valueType) implements Aspect, Type {
 
     @Override

@@ -18,7 +18,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("types.eresult")
-@BuiltinFull(uniqueId = 6105L)
+@BuiltinFull(uniqueId = 6105L, function = true)
 public record TypeEResultConstructorConst() implements Aspect, Type {
 
     @Override

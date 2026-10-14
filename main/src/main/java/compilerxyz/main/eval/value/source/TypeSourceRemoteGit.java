@@ -16,7 +16,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("source.remote.git")
-@BuiltinFull(uniqueId = 6471L)
+@BuiltinFull(uniqueId = 6471L, function = true)
 public record TypeSourceRemoteGit() implements Aspect, Type {
 
     @Override

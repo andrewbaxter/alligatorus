@@ -9,7 +9,6 @@ import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
-import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
@@ -34,10 +33,8 @@ import compilerxyz.main.gen.codec.ArtifactEResultTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.Pair;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
-import compilerxyz.prelude.util.TMap;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6017L)
@@ -102,33 +99,6 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
             return Opt.some(new AspectLiftEResultDynamic<>(this));
         }
         return Opt.none();
-    }
-
-    sealed interface FieldSpec {
-        Type fieldSpecFieldType();
-
-        record Factory(Type type) implements FieldSpec {
-            @Override
-            public Type fieldSpecFieldType() {
-                return type;
-            }
-        }
-    }
-
-    TMap<ConstKey, FieldSpec> fieldSpecs() {
-        return TMap.ofEntries(
-                new Pair<>(
-                        new ConstKey.Str("ok"),
-                        new FieldSpec.Factory(new TypeEResultVariantConstructorDynamic(
-                                elementType, TypeEResultVariantConstructorDynamic.Kind.OK))),
-                new Pair<>(
-                        new ConstKey.Str("err"),
-                        new FieldSpec.Factory(new TypeEResultVariantConstructorDynamic(
-                                elementType, TypeEResultVariantConstructorDynamic.Kind.ERR))),
-                new Pair<>(
-                        new ConstKey.Str("errs"),
-                        new FieldSpec.Factory(new TypeEResultVariantConstructorDynamic(
-                                elementType, TypeEResultVariantConstructorDynamic.Kind.ERRS))));
     }
 
     @Override

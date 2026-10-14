@@ -17,7 +17,7 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6198L)
+@BuiltinFull(uniqueId = 6198L, function = true)
 public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType) implements Aspect, Type {
 
     @Override

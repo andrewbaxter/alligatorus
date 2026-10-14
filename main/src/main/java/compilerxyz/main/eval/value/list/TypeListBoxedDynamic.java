@@ -124,13 +124,6 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
     sealed interface FieldSpec {
         Type fieldSpecFieldType();
 
-        record Factory(Type type) implements FieldSpec {
-            @Override
-            public Type fieldSpecFieldType() {
-                return type;
-            }
-        }
-
         record Method(Type type) implements FieldSpec {
             @Override
             public Type fieldSpecFieldType() {
@@ -148,7 +141,6 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
 
     TMap<ConstKey, FieldSpec> fieldSpecs(ExprContext xx) {
         var m = new TMap<ConstKey, FieldSpec>();
-        m.put(new ConstKey.Str("new"), new FieldSpec.Factory(new TypeListNewDynamic(elementType)));
         m.put(new ConstKey.Str("push"), new FieldSpec.Method(new TypeListPushDynamic(elementType)));
         m.put(new ConstKey.Str("len"), new FieldSpec.Length());
         m.put(new ConstKey.Str("get"), new FieldSpec.Method(new TypeListGetDynamic(this)));

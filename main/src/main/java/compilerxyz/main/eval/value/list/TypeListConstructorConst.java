@@ -18,7 +18,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("types.list")
-@BuiltinFull(uniqueId = 6116L)
+@BuiltinFull(uniqueId = 6116L, function = true)
 public record TypeListConstructorConst() implements Aspect, Type {
 
     @Override

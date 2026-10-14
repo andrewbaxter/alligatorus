@@ -21,7 +21,7 @@ import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6132L)
+@BuiltinFull(uniqueId = 6132L, function = true)
 public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSome) implements Aspect, Type {
 
     @Override

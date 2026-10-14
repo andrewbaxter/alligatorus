@@ -18,7 +18,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("reinterpret")
-@BuiltinFull(uniqueId = 6466L)
+@BuiltinFull(uniqueId = 6466L, function = true)
 public record TypeFunctionReinterpretConst() implements Aspect, Type {
 
     @Override

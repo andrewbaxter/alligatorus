@@ -14,7 +14,7 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6106L)
+@BuiltinFull(uniqueId = 6106L, function = true)
 public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind) implements Aspect, Type {
 
     public enum Kind {

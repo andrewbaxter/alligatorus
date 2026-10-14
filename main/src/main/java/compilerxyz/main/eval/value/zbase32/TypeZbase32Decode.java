@@ -18,7 +18,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("zbase32.decode")
-@BuiltinFull(uniqueId = 6153L)
+@BuiltinFull(uniqueId = 6153L, function = true)
 public record TypeZbase32Decode() implements Aspect, Type {
 
     @Override

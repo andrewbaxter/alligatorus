@@ -1,20 +1,16 @@
 package compilerxyz.main.eval.value.eresult;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.Eval;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.value.bool.TypeBoolDynamic;
-import compilerxyz.main.eval.value.eresult.TypeEResultDynamic.FieldSpec;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenCodegenDescriptors;
@@ -62,26 +58,18 @@ public record AspectFieldEResultDynamic<T extends Type>(TypeEResultDynamic<T> ty
             }
             return EResult.ok(DynUtil.regToValue(b.code(), value, type.elementType()));
         }
-        var specOpt = type.fieldSpecs().getOpt(ck);
-        if (specOpt.optIsNone()) {
-            return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on eresult");
-        }
-        var spec = specOpt.optUnwrap();
-        return switch (spec) {
-            case FieldSpec.Factory f ->
-                EResult.ok(new CodeValue(
-                        Code.none(loc),
-                        EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), f.type()))));
-        };
+        return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on eresult");
     }
 
     @Override
     public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        return TList.from(type.fieldSpecs().keySet());
+        return TList.of(new ConstKey.Str("has_errors"), new ConstKey.Str("value"));
     }
 
     @Override
     public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-        return type.fieldSpecs().getOpt(key).optMap(spec -> spec.fieldSpecFieldType());
+        if (key.equals(new ConstKey.Str("has_errors"))) return Opt.some(new TypeBoolDynamic());
+        if (key.equals(new ConstKey.Str("value"))) return Opt.some(type.elementType());
+        return Opt.none();
     }
 }

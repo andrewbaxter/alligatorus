@@ -24,7 +24,6 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
-import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
@@ -103,9 +102,6 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
         }
         if (key.equals(GenAspectLift.AspectId)) {
             return Opt.some(new AspectLiftObjectConst(this));
-        }
-        if (key.equals(GenAspectFunction.AspectId)) {
-            return Opt.some(new AspectFunctionObjectConst(this));
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldObjectConst(this));

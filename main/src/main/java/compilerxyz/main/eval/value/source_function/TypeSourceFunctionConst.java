@@ -42,7 +42,7 @@ import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6022L)
+@BuiltinFull(uniqueId = 6022L, function = true)
 public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect, Type {
 
     @Override

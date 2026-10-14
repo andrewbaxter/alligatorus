@@ -1,12 +1,10 @@
 package compilerxyz.main.eval.value.option;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.Eval;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -16,7 +14,6 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.value.bool.TypeBoolDynamic;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -59,24 +56,18 @@ public record AspectFieldOptionSpecializedDynamic<T extends Type>(TypeOptionSpec
             }
             return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));
         }
-        var factoryOpt = OptionFieldSpecs.factories(type.elementType).getOpt(ck);
-        if (factoryOpt.optIsNone()) {
-            return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on option");
-        }
-        var factory = factoryOpt.optUnwrap();
-        return EResult.ok(new CodeValue(
-                Code.none(loc), EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), factory))));
+        return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on option");
     }
 
     @Override
     public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        return TList.from(OptionFieldSpecs.factories(type.elementType).keySet());
+        return TList.of(VALUE, IS_SOME);
     }
 
     @Override
     public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
         if (key.equals(IS_SOME)) return Opt.some(new TypeBoolDynamic());
         if (key.equals(VALUE)) return Opt.some(type.elementType);
-        return OptionFieldSpecs.factories(type.elementType).getOpt(key).optMap(factory -> factory);
+        return Opt.none();
     }
 }

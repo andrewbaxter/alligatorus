@@ -35,12 +35,12 @@ public final class AspectFunctionListConstructorConst implements AspectFunction 
         var elementType = aspectTypeRes
                 .requireValue("TypeListConstructorConst::call AspectType")
                 .aspectTypeType(argValue);
-        Type listType = GenLists.listDynamic(xx, elementType);
+        var listType = GenLists.listDynamic(xx, elementType);
         var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
         if (concatRes.hasErrors()) return concatRes.reerr();
         return EResult.ok(new CodeValue(
                 concatRes.requireValue("concat"),
-                EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), listType))));
+                EvalOutcome.ofValue(new ValueObjectConst(new TypeTypeList(listType), listType))));
     }
 
     @Override

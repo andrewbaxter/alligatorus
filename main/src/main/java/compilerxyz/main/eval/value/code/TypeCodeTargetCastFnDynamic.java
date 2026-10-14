@@ -13,7 +13,7 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6361L)
+@BuiltinFull(uniqueId = 6361L, function = true)
 public record TypeCodeTargetCastFnDynamic() implements Aspect, Type {
 
     @Override

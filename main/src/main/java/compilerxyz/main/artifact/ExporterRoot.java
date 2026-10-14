@@ -21,8 +21,10 @@ import compilerxyz.main.eval.value.code.TypeCodeDynamic;
 import compilerxyz.main.eval.value.double_.TypeDoubleConst;
 import compilerxyz.main.eval.value.double_.TypeDoubleDynamic;
 import compilerxyz.main.eval.value.double_.TypeDoubleDynamicBox;
+import compilerxyz.main.eval.value.empty.ValueEmpty;
 import compilerxyz.main.eval.value.eresult.TypeEResultConst;
 import compilerxyz.main.eval.value.eresult.TypeEResultDynamic;
+import compilerxyz.main.eval.value.eresult.TypeTypeEResult;
 import compilerxyz.main.eval.value.expr.TypeExpr;
 import compilerxyz.main.eval.value.float_.TypeFloatConst;
 import compilerxyz.main.eval.value.float_.TypeFloatDynamic;
@@ -34,17 +36,20 @@ import compilerxyz.main.eval.value.jvm_object.TypeJvmObjectConst;
 import compilerxyz.main.eval.value.jvm_object.TypeJvmObjectDynamic;
 import compilerxyz.main.eval.value.list.TypeListBoxedDynamic;
 import compilerxyz.main.eval.value.list.TypeListConst;
+import compilerxyz.main.eval.value.list.TypeTypeList;
 import compilerxyz.main.eval.value.long_.TypeLongConst;
 import compilerxyz.main.eval.value.long_.TypeLongDynamic;
 import compilerxyz.main.eval.value.long_.TypeLongDynamicBox;
 import compilerxyz.main.eval.value.map.TypeMapConst;
 import compilerxyz.main.eval.value.map.TypeMapDynamic;
+import compilerxyz.main.eval.value.map.TypeTypeMap;
 import compilerxyz.main.eval.value.object.TypeObjectConst;
 import compilerxyz.main.eval.value.object.TypeObjectDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.option.TypeOptionConst;
 import compilerxyz.main.eval.value.option.TypeOptionDynamic;
 import compilerxyz.main.eval.value.option.TypeOptionVariantConstructorDynamic;
+import compilerxyz.main.eval.value.option.TypeTypeOption;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.short_.TypeShortConst;
 import compilerxyz.main.eval.value.short_.TypeShortDynamic;
@@ -57,10 +62,10 @@ import compilerxyz.main.eval.value.source_macro.TypeSourceMacroConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_object.TypeTypeSourceObjectConst;
-import compilerxyz.main.eval.value.source_object_new.TypeTypeSourceObjectNewConst;
+import compilerxyz.main.eval.value.source_object_new.TypeSourceObjectNewDynamic;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.eval.value.source_union.TypeTypeSourceUnionConst;
-import compilerxyz.main.eval.value.source_union_new.TypeTypeSourceUnionNewConst;
+import compilerxyz.main.eval.value.source_union_new.TypeSourceUnionNewDynamic;
 import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.eval.value.string.TypeStringDynamic;
 import compilerxyz.main.eval.value.tuple.Tuple;
@@ -199,6 +204,30 @@ public enum ExporterRoot implements ArtifactExporter {
         @Override
         ExporterRootDelegate delegate() {
             return TypeObjectDynamic.DELEGATE;
+        }
+    },
+    TYPE_TYPE_OPTION("type_type_option") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeTypeOption.TYPE_DELEGATE;
+        }
+    },
+    TYPE_TYPE_ERESULT("type_type_eresult") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeTypeEResult.TYPE_DELEGATE;
+        }
+    },
+    TYPE_TYPE_LIST("type_type_list") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeTypeList.TYPE_DELEGATE;
+        }
+    },
+    TYPE_TYPE_MAP("type_type_map") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeTypeMap.TYPE_DELEGATE;
         }
     },
     OPTION_DYNAMIC("option_dynamic") {
@@ -363,10 +392,10 @@ public enum ExporterRoot implements ArtifactExporter {
             return TypeSourceObjectConst.TYPE_DELEGATE;
         }
     },
-    SOURCE_OBJECT_NEW_CONST("source_object_new_const") {
+    SOURCE_OBJECT_NEW("source_object_new") {
         @Override
         ExporterRootDelegate delegate() {
-            return TypeTypeSourceObjectNewConst.DELEGATE;
+            return TypeSourceObjectNewDynamic.DELEGATE;
         }
     },
     SOURCE_UNION_CONST("source_union_const") {
@@ -375,10 +404,16 @@ public enum ExporterRoot implements ArtifactExporter {
             return TypeSourceUnionDynamic.DELEGATE;
         }
     },
-    SOURCE_UNION_NEW_CONST("source_union_new_const") {
+    SOURCE_UNION_NEW("source_union_new") {
         @Override
         ExporterRootDelegate delegate() {
-            return TypeTypeSourceUnionNewConst.DELEGATE;
+            return TypeSourceUnionNewDynamic.DELEGATE;
+        }
+    },
+    VALUE_EMPTY("value_empty") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return ValueEmpty.DELEGATE;
         }
     },
     OBJECT_CONST("object_const") {

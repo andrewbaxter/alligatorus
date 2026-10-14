@@ -18,7 +18,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("eval.aspect_lookup")
-@BuiltinFull(uniqueId = 6108L)
+@BuiltinFull(uniqueId = 6108L, function = true)
 public record TypeFunctionAspectConst() implements Aspect, Type {
 
     static final JavaInternalName INTNAME_TYPE = JavaInternalName.fromClass(Type.class);

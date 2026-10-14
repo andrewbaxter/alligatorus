@@ -16,7 +16,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("import")
-@BuiltinFull(uniqueId = 6160L)
+@BuiltinFull(uniqueId = 6160L, function = true)
 public record TypeImport() implements Aspect, Type {
 
     @Override

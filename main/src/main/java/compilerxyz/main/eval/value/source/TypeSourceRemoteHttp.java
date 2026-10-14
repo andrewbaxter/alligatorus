@@ -16,7 +16,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("source.remote.http")
-@BuiltinFull(uniqueId = 6158L)
+@BuiltinFull(uniqueId = 6158L, function = true)
 public record TypeSourceRemoteHttp() implements Aspect, Type {
 
     @Override

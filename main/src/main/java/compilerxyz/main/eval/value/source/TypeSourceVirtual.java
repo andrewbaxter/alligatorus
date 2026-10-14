@@ -16,7 +16,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("source.virtual")
-@BuiltinFull(uniqueId = 6156L)
+@BuiltinFull(uniqueId = 6156L, function = true)
 public record TypeSourceVirtual() implements Aspect, Type {
 
     @Override

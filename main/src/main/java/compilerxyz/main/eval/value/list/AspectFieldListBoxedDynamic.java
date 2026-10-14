@@ -5,7 +5,6 @@ import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.Eval;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -15,7 +14,6 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.value.list.TypeListBoxedDynamic.FieldSpec;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -37,10 +35,6 @@ public record AspectFieldListBoxedDynamic<T extends Type>(TypeListBoxedDynamic<T
         }
         var spec = specOpt.optUnwrap();
         return switch (spec) {
-            case FieldSpec.Factory f ->
-                EResult.ok(new CodeValue(
-                        self.code(),
-                        EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), f.type()))));
             case FieldSpec.Method m -> EResult.ok(DynUtil.methodRefOn(self, m.type()));
             case FieldSpec.Length l -> {
                 var selfRes = DynUtil.valueReg(loc, self);

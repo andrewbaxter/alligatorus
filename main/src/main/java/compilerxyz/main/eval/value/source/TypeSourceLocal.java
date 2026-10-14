@@ -16,7 +16,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("source.local")
-@BuiltinFull(uniqueId = 6157L)
+@BuiltinFull(uniqueId = 6157L, function = true)
 public record TypeSourceLocal() implements Aspect, Type {
 
     @Override

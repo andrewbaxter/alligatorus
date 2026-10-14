@@ -504,7 +504,7 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
             }
             var elementCast = elemCv.value().optUnwrap().valueType().typeCastTo(xx, loc, elemCv, destType);
             if (elementCast.hasErrors()) return elementCast.reerr();
-            var elementReg = DynUtil.valueReg(loc, elementCast.requireValue("Tuple::typeCastTo element cast"));
+            var elementReg = DynUtil.materialize(xx, loc, elementCast.requireValue("Tuple::typeCastTo element cast"));
             if (elementReg.hasErrors()) return elementReg.reerr();
             elems.add(b.reg(elementReg.requireValue("Tuple::typeCastTo element reg")));
         }
