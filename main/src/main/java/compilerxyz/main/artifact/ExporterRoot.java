@@ -506,6 +506,12 @@ public enum ExporterRoot implements ArtifactExporter {
             return nullaryType(TypeExpr::new);
         }
     },
+    EXPR_VALUE("expr_value") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeExpr.DELEGATE;
+        }
+    },
     FLOAT_CONST_TYPE("float_const_type") {
         @Override
         ExporterRootDelegate delegate() {

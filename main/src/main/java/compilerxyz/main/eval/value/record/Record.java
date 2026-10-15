@@ -15,6 +15,7 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
+import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
@@ -31,6 +32,7 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
+import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
@@ -654,6 +656,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
     public static Object hostOf(ExprContext xx, Type declared, Value value) {
         return switch (value) {
             case ValueObjectConst voc -> voc.data();
+            case Expr expr -> new StagedExprCell(expr);
             case Record r -> compositeOf(xx, MustCast.mustCast(Record.class, declared), r);
             case Tuple t -> Tuple.compositeOf(xx, MustCast.mustCast(Tuple.class, declared), t);
             default ->
