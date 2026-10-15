@@ -4,7 +4,6 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
@@ -20,11 +19,13 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.value.AspectDynamicConstOf;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
+import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectOperatorEq;
@@ -54,6 +55,9 @@ public record TypeUniqueDynamic() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectDynamicConst.AspectId)) {
+            return Opt.some(new AspectDynamicConstOf(new TypeUniqueConst()));
+        }
         if (key.equals(GenAspectInitialBind.AspectId)) {
             return Opt.some(AspectInitialBindUniqueDynamic.INSTANCE);
         }
@@ -84,16 +88,14 @@ public record TypeUniqueDynamic() implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            var u = MustCast.mustCast(
-                    Unique.class,
-                    MustCast.mustCast(ValueObjectConst.class, self).data());
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            var u = MustCast.mustCast(Unique.class, self);
             JsonValue data = encodeUnique(u);
             return EResult.ok(new Artifact.Body(makeBody.apply(data)));
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
                 case JsonValueObject obj -> {
@@ -102,10 +104,8 @@ public record TypeUniqueDynamic() implements Aspect, Type {
                         yield EResult.err(
                                 loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: malformed");
                     }
-                    yield EResult.ok(new ValueObjectConst(
-                            new TypeUniqueDynamic(),
-                            decoded.requireValue(
-                                    "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData decoded")));
+                    yield EResult.ok(decoded.requireValue(
+                            "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData decoded"));
                 }
                 case JsonValueNull ignored ->
                     EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
@@ -334,7 +334,7 @@ public record TypeUniqueDynamic() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.UNIQUE_TYPE);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.UNIQUE_TYPE);
     }
 }

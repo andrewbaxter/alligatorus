@@ -508,7 +508,7 @@ public final class GenMain {
                         b.addStatement("trivialIdentityAspects.add($T.IdentityId)", self);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)), false, true)",
+                                        + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)), false, true, false)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -535,7 +535,7 @@ public final class GenMain {
                         BuiltinInterfacesGen.emitTypeHostRestamp(b, interfaceRef);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>none(), false, $L)",
+                                        + "$T.<$T>none(), false, $L, $L)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -544,7 +544,8 @@ public final class GenMain {
                                 BuiltinInterfacesGen.TYPE_OBJECT_CAST_FROM_RULE,
                                 BuiltinInterfacesGen.OPT,
                                 BuiltinInterfacesGen.OBJECT_ASPECT_SOURCE,
-                                spec.lift());
+                                spec.lift(),
+                                spec.function());
                         b.addStatement(
                                 "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
                                         + "$T.NONE, $T.<$T>none())",
@@ -561,7 +562,7 @@ public final class GenMain {
                         BuiltinInterfacesGen.emitTypeHostRestamp(b, interfaceRef);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>some(new $T(new $T($LL), new $T($LL))), $L, $L)",
+                                        + "$T.<$T>some(new $T(new $T($LL), new $T($LL))), $L, $L, $L)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -576,7 +577,8 @@ public final class GenMain {
                                 BuiltinInterfacesGen.UNIQUE_BUILTIN,
                                 spec.uniqueId(),
                                 spec.identityToken(),
-                                spec.lift());
+                                spec.lift(),
+                                spec.function());
                         if (spec.isInterface()) {
                             b.addStatement(
                                     "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
@@ -1244,14 +1246,26 @@ public final class GenMain {
             BuiltinTreeGen.NodeSpec canonicalSpec;
             _canonicalSpec:
             {
+                var functionClasses = new TSet<String>();
+                for (var builtinSpec : scan.builtins()) {
+                    if (!builtinSpec.function()) continue;
+                    var simple = builtinSpec.outerSimpleName().optIsSome()
+                            ? builtinSpec.outerSimpleName().optUnwrap() + "."
+                                    + builtinSpec.nestedSimpleName().optUnwrap()
+                            : builtinSpec.simpleName();
+                    functionClasses.add(builtinSpec.pkg() + "." + simple);
+                }
                 var pathToLeaf = new LinkedHashMap<String, BuiltinTreeGen.LeafSpec>();
                 for (var entry : scannedPathEntries) {
                     BuiltinTreeGen.LeafSpec spec =
                             switch (entry) {
                                 case BuiltinPathScanner.TypeLeaf tl -> {
                                     var wrapper = BuiltinTreeGen.TYPE_OF_TYPES_EXPR;
-                                    yield BuiltinTreeGen.LeafSpec.of(
-                                            DynamicTypes.leaf(tl.typeClass(), scannedLeaves), wrapper);
+                                    yield new BuiltinTreeGen.LeafSpec(
+                                            DynamicTypes.leaf(tl.typeClass(), scannedLeaves),
+                                            wrapper,
+                                            functionClasses.contains(
+                                                    tl.typeClass().canonicalName()));
                                 }
                                 case BuiltinPathScanner.FunctionLeaf fl -> {
                                     Opt<CodeBlock> retDynamicType = fl.retType().optIsSome()
@@ -1293,7 +1307,8 @@ public final class GenMain {
                                             fl.ownerInternalName(),
                                             fl.methodName(),
                                             fl.needsEvalContext());
-                                    yield new BuiltinTreeGen.LeafSpec(innerExpr, BuiltinTreeGen.TYPE_OF_TYPES_EXPR);
+                                    yield new BuiltinTreeGen.LeafSpec(
+                                            innerExpr, BuiltinTreeGen.TYPE_OF_TYPES_EXPR, true);
                                 }
                             };
                     if (pathToLeaf.put(entry.entryPath(), spec) != null) {

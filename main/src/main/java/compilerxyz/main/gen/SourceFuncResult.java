@@ -16,6 +16,10 @@ public final class SourceFuncResult {
         this.func = func;
     }
 
+    public Type funcType() {
+        return func;
+    }
+
     @BuiltinEvalContext
     public void impl(
             EvalContext vx,

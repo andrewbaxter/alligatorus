@@ -5,11 +5,10 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
-import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
@@ -21,6 +20,7 @@ import compilerxyz.main.eval.aspect.AspectSetDynamicDefault;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
+import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
@@ -33,10 +33,8 @@ import compilerxyz.main.gen.codec.ArtifactEResultTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.Pair;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
-import compilerxyz.prelude.util.TMap;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6017L)
@@ -64,6 +62,9 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectDynamicConst.AspectId)) {
+            return Opt.some(new AspectDynamicConstEResultDynamic<>(this));
+        }
         if (key.equals(GenAspectInitialBind.AspectId)) {
             return Opt.some(new AspectInitialBindEResultDynamic<>(this));
         }
@@ -100,33 +101,6 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
         return Opt.none();
     }
 
-    sealed interface FieldSpec {
-        Type fieldSpecFieldType();
-
-        record Factory(Type type) implements FieldSpec {
-            @Override
-            public Type fieldSpecFieldType() {
-                return type;
-            }
-        }
-    }
-
-    TMap<ConstKey, FieldSpec> fieldSpecs() {
-        return TMap.ofEntries(
-                new Pair<>(
-                        new ConstKey.Str("ok"),
-                        new FieldSpec.Factory(new TypeEResultVariantConstructorDynamic(
-                                elementType, TypeEResultVariantConstructorDynamic.Kind.OK))),
-                new Pair<>(
-                        new ConstKey.Str("err"),
-                        new FieldSpec.Factory(new TypeEResultVariantConstructorDynamic(
-                                elementType, TypeEResultVariantConstructorDynamic.Kind.ERR))),
-                new Pair<>(
-                        new ConstKey.Str("errs"),
-                        new FieldSpec.Factory(new TypeEResultVariantConstructorDynamic(
-                                elementType, TypeEResultVariantConstructorDynamic.Kind.ERRS))));
-    }
-
     @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         return EResult.ok(cv);
@@ -156,14 +130,14 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.ERESULT_DYNAMIC);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.ERESULT_DYNAMIC);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof TypeEResultDynamic<?> eresult)) {
                 return EResult.err(
                         loc,
@@ -172,7 +146,7 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
             }
             var cell = eresult.artifactIdCell();
             return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
-                var elementArtRes = Artifactable.exportArtifact(xx, loc, eresult.elementType());
+                var elementArtRes = Exporters.exportType(xx, loc, eresult.elementType());
                 if (elementArtRes.hasErrors()) return elementArtRes.reerr();
                 var body = new ArtifactEResultType(elementArtRes.requireValue("TypeEResultDynamic::export element"));
                 return EResult.ok(makeBody.apply(ArtifactEResultTypeCodec.toValue(body)));
@@ -180,7 +154,7 @@ public final class TypeEResultDynamic<T extends Type> implements Aspect, Type {
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeEResultDynamic requires an artifact id to deserialize");

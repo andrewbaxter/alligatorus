@@ -8,18 +8,23 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.ConstHost;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 
 public record AspectConsumeDynamicArrayConst<T extends Type>(TypeArrayConst<T> type) implements AspectConsumeDynamic {
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-        return JvmSort.descriptor(xx, type.elementType).arrayOf();
+        return JvmSort.descriptor(xx, TypeForms.dynamicForm(xx, type.elementType))
+                .arrayOf();
     }
 
     @Override
     public EResult<CodeValue> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
         return ConstHost.loadDynamic(
-                loc, cv, aspectConsumeDynamicJvmClass(xx), new TypeArrayDynamic<>(type.elementType));
+                loc,
+                cv,
+                aspectConsumeDynamicJvmClass(xx),
+                new TypeArrayDynamic<>(TypeForms.dynamicForm(xx, type.elementType)));
     }
 }

@@ -129,7 +129,7 @@ public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) impleme
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 }

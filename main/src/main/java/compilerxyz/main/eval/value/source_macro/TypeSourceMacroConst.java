@@ -5,8 +5,8 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
@@ -35,7 +35,7 @@ import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6028L)
+@BuiltinFull(uniqueId = 6028L, function = true)
 public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type {
 
     @Override
@@ -69,7 +69,7 @@ public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof TypeSourceMacroConst mc)) {
                 return EResult.err(
                         loc,
@@ -80,11 +80,11 @@ public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type
             return ArtifactSupport.implExportIndependentArtifact(xx, data.artifactIdCell, () -> {
                 var erb = new Erb(loc);
                 var functionArt = erb.mustErMaybeUnreachable(
-                        Artifactable.exportArtifact(xx, loc, new TypeSourceFunctionConst(data.function)));
+                        Exporters.exportType(xx, loc, new TypeSourceFunctionConst(data.function)));
                 Opt<Artifact> exceptionArt = Opt.none();
                 if (data.exceptionType.optIsSome()) {
-                    exceptionArt = erb.mustErMaybeUnreachable(
-                            Artifactable.exportArtifact(xx, loc, data.exceptionType.optUnwrap()));
+                    exceptionArt =
+                            erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, data.exceptionType.optUnwrap()));
                 }
                 if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
                 var body = new ArtifactDataDefSetMacro(functionArt.optUnwrap(), exceptionArt, data.description);
@@ -93,7 +93,7 @@ public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeSourceMacroConst requires an artifact id to deserialize");
@@ -173,7 +173,7 @@ public record TypeSourceMacroConst(SourceMacroData data) implements Aspect, Type
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(AspectArtifactSourceMacroConst.INSTANCE.aspectArtifactExporter());
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(AspectArtifactSourceMacroConst.INSTANCE.aspectArtifactExporter());
     }
 }

@@ -9,8 +9,8 @@ import java.util.function.Function;
 
 public interface ExporterRootDelegate {
     EResult<Artifact> exporterRootDelegateSelfExport(
-            ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody);
+            ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody);
 
-    EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+    EResult<Object> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data);
 }

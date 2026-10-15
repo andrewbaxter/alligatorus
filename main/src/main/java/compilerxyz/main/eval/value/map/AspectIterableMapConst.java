@@ -9,11 +9,11 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.gen.AspectIterable;
 import compilerxyz.main.gen.Binding;
 
-public record AspectIterableMapConst<K extends Type, V extends Type>(TypeMapConst<K, V> type)
-        implements AspectIterable {
+public record AspectIterableMapConst<K extends Type, V extends Type>(
+        TypeMapConst<K, V> type, TypeMapDynamic<Type, Type> dynamic) implements AspectIterable {
 
-    private AspectIterableMapDynamic<K, V> dynamicIterable() {
-        return new AspectIterableMapDynamic<>(new TypeMapDynamic<>(type.keyType, type.valueType));
+    private AspectIterableMapDynamic<Type, Type> dynamicIterable() {
+        return new AspectIterableMapDynamic<>(dynamic);
     }
 
     @Override

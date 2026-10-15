@@ -1,7 +1,6 @@
 package compilerxyz.main.eval;
 
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.GlobalContext;
@@ -20,7 +19,7 @@ public final class CompileImportContext {
     public final Counter defSetCounter = new Counter();
     public final Counter evalRootCounter = new Counter();
     public final Counter uniqueCounter = new Counter();
-    public final TMap<ArtifactIdSource, Artifactable> deserializedArtifacts = new TMap<>();
+    public final TMap<ArtifactIdSource, Object> deserializedArtifacts = new TMap<>();
     public final GlobalContext gx;
     public final ImportStateId importState;
     public final TSet<DefSetId> installedDefSets = new TSet<>();

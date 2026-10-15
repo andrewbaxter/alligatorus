@@ -1,7 +1,8 @@
 package compilerxyz.main.eval.value.source_function;
 
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.ExportableObject;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.ArtifactExpr;
 import compilerxyz.main.eval.ArtifactExternal;
 import compilerxyz.main.eval.BindingId;
@@ -41,8 +42,16 @@ public final class ExternalCodec {
                 }
                 var exprArt = exprArtRes.requireValue("ExternalCodec::export StagedExpr artifact");
                 out.add(new ArtifactExternal.StagedExpr(exprArt));
-            } else if (host instanceof StagedExprCell cell && cell.value() instanceof Artifactable lowered) {
-                var artRes = Artifactable.exportArtifact(xx, loc, lowered);
+            } else if (host instanceof StagedExprCell cell && cell.value() instanceof Value lowered) {
+                var artRes = Exporters.exportValue(xx, loc, lowered);
+                if (artRes.hasErrors()) {
+                    artRes.drainInto(errors);
+                    return EResult.errs(errors);
+                }
+                out.add(new ArtifactExternal.Exported(
+                        artRes.requireValue("ExternalCodec::export lowered value artifact"), true));
+            } else if (host instanceof StagedExprCell cell && cell.value() instanceof Type lowered) {
+                var artRes = Exporters.exportType(xx, loc, lowered);
                 if (artRes.hasErrors()) {
                     artRes.drainInto(errors);
                     return EResult.errs(errors);
@@ -55,15 +64,31 @@ public final class ExternalCodec {
                         "ExternalCodec: lowered value is not exportable: "
                                 + cell.value().getClass().getSimpleName());
             } else if (host instanceof StageLiftCell liftCell) {
-                var srcTypeArtRes = Artifactable.exportArtifact(xx, loc, liftCell.sourceType());
+                var srcTypeArtRes = Exporters.exportType(xx, loc, liftCell.sourceType());
                 if (srcTypeArtRes.hasErrors()) {
                     srcTypeArtRes.drainInto(errors);
                     return EResult.errs(errors);
                 }
                 var srcTypeArt = srcTypeArtRes.requireValue("ExternalCodec::export StageLift source type artifact");
                 out.add(new ArtifactExternal.StageLift(srcTypeArt));
-            } else if (host instanceof Artifactable artifactable) {
-                var artRes = Artifactable.exportArtifact(xx, loc, artifactable);
+            } else if (host instanceof Type type) {
+                var artRes = Exporters.exportType(xx, loc, type);
+                if (artRes.hasErrors()) {
+                    artRes.drainInto(errors);
+                    return EResult.errs(errors);
+                }
+                out.add(new ArtifactExternal.Exported(
+                        artRes.requireValue("ExternalCodec::export host type artifact"), false));
+            } else if (host instanceof Value value) {
+                var artRes = Exporters.exportValue(xx, loc, value);
+                if (artRes.hasErrors()) {
+                    artRes.drainInto(errors);
+                    return EResult.errs(errors);
+                }
+                out.add(new ArtifactExternal.Exported(
+                        artRes.requireValue("ExternalCodec::export host value artifact"), false));
+            } else if (host instanceof ExportableObject object) {
+                var artRes = Exporters.exportObject(xx, loc, object);
                 if (artRes.hasErrors()) {
                     artRes.drainInto(errors);
                     return EResult.errs(errors);
@@ -132,8 +157,8 @@ public final class ExternalCodec {
                                     case Type t -> t;
                                     case Value v -> v.valueType();
                                     default ->
-                                        throw new IllegalStateException(
-                                                "exported external is neither Type nor Value: " + imported.getClass());
+                                        throw new IllegalStateException("ExternalCodec: imported host external "
+                                                + imported.getClass().getName() + " is neither a type nor a value");
                                 };
                         out.add(new EvalContext.ExternalEntry(
                                 new BindingId(), entryType, new External(imported.getClass(), imported)));

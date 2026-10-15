@@ -63,8 +63,8 @@ public record TypeCodeDynamic() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.CODE_DYNAMIC);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.CODE_DYNAMIC);
     }
 
     @Override

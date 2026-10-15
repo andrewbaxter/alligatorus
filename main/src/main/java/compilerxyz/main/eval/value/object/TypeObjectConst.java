@@ -4,7 +4,6 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
@@ -25,7 +24,6 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
-import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
@@ -104,9 +102,6 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
         }
         if (key.equals(GenAspectLift.AspectId)) {
             return Opt.some(new AspectLiftObjectConst(this));
-        }
-        if (key.equals(GenAspectFunction.AspectId)) {
-            return Opt.some(new AspectFunctionObjectConst(this));
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldObjectConst(this));
@@ -204,20 +199,20 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.TYPE_OBJECT_CONST);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.TYPE_OBJECT_CONST);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var type = MustCast.mustCast(TypeObjectConst.class, self);
             return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueString(type.externalHostClass.getName()))));
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             String className;
             switch (data) {

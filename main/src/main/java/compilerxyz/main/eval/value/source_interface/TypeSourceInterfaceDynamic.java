@@ -5,8 +5,8 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
@@ -102,7 +102,7 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var cell = MustCast.mustCast(TypeSourceInterfaceDynamic.class, self).cell;
             if (cell.set.optIsNone()) {
                 var body = new ArtifactDataDefSetInterface.Builtin(cell.identity);
@@ -119,11 +119,11 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
             var frozen = frozenOpt.optUnwrap();
             return ArtifactSupport.implExportIndependentArtifact(xx, cell.artifactIdCell, () -> {
                 var erb = new Erb(loc);
-                var defSetArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, set));
+                var defSetArt = erb.mustErMaybeUnreachable(Exporters.exportObject(xx, loc, set));
                 var methodsOut = new TList<Artifact>();
                 for (var m : frozen.methods) {
                     var mArt = erb.mustErMaybeUnreachable(
-                            Artifactable.exportArtifact(xx, loc, new TypeInterfaceMethodDynamic(cell, m)));
+                            Exporters.exportType(xx, loc, new TypeInterfaceMethodDynamic(cell, m)));
                     if (mArt.optIsSome()) methodsOut.add(mArt.optUnwrap());
                 }
                 if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
@@ -142,7 +142,7 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactDataDefSetInterface body;
             try {
@@ -263,7 +263,7 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(AspectArtifactSourceInterfaceDynamic.INSTANCE.aspectArtifactExporter());
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(AspectArtifactSourceInterfaceDynamic.INSTANCE.aspectArtifactExporter());
     }
 }

@@ -14,7 +14,7 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6127L)
+@BuiltinFull(uniqueId = 6127L, function = true)
 public record TypeMapHasFnDynamic(Type keyType, Type valueType) implements Aspect, Type {
 
     @Override
@@ -65,7 +65,7 @@ public record TypeMapHasFnDynamic(Type keyType, Type valueType) implements Aspec
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 }

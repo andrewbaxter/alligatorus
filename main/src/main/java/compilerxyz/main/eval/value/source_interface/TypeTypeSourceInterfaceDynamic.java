@@ -5,9 +5,9 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -146,18 +146,18 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.SOURCE_INTERFACE_TYPE_DYNAMIC);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.SOURCE_INTERFACE_TYPE_DYNAMIC);
     }
 
     public static final ExporterRootDelegate TYPE_DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var tt = MustCast.mustCast(TypeTypeSourceInterfaceDynamic.class, self);
             Opt<Artifact> ifaceArt = Opt.none();
             if (tt.type.optIsSome()) {
-                var iRes = Artifactable.exportArtifact(xx, loc, tt.type.optUnwrap());
+                var iRes = Exporters.exportType(xx, loc, tt.type.optUnwrap());
                 if (iRes.hasErrors()) return iRes.reerr();
                 ifaceArt = Opt.some(iRes.requireValue("TypeTypeSourceInterfaceDynamic::export interface"));
             }
@@ -166,7 +166,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactDataSourceInterfaceType body;
             try {

@@ -18,7 +18,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("eval.aspect_lookup")
-@BuiltinFull(uniqueId = 6108L)
+@BuiltinFull(uniqueId = 6108L, function = true)
 public record TypeFunctionAspectConst() implements Aspect, Type {
 
     static final JavaInternalName INTNAME_TYPE = JavaInternalName.fromClass(Type.class);
@@ -72,7 +72,7 @@ public record TypeFunctionAspectConst() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 }

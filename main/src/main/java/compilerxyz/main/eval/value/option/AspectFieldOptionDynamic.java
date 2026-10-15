@@ -1,12 +1,10 @@
 package compilerxyz.main.eval.value.option;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.Eval;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -15,7 +13,6 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.bool.TypeBoolDynamic;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenCodegenDescriptors;
@@ -63,18 +60,12 @@ public record AspectFieldOptionDynamic<T extends Type>(TypeOptionDynamic<T> type
             var out = b.instanceOf(JavaInternalName.fromClass(Opt.Some.class), b.reg(selfRes.requireValue("selfDyn")));
             return EResult.ok(DynUtil.regToValue(b.code(), out, new TypeBoolDynamic()));
         }
-        var factoryOpt = OptionFieldSpecs.factories(type.elementType).getOpt(ck);
-        if (factoryOpt.optIsNone()) {
-            return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on option");
-        }
-        var factory = factoryOpt.optUnwrap();
-        return EResult.ok(new CodeValue(
-                Code.none(loc), EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), factory))));
+        return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on option");
     }
 
     @Override
     public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        return TList.from(OptionFieldSpecs.factories(type.elementType).keySet());
+        return TList.of(new ConstKey.Str("value"), new ConstKey.Str("is_some"));
     }
 
     @Override
@@ -90,6 +81,6 @@ public record AspectFieldOptionDynamic<T extends Type>(TypeOptionDynamic<T> type
         if (keyStr.optIsSome() && keyStr.optUnwrap().value().equals("value")) {
             return Opt.some(type.elementType);
         }
-        return OptionFieldSpecs.factories(type.elementType).getOpt(key).optMap(factory -> factory);
+        return Opt.none();
     }
 }

@@ -327,6 +327,10 @@ public final class T0165MutableDropForkTest {
                                                                                 mb,
                                                                                 TList.of(
                                                                                         new TestMb.RecordPair(
+                                                                                                "exporter",
+                                                                                                mb.valueExporterImpl(
+                                                                                                        "vb")),
+                                                                                        new TestMb.RecordPair(
                                                                                                 "type",
                                                                                                 mb.seqOf(
                                                                                                         mb.return_(
@@ -1103,6 +1107,10 @@ public final class T0165MutableDropForkTest {
                                                                         ifaceMethods(
                                                                                 mb,
                                                                                 TList.of(
+                                                                                        new TestMb.RecordPair(
+                                                                                                "exporter",
+                                                                                                mb.typeExporterImpl(
+                                                                                                        "u")),
                                                                                         new TestMb.RecordPair(
                                                                                                 "is_equal",
                                                                                                 mb.panic(

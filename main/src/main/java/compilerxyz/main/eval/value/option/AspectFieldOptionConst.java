@@ -6,6 +6,7 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenOptions;
@@ -18,7 +19,8 @@ public record AspectFieldOptionConst<T extends Type>(TypeOptionConst<T> type) im
     public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
         var dynRes = new AspectConsumeDynamicOptionConst<>(type).aspectConsumeDynamicToDynamic(xx, loc, self);
         if (dynRes.hasErrors()) return dynRes.reerr();
-        var fieldRes = GenAspectField.get(xx, loc, GenOptions.optionDynamic(xx, type.elementType));
+        var fieldRes =
+                GenAspectField.get(xx, loc, GenOptions.optionDynamic(xx, TypeForms.dynamicForm(xx, type.elementType)));
         if (fieldRes.hasErrors()) return fieldRes.reerr();
         return fieldRes.requireValue("TypeOptionConst::field AspectField")
                 .aspectFieldField(xx, loc, dynRes.requireValue("TypeOptionConst::field self"), key);
@@ -26,14 +28,14 @@ public record AspectFieldOptionConst<T extends Type>(TypeOptionConst<T> type) im
 
     @Override
     public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        return GenAspectField.getMaybe(xx, GenOptions.optionDynamic(xx, type.elementType))
+        return GenAspectField.getMaybe(xx, GenOptions.optionDynamic(xx, TypeForms.dynamicForm(xx, type.elementType)))
                 .optUnwrap()
                 .aspectFieldKeys(xx);
     }
 
     @Override
     public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-        return GenAspectField.getMaybe(xx, GenOptions.optionDynamic(xx, type.elementType))
+        return GenAspectField.getMaybe(xx, GenOptions.optionDynamic(xx, TypeForms.dynamicForm(xx, type.elementType)))
                 .optUnwrap()
                 .aspectFieldTypeOpt(xx, key);
     }

@@ -5,7 +5,6 @@ import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.Eval;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -14,7 +13,6 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.value.int_.TypeIntDynamic;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -31,12 +29,6 @@ public record AspectFieldListSpecializedDynamic<T extends Type>(TypeListSpeciali
         var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
-        if (ck.equals(new ConstKey.Str("new"))) {
-            return EResult.ok(new CodeValue(
-                    self.code(),
-                    EvalOutcome.ofValue(new ValueObjectConst(
-                            ValueObjectConst.plainTypeType(), new TypeListSpecializedNewDynamic(type)))));
-        }
         if (ck.equals(new ConstKey.Str("push"))) {
             return EResult.ok(DynUtil.methodRefOn(self, new TypeListSpecializedPushDynamic(type)));
         }
@@ -60,18 +52,11 @@ public record AspectFieldListSpecializedDynamic<T extends Type>(TypeListSpeciali
     @Override
     public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
         return TList.of(
-                new ConstKey.Str("new"),
-                new ConstKey.Str("push"),
-                new ConstKey.Str("get"),
-                new ConstKey.Str("set"),
-                new ConstKey.Str("len"));
+                new ConstKey.Str("push"), new ConstKey.Str("get"), new ConstKey.Str("set"), new ConstKey.Str("len"));
     }
 
     @Override
     public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-        if (key.equals(new ConstKey.Str("new"))) {
-            return Opt.some(new TypeListSpecializedNewDynamic(type));
-        }
         if (key.equals(new ConstKey.Str("push"))) {
             return Opt.some(new TypeListSpecializedPushDynamic(type));
         }

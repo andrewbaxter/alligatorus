@@ -14,7 +14,7 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6106L)
+@BuiltinFull(uniqueId = 6106L, function = true)
 public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind) implements Aspect, Type {
 
     public enum Kind {
@@ -81,7 +81,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind) 
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 }

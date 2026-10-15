@@ -22,6 +22,7 @@ import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
+import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
@@ -95,6 +96,9 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectDynamicConst.AspectId)) {
+            return Opt.some(new AspectDynamicConstOptionDynamic(this));
+        }
         if (key.equals(GenAspectInitialBind.AspectId)) {
             return Opt.some(new AspectInitialBindOptionDynamic(this));
         }
@@ -189,7 +193,7 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.OPTION_DYNAMIC);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.OPTION_DYNAMIC);
     }
 }

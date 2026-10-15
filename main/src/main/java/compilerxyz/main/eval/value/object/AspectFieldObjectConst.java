@@ -12,7 +12,6 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.function.TypeMethodDynamic;
 import compilerxyz.main.eval.value.source_interface.TypeInterfaceMethodBuiltin;
 import compilerxyz.main.gen.AspectField;
-import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -81,9 +80,8 @@ public record AspectFieldObjectConst(TypeObjectConst type) implements AspectFiel
             }
             return EResult.err(loc, "Method '" + keyName + "' not found on interface");
         }
-        var asp = GenAspectField.get(xx, loc, inner);
-        if (asp.hasErrors()) return asp.reerr();
-        return asp.requireValue(type.typeDesc() + "::field inner AspectField").aspectFieldField(xx, loc, self, key);
+        return EResult.err(
+                loc, type.typeDesc() + "::field: no field " + key.value().optUnwrap() + " on " + inner.typeDesc());
     }
 
     @Override

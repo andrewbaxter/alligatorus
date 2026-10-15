@@ -2,11 +2,20 @@ package compilerxyz.main.eval;
 
 import static compilerxyz.prelude.util.MustCast.mustCast;
 
-import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeDynamicReg;
+import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.EvalRootEmitter;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeLocTable;
+import compilerxyz.main.eval.dynamic.JavaBytecodeRenderRefs;
+import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaInternalName;
+import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.eval.value.string.TypeStringDynamic;
@@ -20,6 +29,26 @@ import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
+import compilerxyz.prelude.util.TOrderedMap;
+import java.lang.reflect.InvocationTargetException;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.FrameNode;
+import org.objectweb.asm.tree.IincInsnNode;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.IntInsnNode;
+import org.objectweb.asm.tree.InvokeDynamicInsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.LineNumberNode;
+import org.objectweb.asm.tree.LookupSwitchInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MultiANewArrayInsnNode;
+import org.objectweb.asm.tree.TableSwitchInsnNode;
+import org.objectweb.asm.tree.TypeInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 
 public final class CompileModule {
     private CompileModule() {}
@@ -104,7 +133,8 @@ public final class CompileModule {
                 for (var entry : scopeEntries.entrySet()) {
                     evalRootScope.pushNamed(entry.getKey(), entry.getValue());
                 }
-                var evalBinaryName = EvalRoot.newBinaryName(evalXx);
+                var evalBinaryName = "compilerxyz.main.eval.gen.EvalRoot$" + evalXx.vx.ix.evalRootCounter.next();
+                evalXx.vx.evalRootInternalName = Opt.some(EvalRootEmitter.toInternalName(evalBinaryName));
                 var cvRes = ConstEval.constEval(evalXx, rootExpr);
                 if (cvRes.hasErrors()) {
                     evalResult = new EvalOutcome.Err(cvRes.errorsOpt().optUnwrap());
@@ -146,12 +176,150 @@ public final class CompileModule {
                     evalResult = new EvalOutcome.Ok(fallbackValue, new TList<>());
                     break evalBlock;
                 }
-                var runRes = EvalRoot.run(evalXx, evalRootLoc, evalBinaryName, stage1Code.optUnwrap());
-                if (runRes.hasErrors()) {
-                    evalResult = new EvalOutcome.Err(runRes.errorsOpt().optUnwrap());
-                    break evalBlock;
+                Object rawResult;
+                {
+                    var code = stage1Code.optUnwrap();
+                    var internalName = EvalRootEmitter.toInternalName(evalBinaryName);
+                    var locTable = new JavaBytecodeLocTable();
+                    var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
+                        @Override
+                        protected String getCommonSuperClass(String type1, String type2) {
+                            return JvmConstants.INTNAME_OBJECT.value();
+                        }
+                    };
+                    cw.visit(
+                            Opcodes.V11,
+                            Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
+                            internalName,
+                            null,
+                            JvmConstants.INTNAME_OBJECT.value(),
+                            null);
+                    cw.visitField(
+                                    Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+                                    EvalRootEmitter.EXPR_CONTEXT_FIELD,
+                                    EvalRootEmitter.DESC_EXPR_CONTEXT.value(),
+                                    null,
+                                    null)
+                            .visitEnd();
+                    var mdescRun = JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, TList.of());
+                    var seq = new JavaBytecodeSequence();
+                    var ownerInternal = JavaInternalName.of(internalName);
+                    var refs = new JavaBytecodeRenderRefs(ownerInternal, "");
+                    seq.add(code.code());
+                    {
+                        var rb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+                        var result = code.reg();
+                        if (!result.desc.isReference()) {
+                            throw new IllegalStateException("eval root: result is not a reference");
+                        }
+                        rb.ret(result);
+                        seq.add(rb.code());
+                    }
+                    var context = ownerInternal.value() + ".run";
+                    var layout = seq.layout(refs, locTable);
+                    var whole = seq.emit(layout, 0, layout.size(), TList.of(), refs, Opt.none());
+                    var offsets = new int[whole.node().instructions.size() + 1];
+                    {
+                        int at = 0;
+                        int i = 0;
+                        for (var insn : whole.node().instructions) {
+                            offsets[i++] = at;
+                            at += switch (insn) {
+                                case LabelNode l -> 0;
+                                case LineNumberNode l -> 0;
+                                case FrameNode f -> 0;
+                                case InsnNode n -> 1;
+                                case IntInsnNode n -> n.getOpcode() == Opcodes.SIPUSH ? 3 : 2;
+                                case VarInsnNode n -> n.var < 256 ? 2 : 4;
+                                case TypeInsnNode n -> 3;
+                                case FieldInsnNode n -> 3;
+                                case MethodInsnNode n -> n.getOpcode() == Opcodes.INVOKEINTERFACE ? 5 : 3;
+                                case InvokeDynamicInsnNode n -> 5;
+                                case JumpInsnNode n -> 3;
+                                case LdcInsnNode n -> 3;
+                                case IincInsnNode n ->
+                                    n.var < 256 && n.incr >= Byte.MIN_VALUE && n.incr <= Byte.MAX_VALUE ? 3 : 6;
+                                case TableSwitchInsnNode n -> 16 + 4 * n.labels.size();
+                                case LookupSwitchInsnNode n -> 12 + 8 * n.keys.size();
+                                case MultiANewArrayInsnNode n -> 4;
+                                default ->
+                                    throw new IllegalStateException("unsized instruction node "
+                                            + insn.getClass().getName());
+                            };
+                        }
+                        offsets[i] = at;
+                    }
+                    if (offsets[offsets.length - 1] <= 65535) {
+                        JavaBytecodeUtils.renderMethodNode(cw, "run", mdescRun, whole.node(), context);
+                    } else {
+                        var itemBytes = new int[whole.itemInsnIndex().length];
+                        for (int i = 0; i < itemBytes.length; i++) itemBytes[i] = offsets[whole.itemInsnIndex()[i]];
+                        var cuts = seq.chunkCuts(layout, itemBytes, 32000);
+                        var fields = seq.chunkFields(layout, cuts, refs);
+                        var starts = new TList<Integer>();
+                        starts.add(0);
+                        starts.addAll(cuts);
+                        var driver = cw.visitMethod(
+                                Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "run", mdescRun.value(), null, null);
+                        for (int k = 0; k < starts.size(); k++) {
+                            boolean last = k == starts.size() - 1;
+                            int from = starts.get(k);
+                            int to = last ? layout.size() : starts.get(k + 1);
+                            var part = seq.emit(layout, from, to, TList.of(), refs, Opt.some(fields));
+                            if (!last) part.node().instructions.add(new InsnNode(Opcodes.RETURN));
+                            var chunkName = "run$" + k;
+                            var chunkDesc = last ? mdescRun : JavaMethodDescriptor.VOID_NOARGS;
+                            JavaBytecodeUtils.renderMethodNode(
+                                    cw, chunkName, chunkDesc, part.node(), context + "$" + k);
+                            driver.visitMethodInsn(
+                                    Opcodes.INVOKESTATIC, internalName, chunkName, chunkDesc.value(), false);
+                        }
+                        driver.visitInsn(Opcodes.ARETURN);
+                        driver.visitMaxs(0, 0);
+                        driver.visitEnd();
+                    }
+                    var rootStaticFields = new TOrderedMap<String, Object>();
+                    refs.declareFields(cw, rootStaticFields);
+                    cw.visitEnd();
+                    var bytecode = cw.toByteArray();
+                    var dependencyLoaders = new TList<DefinitionSetClassLoader>();
+                    for (var ds : refs.defSets().values()) {
+                        var installRes = ds.install(evalXx, evalRootLoc);
+                        if (installRes.hasErrors()) {
+                            evalResult =
+                                    new EvalOutcome.Err(installRes.errorsOpt().optUnwrap());
+                            break evalBlock;
+                        }
+                        dependencyLoaders.add(installRes.requireValue("EvalRoot::run install"));
+                    }
+                    if (evalXx.vx.ix.classLoader.optIsNone()) {
+                        evalXx.vx.ix.classLoader = Opt.some(new DefinitionSetClassLoader(
+                                evalXx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders));
+                    }
+                    var loader = evalXx.vx.ix.classLoader.optUnwrap();
+                    loader.registerClass(evalBinaryName, bytecode);
+                    loader.registerLocs(evalBinaryName, locTable.locs());
+                    rootStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, evalXx);
+                    loader.registerExternals(evalBinaryName, rootStaticFields);
+                    Class<?> rootClass;
+                    try {
+                        rootClass = Class.forName(evalBinaryName, true, loader);
+                    } catch (ClassNotFoundException e) {
+                        throw new AssertionError("Generated root class " + evalBinaryName + " failed to load", e);
+                    }
+                    Object result;
+                    try {
+                        result = rootClass.getDeclaredMethod("run").invoke(null);
+                    } catch (InvocationTargetException e) {
+                        var thrown =
+                                EvalRoot.thrownErrors(loader, evalRootLoc, e, "Generated root class " + evalBinaryName);
+                        evalResult = new EvalOutcome.Err(thrown.errorsOpt().optUnwrap());
+                        break evalBlock;
+                    } catch (ReflectiveOperationException e) {
+                        throw new AssertionError("Generated root class " + evalBinaryName + " invoke failed", e);
+                    }
+                    rawResult = result;
                 }
-                Object rawResult = runRes.requireValue("Eval::eval run");
                 Opt<Value> finalValue;
                 if (fallbackValue.optIsSome()) {
                     finalValue = fallbackValue;
@@ -202,8 +370,8 @@ public final class CompileModule {
                                     cix.localData);
                         }
                         var exportErrors = new TList<ExprErr>();
-                        var exportArt = Artifactable.exportArtifact(
-                                xx, rootLoc, ok.value().optUnwrap());
+                        var exportArt =
+                                Exporters.exportValue(xx, rootLoc, ok.value().optUnwrap());
                         if (exportArt.hasErrors()) {
                             exportArt.drainInto(exportErrors);
                             return new CompileModuleResult(

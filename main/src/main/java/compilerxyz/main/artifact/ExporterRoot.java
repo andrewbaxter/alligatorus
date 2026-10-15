@@ -21,8 +21,10 @@ import compilerxyz.main.eval.value.code.TypeCodeDynamic;
 import compilerxyz.main.eval.value.double_.TypeDoubleConst;
 import compilerxyz.main.eval.value.double_.TypeDoubleDynamic;
 import compilerxyz.main.eval.value.double_.TypeDoubleDynamicBox;
+import compilerxyz.main.eval.value.empty.ValueEmpty;
 import compilerxyz.main.eval.value.eresult.TypeEResultConst;
 import compilerxyz.main.eval.value.eresult.TypeEResultDynamic;
+import compilerxyz.main.eval.value.eresult.TypeTypeEResult;
 import compilerxyz.main.eval.value.expr.TypeExpr;
 import compilerxyz.main.eval.value.float_.TypeFloatConst;
 import compilerxyz.main.eval.value.float_.TypeFloatDynamic;
@@ -32,17 +34,22 @@ import compilerxyz.main.eval.value.int_.TypeIntDynamic;
 import compilerxyz.main.eval.value.int_.TypeIntDynamicBox;
 import compilerxyz.main.eval.value.jvm_object.TypeJvmObjectConst;
 import compilerxyz.main.eval.value.jvm_object.TypeJvmObjectDynamic;
+import compilerxyz.main.eval.value.list.TypeListBoxedDynamic;
 import compilerxyz.main.eval.value.list.TypeListConst;
+import compilerxyz.main.eval.value.list.TypeTypeList;
 import compilerxyz.main.eval.value.long_.TypeLongConst;
 import compilerxyz.main.eval.value.long_.TypeLongDynamic;
 import compilerxyz.main.eval.value.long_.TypeLongDynamicBox;
 import compilerxyz.main.eval.value.map.TypeMapConst;
+import compilerxyz.main.eval.value.map.TypeMapDynamic;
+import compilerxyz.main.eval.value.map.TypeTypeMap;
 import compilerxyz.main.eval.value.object.TypeObjectConst;
 import compilerxyz.main.eval.value.object.TypeObjectDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.option.TypeOptionConst;
 import compilerxyz.main.eval.value.option.TypeOptionDynamic;
 import compilerxyz.main.eval.value.option.TypeOptionVariantConstructorDynamic;
+import compilerxyz.main.eval.value.option.TypeTypeOption;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.short_.TypeShortConst;
 import compilerxyz.main.eval.value.short_.TypeShortDynamic;
@@ -52,12 +59,13 @@ import compilerxyz.main.eval.value.source_interface.TypeInterfaceMethodDynamic;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.eval.value.source_interface.TypeTypeSourceInterfaceDynamic;
 import compilerxyz.main.eval.value.source_macro.TypeSourceMacroConst;
+import compilerxyz.main.eval.value.source_object.TypeSourceObjectConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_object.TypeTypeSourceObjectConst;
-import compilerxyz.main.eval.value.source_object_new.TypeTypeSourceObjectNewConst;
+import compilerxyz.main.eval.value.source_object_new.TypeSourceObjectNewDynamic;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.eval.value.source_union.TypeTypeSourceUnionConst;
-import compilerxyz.main.eval.value.source_union_new.TypeTypeSourceUnionNewConst;
+import compilerxyz.main.eval.value.source_union_new.TypeSourceUnionNewDynamic;
 import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.eval.value.string.TypeStringDynamic;
 import compilerxyz.main.eval.value.tuple.Tuple;
@@ -89,7 +97,7 @@ import compilerxyz.prelude.util.TMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public enum ExporterRoot implements ArtifactExporter, Artifactable {
+public enum ExporterRoot implements ArtifactExporter {
     BOOL_CONST("bool_const") {
         @Override
         ExporterRootDelegate delegate() {
@@ -108,6 +116,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return TypeListConst.TYPE_DELEGATE;
         }
     },
+    LIST_DYNAMIC("list_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeListBoxedDynamic.DELEGATE;
+        }
+    },
     MAP_CONST("map_const") {
         @Override
         ExporterRootDelegate delegate() {
@@ -118,6 +132,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return TypeMapConst.TYPE_DELEGATE;
+        }
+    },
+    MAP_DYNAMIC("map_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeMapDynamic.DELEGATE;
         }
     },
     BYTE_CONST("byte_const") {
@@ -184,6 +204,30 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return TypeObjectDynamic.DELEGATE;
+        }
+    },
+    TYPE_TYPE_OPTION("type_type_option") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeTypeOption.TYPE_DELEGATE;
+        }
+    },
+    TYPE_TYPE_ERESULT("type_type_eresult") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeTypeEResult.TYPE_DELEGATE;
+        }
+    },
+    TYPE_TYPE_LIST("type_type_list") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeTypeList.TYPE_DELEGATE;
+        }
+    },
+    TYPE_TYPE_MAP("type_type_map") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeTypeMap.TYPE_DELEGATE;
         }
     },
     OPTION_DYNAMIC("option_dynamic") {
@@ -270,6 +314,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return Record.DELEGATE;
         }
     },
+    RECORD_DATA("record_data") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return Record.DATA_DELEGATE;
+        }
+    },
     STRING_CONST("string_const") {
         @Override
         ExporterRootDelegate delegate() {
@@ -280,6 +330,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return Tuple.DELEGATE;
+        }
+    },
+    TUPLE_DATA("tuple_data") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return Tuple.DATA_DELEGATE;
         }
     },
     UNIQUE("unique") {
@@ -330,16 +386,16 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return ValueSourceObjectConst.DELEGATE;
         }
     },
-    SOURCE_OBJECT_TYPE_INSTANCE("source_object_type_instance") {
+    SOURCE_OBJECT_CONST_TYPE("source_object_const_type") {
         @Override
         ExporterRootDelegate delegate() {
-            return ValueSourceObjectConst.TYPE_INSTANCE_DELEGATE;
+            return TypeSourceObjectConst.TYPE_DELEGATE;
         }
     },
-    SOURCE_OBJECT_NEW_CONST("source_object_new_const") {
+    SOURCE_OBJECT_NEW("source_object_new") {
         @Override
         ExporterRootDelegate delegate() {
-            return TypeTypeSourceObjectNewConst.DELEGATE;
+            return TypeSourceObjectNewDynamic.DELEGATE;
         }
     },
     SOURCE_UNION_CONST("source_union_const") {
@@ -348,22 +404,22 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return TypeSourceUnionDynamic.DELEGATE;
         }
     },
-    SOURCE_UNION_NEW_CONST("source_union_new_const") {
+    SOURCE_UNION_NEW("source_union_new") {
         @Override
         ExporterRootDelegate delegate() {
-            return TypeTypeSourceUnionNewConst.DELEGATE;
+            return TypeSourceUnionNewDynamic.DELEGATE;
+        }
+    },
+    VALUE_EMPTY("value_empty") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return ValueEmpty.DELEGATE;
         }
     },
     OBJECT_CONST("object_const") {
         @Override
         ExporterRootDelegate delegate() {
             return ValueObjectConst.DELEGATE;
-        }
-    },
-    OBJECT_CONST_PAYLOAD("object_const_payload") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return ValueObjectConst.PAYLOAD_DELEGATE;
         }
     },
     TYPE_OBJECT_CONST("type_object_const") {
@@ -448,6 +504,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return nullaryType(TypeExpr::new);
+        }
+    },
+    EXPR_VALUE("expr_value") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeExpr.DELEGATE;
         }
     },
     FLOAT_CONST_TYPE("float_const_type") {
@@ -606,6 +668,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return nullaryType(TypeUniqueDynamic::new);
         }
     },
+    UNIQUE_CONST_TYPE("unique_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUniqueConst::new);
+        }
+    },
     USHORT_CONST_TYPE("ushort_const_type") {
         @Override
         ExporterRootDelegate delegate() {
@@ -649,11 +717,6 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         return tag;
     }
 
-    @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ROOT);
-    }
-
     private static final IMap<String, ExporterRoot> BY_TAG;
 
     static {
@@ -671,24 +734,24 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         return BY_TAG.getOpt(tag);
     }
 
-    @Override
-    public EResult<Artifact> artifactExporterExport(ExprContext xx, QExprId loc, Artifactable self) {
-        var me = this;
-        Function<JsonValue, ArtifactBody> makeBody = (data) -> {
-            ArtifactBodyExporter exporter;
-            if (me == ROOT) {
-                exporter = new ArtifactBodyExporter.Root();
-            } else {
-                exporter = new ArtifactBodyExporter.Body(
-                        new ArtifactBody(new JsonValueString(me.tag), new ArtifactBodyExporter.Root()));
-            }
-            return new ArtifactBody(data, exporter);
-        };
-        return delegate().exporterRootDelegateSelfExport(xx, loc, self, makeBody);
+    public ArtifactBody body(JsonValue data) {
+        ArtifactBodyExporter exporter;
+        if (this == ROOT) {
+            exporter = new ArtifactBodyExporter.Root();
+        } else {
+            exporter = new ArtifactBodyExporter.Body(
+                    new ArtifactBody(new JsonValueString(tag), new ArtifactBodyExporter.Root()));
+        }
+        return new ArtifactBody(data, exporter);
     }
 
     @Override
-    public EResult<Artifactable> artifactExporterImportFromData(
+    public EResult<Artifact> artifactExporterExport(ExprContext xx, QExprId loc, Object self) {
+        return delegate().exporterRootDelegateSelfExport(xx, loc, self, this::body);
+    }
+
+    @Override
+    public EResult<Object> artifactExporterImportFromData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
         return delegate().exporterRootDelegateSelfFromArtifactData(xx, loc, id, data);
     }
@@ -697,12 +760,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         return new ExporterRootDelegate() {
             @Override
             public EResult<Artifact> exporterRootDelegateSelfExport(
-                    ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                    ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
                 return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueNull())));
             }
 
             @Override
-            public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+            public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                     ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
                 return switch (data) {
                     case JsonValueNull ignored -> EResult.ok(make.get());
@@ -719,13 +782,13 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
     private static final ExporterRootDelegate ROOT_DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var er = mustCast(ExporterRoot.class, self);
             return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueString(er.tag))));
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             JsonValueString s;
             switch (data) {

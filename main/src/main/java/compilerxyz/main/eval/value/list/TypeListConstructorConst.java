@@ -18,7 +18,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("types.list")
-@BuiltinFull(uniqueId = 6116L)
+@BuiltinFull(uniqueId = 6116L, function = true)
 public record TypeListConstructorConst() implements Aspect, Type {
 
     @Override
@@ -72,7 +72,7 @@ public record TypeListConstructorConst() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 }

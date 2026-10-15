@@ -5,8 +5,9 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
@@ -35,23 +36,20 @@ public record ValueObjectConst(Type type, Object data) implements Value {
         return ((TypeObjectDynamic) GenType.dynamicType()).pairedConst();
     }
 
-    @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return Artifactable.exporterOfType(xx, loc, valueType());
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            var voc = MustCast.mustCast(ValueObjectConst.class, self);
-            if (!(voc.data() instanceof Artifactable data)) {
-                return EResult.err(loc, "value of type " + voc.type().typeDesc() + " is not exportable");
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            if (!(self instanceof ValueObjectConst voc)) {
+                return EResult.err(
+                        loc,
+                        "ValueObjectConst::exporterRootDelegateSelfExport: expected ValueObjectConst, got "
+                                + self.getClass().getName());
             }
             var errors = new TList<ExprErr>();
-            var typeRes = Artifactable.exportArtifact(xx, loc, voc.type());
+            var typeRes = Exporters.exportType(xx, loc, voc.type());
             typeRes.drainInto(errors);
-            var dataRes = Artifactable.exportArtifact(xx, loc, data);
+            var dataRes = Exporters.exportData(xx, loc, voc.type(), voc.data());
             dataRes.drainInto(errors);
             if (!errors.isEmpty()) return EResult.errs(errors);
             var body = new ArtifactValueObjectConst(
@@ -61,7 +59,7 @@ public record ValueObjectConst(Type type, Object data) implements Value {
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactValueObjectConst body;
             try {
@@ -82,26 +80,8 @@ public record ValueObjectConst(Type type, Object data) implements Value {
         }
     };
 
-    public static final ExporterRootDelegate PAYLOAD_DELEGATE = new ExporterRootDelegate() {
-        @Override
-        public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            return DELEGATE.exporterRootDelegateSelfExport(xx, loc, self, makeBody);
-        }
-
-        @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
-                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-            var res = DELEGATE.exporterRootDelegateSelfFromArtifactData(xx, loc, id, data);
-            if (res.hasErrors()) return res.reerr();
-            var voc = MustCast.mustCast(ValueObjectConst.class, res.requireValue("ValueObjectConst::import payload"));
-            if (!(voc.data() instanceof ValueObjectConst payload)) {
-                return EResult.err(
-                        loc,
-                        "ValueObjectConst payload data: expected a const value, got "
-                                + voc.data().getClass().getName());
-            }
-            return EResult.ok(new ValueObjectConst(voc.type(), payload.data()));
-        }
-    };
+    @Override
+    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(ExporterRoot.OBJECT_CONST);
+    }
 }

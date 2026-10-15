@@ -1,7 +1,7 @@
 package compilerxyz.main.eval.value.argrecord;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -17,7 +17,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields, Bindin
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return Artifactable.exporterOfType(xx, loc, valueType());
+    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
+        return Exporters.exporterOfType(xx, loc, valueType());
     }
 }

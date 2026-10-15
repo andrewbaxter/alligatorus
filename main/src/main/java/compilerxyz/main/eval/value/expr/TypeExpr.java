@@ -1,11 +1,18 @@
 package compilerxyz.main.eval.value.expr;
 
+import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
+import compilerxyz.main.eval.ArtifactExpr;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.Expr;
+import compilerxyz.main.eval.ExprArtifacts;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -14,22 +21,54 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.value.object.TypeObjectDynamic;
+import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
+import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenTypeExpr;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.gen.codec.ArtifactExprCodec;
+import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
+import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6013L)
 @BuiltinPath("types.expr")
 public record TypeExpr() implements Aspect, Type, Value {
+
+    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            var expr = MustCast.mustCast(Expr.class, self);
+            var artRes = ExprArtifacts.exprToArtifact(xx, expr);
+            if (artRes.hasErrors()) return artRes.reerr();
+            return EResult.ok(new Artifact.Body(
+                    makeBody.apply(ArtifactExprCodec.toValue(artRes.requireValue("TypeExpr::export artifact")))));
+        }
+
+        @Override
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            ArtifactExpr body;
+            try {
+                body = ArtifactExprCodec.fromValue(data);
+            } catch (RuntimeException e) {
+                return EResult.err(loc, "TypeExpr data: failed to parse ArtifactExpr: " + e.getMessage());
+            }
+            var exprRes = ExprArtifacts.exprFromArtifact(xx, body);
+            if (exprRes.hasErrors()) return exprRes.reerr();
+            return EResult.ok(exprRes.requireValue("TypeExpr::import expr"));
+        }
+    };
 
     @Override
     public String typeDesc() {
@@ -56,6 +95,12 @@ public record TypeExpr() implements Aspect, Type, Value {
         }
         if (key.equals(GenAspectBindDynamic.AspectId)) {
             return Opt.some(AspectBindDynamicDefault.INSTANCE);
+        }
+        if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
+            return Opt.some(new AspectFieldUseDynamicExpr(this));
+        }
+        if (key.equals(GenAspectArtifact.AspectId)) {
+            return Opt.some(AspectArtifactExpr.INSTANCE);
         }
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(AspectBindViaTarget.INSTANCE);
@@ -108,7 +153,12 @@ public record TypeExpr() implements Aspect, Type, Value {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.EXPR);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.EXPR);
+    }
+
+    @Override
+    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
+        return Exporters.typeExporter(loc, this);
     }
 }

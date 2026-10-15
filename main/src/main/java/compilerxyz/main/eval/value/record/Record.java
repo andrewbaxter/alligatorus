@@ -5,8 +5,9 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
@@ -14,6 +15,7 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
+import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
@@ -30,8 +32,11 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
+import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
+import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.GenAspectArtifact;
@@ -49,6 +54,7 @@ import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
+import compilerxyz.main.gen.codec.ArtifactRecordDataCodec;
 import compilerxyz.main.gen.codec.ArtifactRecordTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -329,7 +335,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
             return Opt.some(new AspectBindRecord(this));
         }
         if (key.equals(GenAspectArtifact.AspectId)) {
-            return Opt.some(AspectArtifactRecord.INSTANCE);
+            return Opt.some(new AspectArtifactRecord(this));
         }
         if (key.equals(GenAspectRecord.AspectId)) {
             return Opt.some(this);
@@ -377,10 +383,12 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof Record record)) {
                 return EResult.err(
-                        loc, "Record::exporterRootDelegateSelfExport: expected Record, got " + self.getClass());
+                        loc,
+                        "Record::exporterRootDelegateSelfExport: expected Record, got "
+                                + self.getClass().getName());
             }
             var cell = record.artifactIdCell();
             return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
@@ -390,7 +398,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
                     var key = entry.getKey();
                     switch (entry.getValue()) {
                         case RecordField.Dynamic d -> {
-                            var artOpt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, d.type()));
+                            var artOpt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, d.type()));
                             if (artOpt.optIsSome())
                                 fieldArts.put(key, new ArtifactRecordField(false, artOpt.optUnwrap()));
                         }
@@ -402,8 +410,8 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
                                 erb.errPush("Record field has no value to serialize");
                                 continue;
                             }
-                            var artOpt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(
-                                    xx, loc, cv.value().optUnwrap()));
+                            var artOpt = erb.mustErMaybeUnreachable(
+                                    Exporters.exportValue(xx, loc, cv.value().optUnwrap()));
                             if (artOpt.optIsSome())
                                 fieldArts.put(key, new ArtifactRecordField(true, artOpt.optUnwrap()));
                         }
@@ -416,7 +424,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "Record requires an artifact id to deserialize");
@@ -448,7 +456,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
                                     var eRes = ArtifactSupport.independentFinalizeImportArtifact(
                                             xx2, loc2, entry.getValue().artifact());
                                     var ea = eRes.requireValue("Record::finalizer field exporter");
-                                    var v = ArtifactSupport.importedAsValue(ea);
+                                    var v = MustCast.mustCast(Value.class, ea);
                                     fields.put(
                                             entry.getKey(),
                                             new RecordField.EvalRes(EResult.ok(
@@ -645,6 +653,72 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
                 EvalOutcome.ofValue(new ValueDynamic(new ValueDynamicSource.Reg(newObj), new Record(destFields)))));
     }
 
+    public static Object hostOf(ExprContext xx, Type declared, Value value) {
+        return switch (value) {
+            case ValueObjectConst voc -> voc.data();
+            case Expr expr -> new StagedExprCell(expr);
+            case Record r -> compositeOf(xx, MustCast.mustCast(Record.class, declared), r);
+            case Tuple t -> Tuple.compositeOf(xx, MustCast.mustCast(Tuple.class, declared), t);
+            default ->
+                throw new IllegalStateException(
+                        "imported " + value.getClass().getName() + " has no host form for " + declared.typeDesc());
+        };
+    }
+
+    public static Object compositeOf(ExprContext xx, Record declared, Record value) {
+        var slotTypes = slotFieldTypes(declared.fields());
+        var slotInfo = computeSlotInfoFromTypes(xx, slotTypes);
+        var args = new Object[slotInfo.sortedTypes().size()];
+        for (var entry : slotInfo.slotOfKey().entrySet()) {
+            var key = entry.getKey();
+            var field = value.fields().getOpt(key);
+            if (field.optIsNone()) {
+                throw new IllegalStateException(
+                        "Record::compositeOf: imported record has no field '" + key.constKeyToCanonical() + "'");
+            }
+            var fieldValue =
+                    switch (field.optUnwrap()) {
+                        case RecordField.EvalRes held ->
+                            held.result()
+                                    .requireValue("Record::compositeOf field result")
+                                    .value()
+                                    .optUnwrap();
+                        case RecordField.Dynamic d ->
+                            throw new IllegalStateException("Record::compositeOf: imported record field '"
+                                    + key.constKeyToCanonical() + "' has no value");
+                    };
+            args[entry.getValue()] = hostOf(xx, slotTypes.getOpt(key).optUnwrap(), fieldValue);
+        }
+        return CompositeClassEmitter.construct(xx, slotInfo.sortedTypes(), args);
+    }
+
+    public static final ExporterRootDelegate DATA_DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            return EResult.err(loc, "record data is exported through its type");
+        }
+
+        @Override
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            ArtifactRecordData body;
+            try {
+                body = ArtifactRecordDataCodec.fromValue(data);
+            } catch (RuntimeException e) {
+                return EResult.err(loc, "record data: failed to parse ArtifactRecordData: " + e.getMessage());
+            }
+            var erb = new Erb(loc);
+            var declared = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.type()));
+            var value = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.value()));
+            if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+            return EResult.ok(compositeOf(
+                    xx,
+                    MustCast.mustCast(Record.class, declared.optUnwrap()),
+                    MustCast.mustCast(Record.class, value.optUnwrap())));
+        }
+    };
+
     static TOrderedMap<ConstKey, Type> slotFieldTypes(IOrderedMap<ConstKey, RecordField> fields) {
         var out = new TOrderedMap<ConstKey, Type>();
         for (var e : fields) {
@@ -833,7 +907,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
             }
             var fieldCast = elemCv.value().optUnwrap().valueType().typeCastTo(xx, loc, elemCv, destType);
             if (fieldCast.hasErrors()) return fieldCast.reerr();
-            var fieldReg = DynUtil.valueReg(loc, fieldCast.requireValue("Record::typeCastTo field cast"));
+            var fieldReg = DynUtil.materialize(xx, loc, fieldCast.requireValue("Record::typeCastTo field cast"));
             if (fieldReg.hasErrors()) return fieldReg.reerr();
             elems.add(b.constString(keyStr.value()));
             elems.add(b.reg(fieldReg.requireValue("Record::typeCastTo field reg")));
@@ -859,7 +933,12 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return Artifactable.exporterOfType(xx, loc, valueType());
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.RECORD);
+    }
+
+    @Override
+    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
+        return Exporters.typeExporter(loc, this);
     }
 }

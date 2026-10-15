@@ -6,7 +6,6 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
@@ -19,15 +18,7 @@ import java.util.function.Supplier;
 public final class ArtifactSupport {
     private ArtifactSupport() {}
 
-    public static ArtifactExporter importedAsExporter(Artifactable imported) {
-        return MustCast.mustCast(ArtifactExporter.class, imported);
-    }
-
-    public static Value importedAsValue(Artifactable imported) {
-        return MustCast.mustCast(Value.class, imported);
-    }
-
-    public static EResult<Artifactable> importArtifact(ExprContext xx, QExprId loc, Artifact artifact) {
+    public static EResult<Object> importArtifact(ExprContext xx, QExprId loc, Artifact artifact) {
         Opt<ArtifactIdSource> id;
         ArtifactBody body;
         switch (artifact) {
@@ -53,7 +44,7 @@ public final class ArtifactSupport {
         return importArtifactBody(xx, loc, id, body);
     }
 
-    private static EResult<Artifactable> importArtifactBody(
+    private static EResult<Object> importArtifactBody(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, ArtifactBody body) {
         var errors = new TList<ExprErr>();
         ArtifactExporter exporter = null;
@@ -69,10 +60,10 @@ public final class ArtifactSupport {
                     return errsOrEmpty(errors);
                 }
                 var v = nested.requireValue("ArtifactSupport::importArtifactBody Body nested");
-                exporter = importedAsExporter(v);
+                exporter = MustCast.mustCast(ArtifactExporter.class, v);
             }
             case ArtifactBodyExporter.SourceRef sr -> {
-                Artifactable exporterAny;
+                Object exporterAny;
                 var cached = xx.vx.ix.deserializedArtifacts.getOpt(sr.id());
                 if (cached.optIsSome()) {
                     exporterAny = cached.optUnwrap();
@@ -92,7 +83,7 @@ public final class ArtifactSupport {
                     }
                     exporterAny = inner.requireValue("ArtifactSupport::importArtifactBody SourceRef inner");
                 }
-                exporter = importedAsExporter(exporterAny);
+                exporter = MustCast.mustCast(ArtifactExporter.class, exporterAny);
             }
         }
         return exporter.artifactExporterImportFromData(xx, loc, id, body.data());
@@ -112,7 +103,7 @@ public final class ArtifactSupport {
         return EResult.ok(new Artifact.Ref(id));
     }
 
-    public static <T> EResult<Artifactable> implImportIndependentArtifact(
+    public static <T> EResult<Object> implImportIndependentArtifact(
             ExprContext xx,
             QExprId loc,
             ArtifactIdSource id,
@@ -148,8 +139,7 @@ public final class ArtifactSupport {
         return errors.isEmpty() ? EResult.ok(value) : EResult.mixed(value, errors);
     }
 
-    public static EResult<Artifactable> independentFinalizeImportArtifact(
-            ExprContext xx, QExprId loc, Artifact artifact) {
+    public static EResult<Object> independentFinalizeImportArtifact(ExprContext xx, QExprId loc, Artifact artifact) {
         return switch (artifact) {
             case Artifact.Ref r -> lookupRef(xx, loc, r.id());
             case Artifact.Body b -> walkBody(xx, loc, b.body());
@@ -167,7 +157,7 @@ public final class ArtifactSupport {
                 Type.class, res.requireValue("ArtifactSupport::independentFinalizeImportTypeArtifact imported")));
     }
 
-    private static EResult<Artifactable> lookupRef(ExprContext xx, QExprId loc, ArtifactIdSource id) {
+    private static EResult<Object> lookupRef(ExprContext xx, QExprId loc, ArtifactIdSource id) {
         var cached = xx.vx.ix.deserializedArtifacts.getOpt(id);
         if (cached.optIsSome()) {
             return EResult.ok(cached.optUnwrap());
@@ -181,7 +171,7 @@ public final class ArtifactSupport {
                 loc, "independentFinalizeImportArtifact: artifact " + id + " not in cache. Cached=" + cachedIds);
     }
 
-    private static EResult<Artifactable> walkBody(ExprContext xx, QExprId loc, ArtifactBody body) {
+    private static EResult<Object> walkBody(ExprContext xx, QExprId loc, ArtifactBody body) {
         var errors = new TList<ExprErr>();
         return switch (body.exporter()) {
             case ArtifactBodyExporter.Root r -> {
@@ -196,7 +186,7 @@ public final class ArtifactSupport {
                     yield errsOrEmpty(errors);
                 }
                 var v = inner.requireValue("ArtifactSupport::walkBody Body inner");
-                var exporter = importedAsExporter(v);
+                var exporter = MustCast.mustCast(ArtifactExporter.class, v);
                 var res = exporter.artifactExporterImportFromData(xx, loc, Opt.none(), body.data());
                 res.drainInto(errors);
                 yield errors.isEmpty() ? res : EResult.errs(errors);
@@ -208,7 +198,7 @@ public final class ArtifactSupport {
                     yield errsOrEmpty(errors);
                 }
                 var v = ref.requireValue("ArtifactSupport::walkBody SourceRef ref");
-                var exporter = importedAsExporter(v);
+                var exporter = MustCast.mustCast(ArtifactExporter.class, v);
                 var res = exporter.artifactExporterImportFromData(xx, loc, Opt.none(), body.data());
                 res.drainInto(errors);
                 yield errors.isEmpty() ? res : EResult.errs(errors);
@@ -233,10 +223,10 @@ public final class ArtifactSupport {
         }
     }
 
-    public record ImportIndependentResult(Opt<Artifactable> early, TList<Artifact> dependencies, Finalizer finalizer) {
+    public record ImportIndependentResult(Opt<Object> early, TList<Artifact> dependencies, Finalizer finalizer) {
         @FunctionalInterface
         public interface Finalizer {
-            Artifactable finalizerRun(ExprContext xx, QExprId loc);
+            Object finalizerRun(ExprContext xx, QExprId loc);
         }
     }
 }

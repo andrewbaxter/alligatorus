@@ -2,15 +2,18 @@ package compilerxyz.main.eval;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.eval.value.empty.ValueEmpty;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.source.SourceSpecValue;
 import compilerxyz.main.eval.value.source.TypeBundle;
 import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
+import compilerxyz.main.gen.Value;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.SourceModuleToModule;
 import compilerxyz.main.langhelp.Sources;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.io.IOException;
@@ -138,10 +141,8 @@ public final class ImportRun {
     public static EResult<CodeValue> outcomeValue(ExprContext xx, QExprId loc, SpecOutcome outcome) {
         return switch (outcome) {
             case SpecOutcome.BundleOut b ->
-                EResult.ok(new CodeValue(
-                        Code.none(loc),
-                        EvalOutcome.ofValue(
-                                new ValueObjectConst(ValueObjectConst.plainTypeType(), new TypeBundle(b.base())))));
+                EResult.ok(
+                        new CodeValue(Code.none(loc), EvalOutcome.ofValue(new ValueEmpty(new TypeBundle(b.base())))));
             case SpecOutcome.ModuleOut m -> {
                 switch (m.abs()) {
                     case SourceSpecAbsolute.Local ignored -> xx.vx.ix.localDependencies.add(m.compileId());
@@ -165,7 +166,7 @@ public final class ImportRun {
                 }
                 var exporterRes = erb.mustEr(ArtifactSupport.importArtifact(xx, loc, artifact));
                 if (exporterRes.optIsNone()) yield EResult.errs(erb.errors());
-                var value = ArtifactSupport.importedAsValue(exporterRes.optUnwrap());
+                var value = MustCast.mustCast(Value.class, exporterRes.optUnwrap());
                 var cv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
                 var valueType = value.valueType();
                 var pdRes = erb.mustEr(GenAspectPostDeserialize.get(xx, loc, valueType));

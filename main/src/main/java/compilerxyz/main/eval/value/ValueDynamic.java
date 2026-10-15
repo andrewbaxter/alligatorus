@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
@@ -18,7 +17,7 @@ public record ValueDynamic(ValueDynamicSource source, Type type) implements Valu
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return Artifactable.exporterOfType(xx, loc, valueType());
+    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, "a runtime value of type " + type.typeDesc() + " is not exportable");
     }
 }

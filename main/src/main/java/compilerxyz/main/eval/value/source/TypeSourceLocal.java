@@ -16,7 +16,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("source.local")
-@BuiltinFull(uniqueId = 6157L)
+@BuiltinFull(uniqueId = 6157L, function = true)
 public record TypeSourceLocal() implements Aspect, Type {
 
     @Override
@@ -67,7 +67,7 @@ public record TypeSourceLocal() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 }

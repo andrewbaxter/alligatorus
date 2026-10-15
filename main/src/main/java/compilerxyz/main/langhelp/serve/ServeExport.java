@@ -10,14 +10,18 @@ import compilerxyz.main.eval.builtin.ArtifactApp;
 import compilerxyz.main.eval.builtin.ArtifactDir;
 import compilerxyz.main.eval.value.array.ArtifactArrayValue;
 import compilerxyz.main.eval.value.object.ArtifactValueObjectConst;
+import compilerxyz.main.eval.value.record.ArtifactRecordData;
 import compilerxyz.main.eval.value.record.ArtifactRecordType;
 import compilerxyz.main.eval.value.source_object.ArtifactDataDefSetObject;
+import compilerxyz.main.eval.value.tuple.ArtifactTupleData;
 import compilerxyz.main.eval.value.value_source_object.ValueSourceObjectConst.ArtifactValueSourceObject;
 import compilerxyz.main.gen.codec.ArtifactAppCodec;
 import compilerxyz.main.gen.codec.ArtifactArrayValueCodec;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetObjectCodec;
 import compilerxyz.main.gen.codec.ArtifactDirCodec;
+import compilerxyz.main.gen.codec.ArtifactRecordDataCodec;
 import compilerxyz.main.gen.codec.ArtifactRecordTypeCodec;
+import compilerxyz.main.gen.codec.ArtifactTupleDataCodec;
 import compilerxyz.main.gen.codec.ArtifactValueObjectConstCodec;
 import compilerxyz.main.gen.codec.ValueSourceObjectConstArtifactValueSourceObjectCodec;
 import compilerxyz.main.langhelp.ArtifactResolve;
@@ -80,8 +84,7 @@ public final class ServeExport {
                 case Result.Err<ArtifactValueObjectConst, String> err -> Opt.none();
             };
         }
-        if (tag.equals(ExporterRoot.SOURCE_OBJECT_VALUE_CONST.exporterRootTag())
-                || tag.equals(ExporterRoot.SOURCE_OBJECT_TYPE_INSTANCE.exporterRootTag())) {
+        if (tag.equals(ExporterRoot.SOURCE_OBJECT_VALUE_CONST.exporterRootTag())) {
             return switch (decode(
                     "source object instance",
                     () -> ValueSourceObjectConstArtifactValueSourceObjectCodec.fromValue(
@@ -89,6 +92,24 @@ public final class ServeExport {
                 case Result.Ok<ArtifactValueSourceObject, String> ok ->
                     Opt.some(ok.value().underlying());
                 case Result.Err<ArtifactValueSourceObject, String> err -> Opt.none();
+            };
+        }
+        if (tag.equals(ExporterRoot.RECORD_DATA.exporterRootTag())) {
+            return switch (decode(
+                    "record data",
+                    () -> ArtifactRecordDataCodec.fromValue(resolved.body().data()))) {
+                case Result.Ok<ArtifactRecordData, String> ok ->
+                    Opt.some(ok.value().value());
+                case Result.Err<ArtifactRecordData, String> err -> Opt.none();
+            };
+        }
+        if (tag.equals(ExporterRoot.TUPLE_DATA.exporterRootTag())) {
+            return switch (decode(
+                    "tuple data",
+                    () -> ArtifactTupleDataCodec.fromValue(resolved.body().data()))) {
+                case Result.Ok<ArtifactTupleData, String> ok ->
+                    Opt.some(ok.value().value());
+                case Result.Err<ArtifactTupleData, String> err -> Opt.none();
             };
         }
         return Opt.none();
@@ -111,8 +132,7 @@ public final class ServeExport {
                 current = inner.optUnwrap();
                 continue;
             }
-            if (!tag.equals(ExporterRoot.SOURCE_OBJECT_VALUE_CONST.exporterRootTag())
-                    && !tag.equals(ExporterRoot.SOURCE_OBJECT_TYPE_INSTANCE.exporterRootTag())) {
+            if (!tag.equals(ExporterRoot.SOURCE_OBJECT_VALUE_CONST.exporterRootTag())) {
                 return Opt.some(new Export(tag, Opt.none(), Opt.none()));
             }
             ArtifactValueSourceObject instance;

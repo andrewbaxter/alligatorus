@@ -22,7 +22,7 @@ import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
-@BuiltinFull(uniqueId = 6110L)
+@BuiltinFull(uniqueId = 6110L, function = true)
 public record TypeFunctionConst(
         TList<FunctionParam> params, Opt<Type> ret, JavaInternalName klass, String methodName, boolean needsEvalContext)
         implements Aspect, Type {
@@ -141,7 +141,7 @@ public record TypeFunctionConst(
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 }

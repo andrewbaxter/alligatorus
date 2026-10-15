@@ -5,8 +5,8 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.ArtifactExternal;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -42,7 +42,7 @@ import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6022L)
+@BuiltinFull(uniqueId = 6022L, function = true)
 public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect, Type {
 
     @Override
@@ -79,7 +79,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof TypeSourceFunctionConst fc)) {
                 return EResult.err(
                         loc,
@@ -111,11 +111,11 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
             var compiledClass = data.compiledClass;
             return ArtifactSupport.implExportIndependentArtifact(xx, data.artifactIdCell, () -> {
                 var erb = new Erb(loc);
-                var defSetArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, set));
-                var argArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, argType));
+                var defSetArt = erb.mustErMaybeUnreachable(Exporters.exportObject(xx, loc, set));
+                var argArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, argType));
                 Opt<Artifact> retArt = Opt.none();
                 if (retType.optIsSome()) {
-                    retArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, retType.optUnwrap()));
+                    retArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, retType.optUnwrap()));
                 }
                 var externals =
                         erb.mustErMaybeUnreachable(ExternalCodec.exportExternals(xx, loc, data.capturedExternals));
@@ -135,7 +135,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeSourceFunctionConst requires an artifact id to deserialize");
@@ -260,7 +260,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(AspectArtifactSourceFunctionConst.INSTANCE.aspectArtifactExporter());
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(AspectArtifactSourceFunctionConst.INSTANCE.aspectArtifactExporter());
     }
 }

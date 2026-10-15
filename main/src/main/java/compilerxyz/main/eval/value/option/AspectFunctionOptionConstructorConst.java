@@ -35,12 +35,12 @@ public final class AspectFunctionOptionConstructorConst implements AspectFunctio
         var elementType = aspectTypeRes
                 .requireValue("TypeOptionConstructorConst::call AspectType")
                 .aspectTypeType(argValue);
-        Type optType = GenOptions.optionDynamic(xx, elementType);
+        var optType = GenOptions.optionDynamic(xx, elementType);
         var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
         if (concatRes.hasErrors()) return concatRes.reerr();
         return EResult.ok(new CodeValue(
                 concatRes.requireValue("concat"),
-                EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), optType))));
+                EvalOutcome.ofValue(new ValueObjectConst(new TypeTypeOption(optType), optType))));
     }
 
     @Override

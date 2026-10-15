@@ -16,7 +16,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("import")
-@BuiltinFull(uniqueId = 6160L)
+@BuiltinFull(uniqueId = 6160L, function = true)
 public record TypeImport() implements Aspect, Type {
 
     @Override
@@ -67,7 +67,7 @@ public record TypeImport() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 }

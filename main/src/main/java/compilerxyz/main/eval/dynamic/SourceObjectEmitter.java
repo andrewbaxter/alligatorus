@@ -20,8 +20,6 @@ public final class SourceObjectEmitter {
 
     public static final String DATA_INSTANCE_FIELD = "_data";
 
-    public static final String SOURCE_OBJECT_DATA_FIELD = "_sourceObjectData";
-
     public static TOrderedMap<String, Object> rebuildStaticFieldValues(TypeSourceObjectDynamic data) {
         var staticFieldValues = new TOrderedMap<String, Object>();
         var seen = new TOrderedSet<String>();
@@ -47,7 +45,6 @@ public final class SourceObjectEmitter {
                 }
             }
         }
-        staticFieldValues.put(SOURCE_OBJECT_DATA_FIELD, data);
         return staticFieldValues;
     }
 

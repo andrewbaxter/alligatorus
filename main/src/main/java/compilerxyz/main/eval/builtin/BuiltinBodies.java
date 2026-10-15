@@ -33,10 +33,12 @@ import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.main.eval.value.empty.ValueEmpty;
 import compilerxyz.main.eval.value.object.ArtifactExporterObjectConstPayload;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordField;
+import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleElement;
 import compilerxyz.main.gen.AspectBind;
@@ -57,6 +59,7 @@ import compilerxyz.prelude.annotations.BuiltinEvalContext;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.IOrderedMap;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
@@ -97,6 +100,11 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.exporter_object_const", scopeId = 5041L)
     public static ArtifactExporter exporterObjectConst(Type payloadType) {
         return new ArtifactExporterObjectConstPayload(payloadType);
+    }
+
+    @BuiltinPath(value = "eval.source_object_exporter", scopeId = 5059L)
+    public static ArtifactExporter sourceObjectExporter(Type type) {
+        return MustCast.mustCast(TypeSourceObjectDynamic.class, type).instanceExporter();
     }
 
     @BuiltinPath(value = "log", scopeId = 5001L)
@@ -370,6 +378,11 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.value_object_const", scopeId = 5038L)
     public static ValueObjectConst valueObjectConst(Type type, Object data) {
         return new ValueObjectConst(type, data);
+    }
+
+    @BuiltinPath(value = "eval.value_empty", scopeId = 5060L)
+    public static Value valueEmpty(Type type) {
+        return new ValueEmpty(type);
     }
 
     @BuiltinPath(value = "eval.binding_dynamic", scopeId = 5045L)

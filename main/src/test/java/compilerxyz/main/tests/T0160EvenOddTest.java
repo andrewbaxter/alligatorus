@@ -328,6 +328,10 @@ public final class T0160EvenOddTest {
                                                                                 mb,
                                                                                 TList.of(
                                                                                         new TestMb.RecordPair(
+                                                                                                "exporter",
+                                                                                                mb.valueExporterImpl(
+                                                                                                        "vb")),
+                                                                                        new TestMb.RecordPair(
                                                                                                 "type",
                                                                                                 mb.seqOf(
                                                                                                         mb.return_(
@@ -1104,6 +1108,10 @@ public final class T0160EvenOddTest {
                                                                         ifaceMethods(
                                                                                 mb,
                                                                                 TList.of(
+                                                                                        new TestMb.RecordPair(
+                                                                                                "exporter",
+                                                                                                mb.typeExporterImpl(
+                                                                                                        "u")),
                                                                                         new TestMb.RecordPair(
                                                                                                 "is_equal",
                                                                                                 mb.panic(

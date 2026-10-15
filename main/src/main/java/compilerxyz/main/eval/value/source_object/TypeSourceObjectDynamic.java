@@ -5,9 +5,9 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
+import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.ArtifactExternal;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.DefSetId;
@@ -26,6 +26,7 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaClassCompiled;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
+import compilerxyz.main.eval.value.AspectDynamicConstOf;
 import compilerxyz.main.eval.value.code.TypeCodeDynamic;
 import compilerxyz.main.eval.value.source_function.ExternalCodec;
 import compilerxyz.main.eval.value.source_interface.TypeInterfaceMethodDynamic;
@@ -34,6 +35,7 @@ import compilerxyz.main.gen.GenAspect;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
+import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
@@ -72,6 +74,13 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
 
     public Opt<JavaClassCompiled> compiledClass = Opt.none();
     public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
+
+    public ArtifactExporter instanceExporter() {
+        if (compiledClass.optIsNone()) {
+            throw new IllegalStateException(typeDesc() + "::instanceExporter: object is not finished");
+        }
+        return new ArtifactExporterSourceObject(this);
+    }
 
     public TypeSourceObjectDynamic(DefSetId setId, String name, Unique identity, DefinitionSet set, String binaryName) {
         this.setId = setId;
@@ -115,12 +124,15 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.SOURCE_OBJECT_CONST);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.SOURCE_OBJECT_CONST);
     }
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectDynamicConst.AspectId)) {
+            return Opt.some(new AspectDynamicConstOf(new TypeSourceObjectConst(this)));
+        }
         if (key.equals(GenAspectInitialBind.AspectId)) {
             return Opt.some(new AspectInitialBindSourceObjectDynamic(this));
         }
@@ -262,7 +274,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var dt = MustCast.mustCast(TypeSourceObjectDynamic.class, self);
             var set = dt.set;
             if (set == null) {
@@ -285,8 +297,8 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
             var underlyingFinal = dt.underlyingType.optUnwrap();
             return ArtifactSupport.implExportIndependentArtifact(xx, dt.artifactIdCell, () -> {
                 var erb = new Erb(loc);
-                var defSetArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, set));
-                var underlyingArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, underlyingFinal));
+                var defSetArt = erb.mustErMaybeUnreachable(Exporters.exportObject(xx, loc, set));
+                var underlyingArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, underlyingFinal));
                 var methods = new TList<ArtifactDataDefSetMethod>();
                 for (var m : dt.methods) {
                     var argT = m.argType;
@@ -294,11 +306,10 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                     if (argT.optIsNone() || m.compiledBodyCode.optIsNone()) {
                         throw new AssertionError("object method '" + m.name + "' in a finished set is not compiled");
                     }
-                    var argArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, argT.optUnwrap()));
+                    var argArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, argT.optUnwrap()));
                     Opt<Artifact> retArt = Opt.none();
                     if (retT.optIsSome()) {
-                        var retArtOpt =
-                                erb.mustErMaybeUnreachable(Artifactable.exportArtifact(xx, loc, retT.optUnwrap()));
+                        var retArtOpt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, retT.optUnwrap()));
                         if (retArtOpt.optIsNone()) continue;
                         retArt = retArtOpt;
                     }
@@ -310,14 +321,14 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                 var ifaceImpls = new TList<ArtifactDataDefSetInterfaceImpl>();
                 for (var impl : dt.interfaceImpls) {
                     var ifaceArt = erb.mustErMaybeUnreachable(
-                            Artifactable.exportArtifact(xx, loc, new TypeSourceInterfaceDynamic(impl.interface_)));
+                            Exporters.exportType(xx, loc, new TypeSourceInterfaceDynamic(impl.interface_)));
                     var methodImpls = new TList<ArtifactDataDefSetInterfaceMethodImpl>();
                     for (var mi : impl.methodImpls) {
                         if (mi.compiledBodyCode.optIsNone()) {
                             throw new AssertionError("interface method impl '" + mi.interfaceMethod.name
                                     + "' in a finished set is not compiled");
                         }
-                        var methodArt = erb.mustErMaybeUnreachable(Artifactable.exportArtifact(
+                        var methodArt = erb.mustErMaybeUnreachable(Exporters.exportType(
                                 xx, loc, new TypeInterfaceMethodDynamic(impl.interface_, mi.interfaceMethod)));
                         var ext = erb.mustErMaybeUnreachable(
                                 ExternalCodec.exportExternals(xx, loc, mi.capturedExternals));
@@ -344,7 +355,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeTypeSourceObjectConst requires an artifact id to deserialize");

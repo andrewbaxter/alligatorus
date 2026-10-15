@@ -10,6 +10,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.builtin.Zbase32;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.value.byte_.TypeByteConst;
 import compilerxyz.main.eval.value.byte_.TypeByteDynamic;
 import compilerxyz.main.eval.value.list.TypeListConst;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
@@ -44,7 +45,7 @@ public final class AspectFunctionZbase32Decode implements AspectFunction {
             }
             var store = new ListStoreByte();
             for (var b : bytes) store.push(b);
-            var listType = new TypeListConst<>(new TypeByteDynamic());
+            var listType = new TypeListConst<>(new TypeByteConst());
             var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
             if (concatRes.hasErrors()) return concatRes.reerr();
             return EResult.ok(new CodeValue(

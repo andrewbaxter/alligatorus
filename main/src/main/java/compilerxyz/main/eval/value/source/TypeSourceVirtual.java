@@ -16,7 +16,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("source.virtual")
-@BuiltinFull(uniqueId = 6156L)
+@BuiltinFull(uniqueId = 6156L, function = true)
 public record TypeSourceVirtual() implements Aspect, Type {
 
     @Override
@@ -67,7 +67,7 @@ public record TypeSourceVirtual() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 }

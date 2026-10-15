@@ -18,7 +18,7 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("zbase32.decode")
-@BuiltinFull(uniqueId = 6153L)
+@BuiltinFull(uniqueId = 6153L, function = true)
 public record TypeZbase32Decode() implements Aspect, Type {
 
     @Override
@@ -72,7 +72,7 @@ public record TypeZbase32Decode() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 }

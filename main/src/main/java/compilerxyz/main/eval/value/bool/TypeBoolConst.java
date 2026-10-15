@@ -4,7 +4,6 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
@@ -16,10 +15,11 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindConstValue;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
+import compilerxyz.main.eval.value.AspectConstDynamicOf;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBoolConst;
+import compilerxyz.main.gen.GenAspectConstDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectOperatorBitNot;
@@ -43,6 +43,9 @@ public record TypeBoolConst() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectConstDynamic.AspectId)) {
+            return Opt.some(new AspectConstDynamicOf(new TypeBoolDynamic()));
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_BOOL_CONST_IDENTITY)) {
             return Opt.some(this);
         }
@@ -79,19 +82,17 @@ public record TypeBoolConst() implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            var bv = MustCast.mustCast(
-                    Boolean.class,
-                    MustCast.mustCast(ValueObjectConst.class, self).data());
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            var bv = MustCast.mustCast(Boolean.class, self);
             JsonValue data = new JsonValueBoolean(bv);
             return EResult.ok(new Artifact.Body(makeBody.apply(data)));
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
-                case JsonValueBoolean b -> EResult.ok(new ValueObjectConst(new TypeBoolConst(), b.value()));
+                case JsonValueBoolean b -> EResult.ok(b.value());
                 default ->
                     EResult.err(loc, "TypeBoolConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
             };
@@ -127,7 +128,7 @@ public record TypeBoolConst() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.BOOL_CONST_TYPE);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.BOOL_CONST_TYPE);
     }
 }

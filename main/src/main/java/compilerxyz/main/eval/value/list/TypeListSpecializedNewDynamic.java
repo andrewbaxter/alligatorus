@@ -17,7 +17,7 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6198L)
+@BuiltinFull(uniqueId = 6198L, function = true)
 public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType) implements Aspect, Type {
 
     @Override
@@ -76,7 +76,7 @@ public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType)
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.none();
     }
 }

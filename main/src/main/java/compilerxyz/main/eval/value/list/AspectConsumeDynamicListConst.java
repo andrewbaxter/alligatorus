@@ -8,6 +8,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ConstHost;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenLists;
@@ -17,7 +18,7 @@ public record AspectConsumeDynamicListConst<T extends Type>(TypeListConst<T> typ
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-        return switch (GenLists.listDynamic(xx, type.elementType)) {
+        return switch (GenLists.listDynamic(xx, TypeForms.dynamicForm(xx, type.elementType))) {
             case TypeListSpecializedDynamic<?> spec ->
                 GenAspectConsumeDynamic.getMaybe(xx, spec).optUnwrap().aspectConsumeDynamicJvmClass(xx);
             case TypeListBoxedDynamic<?> boxed ->
@@ -28,6 +29,9 @@ public record AspectConsumeDynamicListConst<T extends Type>(TypeListConst<T> typ
     @Override
     public EResult<CodeValue> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
         return ConstHost.loadDynamic(
-                loc, cv, aspectConsumeDynamicJvmClass(xx), GenLists.listDynamic(xx, type.elementType));
+                loc,
+                cv,
+                aspectConsumeDynamicJvmClass(xx),
+                GenLists.listDynamic(xx, TypeForms.dynamicForm(xx, type.elementType)));
     }
 }

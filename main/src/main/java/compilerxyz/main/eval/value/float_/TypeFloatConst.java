@@ -4,7 +4,6 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
@@ -16,6 +15,7 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindConstValue;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.eval.value.AspectConstDynamicOf;
 import compilerxyz.main.eval.value.numeric.AspectOperatorAddNumeric;
 import compilerxyz.main.eval.value.numeric.AspectOperatorAndNumeric;
 import compilerxyz.main.eval.value.numeric.AspectOperatorBitNotNumeric;
@@ -36,9 +36,9 @@ import compilerxyz.main.eval.value.numeric.AspectOperatorSubNumeric;
 import compilerxyz.main.eval.value.numeric.AspectOperatorUshrNumeric;
 import compilerxyz.main.eval.value.numeric.AspectOperatorXorNumeric;
 import compilerxyz.main.eval.value.numeric.Numerics;
-import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
+import compilerxyz.main.gen.GenAspectConstDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInt;
@@ -82,6 +82,9 @@ public record TypeFloatConst() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectConstDynamic.AspectId)) {
+            return Opt.some(new AspectConstDynamicOf(new TypeFloatDynamic()));
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_FLOAT_CONST_IDENTITY)) {
             return Opt.some(this);
         }
@@ -175,20 +178,17 @@ public record TypeFloatConst() implements Aspect, Type {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            var dv = MustCast.mustCast(
-                    Number.class,
-                    MustCast.mustCast(ValueObjectConst.class, self).data());
+                ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
+            var dv = MustCast.mustCast(Number.class, self);
             JsonValue data = new JsonValueNumberFloat(dv.doubleValue());
             return EResult.ok(new Artifact.Body(makeBody.apply(data)));
         }
 
         @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
-                case JsonValueNumberFloat n ->
-                    EResult.ok(new ValueObjectConst(new TypeFloatConst(), (float) n.value()));
+                case JsonValueNumberFloat n -> EResult.ok((float) n.value());
                 default ->
                     EResult.err(loc, "TypeFloatConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
             };
@@ -227,7 +227,7 @@ public record TypeFloatConst() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.FLOAT_CONST_TYPE);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.FLOAT_CONST_TYPE);
     }
 }

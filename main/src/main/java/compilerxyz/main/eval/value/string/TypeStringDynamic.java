@@ -16,9 +16,11 @@ import compilerxyz.main.eval.aspect.AspectSetDynamicDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.value.AspectDynamicConstOf;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
+import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
@@ -50,6 +52,9 @@ public record TypeStringDynamic() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectDynamicConst.AspectId)) {
+            return Opt.some(new AspectDynamicConstOf(new TypeStringConst()));
+        }
         if (key.equals(GenAspectInitialBind.AspectId)) {
             return Opt.some(new AspectInitialBindStringDynamic(this));
         }
@@ -93,8 +98,8 @@ public record TypeStringDynamic() implements Aspect, Type {
     }
 
     @Override
-    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.STRING_DYNAMIC);
+    public Opt<ArtifactExporter> typeExporter() {
+        return Opt.some(ExporterRoot.STRING_DYNAMIC);
     }
 
     @Override
