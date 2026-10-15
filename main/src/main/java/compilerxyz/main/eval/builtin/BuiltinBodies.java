@@ -19,6 +19,7 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.LogEntry;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Scope;
+import compilerxyz.main.eval.ScopeLevel;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.binding.BindingSetterConsumed;
@@ -148,6 +149,17 @@ public final class BuiltinBodies {
         }
         scope.pushAll(named);
         return scope;
+    }
+
+    @BuiltinPath(value = "eval.scope_bindings", scopeId = 5061L)
+    public static TOrderedMap<ConstKey, Binding> scopeBindings(Scope scope) {
+        var out = new TOrderedMap<ConstKey, Binding>();
+        for (var level : scope.levels) {
+            if (level instanceof ScopeLevel.Entry entry && entry.name.optIsSome()) {
+                out.put(entry.name.optUnwrap(), entry.binding);
+            }
+        }
+        return out;
     }
 
     @BuiltinPath(value = "eval.eval_context", scopeId = 5009L)

@@ -16,6 +16,7 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmSort;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.eval.value.array.TypeArrayConst;
 import compilerxyz.main.eval.value.array.TypeArrayDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
@@ -126,7 +127,7 @@ final class ListCastFrom {
         if (dynamicOpt.optIsSome()) return Opt.some(dynamicOpt.optUnwrap().elementType);
         var constOpt = AspectLookup.getMaybe(
                 xx, sourceType, GenTrivialIdentityAspects.TYPE_ARRAY_CONST_IDENTITY, TypeArrayConst.class);
-        if (constOpt.optIsSome()) return Opt.some(constOpt.optUnwrap().elementType);
+        if (constOpt.optIsSome()) return Opt.some(TypeForms.dynamicForm(xx, constOpt.optUnwrap().elementType));
         return Opt.none();
     }
 }

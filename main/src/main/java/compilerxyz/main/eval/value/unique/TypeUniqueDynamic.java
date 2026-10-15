@@ -26,6 +26,7 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDynamicConst;
+import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectOperatorEq;
@@ -40,11 +41,13 @@ import compilerxyz.main.safejson.JsonValueNumberInt;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.util.function.Function;
 
+@BuiltinPath("types.unique")
 @BuiltinFull(uniqueId = 6003L)
 public record TypeUniqueDynamic() implements Aspect, Type {
 
@@ -60,6 +63,9 @@ public record TypeUniqueDynamic() implements Aspect, Type {
         }
         if (key.equals(GenAspectInitialBind.AspectId)) {
             return Opt.some(AspectInitialBindUniqueDynamic.INSTANCE);
+        }
+        if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
+            return Opt.some(new AspectFieldUseDynamicUniqueDynamic(this));
         }
         if (key.equals(GenAspectBindDynamic.AspectId)) {
             return Opt.some(AspectBindDynamicDefault.INSTANCE);
