@@ -96,7 +96,7 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.SOURCE_INTERFACE_METHOD);
     }
 

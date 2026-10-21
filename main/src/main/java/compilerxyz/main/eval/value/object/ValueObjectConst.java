@@ -81,7 +81,7 @@ public record ValueObjectConst(Type type, Object data) implements Value {
     };
 
     @Override
-    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.OBJECT_CONST);
+    public Opt<ArtifactExporter> valueArtifactExporter(ExprContext xx) {
+        return Opt.some(ExporterRoot.OBJECT_CONST);
     }
 }

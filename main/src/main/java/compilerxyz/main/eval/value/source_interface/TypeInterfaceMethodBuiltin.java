@@ -75,7 +75,7 @@ public record TypeInterfaceMethodBuiltin(TypeObjectDynamic receiverType, String 
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.none();
     }
 }

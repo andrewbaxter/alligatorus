@@ -73,7 +73,7 @@ public record TypeArrayGetDynamic(TypeArrayDynamic arrayType) implements Aspect,
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.none();
     }
 }

@@ -60,11 +60,16 @@ public final class JavaAspectExtractor {
                     if (spec.optIsSome()) builtins.add(spec.optUnwrap());
                 }
             }
-            if (member instanceof ClassOrInterfaceDeclaration nestedCls && !nestedCls.isInterface()) {
+            if (member instanceof ClassOrInterfaceDeclaration nestedCls) {
                 var hasBuiltin = nestedCls.getAnnotationByName("BuiltinFull").isPresent()
                         || nestedCls
                                 .getAnnotationByName("compilerxyz.prelude.annotations.BuiltinFull")
                                 .isPresent();
+                if (hasBuiltin && nestedCls.isInterface()) {
+                    throw new IllegalStateException("@BuiltinFull on nested interface " + outerSimple + "."
+                            + nestedCls.getNameAsString() + " in " + sourceFile
+                            + ": nested builtin interfaces are not generated; declare it at top level");
+                }
                 if (hasBuiltin) {
                     var spec = extractBuiltinSpecClass(cu, nestedCls, Opt.some(outerSimple));
                     if (spec.optIsSome()) builtins.add(spec.optUnwrap());
@@ -110,6 +115,15 @@ public final class JavaAspectExtractor {
                         typeNameOf(f.getElementType(), classImports, pkg)));
             }
         }
+        var classSuperTypes = new TList<String>();
+        if (clsDecl instanceof ClassOrInterfaceDeclaration c) {
+            classSuperTypes.addAll(superTypeNames(c.getExtendedTypes(), classImports, pkg));
+            classSuperTypes.addAll(superTypeNames(c.getImplementedTypes(), classImports, pkg));
+        } else if (clsDecl instanceof EnumDeclaration e) {
+            classSuperTypes.addAll(superTypeNames(e.getImplementedTypes(), classImports, pkg));
+        } else {
+            throw new IllegalStateException("extractBuiltinSpecClass: unexpected decl " + clsDecl.getClass());
+        }
         var classMethods = new TList<Method>();
         for (var m : clsDecl.getMethods()) {
             if (m.isStatic() || !m.isPublic()) continue;
@@ -147,8 +161,27 @@ public final class JavaAspectExtractor {
                     outerSimpleName.optIsNone() ? Opt.none() : Opt.some(nestedName),
                     identityToken,
                     lift,
-                    new TList<String>()));
+                    new TList<String>(),
+                    exporterAttr(attrs),
+                    classSuperTypes));
         }
+    }
+
+    public static TList<String> superTypeNames(
+            List<ClassOrInterfaceType> types, TMap<String, String> imports, String sourcePkg) {
+        var out = new TList<String>();
+        for (var t : types) {
+            var name = t.getNameWithScope();
+            var dot = name.indexOf('.');
+            var head = dot < 0 ? name : name.substring(0, dot);
+            var imported = imports.getOpt(head);
+            if (imported.optIsSome()) {
+                out.add(dot < 0 ? imported.optUnwrap() : imported.optUnwrap() + name.substring(dot));
+            } else {
+                out.add(sourcePkg + "." + name);
+            }
+        }
+        return out;
     }
 
     public static Opt<BuiltinInterfacesGen.BuiltinSpec> extractBuiltinSpecRecord(
@@ -176,8 +209,13 @@ public final class JavaAspectExtractor {
         }
         for (var m : recDecl.getMethods()) {
             if (m.isStatic() || !m.isPublic()) continue;
-            if (recordComponentNames.contains(m.getNameAsString())) continue;
             var params = m.getParameters();
+            if (recordComponentNames.contains(m.getNameAsString())) {
+                if (params.isEmpty()) continue;
+                throw new IllegalStateException("@BuiltinFull record " + simpleName + ": method "
+                        + m.getNameAsString() + " has the name of a record component but is not its accessor;"
+                        + " it would collide with the component field");
+            }
             var needsEvalContext = injectsEvalContext(m, params, simpleName + "." + m.getNameAsString());
             var methodParams = new TList<Param>();
             for (int i = needsEvalContext ? 1 : 0; i < params.size(); i++) {
@@ -207,7 +245,9 @@ public final class JavaAspectExtractor {
                 outerSimpleName.optIsNone() ? Opt.none() : Opt.some(nestedName),
                 false,
                 lift,
-                new TList<String>()));
+                new TList<String>(),
+                exporterAttr(attrs),
+                superTypeNames(recDecl.getImplementedTypes(), importMap, pkg)));
     }
 
     public static boolean injectsEvalContext(NodeWithAnnotations<?> m, List<Parameter> params, String where) {
@@ -226,6 +266,12 @@ public final class JavaAspectExtractor {
         return decl.getAnnotationByName("BuiltinFull")
                 .or(() -> decl.getAnnotationByName("compilerxyz.prelude.annotations.BuiltinFull"))
                 .orElseThrow(() -> new IllegalStateException("@BuiltinFull missing on " + decl.getNameAsString()));
+    }
+
+    public static Opt<String> exporterAttr(Map<String, String> attrs) {
+        var raw = attrs.get("exporter");
+        if (raw == null || raw.isEmpty()) return Opt.none();
+        return Opt.some(raw);
     }
 
     public static Map<String, String> readAttrs(AnnotationExpr annot) {

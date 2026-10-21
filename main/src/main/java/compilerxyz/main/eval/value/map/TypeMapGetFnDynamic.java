@@ -72,7 +72,7 @@ public record TypeMapGetFnDynamic(Type keyType, Type valueType) implements Aspec
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.none();
     }
 }

@@ -338,12 +338,6 @@ public enum ExporterRoot implements ArtifactExporter {
             return Tuple.DATA_DELEGATE;
         }
     },
-    UNIQUE("unique") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeUniqueDynamic.DELEGATE;
-        }
-    },
     UNIQUE_CONST("unique_const") {
         @Override
         ExporterRootDelegate delegate() {

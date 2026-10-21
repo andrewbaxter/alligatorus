@@ -227,7 +227,7 @@ public record TypeUlongConst() implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.ULONG_CONST_TYPE);
     }
 }

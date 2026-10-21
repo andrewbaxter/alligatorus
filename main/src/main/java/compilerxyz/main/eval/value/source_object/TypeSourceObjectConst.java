@@ -110,7 +110,7 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic) implements 
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.SOURCE_OBJECT_CONST_TYPE);
     }
 

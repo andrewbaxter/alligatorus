@@ -62,7 +62,7 @@ public record TypeJvmObjectDynamic() implements Type, Aspect {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.JVM_OBJECT_DYNAMIC);
     }
 

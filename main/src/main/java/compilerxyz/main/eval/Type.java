@@ -9,7 +9,7 @@ import compilerxyz.prelude.util.Opt;
 @BuiltinFull(uniqueId = 2002L, scopeId = 3002)
 @BuiltinPath("eval.type")
 public interface Type {
-    Opt<ArtifactExporter> typeExporter();
+    Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx);
 
     boolean typeIsEqual(ExprContext xx, Type other);
 

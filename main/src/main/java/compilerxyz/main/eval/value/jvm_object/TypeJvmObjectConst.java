@@ -44,7 +44,7 @@ public record TypeJvmObjectConst() implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.JVM_OBJECT_CONST_TYPE);
     }
 

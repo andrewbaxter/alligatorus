@@ -63,7 +63,7 @@ public record TypeCodeDynamic() implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.CODE_DYNAMIC);
     }
 

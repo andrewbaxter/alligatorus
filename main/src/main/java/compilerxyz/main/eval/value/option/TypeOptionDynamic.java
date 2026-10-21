@@ -140,7 +140,7 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.OPTION_DYNAMIC);
     }
 

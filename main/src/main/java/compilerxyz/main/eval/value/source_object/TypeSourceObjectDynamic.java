@@ -76,11 +76,31 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
 
     public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
 
-    public ArtifactExporter instanceExporter() {
-        if (compiledClass.optIsNone()) {
-            throw new IllegalStateException(typeDesc() + "::instanceExporter: object is not finished");
+    public Opt<JavaClassCompiled> compiledExporterClass = Opt.none();
+
+    private Opt<ArtifactExporter> exporterInstance = Opt.none();
+
+    public EResult<ArtifactExporter> exporter(ExprContext xx, QExprId loc) {
+        if (exporterInstance.optIsSome()) return EResult.ok(exporterInstance.optUnwrap());
+        if (set == null) {
+            return EResult.err(
+                    loc,
+                    "object '" + name.optUnwrapOr("(unnamed)")
+                            + "' instances cannot be exported: the object is not attached to a definition set");
         }
-        return new ArtifactExporterSourceObject(this);
+        var loaderRes = set.install(xx, loc);
+        if (loaderRes.hasErrors()) return loaderRes.reerr();
+        var loader = loaderRes.requireValue("TypeSourceObjectDynamic::exporter loader");
+        Object instance;
+        try {
+            var cls = Class.forName(SourceObjectExport.exporterBinaryName(binaryName), true, loader);
+            instance = cls.getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(
+                    "TypeSourceObjectDynamic::exporter: emitted exporter of " + binaryName + " failed to load", e);
+        }
+        exporterInstance = Opt.some(MustCast.mustCast(ArtifactExporter.class, instance));
+        return EResult.ok(exporterInstance.optUnwrap());
     }
 
     public TypeSourceObjectDynamic(DefSetId setId, String name, Unique identity, DefinitionSet set, String binaryName) {
@@ -125,7 +145,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.SOURCE_OBJECT_CONST);
     }
 
@@ -298,7 +318,8 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
             var underlyingFinal = dt.underlyingType.optUnwrap();
             return ArtifactSupport.implExportIndependentArtifact(xx, dt.artifactIdCell, () -> {
                 var erb = new Erb(loc);
-                var defSetArt = erb.mustErMaybeUnreachable(Exporters.exportObject(xx, loc, set));
+                var defSetArt =
+                        erb.mustErMaybeUnreachable(ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set));
                 var underlyingArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, underlyingFinal));
                 var methods = new TList<ArtifactDataDefSetMethod>();
                 for (var m : dt.methods) {
@@ -350,7 +371,8 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                         methods,
                         ifaceImpls,
                         dt.binaryName,
-                        dt.compiledClass.optMap(ArtifactJavaClassCompiled::fromCompiled));
+                        dt.compiledClass.optMap(ArtifactJavaClassCompiled::fromCompiled),
+                        dt.compiledExporterClass.optMap(ArtifactJavaClassCompiled::fromCompiled));
                 return EResult.ok(makeBody.apply(ArtifactDataDefSetObjectCodec.toValue(body)));
             });
         }
@@ -383,6 +405,8 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                                 body.defSetId(), body.name(), body.identity(), body.binaryName());
                         dt.artifactIdCell.set(idValue);
                         dt.compiledClass = body.compiledClass().optMap(ArtifactJavaClassCompiled::toCompiled);
+                        dt.compiledExporterClass =
+                                body.compiledExporterClass().optMap(ArtifactJavaClassCompiled::toCompiled);
                         for (var m : body.methods()) {
                             var md = new SourceDataMethodData(m.name(), m.jvmMethodName());
                             dt.methods.add(md);

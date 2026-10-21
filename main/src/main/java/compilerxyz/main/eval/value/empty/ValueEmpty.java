@@ -52,7 +52,7 @@ public record ValueEmpty(Type type) implements Value {
     };
 
     @Override
-    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(ExporterRoot.VALUE_EMPTY);
+    public Opt<ArtifactExporter> valueArtifactExporter(ExprContext xx) {
+        return Opt.some(ExporterRoot.VALUE_EMPTY);
     }
 }

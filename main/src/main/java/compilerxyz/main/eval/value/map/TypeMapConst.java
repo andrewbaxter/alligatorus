@@ -206,7 +206,7 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.MAP_CONST_TYPE);
     }
 }

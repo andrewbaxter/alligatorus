@@ -2,10 +2,7 @@ package compilerxyz.main.eval.builtin;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.ExportableObject;
-import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -19,13 +16,9 @@ import compilerxyz.prelude.util.Opt;
 import java.util.Base64;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6470L)
+@BuiltinFull(uniqueId = 6470L, exporter = "APP")
 @BuiltinPath("types.app")
-public record App(Opt<String> executor, byte[] bytes) implements ExportableObject {
-    @Override
-    public ArtifactExporter exportableObjectExporter() {
-        return ExporterRoot.APP;
-    }
+public record App(Opt<String> executor, byte[] bytes) {
 
     public static ArtifactApp toArtifactApp(App app) {
         return new ArtifactApp(app.executor(), Base64.getEncoder().encodeToString(app.bytes()));

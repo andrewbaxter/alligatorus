@@ -73,7 +73,7 @@ public record TypeListGetDynamic(ListDynamic listType) implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.none();
     }
 }

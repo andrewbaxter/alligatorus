@@ -378,7 +378,10 @@ public final class GenMain {
                                                 isAspect,
                                                 methods,
                                                 new TList<BuiltinInterfacesGen.DataField>(),
-                                                permitted));
+                                                permitted,
+                                                JavaAspectExtractor.exporterAttr(attrs),
+                                                JavaAspectExtractor.superTypeNames(
+                                                        coid.getExtendedTypes(), importMap, pkg)));
                                         break _extractBuiltinSpecInterface;
                                     }
                                 }
@@ -412,6 +415,49 @@ public final class GenMain {
 
         {
             TList<BuiltinInterfacesGen.BuiltinSpec> specs = scan.builtins();
+
+            var specsByFq = new TMap<String, BuiltinInterfacesGen.BuiltinSpec>();
+            for (var spec : specs) specsByFq.put(spec.fqName(), spec);
+            {
+                var superErrors = new TList<String>();
+                for (var spec : specs) {
+                    if (!spec.isInterface()) continue;
+                    for (var sup : spec.superTypes()) {
+                        var supFile = runtimeSourceRoot.resolve(sup.replace('.', '/') + ".java");
+                        if (!Files.exists(supFile)) {
+                            throw new IllegalStateException("builtin interface inheritance: no source for " + sup
+                                    + " under " + runtimeSourceRoot);
+                        }
+                        var supSimple = sup.substring(sup.lastIndexOf('.') + 1);
+                        Opt<ClassOrInterfaceDeclaration> supDecl = Opt.none();
+                        for (var t : StaticJavaParser.parse(supFile).getTypes()) {
+                            if (!t.getNameAsString().equals(supSimple)) continue;
+                            if (!(t instanceof ClassOrInterfaceDeclaration c) || !c.isInterface()) {
+                                throw new IllegalStateException(
+                                        "builtin interface inheritance: " + sup + " is not an interface");
+                            }
+                            supDecl = Opt.some(c);
+                        }
+                        if (supDecl.optIsNone()) {
+                            throw new IllegalStateException(
+                                    "builtin interface inheritance: " + sup + " not declared in " + supFile);
+                        }
+                        var supHasAbstract = false;
+                        for (var m : supDecl.optUnwrap().getMethods()) {
+                            if (m.isAbstract()) supHasAbstract = true;
+                        }
+                        if (supHasAbstract) {
+                            superErrors.add(spec.fqName() + " extends " + sup
+                                    + " which declares abstract methods; inherited methods are not bridged,"
+                                    + " so a builtin interface may only extend method-less interfaces");
+                        }
+                    }
+                }
+                if (!superErrors.isEmpty()) {
+                    throw new IllegalStateException(
+                            "builtin interface inheritance:\n  " + String.join("\n  ", superErrors));
+                }
+            }
 
             TMap<ClassName, CodeBlock> leafDescriptors = scannedLeaves;
 
@@ -541,7 +587,7 @@ public final class GenMain {
                         b.addStatement("trivialIdentityAspects.add($T.IdentityId)", self);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)), false, $T.OBJECT)",
+                                        + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)), false, $T.OBJECT, $L)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -553,7 +599,9 @@ public final class GenMain {
                                 BuiltinInterfacesGen.OBJECT_ASPECT_SOURCE_STATIC,
                                 self,
                                 self,
-                                BuiltinInterfacesGen.OBJECT_LIFT_KIND);
+                                BuiltinInterfacesGen.OBJECT_LIFT_KIND,
+                                BuiltinInterfacesGen.exporterExpr(
+                                        spec, BuiltinInterfacesGen.hostKind(spec, specsByFq)));
                         b.addStatement(
                                 "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
                                         + "$T.DYNAMIC, $T.some(jvmClass))",
@@ -569,7 +617,7 @@ public final class GenMain {
                         BuiltinInterfacesGen.emitTypeHostRestamp(b, interfaceRef);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>none(), false, $T.$L)",
+                                        + "$T.<$T>none(), false, $T.$L, $L)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -579,7 +627,9 @@ public final class GenMain {
                                 BuiltinInterfacesGen.OPT,
                                 BuiltinInterfacesGen.OBJECT_ASPECT_SOURCE,
                                 BuiltinInterfacesGen.OBJECT_LIFT_KIND,
-                                liftKind);
+                                liftKind,
+                                BuiltinInterfacesGen.exporterExpr(
+                                        spec, BuiltinInterfacesGen.hostKind(spec, specsByFq)));
                         b.addStatement(
                                 "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
                                         + "$T.NONE, $T.<$T>none())",
@@ -596,7 +646,7 @@ public final class GenMain {
                         BuiltinInterfacesGen.emitTypeHostRestamp(b, interfaceRef);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>some(new $T(new $T($LL), new $T($LL))), $L, $T.$L)",
+                                        + "$T.<$T>some(new $T(new $T($LL), new $T($LL))), $L, $T.$L, $L)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -612,7 +662,9 @@ public final class GenMain {
                                 spec.uniqueId(),
                                 spec.identityToken(),
                                 BuiltinInterfacesGen.OBJECT_LIFT_KIND,
-                                liftKind);
+                                liftKind,
+                                BuiltinInterfacesGen.exporterExpr(
+                                        spec, BuiltinInterfacesGen.hostKind(spec, specsByFq)));
                         if (spec.isInterface()) {
                             b.addStatement(
                                     "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "

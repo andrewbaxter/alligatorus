@@ -6,7 +6,6 @@ import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.ArtifactExpr;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -153,12 +152,12 @@ public record TypeExpr() implements Aspect, Type, Value {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.EXPR);
     }
 
     @Override
-    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
-        return Exporters.typeExporter(loc, this);
+    public Opt<ArtifactExporter> valueArtifactExporter(ExprContext xx) {
+        return typeArtifactExporter(xx);
     }
 }

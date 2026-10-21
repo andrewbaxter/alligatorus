@@ -172,7 +172,7 @@ public final class TypeListSpecializedDynamic<T extends Type> implements Aspect,
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.LIST_DYNAMIC);
     }
 }

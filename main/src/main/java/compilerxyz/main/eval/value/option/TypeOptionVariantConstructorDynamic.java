@@ -41,7 +41,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.OPTION_VARIANT_CONSTRUCTOR_DYNAMIC);
     }
 

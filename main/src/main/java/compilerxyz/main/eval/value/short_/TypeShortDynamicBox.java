@@ -124,7 +124,7 @@ public record TypeShortDynamicBox() implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.SHORT_DYNAMIC_BOX);
     }
 }

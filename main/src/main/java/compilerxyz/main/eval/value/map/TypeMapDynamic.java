@@ -254,7 +254,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.MAP_DYNAMIC);
     }
 

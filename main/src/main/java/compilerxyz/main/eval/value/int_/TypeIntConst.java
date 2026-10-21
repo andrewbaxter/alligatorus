@@ -227,7 +227,7 @@ public record TypeIntConst() implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.INT_CONST_TYPE);
     }
 }

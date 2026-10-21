@@ -2,10 +2,7 @@ package compilerxyz.main.eval;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.ExportableObject;
-import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.gen.codec.ArtifactExprErrCodec;
 import compilerxyz.main.safejson.JsonValue;
@@ -17,13 +14,9 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6027L)
+@BuiltinFull(uniqueId = 6027L, exporter = "EXPR_ERR")
 @BuiltinPath("types.expr_err")
-public record ExprErr(QExprId loc, TList<ExprSubErr> errors) implements ExportableObject {
-    @Override
-    public ArtifactExporter exportableObjectExporter() {
-        return ExporterRoot.EXPR_ERR;
-    }
+public record ExprErr(QExprId loc, TList<ExprSubErr> errors) {
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override

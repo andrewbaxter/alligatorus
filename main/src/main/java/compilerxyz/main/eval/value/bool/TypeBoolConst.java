@@ -128,7 +128,7 @@ public record TypeBoolConst() implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.BOOL_CONST_TYPE);
     }
 }

@@ -7,7 +7,6 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExportableObject;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.artifact.Exporters;
@@ -31,15 +30,19 @@ import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.main.eval.dynamic.SourceUnionEmitter;
+import compilerxyz.main.eval.value.numeric.Numerics;
 import compilerxyz.main.eval.value.source_function.SourceFunctionData;
 import compilerxyz.main.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.main.eval.value.source_interface.InterfaceCell;
 import compilerxyz.main.eval.value.source_interface.InterfaceData;
 import compilerxyz.main.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
+import compilerxyz.main.eval.value.source_object.SourceObjectConstructor;
+import compilerxyz.main.eval.value.source_object.SourceObjectExport;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
+import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetCodec;
@@ -54,7 +57,7 @@ import java.util.function.Function;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
-public final class DefinitionSet implements ExportableObject {
+public final class DefinitionSet {
     public static Type dynamicType() {
         return GenType.dynamicType();
     }
@@ -123,6 +126,17 @@ public final class DefinitionSet implements ExportableObject {
                     fields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
                     loader.registerExternals(binaryName, fields);
                 }
+                if (obj.compiledExporterClass.optIsNone()) {
+                    throw new AssertionError("object '" + obj.name.optUnwrapOr("(unnamed)")
+                            + "' has an instance class but no exporter class");
+                }
+                var exporterBinaryName = SourceObjectExport.exporterBinaryName(binaryName);
+                var exporterCompiled = obj.compiledExporterClass.optUnwrap();
+                loader.registerClass(exporterBinaryName, exporterCompiled.bytecode());
+                loader.registerLocs(exporterBinaryName, exporterCompiled.locs());
+                var exporterFields = new TOrderedMap<String, Object>();
+                exporterFields.put(SourceObjectExport.EXPORTER_TYPE_FIELD, obj);
+                loader.registerExternals(exporterBinaryName, exporterFields);
             }
         }
         for (var union : unions) {
@@ -663,6 +677,146 @@ public final class DefinitionSet implements ExportableObject {
                 }
                 soeCw.visitEnd();
                 obj.compiledClass = Opt.some(new JavaClassCompiled(soeCw.toByteArray(), soeLocTable.locs()));
+                {
+                    var exUnderlyingType = obj.underlyingType.optUnwrap();
+                    var exInternal =
+                            JavaInternalName.of(SourceObjectExport.exporterBinaryName(soeInternalName.value()));
+                    var exDesc = JavaDataDescriptor.fromInternalName(exInternal);
+                    var exObjectDesc = JavaDataDescriptor.fromInternalName(soeInternalName);
+                    var exLocTable = new JavaBytecodeLocTable();
+                    var exCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
+                        @Override
+                        protected String getCommonSuperClass(String type1, String type2) {
+                            return JvmConstants.INTNAME_OBJECT.value();
+                        }
+                    };
+                    exCw.visit(
+                            Opcodes.V11,
+                            Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER,
+                            exInternal.value(),
+                            null,
+                            JvmConstants.INTNAME_OBJECT.value(),
+                            new String[] {
+                                JavaInternalName.fromClass(ArtifactExporter.class)
+                                        .value(),
+                                JavaInternalName.fromClass(SourceObjectConstructor.class)
+                                        .value()
+                            });
+                    exCw.visitField(
+                                    Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+                                    SourceObjectExport.EXPORTER_TYPE_FIELD,
+                                    SourceObjectExport.DESC_TYPE.value(),
+                                    null,
+                                    null)
+                            .visitEnd();
+                    {
+                        var exCtor = exCw.visitMethod(
+                                Opcodes.ACC_PUBLIC, "<init>", JavaMethodDescriptor.VOID_NOARGS.value(), null, null);
+                        var exSeq = new JavaBytecodeSequence();
+                        var eb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+                        var exSelf = eb.loadIndexed(0, exDesc);
+                        eb.invokeSpecialVoid(
+                                JvmConstants.INTNAME_OBJECT, "<init>", JavaMethodDescriptor.VOID_NOARGS, exSelf);
+                        eb.retVoid();
+                        exSeq.add(eb.code());
+                        JavaBytecodeUtils.renderMethod(exSeq, exCtor, TList.of(), exInternal, exLocTable);
+                    }
+                    var exDescXx = JavaDataDescriptor.fromClass(ExprContext.class);
+                    var exDescLoc = JavaDataDescriptor.fromClass(QExprId.class);
+                    var exDescEResult = JavaDataDescriptor.fromClass(EResult.class);
+                    var exNumericKind = Numerics.kindOf(xx, exUnderlyingType);
+                    {
+                        var exMethodDesc = JavaMethodDescriptor.fromParts(
+                                exDescEResult, exDescXx, exDescLoc, JvmConstants.DESC_OBJECT);
+                        var exMv = exCw.visitMethod(
+                                Opcodes.ACC_PUBLIC, "artifactExporterExport", exMethodDesc.value(), null, null);
+                        var exSeq = new JavaBytecodeSequence();
+                        var eb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+                        var exXxReg = eb.loadIndexed(1, exDescXx);
+                        var exLocReg = eb.loadIndexed(2, exDescLoc);
+                        var exInstance = eb.checkcast(exObjectDesc, eb.loadIndexed(3, JvmConstants.DESC_OBJECT));
+                        var exData = eb.getField(
+                                soeInternalName, SourceObjectEmitter.DATA_INSTANCE_FIELD, dataFieldDesc, exInstance);
+                        JavaBytecodeReg exBoxed;
+                        if (dataFieldDesc.isReference()) {
+                            exBoxed = exData;
+                        } else if (exNumericKind.optIsSome()) {
+                            exBoxed = Numerics.box(eb, exNumericKind.optUnwrap(), exData);
+                        } else if (dataFieldDesc.equals(JavaDataDescriptor.DESC_BOOL)) {
+                            exBoxed = eb.invokeStatic(
+                                    SourceObjectExport.INTNAME_BOOLEAN,
+                                    "valueOf",
+                                    JavaMethodDescriptor.fromParts(
+                                            SourceObjectExport.DESC_BOOLEAN, JavaDataDescriptor.DESC_BOOL),
+                                    exData);
+                        } else {
+                            throw new IllegalStateException(
+                                    "DefinitionSet::finish: no box for object host descriptor " + dataFieldDesc);
+                        }
+                        var exType = eb.getStatic(
+                                exInternal, SourceObjectExport.EXPORTER_TYPE_FIELD, SourceObjectExport.DESC_TYPE);
+                        eb.ret(eb.invokeStatic(
+                                GenCodegenDescriptors.SOURCE_OBJECT_EXPORT_EXPORT, exXxReg, exLocReg, exType, exBoxed));
+                        exSeq.add(eb.code());
+                        JavaBytecodeUtils.renderMethod(exSeq, exMv, TList.of(), exInternal, exLocTable);
+                    }
+                    {
+                        var exDescJson = JavaDataDescriptor.fromClass(JsonValue.class);
+                        var exMethodDesc = JavaMethodDescriptor.fromParts(
+                                exDescEResult,
+                                exDescXx,
+                                exDescLoc,
+                                JavaDataDescriptor.fromClass(Opt.class),
+                                exDescJson);
+                        var exMv = exCw.visitMethod(
+                                Opcodes.ACC_PUBLIC, "artifactExporterImportFromData", exMethodDesc.value(), null, null);
+                        var exSeq = new JavaBytecodeSequence();
+                        var eb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+                        var exSelf = eb.loadIndexed(0, exDesc);
+                        var exXxReg = eb.loadIndexed(1, exDescXx);
+                        var exLocReg = eb.loadIndexed(2, exDescLoc);
+                        var exDataReg = eb.loadIndexed(4, exDescJson);
+                        eb.ret(eb.invokeStatic(
+                                GenCodegenDescriptors.SOURCE_OBJECT_EXPORT_IMPORT_INSTANCE,
+                                exXxReg,
+                                exLocReg,
+                                exDataReg,
+                                exSelf));
+                        exSeq.add(eb.code());
+                        JavaBytecodeUtils.renderMethod(exSeq, exMv, TList.of(), exInternal, exLocTable);
+                    }
+                    {
+                        var exMethodDesc =
+                                JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT);
+                        var exMv = exCw.visitMethod(
+                                Opcodes.ACC_PUBLIC, "sourceObjectConstructorNew", exMethodDesc.value(), null, null);
+                        var exSeq = new JavaBytecodeSequence();
+                        var eb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+                        var exRaw = eb.loadIndexed(1, JvmConstants.DESC_OBJECT);
+                        JavaBytecodeReg exUnderlying;
+                        if (dataFieldDesc.isReference()) {
+                            exUnderlying = eb.checkcast(dataFieldDesc, exRaw);
+                        } else if (exNumericKind.optIsSome()) {
+                            var exBoxedDesc = JvmSort.descriptor(xx, DynUtil.substituteBoxed(xx, exUnderlyingType));
+                            exUnderlying =
+                                    Numerics.unbox(eb, exNumericKind.optUnwrap(), eb.checkcast(exBoxedDesc, exRaw));
+                        } else if (dataFieldDesc.equals(JavaDataDescriptor.DESC_BOOL)) {
+                            exUnderlying = eb.invokeVirtual(
+                                    SourceObjectExport.INTNAME_BOOLEAN,
+                                    "booleanValue",
+                                    JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of()),
+                                    eb.checkcast(SourceObjectExport.DESC_BOOLEAN, exRaw));
+                        } else {
+                            throw new IllegalStateException(
+                                    "DefinitionSet::finish: no unbox for object host descriptor " + dataFieldDesc);
+                        }
+                        eb.ret(eb.newInstance(soeInternalName, realCtorDesc, exUnderlying));
+                        exSeq.add(eb.code());
+                        JavaBytecodeUtils.renderMethod(exSeq, exMv, TList.of(), exInternal, exLocTable);
+                    }
+                    exCw.visitEnd();
+                    obj.compiledExporterClass = Opt.some(new JavaClassCompiled(exCw.toByteArray(), exLocTable.locs()));
+                }
                 obj.compiledStaticFieldValues = Opt.some(staticFieldValues);
             }
         }
@@ -850,11 +1004,6 @@ public final class DefinitionSet implements ExportableObject {
         return Opt.some(emitted);
     }
 
-    @Override
-    public ArtifactExporter exportableObjectExporter() {
-        return ExporterRoot.DEFINITION_SET;
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
@@ -885,7 +1034,8 @@ public final class DefinitionSet implements ExportableObject {
                 }
                 var dependencies = new TList<Artifact>(set.dependencies.size());
                 for (var entry : set.dependencies.entrySet()) {
-                    var art = erb.mustErMaybeUnreachable(Exporters.exportObject(xx, loc, entry.getValue()));
+                    var art = erb.mustErMaybeUnreachable(
+                            ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, entry.getValue()));
                     if (art.optIsSome()) dependencies.add(art.optUnwrap());
                 }
                 if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());

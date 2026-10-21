@@ -6,6 +6,6 @@ import compilerxyz.main.gen.AspectArtifact;
 public record AspectArtifactSourceObjectConst(TypeSourceObjectConst type) implements AspectArtifact {
     @Override
     public ArtifactExporter aspectArtifactExporter() {
-        return type.dynamic().instanceExporter();
+        return new ArtifactExporterSourceObject(type.dynamic());
     }
 }

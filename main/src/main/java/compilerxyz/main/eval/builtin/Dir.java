@@ -2,10 +2,7 @@ package compilerxyz.main.eval.builtin;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
-import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.ExportableObject;
-import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -21,13 +18,9 @@ import compilerxyz.prelude.util.TOrderedMap;
 import java.util.Base64;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6472L)
+@BuiltinFull(uniqueId = 6472L, exporter = "DIR")
 @BuiltinPath("types.dir")
-public record Dir(TOrderedMap<String, byte[]> files) implements ExportableObject {
-    @Override
-    public ArtifactExporter exportableObjectExporter() {
-        return ExporterRoot.DIR;
-    }
+public record Dir(TOrderedMap<String, byte[]> files) {
 
     public static ArtifactDir toArtifactDir(Dir dir) {
         var entries = new TList<ArtifactDir.Entry>(dir.files().size());

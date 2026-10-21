@@ -870,12 +870,12 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.TUPLE);
     }
 
     @Override
-    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
-        return Exporters.typeExporter(loc, this);
+    public Opt<ArtifactExporter> valueArtifactExporter(ExprContext xx) {
+        return typeArtifactExporter(xx);
     }
 }

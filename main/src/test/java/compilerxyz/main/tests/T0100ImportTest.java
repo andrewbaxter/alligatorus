@@ -374,6 +374,13 @@ public final class T0100ImportTest {
                                         "some",
                                         jsonObj(
                                                 jsonField("bytecode", jsonStr("BYTECODE")),
+                                                jsonField("locs", jsonStr("LOCS")))))),
+                        jsonField(
+                                "compiled_exporter_class",
+                                jsonObj(jsonField(
+                                        "some",
+                                        jsonObj(
+                                                jsonField("bytecode", jsonStr("BYTECODE")),
                                                 jsonField("locs", jsonStr("LOCS"))))))),
                 Helpers.jsonRedacted(objArt.data()));
         var defSetArt = Helpers.artifactByTag(gxa.artifacts(), "definition_set");

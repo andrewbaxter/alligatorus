@@ -328,8 +328,8 @@ public final class T0160EvenOddTest {
                                                                                 mb,
                                                                                 TList.of(
                                                                                         new TestMb.RecordPair(
-                                                                                                "exporter",
-                                                                                                mb.valueExporterImpl(
+                                                                                                "artifact_exporter",
+                                                                                                mb.artifactExporterImpl(
                                                                                                         "vb")),
                                                                                         new TestMb.RecordPair(
                                                                                                 "type",
@@ -1109,8 +1109,8 @@ public final class T0160EvenOddTest {
                                                                                 mb,
                                                                                 TList.of(
                                                                                         new TestMb.RecordPair(
-                                                                                                "exporter",
-                                                                                                mb.typeExporterImpl(
+                                                                                                "artifact_exporter",
+                                                                                                mb.artifactExporterImpl(
                                                                                                         "u")),
                                                                                         new TestMb.RecordPair(
                                                                                                 "is_equal",

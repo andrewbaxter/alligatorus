@@ -15,4 +15,6 @@ public @interface BuiltinFull {
     long identityId() default 0;
 
     boolean lift() default true;
+
+    String exporter() default "";
 }

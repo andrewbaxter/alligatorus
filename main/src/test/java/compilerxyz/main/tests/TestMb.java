@@ -576,19 +576,25 @@ public final class TestMb {
                 field(aspectRef, str(method)), callArg.optIsSome() ? tupleOf(receiver, callArg.optUnwrap()) : receiver);
     }
 
-    public SourceExpr instanceExporter(String builderVar) {
-        return call(builtin("eval", "source_object_exporter"), lower(field(scopeUse(builderVar), str("type"))));
+    public SourceExpr evalAspectArtifact() {
+        return builtin("eval", "aspect_artifact");
     }
 
-    public SourceExpr valueExporterImpl(String builderVar) {
-        return call(
-                field(call(typesEresult(), builtin("eval", "artifact_exporter")), str("ok")),
-                instanceExporter(builderVar));
+    public SourceExpr evalAspectDynamicConst() {
+        return builtin("eval", "aspect_dynamic_const");
     }
 
-    public SourceExpr typeExporterImpl(String builderVar) {
+    public SourceExpr artifactExporterImpl(String builderVar) {
+        var xx = scopeUse("arg");
+        var dynConst = field(
+                call(
+                        evalAspectLookup(),
+                        tupleOf(lower(field(scopeUse(builderVar), str("type"))), evalAspectDynamicConst(), xx)),
+                str("value"));
+        var constForm = call(field(evalAspectDynamicConst(), str("const_form")), tupleOf(dynConst, xx));
+        var aspect = field(call(evalAspectLookup(), tupleOf(constForm, evalAspectArtifact(), xx)), str("value"));
         return call(
                 field(call(typesOption(), builtin("eval", "artifact_exporter")), str("some")),
-                instanceExporter(builderVar));
+                call(field(evalAspectArtifact(), str("exporter")), aspect));
     }
 }

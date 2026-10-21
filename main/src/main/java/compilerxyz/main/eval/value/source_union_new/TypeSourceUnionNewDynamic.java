@@ -129,7 +129,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type, int variant
     };
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.SOURCE_UNION_NEW);
     }
 

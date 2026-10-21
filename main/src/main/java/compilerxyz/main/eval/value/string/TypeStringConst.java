@@ -127,7 +127,7 @@ public record TypeStringConst() implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.STRING_CONST_TYPE);
     }
 }

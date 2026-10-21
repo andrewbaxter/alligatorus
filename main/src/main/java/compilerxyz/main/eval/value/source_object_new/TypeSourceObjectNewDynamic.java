@@ -172,7 +172,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type) implement
     };
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.SOURCE_OBJECT_NEW);
     }
 }

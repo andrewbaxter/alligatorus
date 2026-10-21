@@ -122,8 +122,8 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(AspectBindObjectConst.INSTANCE);
         }
-        if (key.equals(GenAspectArtifact.AspectId)) {
-            return Opt.some(AspectArtifactObjectConst.INSTANCE);
+        if (key.equals(GenAspectArtifact.AspectId) && meta.exporter().optIsSome()) {
+            return Opt.some(new AspectArtifactObjectConst(meta.exporter().optUnwrap()));
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);
@@ -206,7 +206,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.TYPE_OBJECT_CONST);
     }
 

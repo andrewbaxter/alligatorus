@@ -76,7 +76,7 @@ public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType)
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.none();
     }
 }

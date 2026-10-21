@@ -196,7 +196,7 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.OPTION_DYNAMIC);
     }
 }

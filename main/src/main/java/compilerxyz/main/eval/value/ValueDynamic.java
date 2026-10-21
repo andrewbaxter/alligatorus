@@ -1,13 +1,12 @@
 package compilerxyz.main.eval.value;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
+import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 1067L)
 @BuiltinPath("types.value_dynamic")
@@ -17,7 +16,7 @@ public record ValueDynamic(ValueDynamicSource source, Type type) implements Valu
     }
 
     @Override
-    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, "a runtime value of type " + type.typeDesc() + " is not exportable");
+    public Opt<ArtifactExporter> valueArtifactExporter(ExprContext xx) {
+        return Opt.none();
     }
 }

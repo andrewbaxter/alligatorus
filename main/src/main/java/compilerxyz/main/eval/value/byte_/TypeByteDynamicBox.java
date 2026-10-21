@@ -124,7 +124,7 @@ public record TypeByteDynamicBox() implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.BYTE_DYNAMIC_BOX);
     }
 }

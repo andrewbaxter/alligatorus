@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.source_function;
 
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExportableObject;
 import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.ArtifactExpr;
 import compilerxyz.main.eval.ArtifactExternal;
@@ -19,6 +18,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.StageLiftCell;
 import compilerxyz.main.eval.expr.StagedExprCell;
+import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.eval.value.expr.TypeExpr;
 import compilerxyz.main.eval.value.unique.TypeUniqueDynamic;
 import compilerxyz.main.gen.GenQExprId;
@@ -87,24 +87,19 @@ public final class ExternalCodec {
                 }
                 out.add(new ArtifactExternal.Exported(
                         artRes.requireValue("ExternalCodec::export host value artifact"), false));
-            } else if (host instanceof ExportableObject object) {
-                var artRes = Exporters.exportObject(xx, loc, object);
-                if (artRes.hasErrors()) {
-                    artRes.drainInto(errors);
-                    return EResult.errs(errors);
-                }
-                out.add(new ArtifactExternal.Exported(
-                        artRes.requireValue("ExternalCodec::export host artifact"), false));
             } else if (host instanceof Unique u) {
                 out.add(new ArtifactExternal.UniqueRef(u));
             } else if (host instanceof QExprId q) {
                 out.add(new ArtifactExternal.Loc(
                         new ArtifactExpr.ArtifactQExprId(q.source().value(), q.expr())));
             } else {
-                return EResult.err(
-                        loc,
-                        "ExternalCodec: unsupported External host for artifact round-trip: "
-                                + (host == null ? "null" : host.getClass().getSimpleName()));
+                var artRes = Exporters.exportData(xx, loc, TypeForms.constForm(xx, entry.type()), host);
+                if (artRes.hasErrors()) {
+                    artRes.drainInto(errors);
+                    return EResult.errs(errors);
+                }
+                out.add(new ArtifactExternal.Exported(
+                        artRes.requireValue("ExternalCodec::export host artifact"), false));
             }
         }
         return EResult.ok(out);

@@ -10,26 +10,18 @@ import compilerxyz.main.gen.Value;
 public final class Exporters {
     private Exporters() {}
 
-    public static EResult<ArtifactExporter> typeExporter(QExprId loc, Type type) {
-        var exporter = type.typeExporter();
-        if (exporter.optIsNone()) return EResult.err(loc, "type " + type.typeDesc() + " is not exportable");
-        return EResult.ok(exporter.optUnwrap());
-    }
-
     public static EResult<Artifact> exportType(ExprContext xx, QExprId loc, Type type) {
-        var exporterRes = typeExporter(loc, type);
-        if (exporterRes.hasErrors()) return exporterRes.reerr();
-        return exporterRes.requireValue("Exporters::exportType exporter").artifactExporterExport(xx, loc, type);
+        var exporter = type.typeArtifactExporter(xx);
+        if (exporter.optIsNone()) return EResult.err(loc, "type " + type.typeDesc() + " is not exportable");
+        return exporter.optUnwrap().artifactExporterExport(xx, loc, type);
     }
 
     public static EResult<Artifact> exportValue(ExprContext xx, QExprId loc, Value value) {
-        var exporterRes = value.valueExporter(xx, loc);
-        if (exporterRes.hasErrors()) return exporterRes.reerr();
-        return exporterRes.requireValue("Exporters::exportValue exporter").artifactExporterExport(xx, loc, value);
-    }
-
-    public static EResult<Artifact> exportObject(ExprContext xx, QExprId loc, ExportableObject object) {
-        return object.exportableObjectExporter().artifactExporterExport(xx, loc, object);
+        var exporter = value.valueArtifactExporter(xx);
+        if (exporter.optIsNone()) {
+            return EResult.err(loc, "value of type " + value.valueType().typeDesc() + " is not exportable");
+        }
+        return exporter.optUnwrap().artifactExporterExport(xx, loc, value);
     }
 
     public static EResult<Artifact> exportData(ExprContext xx, QExprId loc, Type type, Object data) {

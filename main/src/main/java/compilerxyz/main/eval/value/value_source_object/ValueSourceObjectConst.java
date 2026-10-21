@@ -6,7 +6,6 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
@@ -48,29 +47,13 @@ public final class ValueSourceObjectConst {
                             + "ArtifactValueSourceObject: "
                             + e.getMessage());
         }
-        var erb = new Erb(loc);
-        var typeAny = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.typeArtifact()));
-        var underlying = erb.mustErMaybeUnreachable(ArtifactSupport.importArtifact(xx, loc, body.underlying()));
-        if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-        var dt = MustCast.mustCast(TypeSourceObjectDynamic.class, typeAny.optUnwrap());
-        var loaderRes = dt.set.install(xx, loc);
-        if (loaderRes.hasErrors()) return loaderRes.reerr();
-        Class<?> klass;
-        try {
-            klass = Class.forName(dt.binaryName, true, loaderRes.requireValue("ValueSourceObjectConst::import loader"));
-        } catch (ClassNotFoundException e) {
-            throw new IllegalStateException("ValueSourceObjectConst::import: " + dt.binaryName + " not loadable", e);
-        }
-        for (var ctor : klass.getConstructors()) {
-            if (ctor.getParameterCount() != 1) continue;
-            try {
-                return EResult.ok(ctor.newInstance(underlying.optUnwrap()));
-            } catch (ReflectiveOperationException e) {
-                throw new IllegalStateException(
-                        "ValueSourceObjectConst::import: " + dt.binaryName + " construction failed", e);
-            }
-        }
-        throw new IllegalStateException(
-                "ValueSourceObjectConst::import: " + dt.binaryName + " has no underlying constructor");
+        var typeRes = ArtifactSupport.importArtifact(xx, loc, body.typeArtifact());
+        if (typeRes.hasErrors()) return typeRes.reerr();
+        var dt = MustCast.mustCast(
+                TypeSourceObjectDynamic.class, typeRes.requireValue("ValueSourceObjectConst::import type"));
+        var exporter = dt.exporter(xx, loc);
+        if (exporter.hasErrors()) return exporter.reerr();
+        return exporter.requireValue("ValueSourceObjectConst::import exporter")
+                .artifactExporterImportFromData(xx, loc, Opt.none(), data);
     }
 }

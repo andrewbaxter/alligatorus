@@ -93,7 +93,8 @@ public final class T0130DropThrowTest {
                                                         mb,
                                                         TList.of(
                                                                 new TestMb.RecordPair(
-                                                                        "exporter", mb.typeExporterImpl("u")),
+                                                                        "artifact_exporter",
+                                                                        mb.artifactExporterImpl("u")),
                                                                 new TestMb.RecordPair(
                                                                         "can_cast_from",
                                                                         mb.seqOf(

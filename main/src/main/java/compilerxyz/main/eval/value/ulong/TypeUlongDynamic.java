@@ -190,7 +190,7 @@ public record TypeUlongDynamic() implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.ULONG_DYNAMIC);
     }
 

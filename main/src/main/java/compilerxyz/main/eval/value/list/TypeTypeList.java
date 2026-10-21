@@ -3,6 +3,7 @@ package compilerxyz.main.eval.value.list;
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ArtifactExporterHostType;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.ExporterRoot;
@@ -49,7 +50,7 @@ public record TypeTypeList(ListDynamic type) implements Aspect, Type {
             return Opt.some(AspectTypeObjectConstData.INSTANCE);
         }
         if (key.equals(GenAspectArtifact.AspectId)) {
-            return Opt.some(AspectArtifactObjectConst.INSTANCE);
+            return Opt.some(new AspectArtifactObjectConst(ArtifactExporterHostType.INSTANCE));
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldTypeTypeList(type));
@@ -67,7 +68,7 @@ public record TypeTypeList(ListDynamic type) implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.TYPE_TYPE_LIST);
     }
 

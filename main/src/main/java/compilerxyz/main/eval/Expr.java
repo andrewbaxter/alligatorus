@@ -1,7 +1,7 @@
 package compilerxyz.main.eval;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.Exporters;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.eval.value.expr.TypeExpr;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.syntax.BinaryOperator;
@@ -84,7 +84,7 @@ public record Expr(QExprId loc, Variant variant) implements Value {
     }
 
     @Override
-    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
-        return Exporters.exporterOfType(xx, loc, valueType());
+    public Opt<ArtifactExporter> valueArtifactExporter(ExprContext xx) {
+        return Opt.some(ExporterRoot.EXPR_VALUE);
     }
 }

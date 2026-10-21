@@ -5,6 +5,7 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.ArtifactExternal;
@@ -111,7 +112,8 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
             var compiledClass = data.compiledClass;
             return ArtifactSupport.implExportIndependentArtifact(xx, data.artifactIdCell, () -> {
                 var erb = new Erb(loc);
-                var defSetArt = erb.mustErMaybeUnreachable(Exporters.exportObject(xx, loc, set));
+                var defSetArt =
+                        erb.mustErMaybeUnreachable(ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set));
                 var argArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, argType));
                 Opt<Artifact> retArt = Opt.none();
                 if (retType.optIsSome()) {
@@ -260,7 +262,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(AspectArtifactSourceFunctionConst.INSTANCE.aspectArtifactExporter());
     }
 }

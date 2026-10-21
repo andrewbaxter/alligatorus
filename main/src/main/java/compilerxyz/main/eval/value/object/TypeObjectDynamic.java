@@ -179,7 +179,7 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.OBJECT_DYNAMIC);
     }
 

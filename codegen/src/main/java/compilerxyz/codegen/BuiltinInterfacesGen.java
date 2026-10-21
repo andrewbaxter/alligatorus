@@ -1,11 +1,13 @@
 package compilerxyz.codegen;
 
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeName;
 import compilerxyz.codegen.util.BuiltinMethodEmit;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TMap;
 
 public final class BuiltinInterfacesGen {
     private BuiltinInterfacesGen() {}
@@ -24,7 +26,9 @@ public final class BuiltinInterfacesGen {
             Opt<String> nestedSimpleName,
             boolean identityToken,
             boolean lift,
-            TList<String> permitted) {
+            TList<String> permitted,
+            Opt<String> exporter,
+            TList<String> superTypes) {
         public BuiltinSpec(
                 String simpleName,
                 String pkg,
@@ -33,7 +37,9 @@ public final class BuiltinInterfacesGen {
                 boolean isAspect,
                 TList<BuiltinMethodEmit.Method> methods,
                 TList<DataField> dataFields,
-                TList<String> permitted) {
+                TList<String> permitted,
+                Opt<String> exporter,
+                TList<String> superTypes) {
             this(
                     simpleName,
                     pkg,
@@ -48,7 +54,15 @@ public final class BuiltinInterfacesGen {
                     Opt.none(),
                     false,
                     true,
-                    permitted);
+                    permitted,
+                    exporter,
+                    superTypes);
+        }
+
+        public String fqName() {
+            return outerSimpleName.optIsNone()
+                    ? pkg + "." + simpleName
+                    : pkg + "." + outerSimpleName.optUnwrap() + "." + nestedSimpleName.optUnwrap();
         }
     }
 
@@ -91,6 +105,60 @@ public final class BuiltinInterfacesGen {
     public static final ClassName JAVA_INTERNAL_NAME =
             ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName");
     public static final ClassName VALUE = ClassName.get("compilerxyz.main.gen", "Value");
+    public static final ClassName EXPORTER_ROOT = ClassName.get("compilerxyz.main.artifact", "ExporterRoot");
+    public static final ClassName ARTIFACT_EXPORTER = ClassName.get("compilerxyz.main.artifact", "ArtifactExporter");
+    public static final ClassName ARTIFACT_EXPORTER_HOST_TYPE =
+            ClassName.get("compilerxyz.main.artifact", "ArtifactExporterHostType");
+    public static final ClassName ARTIFACT_EXPORTER_HOST_VALUE =
+            ClassName.get("compilerxyz.main.artifact", "ArtifactExporterHostValue");
+
+    public static final String HOST_TYPE_FQ = "compilerxyz.main.eval.Type";
+    public static final String HOST_VALUE_FQ = "compilerxyz.main.gen.Value";
+
+    public enum HostKind {
+        TYPE,
+        VALUE
+    }
+
+    public static Opt<HostKind> hostKind(BuiltinSpec spec, TMap<String, BuiltinSpec> specsByFq) {
+        var fq = spec.fqName();
+        if (fq.equals(HOST_TYPE_FQ)) return Opt.some(HostKind.TYPE);
+        if (fq.equals(HOST_VALUE_FQ)) return Opt.some(HostKind.VALUE);
+        Opt<HostKind> found = Opt.none();
+        for (var sup : spec.superTypes()) {
+            Opt<HostKind> supKind;
+            if (sup.equals(HOST_TYPE_FQ)) {
+                supKind = Opt.some(HostKind.TYPE);
+            } else if (sup.equals(HOST_VALUE_FQ)) {
+                supKind = Opt.some(HostKind.VALUE);
+            } else {
+                var supSpec = specsByFq.getOpt(sup);
+                supKind = supSpec.optIsNone() ? Opt.none() : hostKind(supSpec.optUnwrap(), specsByFq);
+            }
+            if (supKind.optIsNone()) continue;
+            if (supKind.optUnwrap() == HostKind.TYPE) return Opt.some(HostKind.TYPE);
+            found = supKind;
+        }
+        return found;
+    }
+
+    public static CodeBlock exporterExpr(BuiltinSpec spec, Opt<HostKind> hostKind) {
+        if (spec.exporter().optIsSome()) {
+            return CodeBlock.of(
+                    "$T.<$T>some($T.$L)",
+                    OPT,
+                    ARTIFACT_EXPORTER,
+                    EXPORTER_ROOT,
+                    spec.exporter().optUnwrap());
+        }
+        if (hostKind.optIsNone()) return CodeBlock.of("$T.<$T>none()", OPT, ARTIFACT_EXPORTER);
+        return CodeBlock.of(
+                "$T.<$T>some($T.INSTANCE)",
+                OPT,
+                ARTIFACT_EXPORTER,
+                hostKind.optUnwrap() == HostKind.TYPE ? ARTIFACT_EXPORTER_HOST_TYPE : ARTIFACT_EXPORTER_HOST_VALUE);
+    }
+
     public static final ClassName JAVA_DATA_DESCRIPTOR =
             ClassName.get("compilerxyz.main.eval.dynamic", "JavaDataDescriptor");
 

@@ -941,12 +941,12 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.RECORD);
     }
 
     @Override
-    public EResult<ArtifactExporter> valueExporter(ExprContext xx, QExprId loc) {
-        return Exporters.typeExporter(loc, this);
+    public Opt<ArtifactExporter> valueArtifactExporter(ExprContext xx) {
+        return typeArtifactExporter(xx);
     }
 }

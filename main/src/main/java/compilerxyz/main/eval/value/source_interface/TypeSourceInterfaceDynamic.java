@@ -5,6 +5,7 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.CodeValue;
@@ -22,7 +23,6 @@ import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
-import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -87,9 +87,6 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
         if (key.equals(GenAspectBindDynamic.AspectId)) {
             return Opt.some(AspectBindDynamicDefault.INSTANCE);
         }
-        if (key.equals(GenAspectArtifact.AspectId)) {
-            return Opt.some(AspectArtifactSourceInterfaceDynamic.INSTANCE);
-        }
         if (key.equals(cell.identity) || key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_INTERFACE_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
@@ -119,7 +116,8 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
             var frozen = frozenOpt.optUnwrap();
             return ArtifactSupport.implExportIndependentArtifact(xx, cell.artifactIdCell, () -> {
                 var erb = new Erb(loc);
-                var defSetArt = erb.mustErMaybeUnreachable(Exporters.exportObject(xx, loc, set));
+                var defSetArt =
+                        erb.mustErMaybeUnreachable(ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set));
                 var methodsOut = new TList<Artifact>();
                 for (var m : frozen.methods) {
                     var mArt = erb.mustErMaybeUnreachable(
@@ -263,7 +261,7 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
-        return Opt.some(AspectArtifactSourceInterfaceDynamic.INSTANCE.aspectArtifactExporter());
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
+        return Opt.some(ExporterRoot.SOURCE_INTERFACE_DYNAMIC);
     }
 }

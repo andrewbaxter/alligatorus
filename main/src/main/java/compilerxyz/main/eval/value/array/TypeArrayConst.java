@@ -219,7 +219,7 @@ public final class TypeArrayConst<T extends Type> implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.ARRAY_CONST_TYPE);
     }
 }

@@ -132,7 +132,7 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.SOURCE_UNION_CONST);
     }
 
@@ -216,7 +216,8 @@ public final class TypeSourceUnionDynamic implements Aspect, Type {
             }
             return ArtifactSupport.implExportIndependentArtifact(xx, tu.artifactIdCell, () -> {
                 var erb = new Erb(loc);
-                var defSetArt = erb.mustErMaybeUnreachable(Exporters.exportObject(xx, loc, set));
+                var defSetArt =
+                        erb.mustErMaybeUnreachable(ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set));
                 var variantsOut = new TList<ArtifactDataSourceUnionVariant>();
                 for (var v : tu.variants) {
                     var tArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, v.type));

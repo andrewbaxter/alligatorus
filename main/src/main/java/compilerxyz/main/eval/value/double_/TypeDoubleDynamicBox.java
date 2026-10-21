@@ -123,7 +123,7 @@ public record TypeDoubleDynamicBox() implements Aspect, Type {
     }
 
     @Override
-    public Opt<ArtifactExporter> typeExporter() {
+    public Opt<ArtifactExporter> typeArtifactExporter(ExprContext xx) {
         return Opt.some(ExporterRoot.DOUBLE_DYNAMIC_BOX);
     }
 }
