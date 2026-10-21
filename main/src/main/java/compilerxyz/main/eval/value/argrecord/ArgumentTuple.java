@@ -11,6 +11,7 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectField;
+import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinLight;
@@ -38,6 +39,9 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes) i
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(AspectFieldArgumentTuple.INSTANCE);
+        }
+        if (key.equals(GenAspectTuple.AspectId)) {
+            return Opt.some(new AspectTupleArgumentTuple(this));
         }
         return Opt.none();
     }

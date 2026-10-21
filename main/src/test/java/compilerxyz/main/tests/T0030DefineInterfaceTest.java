@@ -192,7 +192,7 @@ public final class T0030DefineInterfaceTest {
                                                                                                                                 "field",
                                                                                                                                 "xx",
                                                                                                                                 "loc",
-                                                                                                                                "self",
+                                                                                                                                "value",
                                                                                                                                 "key"))),
                                                                                                 new TestMb.RecordPair(
                                                                                                         "type_opt",
@@ -281,9 +281,10 @@ public final class T0030DefineInterfaceTest {
                         mb.bind("val", mb.call(mb.scopeUse("make_upper"), mb.str("hello"))),
                         mb.call(
                                 mb.log(),
-                                mb.call(
+                                mb.pipe(
+                                        mb.scopeUse("val"),
                                         mb.field(mb.field(mb.scopeUse("defs"), mb.str("iface")), mb.str("to_string")),
-                                        mb.scopeUse("val"))))));
+                                        mb.tupleOf())))));
         var gx = Helpers.newGx(modules);
         var res = Helpers.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> ok;
@@ -476,7 +477,7 @@ public final class T0030DefineInterfaceTest {
                                                                                                                                 "field",
                                                                                                                                 "xx",
                                                                                                                                 "loc",
-                                                                                                                                "self",
+                                                                                                                                "value",
                                                                                                                                 "key"))),
                                                                                                 new TestMb.RecordPair(
                                                                                                         "type_opt",
@@ -576,7 +577,8 @@ public final class T0030DefineInterfaceTest {
                                                                         mb.stage(
                                                                                 mb.call(
                                                                                         mb.log(),
-                                                                                        mb.call(
+                                                                                        mb.pipe(
+                                                                                                mb.scopeUse("arg"),
                                                                                                 mb.field(
                                                                                                         mb.lower(
                                                                                                                 mb
@@ -589,7 +591,7 @@ public final class T0030DefineInterfaceTest {
                                                                                                                                                 "type"))),
                                                                                                         mb.str(
                                                                                                                 "to_string")),
-                                                                                                mb.scopeUse("arg"))))),
+                                                                                                mb.tupleOf())))),
                                                                 new TestMb.RecordPair(
                                                                         "exception_type", mb.optNoneType()),
                                                                 new TestMb.RecordPair(

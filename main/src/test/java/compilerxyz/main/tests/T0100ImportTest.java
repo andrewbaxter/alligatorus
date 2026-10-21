@@ -206,7 +206,7 @@ public final class T0100ImportTest {
                                                                                                                                 "field",
                                                                                                                                 "xx",
                                                                                                                                 "loc",
-                                                                                                                                "self",
+                                                                                                                                "value",
                                                                                                                                 "key"))),
                                                                                                 new TestMb.RecordPair(
                                                                                                         "type_opt",

@@ -706,7 +706,8 @@ public final class T0170NodejsTest {
                                         mb.seqOf(
                                                 mb.bind(
                                                         "func_code",
-                                                        nvalueToCode(mb, mb.field(mb.scopeUse("arg"), mb.str("self")))),
+                                                        nvalueToCode(
+                                                                mb, mb.field(mb.scopeUse("arg"), mb.str("function")))),
                                                 mb.bind(
                                                         "arg_value",
                                                         mb.field(
@@ -723,10 +724,11 @@ public final class T0170NodejsTest {
                                                         mb.call(
                                                                 mb.evalAspectLookup(),
                                                                 mb.tupleOf(
-                                                                        mb.call(
+                                                                        mb.pipe(
+                                                                                mb.scopeUse("arg_value"),
                                                                                 mb.field(
                                                                                         mb.evalValue(), mb.str("type")),
-                                                                                mb.scopeUse("arg_value")),
+                                                                                mb.tupleOf()),
                                                                         mb.lower(
                                                                                 mb.field(
                                                                                         mb.scopeUse(
@@ -903,7 +905,7 @@ public final class T0170NodejsTest {
                                                                                                 mb.str("value")))))))),
                                         mb.bind(
                                                 "base_code",
-                                                nvalueToCode(mb, mb.field(mb.scopeUse("arg"), mb.str("self")))),
+                                                nvalueToCode(mb, mb.field(mb.scopeUse("arg"), mb.str("value")))),
                                         mb.bind(
                                                 "field_code",
                                                 mb.call(

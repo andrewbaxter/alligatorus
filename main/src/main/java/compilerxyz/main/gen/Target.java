@@ -17,7 +17,7 @@ import compilerxyz.prelude.util.TList;
 @BuiltinPath("eval.target")
 public interface Target {
     EResult<Opt<Code>> targetCastException(
-            ExprContext xx, QExprId loc, JumpKey self, Type calleeExc, Type callerExc, Opt<JumpKey> next);
+            ExprContext xx, QExprId loc, JumpKey key, Type calleeExc, Type callerExc, Opt<JumpKey> next);
 
     EResult<Binding> targetInitialBind(ExprContext xx, QExprId loc, Type type);
 
@@ -41,10 +41,10 @@ public interface Target {
 
     EResult<Code> targetGuarded(QExprId loc, JumpKey dest, Code inner);
 
-    EResult<Code> targetExcCleanup(ExprContext xx, QExprId loc, JumpKey self, Code cleanup, Opt<JumpKey> parent);
+    EResult<Code> targetExcCleanup(ExprContext xx, QExprId loc, JumpKey key, Code cleanup, Opt<JumpKey> parent);
 
     EResult<Code> targetExitTrampoline(
-            ExprContext xx, QExprId loc, JumpKey self, Opt<Type> argument, Code cleanup, JumpKey next);
+            ExprContext xx, QExprId loc, JumpKey key, Opt<Type> argument, Code cleanup, JumpKey next);
 
     EResult<Code> targetDrop(ExprContext xx, QExprId loc, CodeValue cv);
 

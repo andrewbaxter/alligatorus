@@ -176,15 +176,6 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
             return Opt.some(AspectBindViaTarget.INSTANCE);
         }
 
-        for (var impl : interfaceImpls) {
-            var ifaceIdentity = impl.interface_.identity;
-            if (ifaceIdentity.equals(GenAspectField.IdentityId) && key.equals(GenAspectField.AspectId)) {
-                return Opt.some(new AspectFieldSourceObjectDynamic(this));
-            }
-            if (ifaceIdentity.equals(GenAspectLift.IdentityId) && key.equals(GenAspectLift.AspectId)) {
-                return Opt.some(new AspectLiftSourceObjectDynamic(this));
-            }
-        }
         if (key.equals(GenAspectLift.AspectId)) {
             return Opt.some(new AspectLiftSourceObjectDynamic(this));
         }

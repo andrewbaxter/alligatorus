@@ -32,7 +32,9 @@ import compilerxyz.main.gen.GenAspectOperatorShr;
 import compilerxyz.main.gen.GenAspectOperatorSub;
 import compilerxyz.main.gen.GenAspectOperatorUshr;
 import compilerxyz.main.gen.GenAspectOperatorXor;
+import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectSet;
+import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.IfBranch;
@@ -48,6 +50,8 @@ import compilerxyz.prelude.util.TOrderedMap;
 
 public final class ConstEval {
     private ConstEval() {}
+
+    public static final ConstKey PIPE_SELF_KEY = new ConstKey.Str("self");
 
     public static EResult<EvalRes> constEval(ExprContext xx, Expr expr) {
         var loc = expr.loc();
@@ -98,86 +102,56 @@ public final class ConstEval {
                 var aopt = erb.mustCv(xx, constEvalOperand(xx, p.arg()));
                 var pendingBlocks = operandPendingClose(xx, operandBase);
                 if (fopt.optIsNone() || aopt.optIsNone()) yield EResult.errs(erb.errors());
-                var func = fopt.optUnwrap();
+                var callOut = callValues(xx, loc, erb, fopt.optUnwrap(), aopt.optUnwrap(), pendingBlocks);
+                if (callOut.optIsNone()) yield EResult.errs(erb.errors());
+                yield EResult.ok(EvalRes.of(callOut.optUnwrap(), xx.scope));
+            }
+            case Expr.Pipe p -> {
+                var erb = new Erb(loc);
+                int operandBase = xx.scope.levelCount();
+                var sopt = constEvalOperandPending(xx, erb, p.self());
+                var fopt = constEvalOperandPending(xx, erb, p.func());
+                var aopt = erb.mustCv(xx, constEvalOperand(xx, p.arg()));
+                var pendingBlocks = operandPendingClose(xx, operandBase);
+                if (sopt.optIsNone() || fopt.optIsNone() || aopt.optIsNone()) yield EResult.errs(erb.errors());
+                var self = sopt.optUnwrap();
                 var arg = aopt.optUnwrap();
-                var fv = (Opt.Some<Value>) func.value();
-                var funcType = fv.value().valueType();
-                var aspectFnOpt = erb.mustEr(GenAspectFunction.get(xx, loc, funcType));
-                if (aspectFnOpt.optIsNone()) yield EResult.errs(erb.errors());
-                var aspectFn = aspectFnOpt.optUnwrap();
-                var calleeExc = aspectFn.aspectFunctionExceptionType(xx, loc, func);
-                var callOpt = erb.mustErMaybeUnreachable(aspectFn.aspectFunctionCall(xx, loc, func, arg));
-                if (callOpt.optIsNone()) yield EResult.errs(erb.errors());
-                Opt<CodeValue> wrapped;
-                {
-                    var callCv = callOpt.optUnwrap();
-                    if (calleeExc.optIsNone()) {
-                        wrapped = Opt.some(callCv);
-                    } else {
-                        var excType = calleeExc.optUnwrap();
-                        if (xx.currentExceptionType.optIsNone()) {
-                            erb.errPush(
-                                    "Cannot call a function that may throw from a function that did not declare an exception type");
-                            wrapped = Opt.none();
-                        } else {
-                            var exc = xx.currentExceptionType.optUnwrap();
-                            var destRes = ScopeChains.excDest(xx, loc);
-                            if (destRes.hasErrors()) {
-                                destRes.drainInto(erb.errors());
-                                wrapped = Opt.none();
-                            } else {
-                                var chainDest = destRes.requireValue("maybeWrapCallException chain dest");
-                                var siteKey = new JumpKey();
-                                var blockRes = erb.mustEr(
-                                        xx.target.targetCastException(xx, loc, siteKey, excType, exc, chainDest));
-                                if (blockRes.optIsNone()) {
-                                    wrapped = Opt.none();
-                                } else if (blockRes.optUnwrap().optIsSome()) {
-                                    var skip = new JumpKey();
-                                    var opt = erb.mustEr(xx.target.targetJump(loc, skip));
-                                    var landOpt =
-                                            erb.mustErMaybeUnreachable(xx.target.targetLand(xx, loc, skip, Opt.none()));
-                                    if (opt.optIsNone() || landOpt.optIsNone()) {
-                                        wrapped = Opt.none();
-                                    } else {
-                                        var wrappedOpt =
-                                                erb.mustEr(xx.target.targetGuarded(loc, siteKey, callCv.code()));
-                                        if (wrappedOpt.optIsNone()) {
-                                            wrapped = Opt.none();
-                                        } else {
-                                            var fullOpt = seqCode(
-                                                    xx,
-                                                    loc,
-                                                    erb,
-                                                    TList.of(
-                                                            wrappedOpt.optUnwrap(),
-                                                            opt.optUnwrap(),
-                                                            blockRes.optUnwrap().optUnwrap(),
-                                                            landOpt.optUnwrap().code()));
-                                            wrapped = fullOpt.optIsNone()
-                                                    ? Opt.none()
-                                                    : Opt.some(new CodeValue(fullOpt.optUnwrap(), callCv.outcome()));
-                                        }
-                                    }
-                                } else {
-                                    if (chainDest.optIsNone()) {
-                                        wrapped = Opt.some(callCv);
-                                    } else {
-                                        var opt = erb.mustEr(
-                                                xx.target.targetGuarded(loc, chainDest.optUnwrap(), callCv.code()));
-                                        if (opt.optIsNone()) {
-                                            wrapped = Opt.none();
-                                        } else {
-                                            wrapped = Opt.some(new CodeValue(opt.optUnwrap(), callCv.outcome()));
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                var argVal = (Opt.Some<Value>) arg.value();
+                var argType = argVal.value().valueType();
+                var codeOpt = erb.mustEr(Eval.codeConcat(xx, loc, self.code(), arg.code()));
+                if (codeOpt.optIsNone()) yield EResult.errs(erb.errors());
+                var selfElement = new CodeValue(Code.none(loc), self.outcome());
+                Value combined;
+                var recordOpt = GenAspectRecord.getMaybe(xx, argType);
+                if (recordOpt.optIsSome()) {
+                    var fieldCvs = recordOpt.optUnwrap().aspectRecordTakeFields(xx, loc, argVal.value());
+                    if (fieldCvs.getOpt(PIPE_SELF_KEY).optIsSome()) {
+                        erb.errPush(
+                                "pipe: the argument record already has a 'self' field; the piped value takes that field");
+                        yield EResult.errs(erb.errors());
                     }
+                    var fields = new TOrderedMap<ConstKey, RecordField>();
+                    fields.put(PIPE_SELF_KEY, new RecordField.EvalRes(EResult.ok(selfElement)));
+                    for (var entry : fieldCvs.entrySet()) {
+                        fields.put(entry.getKey(), new RecordField.EvalRes(entry.getValue()));
+                    }
+                    combined = new Record(IOrderedMap.from(fields));
+                } else {
+                    var elements = new TList<TupleElement>();
+                    elements.add(new TupleElement.EvalRes(EResult.ok(selfElement)));
+                    var tupleOpt = GenAspectTuple.getMaybe(xx, argType);
+                    if (tupleOpt.optIsSome()) {
+                        for (var elem : tupleOpt.optUnwrap().aspectTupleTakeElements(xx, loc, argVal.value())) {
+                            elements.add(new TupleElement.EvalRes(elem));
+                        }
+                    } else {
+                        elements.add(
+                                new TupleElement.EvalRes(EResult.ok(new CodeValue(Code.none(loc), arg.outcome()))));
+                    }
+                    combined = new Tuple(IList.from(elements));
                 }
-                if (wrapped.optIsNone()) yield EResult.errs(erb.errors());
-                var callOut = withPendingBlocks(xx, loc, erb, wrapped.optUnwrap(), pendingBlocks);
+                var combinedCv = new CodeValue(codeOpt.optUnwrap(), EvalOutcome.ofValue(combined));
+                var callOut = callValues(xx, loc, erb, fopt.optUnwrap(), combinedCv, pendingBlocks);
                 if (callOut.optIsNone()) yield EResult.errs(erb.errors());
                 yield EResult.ok(EvalRes.of(callOut.optUnwrap(), xx.scope));
             }
@@ -247,6 +221,7 @@ public final class ConstEval {
                                 case Expr.Bind b -> Opt.some(b);
                                 case Expr.As a -> Opt.none();
                                 case Expr.Call c -> Opt.none();
+                                case Expr.Pipe p -> Opt.none();
                                 case Expr.Field f -> Opt.none();
                                 case Expr.Foreach f -> Opt.none();
                                 case Expr.Loop lp -> Opt.none();
@@ -1579,6 +1554,86 @@ public final class ConstEval {
         };
     }
 
+    private static Opt<CodeValue> callValues(
+            ExprContext xx, QExprId loc, Erb erb, CodeValue func, CodeValue arg, TList<Code> pendingBlocks) {
+        var fv = (Opt.Some<Value>) func.value();
+        var funcType = fv.value().valueType();
+        var aspectFnOpt = erb.mustEr(GenAspectFunction.get(xx, loc, funcType));
+        if (aspectFnOpt.optIsNone()) return Opt.none();
+        var aspectFn = aspectFnOpt.optUnwrap();
+        var calleeExc = aspectFn.aspectFunctionExceptionType(xx, loc, func);
+        var callOpt = erb.mustErMaybeUnreachable(aspectFn.aspectFunctionCall(xx, loc, func, arg));
+        if (callOpt.optIsNone()) return Opt.none();
+        Opt<CodeValue> wrapped;
+        {
+            var callCv = callOpt.optUnwrap();
+            if (calleeExc.optIsNone()) {
+                wrapped = Opt.some(callCv);
+            } else {
+                var excType = calleeExc.optUnwrap();
+                if (xx.currentExceptionType.optIsNone()) {
+                    erb.errPush(
+                            "Cannot call a function that may throw from a function that did not declare an exception type");
+                    wrapped = Opt.none();
+                } else {
+                    var exc = xx.currentExceptionType.optUnwrap();
+                    var destRes = ScopeChains.excDest(xx, loc);
+                    if (destRes.hasErrors()) {
+                        destRes.drainInto(erb.errors());
+                        wrapped = Opt.none();
+                    } else {
+                        var chainDest = destRes.requireValue("maybeWrapCallException chain dest");
+                        var siteKey = new JumpKey();
+                        var blockRes =
+                                erb.mustEr(xx.target.targetCastException(xx, loc, siteKey, excType, exc, chainDest));
+                        if (blockRes.optIsNone()) {
+                            wrapped = Opt.none();
+                        } else if (blockRes.optUnwrap().optIsSome()) {
+                            var skip = new JumpKey();
+                            var opt = erb.mustEr(xx.target.targetJump(loc, skip));
+                            var landOpt = erb.mustErMaybeUnreachable(xx.target.targetLand(xx, loc, skip, Opt.none()));
+                            if (opt.optIsNone() || landOpt.optIsNone()) {
+                                wrapped = Opt.none();
+                            } else {
+                                var wrappedOpt = erb.mustEr(xx.target.targetGuarded(loc, siteKey, callCv.code()));
+                                if (wrappedOpt.optIsNone()) {
+                                    wrapped = Opt.none();
+                                } else {
+                                    var fullOpt = seqCode(
+                                            xx,
+                                            loc,
+                                            erb,
+                                            TList.of(
+                                                    wrappedOpt.optUnwrap(),
+                                                    opt.optUnwrap(),
+                                                    blockRes.optUnwrap().optUnwrap(),
+                                                    landOpt.optUnwrap().code()));
+                                    wrapped = fullOpt.optIsNone()
+                                            ? Opt.none()
+                                            : Opt.some(new CodeValue(fullOpt.optUnwrap(), callCv.outcome()));
+                                }
+                            }
+                        } else {
+                            if (chainDest.optIsNone()) {
+                                wrapped = Opt.some(callCv);
+                            } else {
+                                var opt =
+                                        erb.mustEr(xx.target.targetGuarded(loc, chainDest.optUnwrap(), callCv.code()));
+                                if (opt.optIsNone()) {
+                                    wrapped = Opt.none();
+                                } else {
+                                    wrapped = Opt.some(new CodeValue(opt.optUnwrap(), callCv.outcome()));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (wrapped.optIsNone()) return Opt.none();
+        return withPendingBlocks(xx, loc, erb, wrapped.optUnwrap(), pendingBlocks);
+    }
+
     private static EResult<CodeValue> elementResult(ExprContext xx, EResult<EvalRes> r) {
         var vOpt = r.valueOpt();
         if (vOpt.optIsNone()) return r.reerr();
@@ -1874,6 +1929,11 @@ public final class ConstEval {
                 findMatchedLowersInner(c.func(), sd, ld, out);
                 findMatchedLowersInner(c.arg(), sd, ld, out);
             }
+            case Expr.Pipe p -> {
+                findMatchedLowersInner(p.self(), sd, ld, out);
+                findMatchedLowersInner(p.func(), sd, ld, out);
+                findMatchedLowersInner(p.arg(), sd, ld, out);
+            }
             case Expr.Bind b -> {
                 findMatchedLowersInner(b.base(), sd, ld, out);
                 findMatchedLowersInner(b.value(), sd, ld, out);
@@ -1966,6 +2026,11 @@ public final class ConstEval {
             case Expr.Call c -> {
                 findMatchedGraftsInner(c.func(), sd, out);
                 findMatchedGraftsInner(c.arg(), sd, out);
+            }
+            case Expr.Pipe p -> {
+                findMatchedGraftsInner(p.self(), sd, out);
+                findMatchedGraftsInner(p.func(), sd, out);
+                findMatchedGraftsInner(p.arg(), sd, out);
             }
             case Expr.Bind b -> {
                 findMatchedGraftsInner(b.base(), sd, out);

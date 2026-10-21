@@ -132,8 +132,9 @@ public final class JavaAspectExtractor {
             var methodParams = new TList<Param>();
             for (int i = needsEvalContext ? 1 : 0; i < params.size(); i++) {
                 var p = params.get(i);
-                methodParams.add(new Param(
-                        NameDerivation.snakeCase(p.getNameAsString()), typeNameOf(p.getType(), classImports, pkg)));
+                var langName = NameDerivation.snakeCase(p.getNameAsString());
+                requireNotSelf(langName, simpleName + "." + m.getNameAsString());
+                methodParams.add(new Param(langName, typeNameOf(p.getType(), classImports, pkg)));
             }
             classMethods.add(new Method(
                     NameDerivation.snakeCase(m.getNameAsString()),
@@ -220,8 +221,9 @@ public final class JavaAspectExtractor {
             var methodParams = new TList<Param>();
             for (int i = needsEvalContext ? 1 : 0; i < params.size(); i++) {
                 var p = params.get(i);
-                methodParams.add(new Param(
-                        NameDerivation.snakeCase(p.getNameAsString()), typeNameOf(p.getType(), importMap, pkg)));
+                var langName = NameDerivation.snakeCase(p.getNameAsString());
+                requireNotSelf(langName, simpleName + "." + m.getNameAsString());
+                methodParams.add(new Param(langName, typeNameOf(p.getType(), importMap, pkg)));
             }
             methods.add(new Method(
                     NameDerivation.snakeCase(m.getNameAsString()),
@@ -248,6 +250,13 @@ public final class JavaAspectExtractor {
                 new TList<String>(),
                 exporterAttr(attrs),
                 superTypeNames(recDecl.getImplementedTypes(), importMap, pkg)));
+    }
+
+    private static void requireNotSelf(String langName, String where) {
+        if (langName.equals("self")) {
+            throw new IllegalStateException(
+                    where + ": parameter name 'self' is reserved for the receiver of a method ref call");
+        }
     }
 
     public static boolean injectsEvalContext(NodeWithAnnotations<?> m, List<Parameter> params, String where) {

@@ -4,6 +4,8 @@ import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.BindingSlotDynamic;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
+import compilerxyz.main.eval.ConstEval;
+import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
@@ -31,8 +33,10 @@ import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.IList;
+import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TOrderedMap;
 import java.util.Iterator;
 import org.objectweb.asm.Opcodes;
 
@@ -488,32 +492,71 @@ public final class DynUtil {
 
     public static EResult<MethodRefArg> methodRefSplitArgument(
             ExprContext xx, QExprId loc, Type argType, CodeValue argument, String desc) {
-        if (zeroArgSignature(xx, argType)) {
-            return EResult.ok(new MethodRefArg(
-                    argument, new CodeValue(Code.none(loc), EvalOutcome.ofValue(new Tuple(IList.of())))));
-        }
         if (argument.value().optIsNone()) {
             return EResult.err(loc, desc + ": argument has no compile-time value");
         }
         var argVal = argument.value().optUnwrap();
-        var tupleOpt = GenAspectTuple.getMaybe(xx, argVal.valueType());
-        if (tupleOpt.optIsNone()) {
-            return EResult.err(loc, desc + ": expected a (receiver, args) 2-tuple argument");
+        var paramRecordOpt = GenAspectRecord.getMaybe(xx, argType);
+        EResult<CodeValue> receiverRes;
+        CodeValue methodArgs;
+        if (paramRecordOpt.optIsSome()) {
+            var recordOpt = GenAspectRecord.getMaybe(xx, argVal.valueType());
+            if (recordOpt.optIsNone()) {
+                return EResult.err(
+                        loc,
+                        desc + ": expected a record argument with the receiver in field 'self', got "
+                                + argVal.valueType().typeDesc());
+            }
+            var fieldCvs = recordOpt.optUnwrap().aspectRecordTakeFields(xx, loc, argVal);
+            var selfOpt = fieldCvs.getOpt(ConstEval.PIPE_SELF_KEY);
+            if (selfOpt.optIsNone()) {
+                return EResult.err(
+                        loc,
+                        desc + ": argument record has no 'self' field for the receiver, got "
+                                + argVal.valueType().typeDesc());
+            }
+            receiverRes = selfOpt.optUnwrap();
+            var rest = new TOrderedMap<ConstKey, RecordField>();
+            for (var entry : fieldCvs.entrySet()) {
+                if (entry.getKey().equals(ConstEval.PIPE_SELF_KEY)) continue;
+                rest.put(entry.getKey(), new RecordField.EvalRes(entry.getValue()));
+            }
+            methodArgs = new CodeValue(Code.none(loc), EvalOutcome.ofValue(new Record(IOrderedMap.from(rest))));
+        } else {
+            var paramTupleOpt = GenAspectTuple.getMaybe(xx, argType);
+            int expected = paramTupleOpt.optIsSome()
+                    ? paramTupleOpt.optUnwrap().aspectTupleElementTypes().size() + 1
+                    : 2;
+            var tupleOpt = GenAspectTuple.getMaybe(xx, argVal.valueType());
+            if (tupleOpt.optIsNone()) {
+                return EResult.err(
+                        loc, desc + ": expected a tuple argument of " + expected + " elements, the receiver first");
+            }
+            var elemCvs = tupleOpt.optUnwrap().aspectTupleTakeElements(xx, loc, argVal);
+            if (elemCvs.size() != expected) {
+                return EResult.err(
+                        loc,
+                        desc + ": expected a tuple argument of " + expected + " elements, the receiver first; got "
+                                + elemCvs.size() + " elements");
+            }
+            receiverRes = elemCvs.get(0);
+            if (paramTupleOpt.optIsSome()) {
+                var rest = new TList<TupleElement>(elemCvs.size() - 1);
+                for (int i = 1; i < elemCvs.size(); i++) rest.add(new TupleElement.EvalRes(elemCvs.get(i)));
+                methodArgs = new CodeValue(Code.none(loc), EvalOutcome.ofValue(new Tuple(IList.from(rest))));
+            } else {
+                if (elemCvs.get(1).hasErrors()) return elemCvs.get(1).reerr();
+                methodArgs = elemCvs.get(1).requireValue("DynUtil::methodRefSplitArgument arg");
+            }
         }
-        var elemCvs = tupleOpt.optUnwrap().aspectTupleTakeElements(xx, loc, argVal);
-        if (elemCvs.size() != 2) {
-            return EResult.err(
-                    loc, desc + ": expected a (receiver, args) 2-tuple argument, got " + elemCvs.size() + " elements");
-        }
-        if (elemCvs.get(0).hasErrors()) return elemCvs.get(0).reerr();
-        if (elemCvs.get(1).hasErrors()) return elemCvs.get(1).reerr();
-        var receiver = elemCvs.get(0).requireValue("DynUtil::methodRefSplitArgument receiver");
+        if (receiverRes.hasErrors()) return receiverRes.reerr();
+        var receiver = receiverRes.requireValue("DynUtil::methodRefSplitArgument receiver");
         var receiverCode = Eval.codeConcat(xx, loc, argument.code(), receiver.code());
         if (receiverCode.hasErrors()) return receiverCode.reerr();
         return EResult.ok(new MethodRefArg(
                 new CodeValue(
                         receiverCode.requireValue("DynUtil::methodRefSplitArgument receiver code"), receiver.outcome()),
-                elemCvs.get(1).requireValue("DynUtil::methodRefSplitArgument args")));
+                methodArgs));
     }
 
     private static EResult<TList<CodeDynamicReg>> destructureFromElements(

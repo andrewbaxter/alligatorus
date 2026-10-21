@@ -251,6 +251,13 @@ public final class DynRuntime {
                         new Expr.Call(
                                 cloneWithLowerSubstitutions(c.func(), sd, ld, values, grafts),
                                 cloneWithLowerSubstitutions(c.arg(), sd, ld, values, grafts)));
+            case Expr.Pipe p ->
+                new Expr(
+                        loc,
+                        new Expr.Pipe(
+                                cloneWithLowerSubstitutions(p.self(), sd, ld, values, grafts),
+                                cloneWithLowerSubstitutions(p.func(), sd, ld, values, grafts),
+                                cloneWithLowerSubstitutions(p.arg(), sd, ld, values, grafts)));
             case Expr.Bind b ->
                 new Expr(
                         loc,

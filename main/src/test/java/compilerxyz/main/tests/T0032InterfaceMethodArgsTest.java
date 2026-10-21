@@ -1,6 +1,7 @@
 package compilerxyz.main.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.syntax.SourceExpr;
@@ -65,12 +66,20 @@ public final class T0032InterfaceMethodArgsTest {
                         e.mb.log(),
                         e.call(
                                 e.fld(e.v("lib"), "iface_t", "scale"),
-                                e.tup(e.v("c"), e.rec(e.p("by", e.intOf(3)), e.p("label", e.s("x")))))),
+                                e.rec(e.p("self", e.v("c")), e.p("by", e.intOf(3)), e.p("label", e.s("x"))))),
                 e.call(
                         e.mb.log(),
-                        e.toStr(e.call(
-                                e.fld(e.v("lib"), "iface_t", "pair"),
-                                e.tup(e.v("c"), e.tup(e.intOf(2), e.intOf(5)))))));
+                        e.toStr(e.call(e.fld(e.v("lib"), "iface_t", "pair"), e.tup(e.v("c"), e.intOf(2), e.intOf(5))))),
+                e.call(
+                        e.mb.log(),
+                        e.pipe(
+                                e.v("c"),
+                                e.fld(e.v("lib"), "iface_t", "scale"),
+                                e.rec(e.p("by", e.intOf(4)), e.p("label", e.s("y"))))),
+                e.call(
+                        e.mb.log(),
+                        e.toStr(e.pipe(
+                                e.v("c"), e.fld(e.v("lib"), "iface_t", "pair"), e.tup(e.intOf(1), e.intOf(6))))));
     }
 
     @Test
@@ -84,9 +93,67 @@ public final class T0032InterfaceMethodArgsTest {
             case Result.Ok<Compile.CompileResult, ?> o -> ok = o.value();
             case Result.Err<Compile.CompileResult, ?> err -> throw new AssertionError("compile failed: " + res);
         }
-        assertEquals(2, ok.logs().size());
+        assertEquals(4, ok.logs().size());
         assertEquals("x=21", ok.logs().get(0).message());
         assertEquals("17", ok.logs().get(1).message());
+        assertEquals("y=28", ok.logs().get(2).message());
+        assertEquals("13", ok.logs().get(3).message());
+    }
+
+    @Test
+    public void test00200PipeRecordWithSelfFieldIsAnError() {
+        var e = new TestMbShorthand();
+        var modules = new TMap<String, SourceModule>();
+        modules.put(
+                "main",
+                new SourceModule.V1(TList.of(
+                        e.let("lib", lib(e)),
+                        e.let("c", e.call(e.fld(e.v("lib"), "make"), e.intOf(7))),
+                        e.call(
+                                e.mb.log(),
+                                e.pipe(
+                                        e.v("c"),
+                                        e.fld(e.v("lib"), "iface_t", "scale"),
+                                        e.rec(
+                                                e.p("self", e.v("c")),
+                                                e.p("by", e.intOf(3)),
+                                                e.p("label", e.s("x"))))))));
+        var res = Helpers.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
+        switch (res) {
+            case Result.Ok<Compile.CompileResult, ?> o -> throw new AssertionError("expected a compile error");
+            case Result.Err<Compile.CompileResult, ?> err -> {
+                var text = err.error().toString();
+                assertTrue(text.contains("already has a 'self' field"), text);
+            }
+        }
+    }
+
+    @Test
+    public void test00300ReservedSelfInterfaceArgIsAnError() {
+        var e = new TestMbShorthand();
+        var modules = new TMap<String, SourceModule>();
+        modules.put(
+                "main",
+                new SourceModule.V1(TList.of(
+                        e.let("d", e.define()),
+                        e.let("iface", e.callM0(e.v("d"), "interface")),
+                        e.interfaceImpl(e.v("iface")),
+                        e.callM(
+                                e.v("iface"),
+                                "func",
+                                e.rec(
+                                        e.p("name", e.s("scale")),
+                                        e.p("arg", e.rec(e.p("self", e.mb.typesInt()))),
+                                        e.p("ret", e.retSome(e.mb.typesString())))),
+                        e.finish(e.v("d")))));
+        var res = Helpers.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
+        switch (res) {
+            case Result.Ok<Compile.CompileResult, ?> o -> throw new AssertionError("expected a compile error");
+            case Result.Err<Compile.CompileResult, ?> err -> {
+                var text = err.error().toString();
+                assertTrue(text.contains("reserved for the receiver"), text);
+            }
+        }
     }
 
     @Test

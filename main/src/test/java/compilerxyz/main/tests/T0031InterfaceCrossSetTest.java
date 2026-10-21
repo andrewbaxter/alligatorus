@@ -49,7 +49,7 @@ public final class T0031InterfaceCrossSetTest {
     }
 
     private static SourceExpr callViaInterface(TestMbShorthand e, SourceExpr lib, SourceExpr value) {
-        return e.call(e.fld(lib, "iface_t", "to_string"), value);
+        return e.call(e.fld(lib, "iface_t", "to_string"), e.tup(value));
     }
 
     @Test

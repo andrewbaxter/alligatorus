@@ -43,6 +43,10 @@ public final class TestMbShorthand {
         return mb.call(func, arg);
     }
 
+    public SourceExpr pipe(SourceExpr self, SourceExpr func, SourceExpr arg) {
+        return mb.pipe(self, func, arg);
+    }
+
     public SourceExpr callM(SourceExpr receiver, String method, SourceExpr arg) {
         return mb.call(fld(receiver, method), arg);
     }

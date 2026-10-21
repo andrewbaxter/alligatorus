@@ -111,41 +111,37 @@ public final class T0120ImplTypeTest {
                                                                         mb.seqOf(
                                                                                 mb.return_(
                                                                                         mb.field(
-                                                                                                mb.call(
+                                                                                                mb.pipe(
+                                                                                                        mb.field(
+                                                                                                                mb
+                                                                                                                        .scopeUse(
+                                                                                                                                "arg"),
+                                                                                                                mb.str(
+                                                                                                                        "source_type")),
                                                                                                         mb.field(
                                                                                                                 mb
                                                                                                                         .evalType(),
                                                                                                                 mb.str(
                                                                                                                         "aspect")),
-                                                                                                        mb.tupleOf(
-                                                                                                                mb
-                                                                                                                        .field(
-                                                                                                                                mb
-                                                                                                                                        .scopeUse(
-                                                                                                                                                "arg"),
-                                                                                                                                mb
-                                                                                                                                        .str(
-                                                                                                                                                "source_type")),
-                                                                                                                mb
-                                                                                                                        .recordOf(
-                                                                                                                                TList
-                                                                                                                                        .of(
-                                                                                                                                                new TestMb
-                                                                                                                                                        .RecordPair(
-                                                                                                                                                        "xx",
+                                                                                                        mb.recordOf(
+                                                                                                                TList
+                                                                                                                        .of(
+                                                                                                                                new TestMb
+                                                                                                                                        .RecordPair(
+                                                                                                                                        "xx",
+                                                                                                                                        mb
+                                                                                                                                                .field(
                                                                                                                                                         mb
-                                                                                                                                                                .field(
-                                                                                                                                                                        mb
-                                                                                                                                                                                .scopeUse(
-                                                                                                                                                                                        "arg"),
-                                                                                                                                                                        mb
-                                                                                                                                                                                .str(
-                                                                                                                                                                                        "xx"))),
-                                                                                                                                                new TestMb
-                                                                                                                                                        .RecordPair(
-                                                                                                                                                        "key",
+                                                                                                                                                                .scopeUse(
+                                                                                                                                                                        "arg"),
                                                                                                                                                         mb
-                                                                                                                                                                .evalAspectStringDynamic()))))),
+                                                                                                                                                                .str(
+                                                                                                                                                                        "xx"))),
+                                                                                                                                new TestMb
+                                                                                                                                        .RecordPair(
+                                                                                                                                        "key",
+                                                                                                                                        mb
+                                                                                                                                                .evalAspectStringDynamic())))),
                                                                                                 mb.str("is_some"))))),
                                                                 new TestMb.RecordPair(
                                                                         "cast_from",

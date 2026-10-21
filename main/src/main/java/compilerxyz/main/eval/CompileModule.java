@@ -92,6 +92,7 @@ public final class CompileModule {
                         case Expr.As a -> false;
                         case Expr.Bind b -> false;
                         case Expr.Call c -> false;
+                        case Expr.Pipe p -> false;
                         case Expr.Field f -> false;
                         case Expr.Foreach f -> false;
                         case Expr.Loop lp -> false;
@@ -444,6 +445,10 @@ public final class CompileModule {
                 rt.value().optIsSome() ? lowerExcess(rt.value().optUnwrap(), sd, ld) : Opt.none();
             case Expr.As a -> maxExcess(lowerExcess(a.base(), sd, ld), lowerExcess(a.target(), sd, ld));
             case Expr.Call c -> maxExcess(lowerExcess(c.func(), sd, ld), lowerExcess(c.arg(), sd, ld));
+            case Expr.Pipe p ->
+                maxExcess(
+                        maxExcess(lowerExcess(p.self(), sd, ld), lowerExcess(p.func(), sd, ld)),
+                        lowerExcess(p.arg(), sd, ld));
             case Expr.Bind b -> maxExcess(lowerExcess(b.base(), sd, ld), lowerExcess(b.value(), sd, ld));
             case Expr.Set s -> maxExcess(lowerExcess(s.base(), sd, ld), lowerExcess(s.value(), sd, ld));
             case Expr.Field f -> maxExcess(lowerExcess(f.base(), sd, ld), lowerExcess(f.key(), sd, ld));

@@ -57,6 +57,8 @@ public record Expr(QExprId loc, Variant variant) implements Value {
 
     public record OperatorUnary(UnaryOperator op, Expr base) implements Variant {}
 
+    public record Pipe(Expr self, Expr func, Expr arg) implements Variant {}
+
     public record Record(TList<RecordEntry> entries) implements Variant {}
 
     public record RecordEntry(Expr key, Expr value) {}

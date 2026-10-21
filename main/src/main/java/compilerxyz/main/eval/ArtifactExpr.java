@@ -25,6 +25,8 @@ public record ArtifactExpr(ArtifactQExprId loc, Variant variant) implements Safe
 
         record Call(ArtifactExpr func, ArtifactExpr arg) implements Variant {}
 
+        record Pipe(ArtifactExpr self, ArtifactExpr func, ArtifactExpr arg) implements Variant {}
+
         record Field(ArtifactExpr base, ArtifactExpr key) implements Variant {}
 
         record Foreach(ArtifactExpr base, ArtifactExpr elementKey, ArtifactExpr body) implements Variant {}

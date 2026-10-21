@@ -175,7 +175,7 @@ public final class T0020DefineObjectTest {
                                                                                                                                 "field",
                                                                                                                                 "xx",
                                                                                                                                 "loc",
-                                                                                                                                "self",
+                                                                                                                                "value",
                                                                                                                                 "key"))),
                                                                                                 new TestMb.RecordPair(
                                                                                                         "type_opt",

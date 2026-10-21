@@ -43,6 +43,11 @@ public final class SourceModuleToModule {
                     case SourceExpr.ScopeUse u -> new Expr.ScopeUse(sourceExprToExpr(sourceId, u.key()));
                     case SourceExpr.Call c ->
                         new Expr.Call(sourceExprToExpr(sourceId, c.func()), sourceExprToExpr(sourceId, c.arg()));
+                    case SourceExpr.Pipe p ->
+                        new Expr.Pipe(
+                                sourceExprToExpr(sourceId, p.self()),
+                                sourceExprToExpr(sourceId, p.func()),
+                                sourceExprToExpr(sourceId, p.arg()));
                     case SourceExpr.Set s ->
                         new Expr.Set(sourceExprToExpr(sourceId, s.base()), sourceExprToExpr(sourceId, s.value()));
                     case SourceExpr.Field f ->

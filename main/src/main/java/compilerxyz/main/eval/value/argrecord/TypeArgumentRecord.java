@@ -51,6 +51,9 @@ public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) impleme
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(AspectFieldArgumentRecord.INSTANCE);
         }
+        if (key.equals(GenAspectRecord.AspectId)) {
+            return Opt.some(new AspectRecordArgumentRecord(this));
+        }
         return Opt.none();
     }
 

@@ -43,6 +43,10 @@ public final class TestMb {
         return new SourceExpr(id(), new SourceExpr.Field(base, key));
     }
 
+    public SourceExpr pipe(SourceExpr self, SourceExpr func, SourceExpr arg) {
+        return new SourceExpr(id(), new SourceExpr.Pipe(self, func, arg));
+    }
+
     public SourceExpr foreach(SourceExpr base, SourceExpr elementKey, SourceExpr body) {
         return new SourceExpr(id(), new SourceExpr.Foreach(base, elementKey, body));
     }
@@ -245,29 +249,20 @@ public final class TestMb {
                         new RecordPair("loc", field(scopeUse("arg"), str("loc"))),
                         new RecordPair(
                                 "cv",
-                                call(
+                                pipe(
+                                        scopeUse("outer"),
                                         field(evalBinding(), str("use")),
-                                        tupleOf(
-                                                scopeUse("outer"),
-                                                recordOf(
-                                                        TList.of(
-                                                                new RecordPair("xx", field(scopeUse("arg"), str("xx"))),
-                                                                new RecordPair(
-                                                                        "loc", field(scopeUse("arg"), str("loc"))),
-                                                                new RecordPair(
-                                                                        "setter",
-                                                                        call(
-                                                                                builtin(
-                                                                                        "eval",
-                                                                                        "binding_setter_consumed"),
-                                                                                tupleOf())),
-                                                                new RecordPair(
-                                                                        "code",
-                                                                        call(
-                                                                                builtin("eval", "code_none"),
-                                                                                field(
-                                                                                        scopeUse("arg"),
-                                                                                        str("loc"))))))))))));
+                                        recordOf(TList.of(
+                                                new RecordPair("xx", field(scopeUse("arg"), str("xx"))),
+                                                new RecordPair("loc", field(scopeUse("arg"), str("loc"))),
+                                                new RecordPair(
+                                                        "setter",
+                                                        call(builtin("eval", "binding_setter_consumed"), tupleOf())),
+                                                new RecordPair(
+                                                        "code",
+                                                        call(
+                                                                builtin("eval", "code_none"),
+                                                                field(scopeUse("arg"), str("loc")))))))))));
     }
 
     public SourceExpr define() {
@@ -572,8 +567,7 @@ public final class TestMb {
             callArg = Opt.some(recordOf(args));
         }
         var receiver = field(call(evalAspectLookup(), tupleOf(underlying, aspectRef, lookupXx)), str("value"));
-        return call(
-                field(aspectRef, str(method)), callArg.optIsSome() ? tupleOf(receiver, callArg.optUnwrap()) : receiver);
+        return pipe(receiver, field(aspectRef, str(method)), callArg.optIsSome() ? callArg.optUnwrap() : tupleOf());
     }
 
     public SourceExpr evalAspectArtifact() {
@@ -591,10 +585,10 @@ public final class TestMb {
                         evalAspectLookup(),
                         tupleOf(lower(field(scopeUse(builderVar), str("type"))), evalAspectDynamicConst(), xx)),
                 str("value"));
-        var constForm = call(field(evalAspectDynamicConst(), str("const_form")), tupleOf(dynConst, xx));
+        var constForm = pipe(dynConst, field(evalAspectDynamicConst(), str("const_form")), xx);
         var aspect = field(call(evalAspectLookup(), tupleOf(constForm, evalAspectArtifact(), xx)), str("value"));
         return call(
                 field(call(typesOption(), builtin("eval", "artifact_exporter")), str("some")),
-                call(field(evalAspectArtifact(), str("exporter")), aspect));
+                pipe(aspect, field(evalAspectArtifact(), str("exporter")), tupleOf()));
     }
 }

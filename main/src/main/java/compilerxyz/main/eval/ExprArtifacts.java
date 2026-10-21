@@ -47,6 +47,20 @@ public final class ExprArtifacts {
                                 func.requireValue("ExprArtifacts::exprFromArtifact Call func"),
                                 arg.requireValue("ExprArtifacts::exprFromArtifact Call arg"))));
             }
+            case ArtifactExpr.Variant.Pipe p -> {
+                var self = exprFromArtifact(xx, p.self());
+                if (self.hasErrors()) return self.reerr();
+                var func = exprFromArtifact(xx, p.func());
+                if (func.hasErrors()) return func.reerr();
+                var arg = exprFromArtifact(xx, p.arg());
+                if (arg.hasErrors()) return arg.reerr();
+                return EResult.ok(new Expr(
+                        loc,
+                        new Expr.Pipe(
+                                self.requireValue("ExprArtifacts::exprFromArtifact Pipe self"),
+                                func.requireValue("ExprArtifacts::exprFromArtifact Pipe func"),
+                                arg.requireValue("ExprArtifacts::exprFromArtifact Pipe arg"))));
+            }
             case ArtifactExpr.Variant.Field f -> {
                 var base = exprFromArtifact(xx, f.base());
                 if (base.hasErrors()) return base.reerr();
@@ -322,6 +336,20 @@ public final class ExprArtifacts {
                         new ArtifactExpr.Variant.Call(
                                 func.requireValue("ExprArtifacts::exprToArtifact Call func"),
                                 arg.requireValue("ExprArtifacts::exprToArtifact Call arg"))));
+            }
+            case Expr.Pipe p -> {
+                var self = exprToArtifact(xx, p.self());
+                if (self.hasErrors()) return self.reerr();
+                var func = exprToArtifact(xx, p.func());
+                if (func.hasErrors()) return func.reerr();
+                var arg = exprToArtifact(xx, p.arg());
+                if (arg.hasErrors()) return arg.reerr();
+                return EResult.ok(new ArtifactExpr(
+                        loc,
+                        new ArtifactExpr.Variant.Pipe(
+                                self.requireValue("ExprArtifacts::exprToArtifact Pipe self"),
+                                func.requireValue("ExprArtifacts::exprToArtifact Pipe func"),
+                                arg.requireValue("ExprArtifacts::exprToArtifact Pipe arg"))));
             }
             case Expr.Field f -> {
                 var base = exprToArtifact(xx, f.base());

@@ -41,6 +41,8 @@ public record SourceExpr(ExprId id, Variant variant) implements SafeJsonSerializ
 
     public record OperatorUnary(UnaryOperator op, SourceExpr base) implements Variant {}
 
+    public record Pipe(SourceExpr self, SourceExpr func, SourceExpr arg) implements Variant {}
+
     public record Record(TList<RecordEntry> entries) implements Variant {}
 
     public record RecordEntry(SourceExpr key, SourceExpr value) {}

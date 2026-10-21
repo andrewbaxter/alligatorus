@@ -1,5 +1,6 @@
 package compilerxyz.main.gen;
 
+import compilerxyz.main.eval.ConstEval;
 import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
@@ -43,6 +44,16 @@ public final class SourceInterfaceResult {
         var what = "Interface method '" + name + "'";
         var builderXx = DefinitionSetBuilder.builderContext(vx);
         DefinitionSetBuilder.requireArgBindable(builderXx, arg, what);
+        var recordOpt = GenAspectRecord.getMaybe(builderXx, arg);
+        if (recordOpt.optIsSome()
+                && recordOpt
+                        .optUnwrap()
+                        .aspectRecordFieldTypes()
+                        .getOpt(ConstEval.PIPE_SELF_KEY)
+                        .optIsSome()) {
+            throw new IllegalStateException(
+                    what + ": arg record field 'self' is reserved for the receiver of a method ref call");
+        }
         building.methods.add(new InterfaceMethodBuilding(
                 name, arg, ret, InterfaceMethodData.deriveDescriptor(builderXx, arg, ret, what)));
     }
