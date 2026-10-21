@@ -13,6 +13,6 @@ public record AspectBindDynamicOptionDynamic(OptionDynamic type) implements Aspe
 
     @Override
     public EResult<Opt<BindSubDynamic>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(loc, cv);
+        return DynUtil.bindDynamicDefault(xx, loc, cv);
     }
 }

@@ -25,12 +25,12 @@ import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataSourceObjectTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6138L)
+@BuiltinLight(uniqueId = 6138L)
 public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type) implements Aspect, Type {
 
     @Override

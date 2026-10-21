@@ -10,9 +10,7 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaVirtualMethodRef;
-import compilerxyz.prelude.annotations.BuiltinFull;
 
-@BuiltinFull(uniqueId = 6406L)
 public sealed interface TypeObjectCastRule {
 
     boolean typeObjectCastRuleMatches(ExprContext xx, Type destType);
@@ -39,7 +37,7 @@ public sealed interface TypeObjectCastRule {
 
         @Override
         public EResult<CodeValue> typeObjectCastRuleApply(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-            var sourceRes = DynUtil.valueReg(loc, cv);
+            var sourceRes = DynUtil.valueReg(xx, loc, cv);
             if (sourceRes.hasErrors()) return sourceRes.reerr();
             var b = new JavaBytecodeBuilder(loc);
             var receiver = b.checkcast(

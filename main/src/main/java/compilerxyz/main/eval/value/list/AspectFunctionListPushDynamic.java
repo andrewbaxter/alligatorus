@@ -26,7 +26,7 @@ public record AspectFunctionListPushDynamic(TypeListPushDynamic type) implements
         var converted = convertedRes.requireValue("typecheckConvert");
         var argRes = DynUtil.materialize(xx, loc, converted);
         if (argRes.hasErrors()) return argRes.reerr();
-        var selfRes = DynUtil.valueReg(loc, self);
+        var selfRes = DynUtil.valueReg(xx, loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var listName = JavaInternalName.fromClass(TList.class);
         var descObject = JavaDataDescriptor.fromClass(Object.class);

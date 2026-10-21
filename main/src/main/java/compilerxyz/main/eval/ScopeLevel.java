@@ -7,6 +7,7 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 
+@BuiltinFull(uniqueId = 6482L)
 public sealed interface ScopeLevel {
 
     Emission scopeLevelEmission();
@@ -78,6 +79,7 @@ public sealed interface ScopeLevel {
         }
     }
 
+    @BuiltinFull(uniqueId = 6503L)
     final class Catch implements ScopeLevel {
         public final JumpKey handler;
         final Emission emission;
@@ -93,11 +95,13 @@ public sealed interface ScopeLevel {
         }
     }
 
+    @BuiltinFull(uniqueId = 6504L)
     final class Finally implements ScopeLevel {
-        public final TList<Pending> pending;
+        public final TList<FinallyPending> pending;
+
         final Emission emission;
 
-        public Finally(TList<Pending> pending, Emission emission) {
+        public Finally(TList<FinallyPending> pending, Emission emission) {
             this.pending = pending;
             this.emission = emission;
         }
@@ -106,12 +110,15 @@ public sealed interface ScopeLevel {
         public Emission scopeLevelEmission() {
             return emission;
         }
-
-        public record Pending(JumpKey self, DestKey key) {}
     }
 
+    @BuiltinFull(uniqueId = 6531L)
+    record FinallyPending(JumpKey self, DestKey key) {}
+
+    @BuiltinFull(uniqueId = 6489L)
     record Arrival(QExprId loc, Opt<Value> value, Scope scope) {}
 
+    @BuiltinFull(uniqueId = 6490L)
     final class Landing {
         public final TList<Arrival> arrivals = new TList<>();
         public Opt<Type> resultType = Opt.none();
@@ -119,59 +126,11 @@ public sealed interface ScopeLevel {
         public boolean carries = false;
     }
 
-    final class DestKey {
-        public final long dropState;
-        public final Opt<String> label;
-        public final Opt<JumpKey> next;
-        public final int argumentIdx;
-
-        public DestKey(long dropState, Opt<String> label, Opt<JumpKey> next, int argumentIdx) {
-            this.dropState = dropState;
-            this.label = label;
-            this.next = next;
-            this.argumentIdx = argumentIdx;
-        }
-
+    @BuiltinFull(uniqueId = 6491L)
+    record DestKey(long dropState, Opt<String> label, Opt<JumpKey> next, int argumentIdx) {
         public Opt<Type> argument(Emission emission) {
             if (argumentIdx < 0) return Opt.none();
             return Opt.some(emission.argumentTypes.get(argumentIdx));
-        }
-
-        public Opt<String> label() {
-            return label;
-        }
-
-        public Opt<JumpKey> next() {
-            return next;
-        }
-
-        @Override
-        public boolean equals(Object other) {
-            return other instanceof DestKey d
-                    && d.dropState == dropState
-                    && d.label.equals(label)
-                    && switch (d.next) {
-                        case Opt.Some<JumpKey> as ->
-                            switch (next) {
-                                case Opt.Some<JumpKey> bs -> as.value() == bs.value();
-                                case Opt.None<JumpKey> ignored -> false;
-                            };
-                        case Opt.None<JumpKey> ignored -> next.optIsNone();
-                    }
-                    && d.argumentIdx == argumentIdx;
-        }
-
-        @Override
-        public int hashCode() {
-            int h = Long.hashCode(dropState);
-            h = h * 31 + label.hashCode();
-            h = h * 31
-                    + switch (next) {
-                        case Opt.Some<JumpKey> some -> System.identityHashCode(some.value());
-                        case Opt.None<JumpKey> ignored -> 0;
-                    };
-            h = h * 31 + argumentIdx;
-            return h;
         }
     }
 

@@ -23,7 +23,7 @@ public final class AspectFieldDoubleDynamicBox implements AspectField {
     @Override
     public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
         var unboxed = new TypeDoubleDynamic();
-        var selfRes = DynUtil.valueReg(loc, self);
+        var selfRes = DynUtil.valueReg(xx, loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var raw = Numerics.unbox(b, NumericKind.DOUBLE, b.reg(selfRes.requireValue("selfDyn")));

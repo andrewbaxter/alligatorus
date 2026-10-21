@@ -13,12 +13,12 @@ import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("zbase32.decode")
-@BuiltinFull(uniqueId = 6153L, function = true)
+@BuiltinPath(value = "zbase32.decode", function = true)
+@BuiltinLight(uniqueId = 6153L)
 public record TypeZbase32Decode() implements Aspect, Type {
 
     @Override

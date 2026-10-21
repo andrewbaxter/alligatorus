@@ -13,12 +13,12 @@ import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("types.eresult")
-@BuiltinFull(uniqueId = 6105L, function = true)
+@BuiltinPath(value = "types.eresult", function = true)
+@BuiltinLight(uniqueId = 6105L)
 public record TypeEResultConstructorConst() implements Aspect, Type {
 
     @Override

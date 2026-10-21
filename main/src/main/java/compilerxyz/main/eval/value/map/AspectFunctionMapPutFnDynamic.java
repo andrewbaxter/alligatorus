@@ -52,7 +52,7 @@ public record AspectFunctionMapPutFnDynamic(TypeMapPutFnDynamic type) implements
         if (valConvertedRes.hasErrors()) return valConvertedRes.reerr();
         var valDynRes = DynUtil.materialize(xx, loc, valConvertedRes.requireValue("put value converted"));
         if (valDynRes.hasErrors()) return valDynRes.reerr();
-        var selfRes = DynUtil.valueReg(loc, self);
+        var selfRes = DynUtil.valueReg(xx, loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var mapName = JavaInternalName.fromClass(TOrderedMap.class);
         var putDesc = JavaMethodDescriptor.fromParts(

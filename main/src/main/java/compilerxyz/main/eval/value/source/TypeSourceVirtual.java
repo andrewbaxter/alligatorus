@@ -11,12 +11,12 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("source.virtual")
-@BuiltinFull(uniqueId = 6156L, function = true)
+@BuiltinPath(value = "source.virtual", function = true)
+@BuiltinLight(uniqueId = 6156L)
 public record TypeSourceVirtual() implements Aspect, Type {
 
     @Override

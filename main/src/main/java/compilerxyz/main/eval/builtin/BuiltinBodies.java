@@ -13,13 +13,12 @@ import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
+import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.LogEntry;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Scope;
-import compilerxyz.main.eval.ScopeLevel;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.binding.BindingSetterConsumed;
@@ -111,14 +110,15 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "log", scopeId = 5001L)
     @BuiltinEvalContext
     public static void log(EvalContext vx, String message) {
-        vx.logs.add(new LogEntry(System.currentTimeMillis(), message));
+        vx.log(message);
     }
 
     @BuiltinPath(value = "define", scopeId = 5002L)
     @BuiltinEvalContext
     public static DefinitionSetBuilder define(EvalContext vx) {
-        var compileId = new CompileId(vx.ix.importState, vx.ix.sourceId);
-        var defSetId = new DefSetId(compileId, vx.ix.defSetCounter.next());
+        var compileId = new CompileId(EvalContextInternal.ix(vx).importState, EvalContextInternal.ix(vx).sourceId);
+        var defSetId =
+                new DefSetId(compileId, EvalContextInternal.ix(vx).defSetCounter.next());
         return new DefinitionSetBuilder(new DefinitionSet(defSetId));
     }
 
@@ -151,21 +151,10 @@ public final class BuiltinBodies {
         return scope;
     }
 
-    @BuiltinPath(value = "eval.scope_bindings", scopeId = 5061L)
-    public static TOrderedMap<ConstKey, Binding> scopeBindings(Scope scope) {
-        var out = new TOrderedMap<ConstKey, Binding>();
-        for (var level : scope.levels) {
-            if (level instanceof ScopeLevel.Entry entry && entry.name.optIsSome()) {
-                out.put(entry.name.optUnwrap(), entry.binding);
-            }
-        }
-        return out;
-    }
-
     @BuiltinPath(value = "eval.eval_context", scopeId = 5009L)
     @BuiltinEvalContext
     public static EvalContext evalContext(EvalContext vx) {
-        return new EvalContext(vx.ix);
+        return new EvalContext(EvalContextInternal.ix(vx));
     }
 
     @BuiltinPath(value = "eval.fresh_unique", scopeId = 5016L)
@@ -190,7 +179,7 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.import_file", scopeId = 5046L)
     @BuiltinEvalContext
     public static FileHandle importFile(EvalContext vx, String specKey) {
-        var ix = vx.ix;
+        var ix = EvalContextInternal.ix(vx);
         SourceSpecAbsolute abs;
         if (specKey.startsWith("local:")) {
             abs = new SourceSpecAbsolute.Local(specKey.substring("local:".length()));
@@ -354,7 +343,7 @@ public final class BuiltinBodies {
 
     @BuiltinPath(value = "eval.expr_context", scopeId = 5017L)
     public static ExprContext exprContext(Scope scope, Target target, EvalContext vx, Type exceptionType) {
-        return new ExprContext(scope, target, vx, vx.ix.importState, Opt.some(exceptionType));
+        return new ExprContext(scope, target, vx, EvalContextInternal.ix(vx).importState, Opt.some(exceptionType));
     }
 
     @BuiltinPath(value = "eval.code_none", scopeId = 5018L)

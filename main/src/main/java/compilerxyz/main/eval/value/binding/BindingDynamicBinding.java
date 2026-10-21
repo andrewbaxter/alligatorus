@@ -9,7 +9,6 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.BindingDynamicSlot;
-import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
@@ -27,8 +26,7 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type) implements 
 
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
-        Value value =
-                new ValueDynamic(new ValueDynamicSource.Slot(dynamicKey, JvmSort.descriptor(xx, type), setter), type);
+        Value value = new ValueDynamic(new ValueDynamicSource.Slot(dynamicKey, setter), type);
         return new CodeValue(code, EvalOutcome.ofValue(value));
     }
 

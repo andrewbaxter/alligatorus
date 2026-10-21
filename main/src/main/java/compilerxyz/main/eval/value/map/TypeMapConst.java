@@ -30,14 +30,14 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactMapTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactMapValueCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6162L)
+@BuiltinLight(uniqueId = 6162L)
 public final class TypeMapConst<K extends Type, V extends Type> implements Type, Aspect {
 
     public final K keyType;

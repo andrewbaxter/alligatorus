@@ -67,12 +67,12 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNumberInt;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6164L)
+@BuiltinLight(uniqueId = 6164L)
 public record TypeIntConst() implements Aspect, Type {
 
     @Override

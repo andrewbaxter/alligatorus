@@ -11,12 +11,12 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("source.local")
-@BuiltinFull(uniqueId = 6157L, function = true)
+@BuiltinPath(value = "source.local", function = true)
+@BuiltinLight(uniqueId = 6157L)
 public record TypeSourceLocal() implements Aspect, Type {
 
     @Override

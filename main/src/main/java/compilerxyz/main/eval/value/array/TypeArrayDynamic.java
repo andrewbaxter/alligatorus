@@ -41,7 +41,7 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.IMap;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
@@ -49,7 +49,7 @@ import compilerxyz.prelude.util.Pair;
 import java.util.function.Function;
 import org.objectweb.asm.Opcodes;
 
-@BuiltinFull(uniqueId = 6461L)
+@BuiltinLight(uniqueId = 6461L)
 public final class TypeArrayDynamic<T extends Type> implements Aspect, Type {
 
     public final T elementType;

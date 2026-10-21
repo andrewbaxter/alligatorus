@@ -195,7 +195,7 @@ public final class DynUtil {
                 sub.type()));
     }
 
-    public static EResult<Opt<BindSubDynamic>> bindDynamicDefault(QExprId loc, CodeValue cv) {
+    public static EResult<Opt<BindSubDynamic>> bindDynamicDefault(ExprContext xx, QExprId loc, CodeValue cv) {
         if (cv.value().optIsNone()) {
             throw new IllegalStateException("bind_dynamic_default called with absent value in CodeValue");
         }
@@ -203,7 +203,7 @@ public final class DynUtil {
             return EResult.ok(Opt.none());
         }
         var vtype = cv.value().optUnwrap().valueType();
-        var dynRes = valueReg(loc, cv);
+        var dynRes = valueReg(xx, loc, cv);
         if (dynRes.hasErrors()) {
             return dynRes.reerr();
         }
@@ -218,29 +218,44 @@ public final class DynUtil {
         };
     }
 
-    public static JavaBytecodeReg sourceReg(JavaBytecodeBuilder b, ValueDynamicSource source) {
+    public static JavaBytecodeReg sourceReg(JavaBytecodeBuilder b, ValueDynamicSource source, JavaDataDescriptor desc) {
         return switch (source) {
             case ValueDynamicSource.Reg r -> r.reg();
-            case ValueDynamicSource.Slot slot -> b.load(slot.slot(), slot.desc());
+            case ValueDynamicSource.Slot slot -> b.load(slot.slot(), desc);
             case ValueDynamicSource.Field field ->
-                b.getField(field.klass(), field.field(), field.desc(), sourceReg(b, field.base()));
+                b.getField(
+                        field.klass(),
+                        field.field(),
+                        field.desc(),
+                        sourceReg(b, field.base(), JavaDataDescriptor.fromInternalName(field.klass())));
         };
     }
 
-    public static EResult<CodeDynamicReg> valueReg(QExprId loc, CodeValue cv) {
+    public static JavaBytecodeReg sourceReg(ExprContext xx, JavaBytecodeBuilder b, ValueDynamic vd) {
+        return sourceReg(b, vd.source(), JvmSort.descriptor(xx, vd.type()));
+    }
+
+    public static boolean sourceIsPlace(ValueDynamicSource source) {
+        return switch (source) {
+            case ValueDynamicSource.Reg r -> false;
+            case ValueDynamicSource.Slot slot -> true;
+            case ValueDynamicSource.Field field -> sourceIsPlace(field.base());
+        };
+    }
+
+    public static EResult<CodeDynamicReg> valueReg(ExprContext xx, QExprId loc, CodeValue cv) {
         if (cv.value().optIsNone()) {
             throw new IllegalStateException("DynUtil::valueReg: CodeValue has no value");
         }
         var value = cv.value().optUnwrap();
-        var source = sourceOf(value);
-        if (source.optIsNone()) {
+        if (!(value instanceof ValueDynamic vd)) {
             throw new IllegalStateException("DynUtil::valueReg: value has no JVM source: "
                     + value.getClass().getName());
         }
         var b = new JavaBytecodeBuilder(loc);
         var codeRes = b.addCode(loc, cv.code());
         if (codeRes.optIsSome()) return EResult.errs(codeRes.optUnwrap());
-        return EResult.ok(b.code(sourceReg(b, source.optUnwrap())));
+        return EResult.ok(b.code(sourceReg(xx, b, vd)));
     }
 
     public static EResult<CodeDynamicReg> materialize(ExprContext xx, QExprId loc, CodeValue cv) {
@@ -253,7 +268,7 @@ public final class DynUtil {
         var consumed =
                 consumeRes.requireValue("DynUtil::materialize consume").aspectConsumeDynamicToDynamic(xx, loc, cv);
         if (consumed.hasErrors()) return consumed.reerr();
-        return valueReg(loc, consumed.requireValue("DynUtil::materialize consumed"));
+        return valueReg(xx, loc, consumed.requireValue("DynUtil::materialize consumed"));
     }
 
     public static EResult<CodeDynamicReg> materialize(ExprContext xx, QExprId loc, Type as, CodeValue cv) {
@@ -302,9 +317,7 @@ public final class DynUtil {
         if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
         var element = b.reg(argRes.requireValue("DynUtil::typeConstructRuntime element"));
         var xxReg = b.getStatic(
-                JavaInternalName.of(xx.vx.evalRootInternalName.optUnwrap()),
-                EvalRootEmitter.EXPR_CONTEXT_FIELD,
-                EvalRootEmitter.DESC_EXPR_CONTEXT);
+                TargetDynamic.evalRootOf(xx), EvalRootEmitter.EXPR_CONTEXT_FIELD, EvalRootEmitter.DESC_EXPR_CONTEXT);
         var out = b.invokeStatic(construct, xxReg, element);
         return EResult.ok(regToValue(b.code(), out, GenType.dynamicType()));
     }
@@ -395,10 +408,10 @@ public final class DynUtil {
                 b.store(slot.slot(), newValue);
             }
             case ValueDynamicSource.Field field -> {
-                if (!field.valueDynamicSourceIsPlace()) {
+                if (!sourceIsPlace(field)) {
                     return EResult.err(loc, "Cannot modify a temporary value");
                 }
-                var base = sourceReg(b, field.base());
+                var base = sourceReg(b, field.base(), JavaDataDescriptor.fromInternalName(field.klass()));
                 var newValue = b.reg(valueDyn);
                 b.putField(field.klass(), field.field(), field.desc(), base, newValue);
             }

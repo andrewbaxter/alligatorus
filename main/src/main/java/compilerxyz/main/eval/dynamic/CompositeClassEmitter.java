@@ -1,6 +1,7 @@
 package compilerxyz.main.eval.dynamic;
 
 import compilerxyz.main.eval.DefinitionSetClassLoader;
+import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.Type;
 import compilerxyz.prelude.util.Opt;
@@ -63,17 +64,17 @@ public final class CompositeClassEmitter {
             }
         }
         var binaryName = sb.toString();
-        var cache = xx.vx.ix.compositeCache;
+        var cache = EvalContextInternal.ix(xx.vx).dynamic.compositeCache;
         var existing = cache.get(binaryName);
         if (existing != null) {
             return existing;
         }
 
-        if (xx.vx.ix.classLoader.optIsNone()) {
-            xx.vx.ix.classLoader = Opt.some(new DefinitionSetClassLoader(
-                    xx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), new TList<>()));
+        if (EvalContextInternal.ix(xx.vx).dynamic.classLoader.optIsNone()) {
+            EvalContextInternal.ix(xx.vx).dynamic.classLoader = Opt.some(new DefinitionSetClassLoader(
+                    EvalContextInternal.ix(xx.vx).gx, DefinitionSetClassLoader.class.getClassLoader(), new TList<>()));
         }
-        var loader = xx.vx.ix.classLoader.optUnwrap();
+        var loader = EvalContextInternal.ix(xx.vx).dynamic.classLoader.optUnwrap();
         var bytecode = emitBytecode(binaryName, slotDescs);
         loader.registerClass(binaryName, bytecode);
         Class<?> defined;

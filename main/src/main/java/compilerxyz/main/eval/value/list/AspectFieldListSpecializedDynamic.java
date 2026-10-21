@@ -39,7 +39,7 @@ public record AspectFieldListSpecializedDynamic<T extends Type>(TypeListSpeciali
             return EResult.ok(DynUtil.methodRefOn(self, new TypeListSetDynamic(type)));
         }
         if (ck.equals(new ConstKey.Str("len"))) {
-            var selfRes = DynUtil.valueReg(loc, self);
+            var selfRes = DynUtil.valueReg(xx, loc, self);
             if (selfRes.hasErrors()) return selfRes.reerr();
             var b = new JavaBytecodeBuilder(loc);
             var sizeDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_INT, TList.of());

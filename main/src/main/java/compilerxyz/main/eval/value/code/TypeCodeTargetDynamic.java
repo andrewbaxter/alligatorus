@@ -17,10 +17,10 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6360L)
+@BuiltinLight(uniqueId = 6360L)
 public record TypeCodeTargetDynamic() implements Aspect, Type {
 
     static final ConstKey CAST_KEY = new ConstKey.Str("cast");

@@ -37,14 +37,14 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.codec.ArtifactDataSourceUnionCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6021L)
+@BuiltinLight(uniqueId = 6021L)
 public final class TypeSourceUnionDynamic implements Aspect, Type {
 
     @SuppressWarnings("NullAway.Init")

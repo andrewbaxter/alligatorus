@@ -37,14 +37,14 @@ import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
 @SuppressWarnings("rawtypes")
-@BuiltinFull(uniqueId = 6129L)
+@BuiltinLight(uniqueId = 6129L)
 public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) implements Aspect, Type, TypeAspect {
 
     public String typeDesc() {
@@ -101,7 +101,14 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
             return Opt.some(new AspectTypeObjectConst(this));
         }
         if (key.equals(GenAspectLift.AspectId)) {
-            return Opt.some(new AspectLiftObjectConst(this));
+            switch (meta.lift()) {
+                case OBJECT, NONE -> {
+                    return Opt.some(new AspectLiftObjectConst(this));
+                }
+                case SELF -> {
+                    return Opt.some(AspectLiftObjectSelf.INSTANCE);
+                }
+            }
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldObjectConst(this));

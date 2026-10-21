@@ -38,13 +38,13 @@ import compilerxyz.main.gen.GenOptions;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactOptionTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6008L)
+@BuiltinLight(uniqueId = 6008L)
 public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDynamic {
 
     public final T elementType;
@@ -52,10 +52,6 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
 
     public TypeOptionDynamic(T elementType) {
         this.elementType = elementType;
-    }
-
-    public Type elementType() {
-        return elementType;
     }
 
     @Override

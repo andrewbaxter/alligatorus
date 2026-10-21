@@ -88,7 +88,6 @@ public record AspectFunctionImport(TypeImport type) implements AspectFunction {
                 pool.shutdown();
             }
         }
-        var ix = xx.vx.ix;
         var fields = new TOrderedMap<ConstKey, RecordField>();
         for (var i = 0; i < keys.size(); i++) {
             var key = keys.get(i);

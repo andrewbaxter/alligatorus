@@ -1,8 +1,11 @@
 package compilerxyz.main.syntax;
 
+import compilerxyz.prelude.annotations.BuiltinFull;
 import java.util.HexFormat;
 
+@BuiltinFull(uniqueId = 6495L)
 public sealed interface SourceSpecAbsolute {
+    @BuiltinFull(uniqueId = 6523L)
     record Virtual(String name) implements SourceSpecAbsolute {
         @Override
         public String sourceSpecAbsoluteSpecKey() {
@@ -43,6 +46,7 @@ public sealed interface SourceSpecAbsolute {
         throw new IllegalArgumentException("not a source spec key: " + key);
     }
 
+    @BuiltinFull(uniqueId = 6524L)
     record Local(String path) implements SourceSpecAbsolute {
         @Override
         public String sourceSpecAbsoluteSpecKey() {
@@ -50,6 +54,7 @@ public sealed interface SourceSpecAbsolute {
         }
     }
 
+    @BuiltinFull(uniqueId = 6525L)
     record Remote(RemoteOrigin origin, String subpath) implements SourceSpecAbsolute {
         @Override
         public String sourceSpecAbsoluteSpecKey() {

@@ -33,12 +33,12 @@ import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataSourceInterfaceTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6196L)
+@BuiltinLight(uniqueId = 6196L)
 public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> type) implements Aspect, Type {
 
     public static final TypeTypeSourceInterfaceDynamic GENERIC = new TypeTypeSourceInterfaceDynamic(Opt.none());

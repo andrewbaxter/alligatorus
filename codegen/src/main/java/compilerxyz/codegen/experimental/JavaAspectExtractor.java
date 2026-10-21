@@ -99,11 +99,10 @@ public final class JavaAspectExtractor {
         }
         var uniqueId = Long.parseLong(uniqueIdStr);
         var lift = !"false".equals(attrs.get("lift"));
-        var function = "true".equals(attrs.get("function"));
         var classImports = buildImportMap(cu);
         var classFields = new TList<BuiltinInterfacesGen.DataField>();
         for (var f : clsDecl.getFields()) {
-            if (f.isStatic() || !f.isPublic() || !f.isFinal()) continue;
+            if (f.isStatic() || !f.isPublic()) continue;
             for (var v : f.getVariables()) {
                 classFields.add(new BuiltinInterfacesGen.DataField(
                         NameDerivation.snakeCase(v.getNameAsString()),
@@ -148,7 +147,7 @@ public final class JavaAspectExtractor {
                     outerSimpleName.optIsNone() ? Opt.none() : Opt.some(nestedName),
                     identityToken,
                     lift,
-                    function));
+                    new TList<String>()));
         }
     }
 
@@ -165,7 +164,6 @@ public final class JavaAspectExtractor {
         }
         var uniqueId = Long.parseLong(uniqueIdStr);
         var lift = !"false".equals(attrs.get("lift"));
-        var function = "true".equals(attrs.get("function"));
         var importMap = buildImportMap(cu);
         var dataFields = new TList<BuiltinInterfacesGen.DataField>();
         var methods = new TList<Method>();
@@ -209,7 +207,7 @@ public final class JavaAspectExtractor {
                 outerSimpleName.optIsNone() ? Opt.none() : Opt.some(nestedName),
                 false,
                 lift,
-                function));
+                new TList<String>()));
     }
 
     public static boolean injectsEvalContext(NodeWithAnnotations<?> m, List<Parameter> params, String where) {

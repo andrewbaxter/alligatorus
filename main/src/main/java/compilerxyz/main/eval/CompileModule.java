@@ -118,7 +118,9 @@ public final class CompileModule {
                 var evalRootLoc = rootExpr.loc();
                 var evalVx = new EvalContext(cix);
                 var evalRootScope = new Scope(evalVx);
-                var evalTarget = new TargetDynamic();
+                var evalBinaryName = "compilerxyz.main.eval.gen.EvalRoot$" + cix.evalRootCounter.next();
+                var evalTarget = new TargetDynamic(
+                        Opt.some(JavaInternalName.of(EvalRootEmitter.toInternalName(evalBinaryName))));
                 var evalXx = new ExprContext(
                         evalRootScope, evalTarget, evalVx, importState, Opt.some(new TypeStringConst()));
                 var res = GenBuiltinTree.installRoot(evalXx, evalRootLoc, importState);
@@ -127,14 +129,12 @@ public final class CompileModule {
                     break evalBlock;
                 }
                 var binding = res.requireValue("Eval::eval installRoot");
-                evalXx.vx.ix.builtinScopeRootBinding = Opt.some(binding);
+                EvalContextInternal.ix(evalXx.vx).builtinScopeRootBinding = Opt.some(binding);
                 var scopeEntries = new TMap<ConstKey, Binding>();
                 scopeEntries.put(new ConstKey.Str(Eval.KEY_BUILTINS), binding);
                 for (var entry : scopeEntries.entrySet()) {
                     evalRootScope.pushNamed(entry.getKey(), entry.getValue());
                 }
-                var evalBinaryName = "compilerxyz.main.eval.gen.EvalRoot$" + evalXx.vx.ix.evalRootCounter.next();
-                evalXx.vx.evalRootInternalName = Opt.some(EvalRootEmitter.toInternalName(evalBinaryName));
                 var cvRes = ConstEval.constEval(evalXx, rootExpr);
                 if (cvRes.hasErrors()) {
                     evalResult = new EvalOutcome.Err(cvRes.errorsOpt().optUnwrap());
@@ -292,11 +292,16 @@ public final class CompileModule {
                         }
                         dependencyLoaders.add(installRes.requireValue("EvalRoot::run install"));
                     }
-                    if (evalXx.vx.ix.classLoader.optIsNone()) {
-                        evalXx.vx.ix.classLoader = Opt.some(new DefinitionSetClassLoader(
-                                evalXx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders));
+                    if (EvalContextInternal.ix(evalXx.vx).dynamic.classLoader.optIsNone()) {
+                        EvalContextInternal.ix(evalXx.vx).dynamic.classLoader = Opt.some(new DefinitionSetClassLoader(
+                                EvalContextInternal.ix(evalXx.vx).gx,
+                                DefinitionSetClassLoader.class.getClassLoader(),
+                                dependencyLoaders));
                     }
-                    var loader = evalXx.vx.ix.classLoader.optUnwrap();
+                    var loader = EvalContextInternal.ix(evalXx.vx)
+                            .dynamic
+                            .classLoader
+                            .optUnwrap();
                     loader.registerClass(evalBinaryName, bytecode);
                     loader.registerLocs(evalBinaryName, locTable.locs());
                     rootStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, evalXx);
@@ -357,7 +362,7 @@ public final class CompileModule {
                     if (!isStage) {
                         var vx = new EvalContext(cix);
                         var rootScope = new Scope(vx);
-                        var target = new TargetDynamic();
+                        var target = new TargetDynamic(Opt.none());
                         var xx = new ExprContext(rootScope, target, vx, importState, Opt.some(new TypeStringDynamic()));
                         if (ok.value().optIsNone()) {
                             return new CompileModuleResult(

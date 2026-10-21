@@ -19,7 +19,7 @@ public final class AspectFunctionUshortToStringDynamic implements AspectFunction
 
     @Override
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-        var selfRes = DynUtil.valueReg(loc, self);
+        var selfRes = DynUtil.valueReg(xx, loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var out = b.invokeStatic(

@@ -7,6 +7,7 @@ import compilerxyz.prelude.util.Opt;
 @BuiltinFull(uniqueId = 6016L)
 public sealed interface Code permits Code.None, Code.Target {
 
+    @BuiltinFull(uniqueId = 6506L)
     record None(QExprId loc) implements Code {
         @Override
         public boolean codeIsNone() {
@@ -14,6 +15,7 @@ public sealed interface Code permits Code.None, Code.Target {
         }
     }
 
+    @BuiltinFull(uniqueId = 6507L)
     record Target(TargetCode impl) implements Code {
         @Override
         public boolean codeIsNone() {

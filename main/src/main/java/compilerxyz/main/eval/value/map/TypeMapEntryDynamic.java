@@ -20,13 +20,13 @@ import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
 import compilerxyz.prelude.util.TMap;
 import java.util.Map;
 
-@BuiltinFull(uniqueId = 6123L)
+@BuiltinLight(uniqueId = 6123L)
 public record TypeMapEntryDynamic(Type keyType, Type valueType) implements Aspect, Type {
 
     static final JavaInternalName MAP_ENTRY_INAME = JavaInternalName.fromClass(Map.Entry.class);

@@ -68,7 +68,7 @@ public final class ScopeChains {
         for (int i = cleanups.size() - 1; i >= 0; i--) {
             var level = cleanups.get(i);
             var base = keyFor.keyFor(level);
-            var key = new ScopeLevel.DestKey(base.dropState, base.label(), parent, base.argumentIdx);
+            var key = new ScopeLevel.DestKey(base.dropState(), base.label(), parent, base.argumentIdx());
             var emission = level.scopeLevelEmission();
             var existingOpt = emission.dests.getOpt(key);
             if (existingOpt.optIsSome()) {
@@ -79,7 +79,7 @@ public final class ScopeChains {
             if (drop.optIsNone()) {
                 var finally_ = (ScopeLevel.Finally) level;
                 var self = new JumpKey();
-                finally_.pending.add(new ScopeLevel.Finally.Pending(self, key));
+                finally_.pending.add(new ScopeLevel.FinallyPending(self, key));
                 parent = Opt.some(self);
                 emission.dests.put(key, parent);
                 continue;

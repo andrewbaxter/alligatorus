@@ -8,6 +8,7 @@ import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
+import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
@@ -20,6 +21,7 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaClassCompiled;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.argrecord.ArgumentEntry;
@@ -114,9 +116,9 @@ public final class SourceFunctionData {
             throw new AssertionError("Definition set function '" + nameStr + "' is not attached to a definition set");
         }
 
-        var innerVx = new EvalContext(xx.vx.ix);
-        innerVx.evalRootInternalName = Opt.some(DefSetFunctionsEmitter.functionsInternalName(funcSet.defSetId));
-        var innerTarget = new TargetDynamic();
+        var innerVx = new EvalContext(EvalContextInternal.ix(xx.vx));
+        var innerTarget = new TargetDynamic(
+                Opt.some(JavaInternalName.of(DefSetFunctionsEmitter.functionsInternalName(funcSet.defSetId))));
 
         var bodyScope = new Scope(innerVx);
         bodyScope.pushAll(Eval.bodyBuiltinScope(xx));

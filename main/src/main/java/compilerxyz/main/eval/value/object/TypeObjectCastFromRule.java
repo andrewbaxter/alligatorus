@@ -7,9 +7,7 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.prelude.annotations.BuiltinFull;
 
-@BuiltinFull(uniqueId = 6407L)
 public sealed interface TypeObjectCastFromRule {
 
     boolean typeObjectCastFromRuleMatches(ExprContext xx, Type sourceType);

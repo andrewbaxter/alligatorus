@@ -16,8 +16,9 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
-import compilerxyz.main.eval.aspect.AspectConsumeDynamicObject;
 import compilerxyz.main.eval.aspect.AspectLookup;
+import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.main.eval.value.function.AspectConsumeDynamicMethod;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
@@ -25,14 +26,14 @@ import compilerxyz.main.gen.GenBuiltinInterfaces;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetInterfaceMethodCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6136L)
+@BuiltinLight(uniqueId = 6136L)
 public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodData method) implements Aspect, Type {
 
     @Override
@@ -52,7 +53,7 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
             return Opt.some(new AspectFunctionInterfaceMethodDynamic(this));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
-            return Opt.some(AspectConsumeDynamicObject.INSTANCE);
+            return Opt.some(new AspectConsumeDynamicMethod(JavaDataDescriptor.fromInternalName(iface.internalName())));
         }
         if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);

@@ -45,7 +45,7 @@ import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactMapTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
@@ -56,7 +56,7 @@ import compilerxyz.prelude.util.TOrderedMap;
 import java.util.Map;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6122L)
+@BuiltinLight(uniqueId = 6122L)
 public final class TypeMapDynamic<K extends Type, V extends Type> implements Aspect, Type {
 
     public final K keyType;

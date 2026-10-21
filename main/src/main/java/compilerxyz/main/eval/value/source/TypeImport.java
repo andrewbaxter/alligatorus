@@ -11,12 +11,12 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("import")
-@BuiltinFull(uniqueId = 6160L, function = true)
+@BuiltinPath(value = "import", function = true)
+@BuiltinLight(uniqueId = 6160L)
 public record TypeImport() implements Aspect, Type {
 
     @Override

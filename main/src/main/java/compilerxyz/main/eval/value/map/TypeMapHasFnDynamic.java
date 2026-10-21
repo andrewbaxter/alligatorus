@@ -9,12 +9,15 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
+import compilerxyz.main.eval.dynamic.JvmSort;
+import compilerxyz.main.eval.value.function.AspectConsumeDynamicMethod;
+import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6127L, function = true)
+@BuiltinLight(uniqueId = 6127L)
 public record TypeMapHasFnDynamic(Type keyType, Type valueType) implements Aspect, Type {
 
     @Override
@@ -26,6 +29,10 @@ public record TypeMapHasFnDynamic(Type keyType, Type valueType) implements Aspec
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenTrivialIdentityAspects.TYPE_MAP_HAS_FN_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
+        }
+        if (key.equals(GenAspectConsumeDynamic.AspectId)) {
+            return Opt.some(
+                    new AspectConsumeDynamicMethod(JvmSort.descriptor(xx, new TypeMapDynamic<>(keyType, valueType))));
         }
         if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(new AspectFunctionMapHasFnDynamic(this));

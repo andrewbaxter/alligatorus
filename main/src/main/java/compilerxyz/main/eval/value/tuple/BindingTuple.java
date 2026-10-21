@@ -11,9 +11,6 @@ import compilerxyz.main.eval.ExprSubErr.Opaque;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.BindingDynamicSlot;
-import compilerxyz.main.eval.dynamic.CompositeClassEmitter;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.Binding;
@@ -58,12 +55,9 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
                 case TupleScopeField.Error err -> {}
             }
         }
-        var desc = JavaDataDescriptor.fromInternalName(
-                JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, Tuple.sortTupleTypes(xx, dynamicTypes))));
         return new CodeValue(
                 code,
-                EvalOutcome.ofValue(
-                        new ValueDynamic(new ValueDynamicSource.Slot(jsKey.optUnwrap(), desc, setter), tuple)));
+                EvalOutcome.ofValue(new ValueDynamic(new ValueDynamicSource.Slot(jsKey.optUnwrap(), setter), tuple)));
     }
 
     @Override

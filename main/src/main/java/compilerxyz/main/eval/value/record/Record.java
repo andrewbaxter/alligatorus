@@ -31,10 +31,12 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
+import compilerxyz.main.eval.value.object.AspectLiftObjectSelf;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.gen.AspectLift;
@@ -57,7 +59,7 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactRecordDataCodec;
 import compilerxyz.main.gen.codec.ArtifactRecordTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
 import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.MustCast;
@@ -68,7 +70,7 @@ import compilerxyz.prelude.util.TOrderedMap;
 import java.lang.reflect.Field;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6134L)
+@BuiltinLight(uniqueId = 6134L)
 public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.ArtifactIdHolder artifactIdCell)
         implements Aspect, Type, Value {
 
@@ -203,7 +205,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
                                     klass,
                                     CompositeClassEmitter.slotFieldName(slotIdx),
                                     CompositeClassEmitter.slotDescriptor(xx, t),
-                                    DynUtil.sourceReg(access, baseSource));
+                                    DynUtil.sourceReg(access, baseSource, JavaDataDescriptor.fromInternalName(klass)));
                             var childCv = DynUtil.regToValue(access.code(), child, t);
                             var cfdcDropRes = cfdcFullDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, childCv);
                             if (cfdcDropRes.hasErrors()) yield cfdcDropRes.reerr();
@@ -583,7 +585,7 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
         if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
-        var srcReg = DynUtil.sourceReg(b, srcDyn.source());
+        var srcReg = DynUtil.sourceReg(xx, b, srcDyn);
         var srcKlass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, srcSlotInfo.sortedTypes()));
 
         var destSlotKeys = slotFieldTypes(destFields).keySet();
@@ -654,6 +656,12 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
     }
 
     public static Object hostOf(ExprContext xx, Type declared, Value value) {
+        switch (GenAspectLift.getMaybe(xx, declared)) {
+            case Opt.Some<AspectLift> lift -> {
+                if (lift.value() instanceof AspectLiftObjectSelf) return value;
+            }
+            case Opt.None<AspectLift> ignored -> {}
+        }
         return switch (value) {
             case ValueObjectConst voc -> voc.data();
             case Expr expr -> new StagedExprCell(expr);
@@ -879,8 +887,8 @@ public record Record(IOrderedMap<ConstKey, RecordField> fields, ArtifactSupport.
                 var runtimeRecord = MustCast.mustCast(Record.class, vd.type());
                 var baseCv = new CodeValue(
                         Code.none(loc),
-                        EvalOutcome.ofValue(new ValueDynamic(
-                                new ValueDynamicSource.Reg(DynUtil.sourceReg(b, vd.source())), vd.type())));
+                        EvalOutcome.ofValue(
+                                new ValueDynamic(new ValueDynamicSource.Reg(DynUtil.sourceReg(xx, b, vd)), vd.type())));
                 for (var key : runtimeRecord.fields().keys()) {
                     fieldResults.put(key, runtimeRecord.accessOrDrop(xx, loc, baseCv, Opt.some(key)));
                 }

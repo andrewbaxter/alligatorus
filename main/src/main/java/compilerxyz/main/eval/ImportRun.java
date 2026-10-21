@@ -33,7 +33,7 @@ public final class ImportRun {
     }
 
     public static EResult<SpecOutcome> compileOne(ExprContext xx, QExprId loc, SourceSpecValue specValue) {
-        var ix = xx.vx.ix;
+        var ix = EvalContextInternal.ix(xx.vx);
         Result<SourceSpecAbsolute, String> resolveRes =
                 switch (specValue) {
                     case SourceSpecValue.Virtual v -> Result.ok(new SourceSpecAbsolute.Virtual(v.name()));
@@ -91,7 +91,7 @@ public final class ImportRun {
     }
 
     public static EResult<SpecOutcome> compileAbsolute(ExprContext xx, QExprId loc, SourceSpecAbsolute abs) {
-        var ix = xx.vx.ix;
+        var ix = EvalContextInternal.ix(xx.vx);
         var gx = ix.gx;
         var resolvedRes = gx.sources.sourcesGet(abs);
         Result.Ok<Sources.SourceResolved, String> resolvedResOk;
@@ -145,7 +145,8 @@ public final class ImportRun {
                         new CodeValue(Code.none(loc), EvalOutcome.ofValue(new ValueEmpty(new TypeBundle(b.base())))));
             case SpecOutcome.ModuleOut m -> {
                 switch (m.abs()) {
-                    case SourceSpecAbsolute.Local ignored -> xx.vx.ix.localDependencies.add(m.compileId());
+                    case SourceSpecAbsolute.Local ignored ->
+                        EvalContextInternal.ix(xx.vx).localDependencies.add(m.compileId());
                     case SourceSpecAbsolute.Virtual v -> {}
                     case SourceSpecAbsolute.Remote r -> {}
                 }

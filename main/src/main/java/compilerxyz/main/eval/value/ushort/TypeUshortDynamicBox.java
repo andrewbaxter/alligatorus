@@ -30,11 +30,11 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6186L)
+@BuiltinLight(uniqueId = 6186L)
 @BuiltinPath("types.ushort_box")
 public record TypeUshortDynamicBox() implements Aspect, Type {
 
@@ -101,7 +101,7 @@ public record TypeUshortDynamicBox() implements Aspect, Type {
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         var unboxedCast = Numerics.castTo(xx, loc, cv, NumericKind.USHORT, new TypeUshortDynamic());
         if (unboxedCast.hasErrors()) return unboxedCast.reerr();
-        var castRes = DynUtil.valueReg(loc, unboxedCast.requireValue("TypeUshortDynamicBox::typeCastFrom cast"));
+        var castRes = DynUtil.valueReg(xx, loc, unboxedCast.requireValue("TypeUshortDynamicBox::typeCastFrom cast"));
         if (castRes.hasErrors()) return castRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var boxed = Numerics.box(b, NumericKind.USHORT, b.reg(castRes.requireValue("cast")));
@@ -111,7 +111,7 @@ public record TypeUshortDynamicBox() implements Aspect, Type {
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         if (destType.typeIsEqual(xx, this)) return EResult.ok(cv);
-        var selfRes = DynUtil.valueReg(loc, cv);
+        var selfRes = DynUtil.valueReg(xx, loc, cv);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var raw = Numerics.unbox(b, NumericKind.USHORT, b.reg(selfRes.requireValue("selfDyn")));

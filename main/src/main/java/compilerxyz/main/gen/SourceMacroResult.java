@@ -3,6 +3,7 @@ package compilerxyz.main.gen;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.expr.StagedExprCell;
+import compilerxyz.main.eval.value.empty.ValueEmpty;
 import compilerxyz.main.eval.value.eresult.TypeEResultDynamic;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordField;
@@ -15,16 +16,19 @@ import compilerxyz.prelude.util.TOrderedMap;
 
 @BuiltinFull(uniqueId = 6345L)
 public final class SourceMacroResult {
-    public final TypeSourceMacroConst func;
-    public final TypeSourceFunctionConst funcImpl;
+    private final TypeSourceMacroConst macro;
+
+    public final Value func;
+    public final Value funcImpl;
 
     public SourceMacroResult(TypeSourceMacroConst func) {
-        this.func = func;
-        this.funcImpl = new TypeSourceFunctionConst(func.data().function);
+        this.macro = func;
+        this.func = new ValueEmpty(func);
+        this.funcImpl = new ValueEmpty(new TypeSourceFunctionConst(func.data().function));
     }
 
     public void impl(StagedExprCell implBody, Opt<Type> exceptionType, Opt<String> description) {
-        var data = this.func.data();
+        var data = this.macro.data();
         var function = data.function;
         if (function.argType.optIsSome()) {
             throw new IllegalStateException("Const function already has an implementation");

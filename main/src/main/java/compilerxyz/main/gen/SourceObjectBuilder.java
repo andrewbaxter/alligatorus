@@ -6,6 +6,7 @@ import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.expr.StagedExprCell;
+import compilerxyz.main.eval.value.empty.ValueEmpty;
 import compilerxyz.main.eval.value.source_interface.InterfaceCell;
 import compilerxyz.main.eval.value.source_object.SourceDataMethodData;
 import compilerxyz.main.eval.value.source_object.SourceObjectInterfaceImplData;
@@ -18,25 +19,28 @@ import compilerxyz.prelude.util.TOrderedMap;
 
 @BuiltinFull(uniqueId = 6347L)
 public final class SourceObjectBuilder {
-    public final TypeSourceObjectDynamic type;
+    private final TypeSourceObjectDynamic object;
 
-    public final TypeSourceObjectNewDynamic new_;
+    public final Type type;
+
+    public final Value new_;
 
     public SourceObjectBuilder(TypeSourceObjectDynamic type) {
+        this.object = type;
         this.type = type;
-        this.new_ = new TypeSourceObjectNewDynamic(type);
+        this.new_ = new ValueEmpty(new TypeSourceObjectNewDynamic(type));
     }
 
     public void impl(Type inner, Opt<String> description) {
-        if (this.type.underlyingType.optIsSome()) {
+        if (this.object.underlyingType.optIsSome()) {
             throw new IllegalStateException("Object already has an impl");
         }
-        this.type.underlyingType = Opt.some(inner);
-        this.type.description = description;
+        this.object.underlyingType = Opt.some(inner);
+        this.object.description = description;
     }
 
     public SourceObjectMethodResult func(String name) {
-        var dtData = this.type;
+        var dtData = this.object;
         var method = new SourceDataMethodData(name, "_" + dtData.methods.size());
         dtData.methods.add(method);
         return new SourceObjectMethodResult(method);
@@ -63,6 +67,6 @@ public final class SourceObjectBuilder {
             throw new IllegalStateException("Implementation of methods not on the interface: " + extra);
         }
         ifaceRef.markImplemented();
-        this.type.interfaceImpls.add(new SourceObjectInterfaceImplData(ifaceRef, impls));
+        this.object.interfaceImpls.add(new SourceObjectInterfaceImplData(ifaceRef, impls));
     }
 }

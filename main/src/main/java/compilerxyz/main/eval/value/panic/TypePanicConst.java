@@ -10,12 +10,12 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("panic")
-@BuiltinFull(uniqueId = 6133L, function = true)
+@BuiltinPath(value = "panic", function = true)
+@BuiltinLight(uniqueId = 6133L)
 public record TypePanicConst() implements Aspect, Type {
 
     @Override

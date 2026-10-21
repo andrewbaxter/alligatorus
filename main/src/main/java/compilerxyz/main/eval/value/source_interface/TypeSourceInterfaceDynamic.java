@@ -235,7 +235,7 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                 .optIsSome()) {
-            var sourceRes = DynUtil.valueReg(loc, cv);
+            var sourceRes = DynUtil.valueReg(xx, loc, cv);
             if (sourceRes.hasErrors()) return sourceRes.reerr();
             var b = new JavaBytecodeBuilder(loc);
             var out = b.invokeVirtual(

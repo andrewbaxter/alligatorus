@@ -22,7 +22,7 @@ public record AspectFunctionMapGetFnDynamic(TypeMapGetFnDynamic type) implements
         var keyConverted = keyConvertedRes.requireValue("get key converted");
         var keyRes = DynUtil.materialize(xx, loc, keyConverted);
         if (keyRes.hasErrors()) return keyRes.reerr();
-        var selfRes = DynUtil.valueReg(loc, self);
+        var selfRes = DynUtil.valueReg(xx, loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var selfReg = b.reg(selfRes.requireValue("selfDyn"));

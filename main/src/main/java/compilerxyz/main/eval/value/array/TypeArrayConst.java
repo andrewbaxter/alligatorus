@@ -31,7 +31,7 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactArrayTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactArrayValueCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -40,7 +40,7 @@ import java.lang.reflect.Array;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6465L)
+@BuiltinLight(uniqueId = 6465L)
 public final class TypeArrayConst<T extends Type> implements Aspect, Type {
 
     public final T elementType;

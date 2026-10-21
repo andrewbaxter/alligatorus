@@ -14,12 +14,12 @@ import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.stream.Collectors;
 
-@BuiltinFull(uniqueId = 6101L)
+@BuiltinLight(uniqueId = 6101L)
 public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes) implements Type, Value, Aspect {
 
     @Override

@@ -19,12 +19,12 @@ import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("types.object")
-@BuiltinFull(uniqueId = 6453L)
+@BuiltinLight(uniqueId = 6453L)
 public record TypeJvmObjectDynamic() implements Type, Aspect {
 
     @Override

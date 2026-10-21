@@ -23,7 +23,7 @@ public final class AspectFieldUlongDynamicBox implements AspectField {
     @Override
     public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
         var unboxed = new TypeUlongDynamic();
-        var selfRes = DynUtil.valueReg(loc, self);
+        var selfRes = DynUtil.valueReg(xx, loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var raw = Numerics.unbox(b, NumericKind.ULONG, b.reg(selfRes.requireValue("selfDyn")));

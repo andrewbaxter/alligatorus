@@ -37,7 +37,7 @@ public record AspectFieldListBoxedDynamic<T extends Type>(TypeListBoxedDynamic<T
         return switch (spec) {
             case FieldSpec.Method m -> EResult.ok(DynUtil.methodRefOn(self, m.type()));
             case FieldSpec.Length l -> {
-                var selfRes = DynUtil.valueReg(loc, self);
+                var selfRes = DynUtil.valueReg(xx, loc, self);
                 if (selfRes.hasErrors()) yield selfRes.reerr();
                 var b = new JavaBytecodeBuilder(loc);
                 var sizeDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_INT, TList.of());

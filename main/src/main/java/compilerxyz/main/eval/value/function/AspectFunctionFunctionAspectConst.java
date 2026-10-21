@@ -68,7 +68,7 @@ public record AspectFunctionFunctionAspectConst(TypeFunctionAspectConst type) im
         var subjectConverted = subjectConvertedRes.requireValue("aspect_lookup subject convert");
         var subjectDynRes = DynUtil.materialize(xx, loc, subjectConverted);
         if (subjectDynRes.hasErrors()) return subjectDynRes.reerr();
-        var xxDynRes = DynUtil.valueReg(loc, xxCv);
+        var xxDynRes = DynUtil.valueReg(xx, loc, xxCv);
         if (xxDynRes.hasErrors()) return xxDynRes.reerr();
 
         var uniqueEntry = new EvalContext.ExternalEntry(new BindingId(), type, new External(Unique.class, auq));

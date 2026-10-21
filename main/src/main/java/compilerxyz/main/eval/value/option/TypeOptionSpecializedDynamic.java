@@ -30,13 +30,16 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
+@BuiltinLight(uniqueId = 6516L)
 public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspect, OptionDynamic {
     public final T elementType;
     public final JavaInternalName storeName;
+
     public final Unique identity;
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
 
@@ -159,7 +162,7 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
         if (cv.value().optIsSome() && typeIsEqual(xx, cv.value().optUnwrap().valueType())) {
             return EResult.ok(cv);
         }
-        var sourceRes = DynUtil.valueReg(loc, cv);
+        var sourceRes = DynUtil.valueReg(xx, loc, cv);
         if (sourceRes.hasErrors()) return sourceRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var out = b.invokeStatic(
@@ -181,7 +184,7 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
         if (twin.optIsNone()) {
             return EResult.err(loc, "Cannot convert " + typeDesc() + " to " + destType.typeDesc());
         }
-        var sourceRes = DynUtil.valueReg(loc, cv);
+        var sourceRes = DynUtil.valueReg(xx, loc, cv);
         if (sourceRes.hasErrors()) return sourceRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var out = b.invokeVirtual(

@@ -12,17 +12,18 @@ import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
-@BuiltinFull(uniqueId = 6112L)
+@BuiltinLight(uniqueId = 6112L)
 public record TypeMethodDynamic(
         Type receiver,
         IList<FunctionParam> params,
@@ -60,7 +61,7 @@ public record TypeMethodDynamic(
             return Opt.some(new AspectFunctionMethodDynamic(this));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
-            return Opt.some(AspectConsumeDynamicMethod.INSTANCE);
+            return Opt.some(new AspectConsumeDynamicMethod(JvmSort.descriptor(xx, receiver)));
         }
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(AspectBindViaTarget.INSTANCE);

@@ -18,9 +18,9 @@ public final class ScopeEntrySetter implements BindingSetter {
             return false;
         }
         entry.binding = newBinding;
-        entry.state = scope.vx.dropStateCounter.next();
+        entry.state = scope.vx.nextDropState();
         if (dropModified) {
-            entry.dropState = scope.vx.dropStateCounter.next();
+            entry.dropState = scope.vx.nextDropState();
         }
         return true;
     }

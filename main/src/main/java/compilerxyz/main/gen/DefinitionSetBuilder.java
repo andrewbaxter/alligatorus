@@ -2,6 +2,7 @@ package compilerxyz.main.gen;
 
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EvalContext;
+import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.Type;
@@ -100,12 +101,12 @@ public final class DefinitionSetBuilder {
     }
 
     static ExprContext builderContext(EvalContext vx) {
-        var builderVx = new EvalContext(vx.ix);
+        var builderVx = new EvalContext(EvalContextInternal.ix(vx));
         return new ExprContext(
                 new Scope(builderVx),
-                new TargetDynamic(),
+                new TargetDynamic(Opt.none()),
                 builderVx,
-                vx.ix.importState,
+                EvalContextInternal.ix(vx).importState,
                 Opt.some(new TypeStringConst()));
     }
 

@@ -28,14 +28,17 @@ import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectSet;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
+@BuiltinLight(uniqueId = 6499L)
 public final class TypeListSpecializedDynamic<T extends Type> implements Aspect, ListDynamic {
 
     public final T elementType;
     public final JavaInternalName storeName;
+
     public final Unique identity;
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
 

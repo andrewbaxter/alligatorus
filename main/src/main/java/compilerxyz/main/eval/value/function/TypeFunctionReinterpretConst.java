@@ -13,12 +13,12 @@ import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("reinterpret")
-@BuiltinFull(uniqueId = 6466L, function = true)
+@BuiltinPath(value = "reinterpret", function = true)
+@BuiltinLight(uniqueId = 6466L)
 public record TypeFunctionReinterpretConst() implements Aspect, Type {
 
     @Override

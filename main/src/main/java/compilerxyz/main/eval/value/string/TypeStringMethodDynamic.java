@@ -9,16 +9,17 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.TypeImmutable;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
-import compilerxyz.main.eval.aspect.AspectConsumeDynamicObject;
 import compilerxyz.main.eval.aspect.AspectLookup;
+import compilerxyz.main.eval.dynamic.JvmSort;
+import compilerxyz.main.eval.value.function.AspectConsumeDynamicMethod;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6320L)
+@BuiltinLight(uniqueId = 6320L)
 public record TypeStringMethodDynamic(String methodName) implements Aspect, TypeImmutable {
 
     @Override
@@ -38,7 +39,7 @@ public record TypeStringMethodDynamic(String methodName) implements Aspect, Type
             return Opt.some(new AspectFunctionStringMethodDynamic(this));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
-            return Opt.some(AspectConsumeDynamicObject.INSTANCE);
+            return Opt.some(new AspectConsumeDynamicMethod(JvmSort.descriptor(xx, new TypeStringDynamic())));
         }
         if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);

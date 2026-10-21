@@ -30,12 +30,12 @@ import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactTypeOfTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6481L)
+@BuiltinLight(uniqueId = 6481L)
 public record TypeTypeMap<K extends Type, V extends Type>(TypeMapDynamic<K, V> type) implements Aspect, Type {
 
     @Override

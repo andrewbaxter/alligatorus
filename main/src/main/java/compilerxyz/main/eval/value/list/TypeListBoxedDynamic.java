@@ -43,14 +43,14 @@ import compilerxyz.main.gen.GenLists;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactListTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6117L)
+@BuiltinLight(uniqueId = 6117L)
 public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListDynamic {
 
     public final T elementType;

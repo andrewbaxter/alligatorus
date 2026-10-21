@@ -29,12 +29,12 @@ import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6148L)
+@BuiltinLight(uniqueId = 6148L)
 public record TypeUniqueConst() implements Aspect, Type {
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {

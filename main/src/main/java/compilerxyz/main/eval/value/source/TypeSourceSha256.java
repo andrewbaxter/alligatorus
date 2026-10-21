@@ -11,12 +11,12 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("source.sha256")
-@BuiltinFull(uniqueId = 6159L, function = true)
+@BuiltinPath(value = "source.sha256", function = true)
+@BuiltinLight(uniqueId = 6159L)
 public record TypeSourceSha256() implements Aspect, Type {
 
     @Override

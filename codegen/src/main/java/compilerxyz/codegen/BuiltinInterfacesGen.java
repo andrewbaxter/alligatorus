@@ -24,7 +24,7 @@ public final class BuiltinInterfacesGen {
             Opt<String> nestedSimpleName,
             boolean identityToken,
             boolean lift,
-            boolean function) {
+            TList<String> permitted) {
         public BuiltinSpec(
                 String simpleName,
                 String pkg,
@@ -32,7 +32,8 @@ public final class BuiltinInterfacesGen {
                 long identityId,
                 boolean isAspect,
                 TList<BuiltinMethodEmit.Method> methods,
-                TList<DataField> dataFields) {
+                TList<DataField> dataFields,
+                TList<String> permitted) {
             this(
                     simpleName,
                     pkg,
@@ -47,7 +48,7 @@ public final class BuiltinInterfacesGen {
                     Opt.none(),
                     false,
                     true,
-                    false);
+                    permitted);
         }
     }
 
@@ -79,6 +80,8 @@ public final class BuiltinInterfacesGen {
     public static final ClassName OBJECT_METHOD = ClassName.get("compilerxyz.main.eval.value.object", "ObjectMethod");
     public static final ClassName OBJECT_DATA_FIELD =
             ClassName.get("compilerxyz.main.eval.value.object", "ObjectDataField");
+    public static final ClassName OBJECT_LIFT_KIND =
+            ClassName.get("compilerxyz.main.eval.value.object", "ObjectLiftKind");
     public static final ClassName OBJECT_DROP_KIND =
             ClassName.get("compilerxyz.main.eval.value.object", "ObjectDropKind");
     public static final ClassName OBJECT_ASPECT_SOURCE =

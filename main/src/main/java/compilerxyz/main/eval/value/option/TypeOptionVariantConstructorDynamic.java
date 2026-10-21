@@ -17,11 +17,11 @@ import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6132L, function = true)
+@BuiltinLight(uniqueId = 6132L)
 public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSome) implements Aspect, Type {
 
     @Override

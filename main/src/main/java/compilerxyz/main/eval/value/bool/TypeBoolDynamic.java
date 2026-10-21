@@ -31,12 +31,12 @@ import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("types.bool")
-@BuiltinFull(uniqueId = 6103L)
+@BuiltinLight(uniqueId = 6103L)
 public record TypeBoolDynamic() implements Aspect, Type {
 
     @Override

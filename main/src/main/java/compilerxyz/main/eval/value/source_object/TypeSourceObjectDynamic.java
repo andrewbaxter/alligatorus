@@ -45,7 +45,7 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetObjectCodec;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -53,7 +53,7 @@ import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6020L)
+@BuiltinLight(uniqueId = 6020L)
 public final class TypeSourceObjectDynamic implements Aspect, Type {
 
     public DefSetId setId;
@@ -69,10 +69,11 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
 
     public final TList<SourceDataMethodData> methods;
     public final TList<SourceObjectInterfaceImplData> interfaceImpls;
+
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
     public final ArtifactSupport.ArtifactIdHolder newArtifactIdCell = new ArtifactSupport.ArtifactIdHolder();
-
     public Opt<JavaClassCompiled> compiledClass = Opt.none();
+
     public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
 
     public ArtifactExporter instanceExporter() {
@@ -214,7 +215,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                 }
             }
             if (hasTypeImpl) {
-                var sourceCodeRes = DynUtil.valueReg(loc, cv);
+                var sourceCodeRes = DynUtil.valueReg(xx, loc, cv);
                 if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
                 return EResult.ok(DynUtil.regToValue(sourceCodeRes.requireValue("sourceCode"), GenType.dynamicType()));
             }
@@ -222,7 +223,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.CODE_IDENTITY).optIsSome()) {
             for (var impl : interfaceImpls) {
                 if (impl.interface_.identity.equals(GenTrivialIdentityAspects.CODE_DYN_IDENTITY)) {
-                    var codeSourceRes = DynUtil.valueReg(loc, cv);
+                    var codeSourceRes = DynUtil.valueReg(xx, loc, cv);
                     if (codeSourceRes.hasErrors()) return codeSourceRes.reerr();
                     var b = new JavaBytecodeBuilder(loc);
                     var out = b.invokeStatic(
@@ -240,7 +241,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                     resultType = frozen.builtinType.optUnwrap();
                 }
                 if (resultType != null) {
-                    var sourceCodeRes = DynUtil.valueReg(loc, cv);
+                    var sourceCodeRes = DynUtil.valueReg(xx, loc, cv);
                     if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
                     return EResult.ok(DynUtil.regToValue(sourceCodeRes.requireValue("sourceCode"), resultType));
                 }
@@ -249,7 +250,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
             }
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.ASPECT_IDENTITY).optIsSome()) {
-            var sourceCodeRes = DynUtil.valueReg(loc, cv);
+            var sourceCodeRes = DynUtil.valueReg(xx, loc, cv);
             if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
             return EResult.ok(DynUtil.regToValue(sourceCodeRes.requireValue("sourceCode"), GenAspect.dynamicType()));
         }

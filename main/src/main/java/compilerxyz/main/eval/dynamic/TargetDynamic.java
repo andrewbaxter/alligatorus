@@ -51,7 +51,16 @@ public final class TargetDynamic implements Target {
     private static final JavaInternalName INTNAME_DYN_EXCEPTION = JavaInternalName.fromClass(DynException.class);
     private static final JavaDataDescriptor DESC_THROWABLE = JavaDataDescriptor.fromClass(Throwable.class);
 
-    public TargetDynamic() {}
+    private final Opt<JavaInternalName> evalRoot;
+
+    public TargetDynamic(Opt<JavaInternalName> evalRoot) {
+        this.evalRoot = evalRoot;
+    }
+
+    public static JavaInternalName evalRootOf(ExprContext xx) {
+        if (xx.target instanceof TargetDynamic t && t.evalRoot.optIsSome()) return t.evalRoot.optUnwrap();
+        throw new AssertionError("JVM eval root requested outside a JVM eval root");
+    }
 
     @Override
     public EResult<Code> targetDrop(ExprContext xx, QExprId loc, CodeValue cv) {
@@ -179,7 +188,7 @@ public final class TargetDynamic implements Target {
                 || DynUtil.sourceOf(sourced.value().optUnwrap()).optIsNone()) {
             return EResult.ok(new SourcedPart(Opt.none(), sourced));
         }
-        var regRes = DynUtil.valueReg(loc, sourced);
+        var regRes = DynUtil.valueReg(xx, loc, sourced);
         if (regRes.hasErrors()) return regRes.reerr();
         return EResult.ok(new SourcedPart(Opt.some(b.reg(regRes.requireValue("targetSourceValue part reg"))), sourced));
     }
@@ -198,7 +207,7 @@ public final class TargetDynamic implements Target {
     public EResult<Code> targetExit(ExprContext xx, QExprId loc, JumpKey dest, Opt<Type> argument, CodeValue value) {
         var b = new JavaBytecodeBuilder(loc);
         if (argument.optIsSome()) {
-            var valueRes = DynUtil.valueReg(loc, value);
+            var valueRes = DynUtil.valueReg(xx, loc, value);
             if (valueRes.hasErrors()) return valueRes.reerr();
             b.jump(dest, b.reg(valueRes.requireValue("targetExit value")));
         } else {
@@ -480,12 +489,12 @@ public final class TargetDynamic implements Target {
     }
 
     private static Opt<TList<ExprErr>> emitBranchBody(
-            QExprId loc, JavaBytecodeBuilder b, CodeValue body, ArmsShape shape, JumpKey endKey) {
+            ExprContext xx, QExprId loc, JavaBytecodeBuilder b, CodeValue body, ArmsShape shape, JumpKey endKey) {
         if (body.controlEnded()) {
             return b.addCode(loc, body.code());
         }
         if (shape.carries()) {
-            var valueRes = DynUtil.valueReg(loc, body);
+            var valueRes = DynUtil.valueReg(xx, loc, body);
             if (valueRes.hasErrors()) return valueRes.errorsOpt();
             b.jump(endKey, b.reg(valueRes.requireValue("branch value")));
             return Opt.none();
@@ -563,12 +572,12 @@ public final class TargetDynamic implements Target {
             var cond = b.reg(condRes.requireValue("targetIf condition"));
             var nextKey = new JumpKey();
             b.branch(Opcodes.IFEQ, nextKey, cond);
-            var bodyRes = emitBranchBody(loc, b, arms.get(i), shape, endKey);
+            var bodyRes = emitBranchBody(xx, loc, b, arms.get(i), shape, endKey);
             if (bodyRes.optIsSome()) return EResult.errs(bodyRes.optUnwrap());
             b.land(nextKey);
         }
         if (else_.optIsSome()) {
-            var elseRes = emitBranchBody(loc, b, arms.get(conditions.size()), shape, endKey);
+            var elseRes = emitBranchBody(xx, loc, b, arms.get(conditions.size()), shape, endKey);
             if (elseRes.optIsSome()) return EResult.errs(elseRes.optUnwrap());
         }
         return EResult.ok(finishArms(xx, b, shape, endKey));
@@ -597,12 +606,12 @@ public final class TargetDynamic implements Target {
             if (testRes.hasErrors()) return testRes.reerr();
             var test = b.reg(testRes.requireValue("targetMatch variant test"));
             b.branch(Opcodes.IFEQ, nextCaseKey, test);
-            var bodyRes = emitBranchBody(loc, b, arms.get(ci), shape, endKey);
+            var bodyRes = emitBranchBody(xx, loc, b, arms.get(ci), shape, endKey);
             if (bodyRes.optIsSome()) return EResult.errs(bodyRes.optUnwrap());
             b.land(nextCaseKey);
         }
         if (fallback.optIsSome()) {
-            var fbRes = emitBranchBody(loc, b, arms.get(cases.size()), shape, endKey);
+            var fbRes = emitBranchBody(xx, loc, b, arms.get(cases.size()), shape, endKey);
             if (fbRes.optIsSome()) return EResult.errs(fbRes.optUnwrap());
         } else {
             var err = b.newInstance(

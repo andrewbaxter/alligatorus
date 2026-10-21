@@ -34,7 +34,7 @@ public record AspectFieldEResultDynamic<T extends Type>(TypeEResultDynamic<T> ty
                     case ConstKey.Uint u -> Opt.<ConstKey.Str>none();
                 };
         if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("has_errors")) {
-            var selfRes = DynUtil.valueReg(loc, self);
+            var selfRes = DynUtil.valueReg(xx, loc, self);
             if (selfRes.hasErrors()) return selfRes.reerr();
             var b = new JavaBytecodeBuilder(loc);
             var out =
@@ -42,7 +42,7 @@ public record AspectFieldEResultDynamic<T extends Type>(TypeEResultDynamic<T> ty
             return EResult.ok(DynUtil.regToValue(b.code(), out, new TypeBoolDynamic()));
         }
         if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("value")) {
-            var selfRes = DynUtil.valueReg(loc, self);
+            var selfRes = DynUtil.valueReg(xx, loc, self);
             if (selfRes.hasErrors()) return selfRes.reerr();
             var b = new JavaBytecodeBuilder(loc);
             var selfReg = b.reg(selfRes.requireValue("selfDyn"));

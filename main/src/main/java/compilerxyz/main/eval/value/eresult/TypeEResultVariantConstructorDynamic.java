@@ -11,12 +11,11 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6106L, function = true)
+@BuiltinLight(uniqueId = 6106L)
 public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind) implements Aspect, Type {
-
     public enum Kind {
         OK,
         ERR,

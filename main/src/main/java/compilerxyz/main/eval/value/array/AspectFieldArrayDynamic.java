@@ -32,7 +32,7 @@ public record AspectFieldArrayDynamic<T extends Type>(TypeArrayDynamic<T> type) 
         }
         return switch (specOpt.optUnwrap()) {
             case FieldSpec.Length l -> {
-                var selfRes = DynUtil.valueReg(loc, self);
+                var selfRes = DynUtil.valueReg(xx, loc, self);
                 if (selfRes.hasErrors()) yield selfRes.reerr();
                 var b = new JavaBytecodeBuilder(loc);
                 var out = type.length(b, b.reg(selfRes.requireValue("selfDyn")));

@@ -1,6 +1,7 @@
 package compilerxyz.main.eval;
 
 import compilerxyz.main.artifact.ArtifactIdSource;
+import compilerxyz.main.eval.dynamic.CompileImportContextDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.GlobalContext;
@@ -9,8 +10,6 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 import compilerxyz.prelude.util.TSet;
-import java.util.HashMap;
-import java.util.Map;
 
 public final class CompileImportContext {
     public Opt<Binding> builtinScopeRootBinding = Opt.none();
@@ -29,9 +28,7 @@ public final class CompileImportContext {
     public final TList<CompileId> localDependencies = new TList<>();
     public final TList<Compiles.LocalMeta> localData = new TList<>();
 
-    public Opt<DefinitionSetClassLoader> classLoader = Opt.none();
-
-    public final Map<String, Class<?>> compositeCache = new HashMap<>();
+    public final CompileImportContextDynamic dynamic = new CompileImportContextDynamic();
 
     public CompileImportContext(
             GlobalContext gx,

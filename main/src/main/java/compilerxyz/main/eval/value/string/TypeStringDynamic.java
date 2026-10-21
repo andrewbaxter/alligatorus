@@ -31,14 +31,14 @@ import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.IMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
 
 @BuiltinPath("types.string")
-@BuiltinFull(uniqueId = 6145L)
+@BuiltinLight(uniqueId = 6145L)
 public record TypeStringDynamic() implements Aspect, Type {
 
     static final IMap<ConstKey, TypeStringMethodDynamic> METHOD_FIELDS = IMap.ofEntries(

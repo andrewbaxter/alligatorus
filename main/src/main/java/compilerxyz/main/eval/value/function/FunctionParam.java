@@ -5,11 +5,13 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.eval.value.tuple.Tuple;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 
+@BuiltinFull(uniqueId = 6493L)
 public record FunctionParam(String name, Type type) {
 
     public static Type argType(TList<FunctionParam> params) {

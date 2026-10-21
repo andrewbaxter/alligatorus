@@ -67,7 +67,7 @@ public record AspectDropDynamicMapDynamic<K extends Type, V extends Type>(TypeMa
         var entrySetMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(setName), TList.of());
         var iterMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
         var setup = new JavaBytecodeBuilder(loc);
-        var entries = setup.invokeVirtual(mapName, "entrySet", entrySetMethod, DynUtil.sourceReg(setup, vd.source()));
+        var entries = setup.invokeVirtual(mapName, "entrySet", entrySetMethod, DynUtil.sourceReg(xx, setup, vd));
         var iteratorSetup = setup.code(setup.invokeInterface(setName, "iterator", iterMethod, entries));
 
         var bind = new JavaBytecodeBuilder(loc);

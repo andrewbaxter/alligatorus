@@ -33,7 +33,7 @@ public record AspectFieldObjectDynamic(TypeObjectDynamic type) implements Aspect
             }
         }
         var keyStr = ckStr.value();
-        var dynRes = DynUtil.valueReg(loc, self);
+        var dynRes = DynUtil.valueReg(xx, loc, self);
         if (dynRes.hasErrors()) return dynRes.reerr();
         for (var f : type.dataFields()) {
             if (f.langName().equals(keyStr)) {

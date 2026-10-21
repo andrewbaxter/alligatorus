@@ -42,7 +42,7 @@ public record AspectFunctionCodeTargetCastFnDynamic(TypeCodeTargetCastFnDynamic 
                     "code.target.cast: destination type " + destType.typeDesc()
                             + " has no distinguishing host class; cast to a concrete object type");
         }
-        var selfRes = DynUtil.valueReg(loc, self);
+        var selfRes = DynUtil.valueReg(xx, loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var locEntry = new EvalContext.ExternalEntry(
                 new BindingId(), GenQExprId.dynamicType(), new External(QExprId.class, loc));

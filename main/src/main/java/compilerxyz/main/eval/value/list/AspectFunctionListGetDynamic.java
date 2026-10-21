@@ -25,7 +25,7 @@ public record AspectFunctionListGetDynamic(TypeListGetDynamic type) implements A
         if (indexConvertedRes.hasErrors()) return indexConvertedRes.reerr();
         var indexRes = DynUtil.materialize(xx, loc, indexConvertedRes.requireValue("get index converted"));
         if (indexRes.hasErrors()) return indexRes.reerr();
-        var selfRes = DynUtil.valueReg(loc, self);
+        var selfRes = DynUtil.valueReg(xx, loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var list = b.reg(selfRes.requireValue("selfDyn"));

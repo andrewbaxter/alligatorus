@@ -34,7 +34,7 @@ public record AspectFieldMapEntryDynamic(TypeMapEntryDynamic type) implements As
             return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on map entry");
         }
         var spec = specOpt.optUnwrap();
-        var selfRes = DynUtil.valueReg(loc, self);
+        var selfRes = DynUtil.valueReg(xx, loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var out = b.invokeInterface(

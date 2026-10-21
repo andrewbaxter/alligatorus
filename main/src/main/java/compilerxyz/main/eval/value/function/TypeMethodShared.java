@@ -34,7 +34,7 @@ public final class TypeMethodShared {
             JavaMethodDescriptor descriptor,
             boolean isInterface,
             boolean needsEvalContext) {
-        var receiverDynRes = DynUtil.valueReg(loc, self);
+        var receiverDynRes = DynUtil.valueReg(xx, loc, self);
         if (receiverDynRes.hasErrors()) return receiverDynRes.reerr();
         EResult<DynUtil.Positional> argsDynRes;
         if (DynUtil.zeroArgSignature(xx, argType)) {

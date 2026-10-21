@@ -88,12 +88,12 @@ public final class DefinitionSet implements ExportableObject {
             var depLoader = depResult.requireValue("DefinitionSet::install dependency loader");
             depLoaders.add(depLoader);
         }
-        if (xx.vx.ix.classLoader.optIsNone()) {
-            xx.vx.ix.classLoader = Opt.some(new DefinitionSetClassLoader(
-                    xx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), depLoaders));
+        if (EvalContextInternal.ix(xx.vx).dynamic.classLoader.optIsNone()) {
+            EvalContextInternal.ix(xx.vx).dynamic.classLoader = Opt.some(new DefinitionSetClassLoader(
+                    EvalContextInternal.ix(xx.vx).gx, DefinitionSetClassLoader.class.getClassLoader(), depLoaders));
         }
-        var loader = xx.vx.ix.classLoader.optUnwrap();
-        if (!xx.vx.ix.installedDefSets.add(defSetId)) {
+        var loader = EvalContextInternal.ix(xx.vx).dynamic.classLoader.optUnwrap();
+        if (!EvalContextInternal.ix(xx.vx).installedDefSets.add(defSetId)) {
             return EResult.ok(loader);
         }
         if (!finished) {

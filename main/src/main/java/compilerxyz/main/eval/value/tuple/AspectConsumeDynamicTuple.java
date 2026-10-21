@@ -95,7 +95,7 @@ public record AspectConsumeDynamicTuple(Tuple type) implements AspectConsumeDyna
                 lowered.drainInto(errors);
                 continue;
             }
-            var loweredReg = DynUtil.valueReg(loc, lowered.requireValue("Tuple::toDynamic element lowered"));
+            var loweredReg = DynUtil.valueReg(xx, loc, lowered.requireValue("Tuple::toDynamic element lowered"));
             if (loweredReg.hasErrors()) {
                 loweredReg.drainInto(errors);
                 continue;

@@ -40,7 +40,7 @@ import compilerxyz.main.safejson.JsonValueNumberFloat;
 import compilerxyz.main.safejson.JsonValueNumberInt;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
@@ -48,7 +48,7 @@ import compilerxyz.prelude.util.TOrderedMap;
 import java.util.function.Function;
 
 @BuiltinPath("types.unique")
-@BuiltinFull(uniqueId = 6003L)
+@BuiltinLight(uniqueId = 6003L)
 public record TypeUniqueDynamic() implements Aspect, Type {
 
     @Override

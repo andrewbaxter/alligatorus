@@ -56,7 +56,7 @@ public record AspectFunctionListSetDynamic(TypeListSetDynamic type) implements A
         if (valueConvertedRes.hasErrors()) return valueConvertedRes.reerr();
         var valueDynRes = DynUtil.materialize(xx, loc, valueConvertedRes.requireValue("set value converted"));
         if (valueDynRes.hasErrors()) return valueDynRes.reerr();
-        var selfRes = DynUtil.valueReg(loc, self);
+        var selfRes = DynUtil.valueReg(xx, loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var list = b.reg(selfRes.requireValue("selfDyn"));

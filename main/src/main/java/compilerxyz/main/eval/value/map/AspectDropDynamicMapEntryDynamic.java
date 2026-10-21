@@ -39,7 +39,7 @@ public record AspectDropDynamicMapEntryDynamic(TypeMapEntryDynamic type) impleme
                     TypeMapEntryDynamic.MAP_ENTRY_INAME,
                     child.getter(),
                     descObjNoArgs,
-                    DynUtil.sourceReg(access, vd.source()));
+                    DynUtil.sourceReg(xx, access, vd));
             var childCv = DynUtil.regToValue(access.code(), raw, child.type());
             var childDropRes = dropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, childCv);
             if (childDropRes.hasErrors()) return childDropRes.reerr();

@@ -12,10 +12,10 @@ import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6119L, function = true)
+@BuiltinLight(uniqueId = 6119L)
 public record TypeListNewDynamic(Type elementType) implements Aspect, Type {
 
     @Override

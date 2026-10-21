@@ -10,7 +10,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.EvalRootEmitter;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
+import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.AspectTuple;
@@ -79,7 +79,7 @@ public record AspectFunctionMapConstructorConst(TypeMapConstructorConst type) im
             var keyReg = b.reg(keyMat.requireValue("map constructor key"));
             var valueReg = b.reg(valueMat.requireValue("map constructor value"));
             var xxReg = b.getStatic(
-                    JavaInternalName.of(xx.vx.evalRootInternalName.optUnwrap()),
+                    TargetDynamic.evalRootOf(xx),
                     EvalRootEmitter.EXPR_CONTEXT_FIELD,
                     EvalRootEmitter.DESC_EXPR_CONTEXT);
             var out = b.invokeStatic(GenCodegenDescriptors.DYN_RUNTIME_MAP_TYPE, xxReg, keyReg, valueReg);

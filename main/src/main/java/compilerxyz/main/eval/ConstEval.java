@@ -691,14 +691,14 @@ public final class ConstEval {
                     var elemBind = elemBindRes.requireValue("Foreach: element bind");
                     var elementBinding = elemBind.binding();
                     var bodyScope = xx.scope.fork();
-                    var pscId = bodyScope.vx.dropStateCounter.next();
+                    var pscId = bodyScope.vx.nextDropState();
                     var iterEntry = new ScopeLevel.Entry(
                             Opt.<ConstKey>none(),
                             loopBinding,
                             true,
                             pscId,
                             pscId,
-                            new ScopeLevel.Emission(xx.vx.emissionCounter.next()));
+                            new ScopeLevel.Emission(xx.vx.nextEmission()));
                     bodyScope.levels.add(iterEntry);
                     var elemEntry = bodyScope.pushNamed(ekOpt.optUnwrap(), elementBinding);
                     var bodyXx = new ExprContext(bodyScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
@@ -1275,16 +1275,14 @@ public final class ConstEval {
                 }
                 ScopeLevel.Finally finallyLevel = null;
                 if (e.finallyBlock().optIsSome()) {
-                    finallyLevel = new ScopeLevel.Finally(
-                            new TList<>(), new ScopeLevel.Emission(xx.vx.emissionCounter.next()));
+                    finallyLevel = new ScopeLevel.Finally(new TList<>(), new ScopeLevel.Emission(xx.vx.nextEmission()));
                     xx.scope.levels.add(finallyLevel);
                 }
                 ScopeLevel.Catch catchLevel = null;
                 JumpKey handlerKey = null;
                 if (e.catchClause().optIsSome()) {
                     handlerKey = new JumpKey();
-                    catchLevel =
-                            new ScopeLevel.Catch(handlerKey, new ScopeLevel.Emission(xx.vx.emissionCounter.next()));
+                    catchLevel = new ScopeLevel.Catch(handlerKey, new ScopeLevel.Emission(xx.vx.nextEmission()));
                     xx.scope.levels.add(catchLevel);
                 }
                 var bodyXx = new ExprContext(xx.scope.fork(), xx.target, xx.vx, xx.importState, bodyExcType);

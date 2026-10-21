@@ -15,6 +15,4 @@ public @interface BuiltinFull {
     long identityId() default 0;
 
     boolean lift() default true;
-
-    boolean function() default false;
 }

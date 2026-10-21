@@ -2,6 +2,7 @@ package compilerxyz.main.artifact;
 
 import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
@@ -28,11 +29,11 @@ public final class ArtifactSupport {
             }
             case Artifact.Ref r -> {
                 id = Opt.some(r.id());
-                var cached = xx.vx.ix.deserializedArtifacts.getOpt(r.id());
+                var cached = EvalContextInternal.ix(xx.vx).deserializedArtifacts.getOpt(r.id());
                 if (cached.optIsSome()) {
                     return EResult.ok(cached.optUnwrap());
                 }
-                var got = xx.vx.ix.gx.artifacts.artifactsGet(r.id());
+                var got = EvalContextInternal.ix(xx.vx).gx.artifacts.artifactsGet(r.id());
                 switch (got) {
                     case Result.Err<ArtifactBody, String> err -> {
                         return EResult.err(loc, err.error());
@@ -64,11 +65,11 @@ public final class ArtifactSupport {
             }
             case ArtifactBodyExporter.SourceRef sr -> {
                 Object exporterAny;
-                var cached = xx.vx.ix.deserializedArtifacts.getOpt(sr.id());
+                var cached = EvalContextInternal.ix(xx.vx).deserializedArtifacts.getOpt(sr.id());
                 if (cached.optIsSome()) {
                     exporterAny = cached.optUnwrap();
                 } else {
-                    var got = xx.vx.ix.gx.artifacts.artifactsGet(sr.id());
+                    var got = EvalContextInternal.ix(xx.vx).gx.artifacts.artifactsGet(sr.id());
                     ArtifactBody gotBody;
                     switch (got) {
                         case Result.Err<ArtifactBody, String> err -> {
@@ -94,8 +95,9 @@ public final class ArtifactSupport {
         if (cell.id().optIsSome()) {
             return EResult.ok(new Artifact.Ref(cell.id().optUnwrap()));
         }
-        var artifacts = xx.vx.ix.gx.artifacts;
-        var id = artifacts.artifactsReserveId(new CompileId(xx.vx.ix.importState, xx.vx.ix.sourceId));
+        var artifacts = EvalContextInternal.ix(xx.vx).gx.artifacts;
+        var id = artifacts.artifactsReserveId(
+                new CompileId(EvalContextInternal.ix(xx.vx).importState, EvalContextInternal.ix(xx.vx).sourceId));
         cell.set(id);
         var bodyRes = produce.get();
         if (bodyRes.hasErrors()) return bodyRes.reerr();
@@ -127,7 +129,9 @@ public final class ArtifactSupport {
             case Result.Ok<ImportIndependentResult, String> ok -> triple = ok.value();
         }
         if (triple.early().optIsSome()) {
-            xx.vx.ix.deserializedArtifacts.put(id, triple.early().optUnwrap());
+            EvalContextInternal.ix(xx.vx)
+                    .deserializedArtifacts
+                    .put(id, triple.early().optUnwrap());
         }
         var errors = new TList<ExprErr>();
         for (var dep : triple.dependencies()) {
@@ -135,7 +139,7 @@ public final class ArtifactSupport {
             depRes.drainInto(errors);
         }
         var value = triple.finalizer().finalizerRun(xx, loc);
-        xx.vx.ix.deserializedArtifacts.put(id, value);
+        EvalContextInternal.ix(xx.vx).deserializedArtifacts.put(id, value);
         return errors.isEmpty() ? EResult.ok(value) : EResult.mixed(value, errors);
     }
 
@@ -158,13 +162,13 @@ public final class ArtifactSupport {
     }
 
     private static EResult<Object> lookupRef(ExprContext xx, QExprId loc, ArtifactIdSource id) {
-        var cached = xx.vx.ix.deserializedArtifacts.getOpt(id);
+        var cached = EvalContextInternal.ix(xx.vx).deserializedArtifacts.getOpt(id);
         if (cached.optIsSome()) {
             return EResult.ok(cached.optUnwrap());
         }
         var cachedIds = new TList<ArtifactIdSource>();
 
-        for (var entry : xx.vx.ix.deserializedArtifacts.entrySet()) {
+        for (var entry : EvalContextInternal.ix(xx.vx).deserializedArtifacts.entrySet()) {
             cachedIds.add(entry.getKey());
         }
         return EResult.err(

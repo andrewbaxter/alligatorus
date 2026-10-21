@@ -13,12 +13,12 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("eval.aspect_lookup")
-@BuiltinFull(uniqueId = 6108L, function = true)
+@BuiltinPath(value = "eval.aspect_lookup", function = true)
+@BuiltinLight(uniqueId = 6108L)
 public record TypeFunctionAspectConst() implements Aspect, Type {
 
     static final JavaInternalName INTNAME_TYPE = JavaInternalName.fromClass(Type.class);

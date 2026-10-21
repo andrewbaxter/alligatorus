@@ -30,11 +30,11 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6190L)
+@BuiltinLight(uniqueId = 6190L)
 @BuiltinPath("types.uint_box")
 public record TypeUintDynamicBox() implements Aspect, Type {
 
@@ -101,7 +101,7 @@ public record TypeUintDynamicBox() implements Aspect, Type {
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         var unboxedCast = Numerics.castTo(xx, loc, cv, NumericKind.UINT, new TypeUintDynamic());
         if (unboxedCast.hasErrors()) return unboxedCast.reerr();
-        var castRes = DynUtil.valueReg(loc, unboxedCast.requireValue("TypeUintDynamicBox::typeCastFrom cast"));
+        var castRes = DynUtil.valueReg(xx, loc, unboxedCast.requireValue("TypeUintDynamicBox::typeCastFrom cast"));
         if (castRes.hasErrors()) return castRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var boxed = Numerics.box(b, NumericKind.UINT, b.reg(castRes.requireValue("cast")));
@@ -111,7 +111,7 @@ public record TypeUintDynamicBox() implements Aspect, Type {
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         if (destType.typeIsEqual(xx, this)) return EResult.ok(cv);
-        var selfRes = DynUtil.valueReg(loc, cv);
+        var selfRes = DynUtil.valueReg(xx, loc, cv);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var raw = Numerics.unbox(b, NumericKind.UINT, b.reg(selfRes.requireValue("selfDyn")));

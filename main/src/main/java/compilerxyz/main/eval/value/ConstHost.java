@@ -4,6 +4,7 @@ import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalContext;
+import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.External;
 import compilerxyz.main.eval.QExprId;
@@ -59,8 +60,11 @@ public final class ConstHost {
                         .getClass();
             default -> {
                 var name = d.substring(1, d.length() - 1).replace('/', '.');
-                ClassLoader loader = xx.vx.ix.classLoader.optIsSome()
-                        ? xx.vx.ix.classLoader.optUnwrap()
+                ClassLoader loader = EvalContextInternal.ix(xx.vx)
+                                .dynamic
+                                .classLoader
+                                .optIsSome()
+                        ? EvalContextInternal.ix(xx.vx).dynamic.classLoader.optUnwrap()
                         : DynRuntime.class.getClassLoader();
                 try {
                     yield Class.forName(name, false, loader);

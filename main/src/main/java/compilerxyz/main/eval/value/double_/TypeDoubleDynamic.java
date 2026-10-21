@@ -68,13 +68,13 @@ import compilerxyz.main.gen.GenAspectOperatorXor;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.IMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
 
-@BuiltinFull(uniqueId = 6175L)
+@BuiltinLight(uniqueId = 6175L)
 @BuiltinPath("types.double")
 public record TypeDoubleDynamic() implements Aspect, Type {
 

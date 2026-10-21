@@ -83,7 +83,14 @@ public final class GenMain {
         return files;
     }
 
+    private static final ClassName OBJECT_UNION_VARIANT =
+            ClassName.get("compilerxyz.main.eval.value.object", "ObjectUnionVariant");
+    private static final ClassName CONST_KEY_STR = ClassName.get("compilerxyz.main.eval", "ConstKey", "Str");
+    private static final ClassName JAVA_INTERNAL_NAME =
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName");
+
     public static void main(String[] args) throws IOException {
+        var fieldErrors = new TList<String>();
         if (args.length != 3) {
             throw new IllegalArgumentException(
                     "Expected three args: output source root, runtime source root, util source root");
@@ -339,6 +346,29 @@ public final class GenMain {
                                                 true,
                                                 false));
                                     }
+                                    var permitted = new TList<String>();
+                                    if (coid.hasModifier(com.github.javaparser.ast.Modifier.Keyword.SEALED)) {
+                                        for (var t : coid.getPermittedTypes()) permitted.add(t.getNameWithScope());
+                                        if (permitted.isEmpty()) {
+                                            for (var t : cu.findAll(TypeDeclaration.class)) {
+                                                var implemented = t instanceof ClassOrInterfaceDeclaration c
+                                                        ? c.getImplementedTypes()
+                                                        : t instanceof RecordDeclaration r
+                                                                ? r.getImplementedTypes()
+                                                                : null;
+                                                if (implemented == null) continue;
+                                                for (var it : implemented) {
+                                                    if (!it.getNameAsString().equals(simpleName)) continue;
+                                                    var nested =
+                                                            coid.getMembers().contains(t);
+                                                    permitted.add(
+                                                            nested
+                                                                    ? simpleName + "." + t.getNameAsString()
+                                                                    : t.getNameAsString());
+                                                }
+                                            }
+                                        }
+                                    }
                                     {
                                         extractBuiltinSpecInterface = Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
                                                 simpleName,
@@ -347,7 +377,8 @@ public final class GenMain {
                                                 identityId,
                                                 isAspect,
                                                 methods,
-                                                new TList<BuiltinInterfacesGen.DataField>()));
+                                                new TList<BuiltinInterfacesGen.DataField>(),
+                                                permitted));
                                         break _extractBuiltinSpecInterface;
                                     }
                                 }
@@ -504,11 +535,13 @@ public final class GenMain {
                             "var trivialIdentityAspects = new $T<$T>()",
                             BuiltinInterfacesGen.TLIST,
                             BuiltinInterfacesGen.UNIQUE);
+                    var liftKind =
+                            !spec.lift() ? "NONE" : interfaceRef.equals(BuiltinInterfacesGen.VALUE) ? "SELF" : "OBJECT";
                     if (spec.isAspect()) {
                         b.addStatement("trivialIdentityAspects.add($T.IdentityId)", self);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)), false, true, false)",
+                                        + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)), false, $T.OBJECT)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -519,7 +552,8 @@ public final class GenMain {
                                 BuiltinInterfacesGen.OBJECT_ASPECT_SOURCE,
                                 BuiltinInterfacesGen.OBJECT_ASPECT_SOURCE_STATIC,
                                 self,
-                                self);
+                                self,
+                                BuiltinInterfacesGen.OBJECT_LIFT_KIND);
                         b.addStatement(
                                 "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
                                         + "$T.DYNAMIC, $T.some(jvmClass))",
@@ -535,7 +569,7 @@ public final class GenMain {
                         BuiltinInterfacesGen.emitTypeHostRestamp(b, interfaceRef);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>none(), false, $L, $L)",
+                                        + "$T.<$T>none(), false, $T.$L)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -544,8 +578,8 @@ public final class GenMain {
                                 BuiltinInterfacesGen.TYPE_OBJECT_CAST_FROM_RULE,
                                 BuiltinInterfacesGen.OPT,
                                 BuiltinInterfacesGen.OBJECT_ASPECT_SOURCE,
-                                spec.lift(),
-                                spec.function());
+                                BuiltinInterfacesGen.OBJECT_LIFT_KIND,
+                                liftKind);
                         b.addStatement(
                                 "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
                                         + "$T.NONE, $T.<$T>none())",
@@ -562,7 +596,7 @@ public final class GenMain {
                         BuiltinInterfacesGen.emitTypeHostRestamp(b, interfaceRef);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>some(new $T(new $T($LL), new $T($LL))), $L, $L, $L)",
+                                        + "$T.<$T>some(new $T(new $T($LL), new $T($LL))), $L, $T.$L)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -577,8 +611,8 @@ public final class GenMain {
                                 BuiltinInterfacesGen.UNIQUE_BUILTIN,
                                 spec.uniqueId(),
                                 spec.identityToken(),
-                                spec.lift(),
-                                spec.function());
+                                BuiltinInterfacesGen.OBJECT_LIFT_KIND,
+                                liftKind);
                         if (spec.isInterface()) {
                             b.addStatement(
                                     "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
@@ -747,10 +781,18 @@ public final class GenMain {
                     }
                     for (var f : spec.dataFields()) {
                         var descExprOpt = BuiltinMethodEmit.resolveDescriptor(f.fieldJavaType(), leafDescriptors);
-                        if (descExprOpt.optIsNone()) continue;
+                        if (descExprOpt.optIsNone()) {
+                            fieldErrors.add("builtin type " + spec.simpleName() + ": field " + f.langName()
+                                    + " has a type with no descriptor: " + f.fieldJavaType());
+                            continue;
+                        }
                         var descExpr = descExprOpt.optUnwrap();
                         var rawClassOpt = BuiltinMethodEmit.rawClass(f.fieldJavaType());
-                        if (rawClassOpt.optIsNone()) continue;
+                        if (rawClassOpt.optIsNone()) {
+                            fieldErrors.add("builtin type " + spec.simpleName() + ": field " + f.langName()
+                                    + " has a type with no raw class: " + f.fieldJavaType());
+                            continue;
+                        }
                         var rawClass = rawClassOpt.optUnwrap();
                         if (spec.isRecord()) {
                             b.addStatement(
@@ -783,6 +825,45 @@ public final class GenMain {
                             "instance.linkInit($T.from(dataFields), $T.from(methods))",
                             BuiltinInterfacesGen.ILIST,
                             BuiltinInterfacesGen.ILIST);
+                    var describedPermits = new TList<String>();
+                    for (var perm : spec.permitted()) {
+                        var segments = perm.split("\\.");
+                        var cn = ClassName.get(
+                                spec.pkg(), segments[0], Arrays.copyOfRange(segments, 1, segments.length));
+                        if (BuiltinMethodEmit.resolveDescriptor(cn, leafDescriptors)
+                                .optIsSome()) describedPermits.add(perm);
+                    }
+                    if (!describedPermits.isEmpty()
+                            && describedPermits.size() != spec.permitted().size()) {
+                        for (var perm : spec.permitted()) {
+                            if (!describedPermits.contains(perm)) {
+                                fieldErrors.add("builtin type " + spec.simpleName() + ": permitted subclass " + perm
+                                        + " has no descriptor while other permitted subclasses are exposed");
+                            }
+                        }
+                    }
+                    if (!describedPermits.isEmpty()
+                            && !CodecsGen.HAND_CODED.contains(spec.pkg() + "." + spec.simpleName())) {
+                        b.addStatement("var variants = new $T<$T>()", BuiltinInterfacesGen.TLIST, OBJECT_UNION_VARIANT);
+                        for (var perm : spec.permitted()) {
+                            var segments = perm.split("\\.");
+                            var cn = ClassName.get(
+                                    spec.pkg(), segments[0], Arrays.copyOfRange(segments, 1, segments.length));
+                            var vdescOpt = BuiltinMethodEmit.resolveDescriptor(cn, leafDescriptors);
+                            if (vdescOpt.optIsNone()) continue;
+                            b.addStatement(
+                                    "variants.add(new $T(new $T($S), $T.fromClass($T.class), $T.fromClass($T.class), $L))",
+                                    OBJECT_UNION_VARIANT,
+                                    CONST_KEY_STR,
+                                    CodecEmitter.toSnakeCase(segments[segments.length - 1]),
+                                    JAVA_INTERNAL_NAME,
+                                    cn,
+                                    BuiltinInterfacesGen.JAVA_DATA_DESCRIPTOR,
+                                    cn,
+                                    vdescOpt.optUnwrap());
+                        }
+                        b.addStatement("instance.linkUnion($T.from(variants))", BuiltinInterfacesGen.ILIST);
+                    }
                     {
                         buildLink = b.build();
                         break _buildLink;
@@ -1246,15 +1327,6 @@ public final class GenMain {
             BuiltinTreeGen.NodeSpec canonicalSpec;
             _canonicalSpec:
             {
-                var functionClasses = new TSet<String>();
-                for (var builtinSpec : scan.builtins()) {
-                    if (!builtinSpec.function()) continue;
-                    var simple = builtinSpec.outerSimpleName().optIsSome()
-                            ? builtinSpec.outerSimpleName().optUnwrap() + "."
-                                    + builtinSpec.nestedSimpleName().optUnwrap()
-                            : builtinSpec.simpleName();
-                    functionClasses.add(builtinSpec.pkg() + "." + simple);
-                }
                 var pathToLeaf = new LinkedHashMap<String, BuiltinTreeGen.LeafSpec>();
                 for (var entry : scannedPathEntries) {
                     BuiltinTreeGen.LeafSpec spec =
@@ -1262,10 +1334,7 @@ public final class GenMain {
                                 case BuiltinPathScanner.TypeLeaf tl -> {
                                     var wrapper = BuiltinTreeGen.TYPE_OF_TYPES_EXPR;
                                     yield new BuiltinTreeGen.LeafSpec(
-                                            DynamicTypes.leaf(tl.typeClass(), scannedLeaves),
-                                            wrapper,
-                                            functionClasses.contains(
-                                                    tl.typeClass().canonicalName()));
+                                            DynamicTypes.leaf(tl.typeClass(), scannedLeaves), wrapper, tl.function());
                                 }
                                 case BuiltinPathScanner.FunctionLeaf fl -> {
                                     Opt<CodeBlock> retDynamicType = fl.retType().optIsSome()
@@ -2218,6 +2287,11 @@ public final class GenMain {
                 String.join("\n", sortedRoots) + "\n",
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING);
+        if (!fieldErrors.isEmpty()) {
+            var message = new StringBuilder("exposed builtin fields without a descriptor (annotate their types):");
+            for (var err : fieldErrors) message.append("\n  ").append(err);
+            throw new IllegalStateException(message.toString());
+        }
     }
 
     public static final String DISPATCH_ROOTS_FILE = "dispatch-roots.txt";

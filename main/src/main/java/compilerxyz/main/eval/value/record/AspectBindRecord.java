@@ -77,7 +77,7 @@ public record AspectBindRecord(Record type) implements AspectBind {
             var subBuilder = new JavaBytecodeBuilder(loc);
             var carryAdd = subBuilder.addCode(loc, carry);
             if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
-            var baseReg = DynUtil.sourceReg(subBuilder, vd.source());
+            var baseReg = DynUtil.sourceReg(xx, subBuilder, vd);
             var sub = new BindSubDynamic(subBuilder.code(baseReg), recordType);
             var bound = jvmTarget.bindSlot(loc, sub);
             heldBindCodes.add(Code.target(bound.code));

@@ -12,10 +12,10 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6161L)
+@BuiltinLight(uniqueId = 6161L)
 public record TypeBundle(SourceSpecAbsolute base) implements Aspect, Type {
 
     @Override

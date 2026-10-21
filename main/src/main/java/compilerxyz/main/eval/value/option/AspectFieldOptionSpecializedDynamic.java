@@ -33,7 +33,7 @@ public record AspectFieldOptionSpecializedDynamic<T extends Type>(TypeOptionSpec
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         if (ck.equals(VALUE) || ck.equals(IS_SOME)) {
-            var selfRes = DynUtil.valueReg(loc, self);
+            var selfRes = DynUtil.valueReg(xx, loc, self);
             if (selfRes.hasErrors()) return selfRes.reerr();
             var b = new JavaBytecodeBuilder(loc);
             var selfReg = b.reg(selfRes.requireValue("selfDyn"));

@@ -10,12 +10,12 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("throw")
-@BuiltinFull(uniqueId = 6146L, function = true)
+@BuiltinPath(value = "throw", function = true)
+@BuiltinLight(uniqueId = 6146L)
 public record TypeThrowConst() implements Aspect, Type {
 
     @Override

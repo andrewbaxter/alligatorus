@@ -36,7 +36,7 @@ public record AspectDropDynamicArrayDynamic<T extends Type>(TypeArrayDynamic<T> 
                 xx,
                 loc,
                 b,
-                DynUtil.sourceReg(b, vd.source()),
+                DynUtil.sourceReg(xx, b, vd),
                 slots,
                 elementLoadCode,
                 elemDropCodeRes.requireValue("TypeArrayDynamic::drop element drop"));

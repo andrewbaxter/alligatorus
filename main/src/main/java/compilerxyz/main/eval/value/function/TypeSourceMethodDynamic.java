@@ -11,6 +11,7 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.AspectLookup;
+import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.GenAspectBind;
@@ -18,11 +19,11 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
-@BuiltinFull(uniqueId = 6321L)
+@BuiltinLight(uniqueId = 6321L)
 public record TypeSourceMethodDynamic(
         Type receiver,
         TList<FunctionParam> params,
@@ -61,7 +62,7 @@ public record TypeSourceMethodDynamic(
             return Opt.some(new AspectFunctionSourceMethodDynamic(this));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
-            return Opt.some(AspectConsumeDynamicMethod.INSTANCE);
+            return Opt.some(new AspectConsumeDynamicMethod(JavaDataDescriptor.fromInternalName(klass)));
         }
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(AspectBindViaTarget.INSTANCE);

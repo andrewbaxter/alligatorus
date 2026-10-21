@@ -13,12 +13,12 @@ import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("types.option")
-@BuiltinFull(uniqueId = 6131L, function = true)
+@BuiltinPath(value = "types.option", function = true)
+@BuiltinLight(uniqueId = 6131L)
 public record TypeOptionConstructorConst() implements Aspect, Type {
 
     @Override

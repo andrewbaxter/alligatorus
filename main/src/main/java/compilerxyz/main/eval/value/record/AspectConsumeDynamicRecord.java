@@ -96,7 +96,7 @@ public record AspectConsumeDynamicRecord(Record type) implements AspectConsumeDy
                 lowered.drainInto(errors);
                 continue;
             }
-            var loweredReg = DynUtil.valueReg(loc, lowered.requireValue("Record::toDynamic field lowered"));
+            var loweredReg = DynUtil.valueReg(xx, loc, lowered.requireValue("Record::toDynamic field lowered"));
             if (loweredReg.hasErrors()) {
                 if (errors == null) errors = new TList<>();
                 loweredReg.drainInto(errors);

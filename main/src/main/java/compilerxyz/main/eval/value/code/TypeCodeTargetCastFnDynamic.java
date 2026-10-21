@@ -8,12 +8,15 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
+import compilerxyz.main.eval.dynamic.JvmSort;
+import compilerxyz.main.eval.value.function.AspectConsumeDynamicMethod;
+import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6361L, function = true)
+@BuiltinLight(uniqueId = 6361L)
 public record TypeCodeTargetCastFnDynamic() implements Aspect, Type {
 
     @Override
@@ -23,6 +26,9 @@ public record TypeCodeTargetCastFnDynamic() implements Aspect, Type {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectConsumeDynamic.AspectId)) {
+            return Opt.some(new AspectConsumeDynamicMethod(JvmSort.descriptor(xx, new TypeCodeTargetDynamic())));
+        }
         if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(new AspectFunctionCodeTargetCastFnDynamic(this));
         }

@@ -19,14 +19,14 @@ import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.util.stream.Collectors;
 
-@BuiltinFull(uniqueId = 6100L)
+@BuiltinLight(uniqueId = 6100L)
 public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) implements Aspect, Type {
     public static TypeArgumentRecord of(TOrderedMap<ConstKey, ArgumentEntry> fields) {
         var types = new TOrderedMap<ConstKey, Type>();

@@ -11,9 +11,6 @@ import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.dynamic.BindingDynamicSlot;
-import compilerxyz.main.eval.dynamic.CompositeClassEmitter;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.Binding;
@@ -54,13 +51,10 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
         var record = new Record(IOrderedMap.from(resultFields));
         return switch (jsKey) {
             case Opt.Some<BindingId> some -> {
-                var slotInfo = Record.computeSlotInfoFromTypes(xx, Record.slotFieldTypes(record.fields()));
-                var desc = JavaDataDescriptor.fromInternalName(
-                        JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, slotInfo.sortedTypes())));
                 yield new CodeValue(
                         code,
                         EvalOutcome.ofValue(
-                                new ValueDynamic(new ValueDynamicSource.Slot(some.value(), desc, setter), record)));
+                                new ValueDynamic(new ValueDynamicSource.Slot(some.value(), setter), record)));
             }
             case Opt.None<BindingId> none -> new CodeValue(code, EvalOutcome.ofValue(record));
         };

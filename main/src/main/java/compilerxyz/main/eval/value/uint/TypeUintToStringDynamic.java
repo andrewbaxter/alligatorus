@@ -8,15 +8,16 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
-import compilerxyz.main.eval.aspect.AspectConsumeDynamicObject;
+import compilerxyz.main.eval.dynamic.JvmSort;
+import compilerxyz.main.eval.value.function.AspectConsumeDynamicMethod;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6191L)
+@BuiltinLight(uniqueId = 6191L)
 public record TypeUintToStringDynamic() implements Aspect, Type {
 
     @Override
@@ -36,7 +37,7 @@ public record TypeUintToStringDynamic() implements Aspect, Type {
             return Opt.some(AspectFunctionUintToStringDynamic.INSTANCE);
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
-            return Opt.some(AspectConsumeDynamicObject.INSTANCE);
+            return Opt.some(new AspectConsumeDynamicMethod(JvmSort.descriptor(xx, new TypeUintDynamic())));
         }
         if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);

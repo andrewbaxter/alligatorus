@@ -11,12 +11,12 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPath("source.remote.http")
-@BuiltinFull(uniqueId = 6158L, function = true)
+@BuiltinPath(value = "source.remote.http", function = true)
+@BuiltinLight(uniqueId = 6158L)
 public record TypeSourceRemoteHttp() implements Aspect, Type {
 
     @Override

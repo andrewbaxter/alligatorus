@@ -23,7 +23,7 @@ public record AspectFunctionListSpecializedPushDynamic(TypeListSpecializedPushDy
         var converted = convertedRes.requireValue("typecheckConvert");
         var argRes = DynUtil.materialize(xx, loc, converted);
         if (argRes.hasErrors()) return argRes.reerr();
-        var selfRes = DynUtil.valueReg(loc, self);
+        var selfRes = DynUtil.valueReg(xx, loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
         var b = new JavaBytecodeBuilder(loc);
         var selfReg = b.reg(selfRes.requireValue("selfDyn"));

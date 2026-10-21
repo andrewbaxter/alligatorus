@@ -14,10 +14,10 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6198L, function = true)
+@BuiltinLight(uniqueId = 6198L)
 public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType) implements Aspect, Type {
 
     @Override

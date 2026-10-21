@@ -69,7 +69,7 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
             var subBuilder = new JavaBytecodeBuilder(loc);
             var carryAdd = subBuilder.addCode(loc, carry);
             if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
-            var baseReg = DynUtil.sourceReg(subBuilder, vd.source());
+            var baseReg = DynUtil.sourceReg(xx, subBuilder, vd);
             var sub = new BindSubDynamic(subBuilder.code(baseReg), tupleType);
             var bound = jvmTarget.bindSlot(loc, sub);
             heldBindCodes.add(Code.target(bound.code));

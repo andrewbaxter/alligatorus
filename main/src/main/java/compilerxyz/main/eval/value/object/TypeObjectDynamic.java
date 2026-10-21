@@ -22,7 +22,6 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.AspectDynamicConstOf;
-import compilerxyz.main.eval.value.function.AspectLiftFunctionType;
 import compilerxyz.main.eval.value.source_interface.InterfaceCell;
 import compilerxyz.main.gen.GenAspectAspect;
 import compilerxyz.main.gen.GenAspectBind;
@@ -35,6 +34,7 @@ import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectOperatorEq;
+import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenBuiltinInterfaces;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenDynamicTypes;
@@ -46,14 +46,14 @@ import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
 @SuppressWarnings("rawtypes")
-@BuiltinFull(uniqueId = 6130L)
+@BuiltinLight(uniqueId = 6130L)
 public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspect {
 
     private final TypeObjectMeta meta;
@@ -64,6 +64,7 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
     final Opt<IList<ObjectMethod>> methods;
     private final ObjectDropKind dropKind;
     final Opt<JavaInternalName> interfaceRepresented;
+    private final Opt<IList<ObjectUnionVariant>> unionVariants;
 
     public TypeObjectDynamic(
             TypeObjectMeta meta,
@@ -80,6 +81,7 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         this.methods = Opt.none();
         this.dropKind = dropKind;
         this.interfaceRepresented = interfaceRepresented;
+        this.unionVariants = Opt.none();
     }
 
     public void linkInit(IList<ObjectDataField> dataFields, IList<ObjectMethod> methods) {
@@ -96,6 +98,23 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("TypeObjectDynamic.linkInit: failed to set final list fields", e);
         }
+    }
+
+    public void linkUnion(IList<ObjectUnionVariant> variants) {
+        if (unionVariants.optIsSome()) {
+            throw new IllegalStateException("TypeObjectDynamic.linkUnion: already linked");
+        }
+        try {
+            var f = TypeObjectDynamic.class.getDeclaredField("unionVariants");
+            f.setAccessible(true);
+            f.set(this, Opt.some(variants));
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("TypeObjectDynamic.linkUnion: failed to set the final field", e);
+        }
+    }
+
+    public IList<ObjectUnionVariant> unionVariants() {
+        return unionVariants.optUnwrap();
     }
 
     public boolean isLinked() {
@@ -220,11 +239,19 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         if (key.equals(GenTrivialIdentityAspects.TYPE_OBJECT_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectLift.AspectId) && meta.liftable()) {
-            if (meta.function()) {
-                return Opt.some(AspectLiftFunctionType.INSTANCE);
+        if (key.equals(GenAspectLift.AspectId)) {
+            switch (meta.lift()) {
+                case OBJECT -> {
+                    return Opt.some(new AspectLiftObjectDynamic(this));
+                }
+                case SELF -> {
+                    return Opt.some(AspectLiftObjectSelf.INSTANCE);
+                }
+                case NONE -> {}
             }
-            return Opt.some(new AspectLiftObjectDynamic(this));
+        }
+        if (unionVariants.optIsSome() && key.equals(GenAspectUnion.AspectId)) {
+            return Opt.some(new AspectUnionObjectDynamic(this));
         }
         if (key.equals(GenAspectBindDynamic.AspectId)) {
             return Opt.some(AspectBindDynamicDefault.INSTANCE);
@@ -305,7 +332,7 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         if (interfaceRepresented.optIsSome()
                 && destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                         .optIsSome()) {
-            var sourceRes = DynUtil.valueReg(loc, cv);
+            var sourceRes = DynUtil.valueReg(xx, loc, cv);
             if (sourceRes.hasErrors()) return sourceRes.reerr();
             var b = new JavaBytecodeBuilder(loc);
             var out = b.invokeVirtual(

@@ -5,6 +5,7 @@ import compilerxyz.main.eval.ConstEval;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
+import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
@@ -14,6 +15,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
+import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.argrecord.ArgumentEntry;
 import compilerxyz.main.eval.value.argrecord.ArgumentRecordBinding;
@@ -70,9 +72,8 @@ public final class SourceObjectInterfaceMethodImplData {
             throw new AssertionError("Interface method impl for a no-value return is unsupported");
         }
         var retT = ifaceMethod.retType.optUnwrap();
-        var innerVx = new EvalContext(xx.vx.ix);
-        innerVx.evalRootInternalName = Opt.some(dtData.internalName());
-        var innerTarget = new TargetDynamic();
+        var innerVx = new EvalContext(EvalContextInternal.ix(xx.vx));
+        var innerTarget = new TargetDynamic(Opt.some(JavaInternalName.of(dtData.internalName())));
         var selfId = new BindingId();
         innerBindingId = Opt.some(selfId);
         var outerId = new BindingId();

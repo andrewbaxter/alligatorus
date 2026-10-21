@@ -69,13 +69,13 @@ import compilerxyz.main.gen.GenAspectOperatorXor;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.IMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
 
-@BuiltinFull(uniqueId = 6163L)
+@BuiltinLight(uniqueId = 6163L)
 @BuiltinPath("types.int")
 public record TypeIntDynamic() implements Aspect, Type {
 

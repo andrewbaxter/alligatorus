@@ -36,7 +36,7 @@ public record AspectFieldOptionDynamic<T extends Type>(TypeOptionDynamic<T> type
                     case ConstKey.Uint u -> Opt.<ConstKey.Str>none();
                 };
         if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("value")) {
-            var selfRes = DynUtil.valueReg(loc, self);
+            var selfRes = DynUtil.valueReg(xx, loc, self);
             if (selfRes.hasErrors()) return selfRes.reerr();
             var b = new JavaBytecodeBuilder(loc);
             var some = b.checkcast(
@@ -54,7 +54,7 @@ public record AspectFieldOptionDynamic<T extends Type>(TypeOptionDynamic<T> type
             return EResult.ok(DynUtil.regToValue(b.code(), value, type.elementType));
         }
         if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("is_some")) {
-            var selfRes = DynUtil.valueReg(loc, self);
+            var selfRes = DynUtil.valueReg(xx, loc, self);
             if (selfRes.hasErrors()) return selfRes.reerr();
             var b = new JavaBytecodeBuilder(loc);
             var out = b.instanceOf(JavaInternalName.fromClass(Opt.Some.class), b.reg(selfRes.requireValue("selfDyn")));

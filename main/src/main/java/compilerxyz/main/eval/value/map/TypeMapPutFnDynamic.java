@@ -12,10 +12,10 @@ import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinFull(uniqueId = 6126L)
+@BuiltinLight(uniqueId = 6126L)
 public record TypeMapPutFnDynamic(Type keyType, Type valueType) implements Aspect, Type {
 
     @Override

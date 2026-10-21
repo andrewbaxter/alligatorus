@@ -29,6 +29,7 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
@@ -58,7 +59,7 @@ import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.MustCast;
@@ -69,7 +70,7 @@ import compilerxyz.prelude.util.TOrderedMap;
 import java.lang.reflect.Field;
 import java.util.function.Function;
 
-@BuiltinFull(uniqueId = 6147L)
+@BuiltinLight(uniqueId = 6147L)
 public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHolder artifactIdCell)
         implements Aspect, Type, Value {
 
@@ -198,7 +199,7 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
                                     klass,
                                     CompositeClassEmitter.slotFieldName(slotIdx),
                                     CompositeClassEmitter.slotDescriptor(xx, t),
-                                    DynUtil.sourceReg(access, baseSource));
+                                    DynUtil.sourceReg(access, baseSource, JavaDataDescriptor.fromInternalName(klass)));
                             var childCv = DynUtil.regToValue(access.code(), child, t);
                             var tcDropRes = tcFullDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, childCv);
                             if (tcDropRes.hasErrors()) yield tcDropRes.reerr();
@@ -485,8 +486,8 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
                 var runtimeTuple = MustCast.mustCast(Tuple.class, vd.type());
                 var baseCv = new CodeValue(
                         Code.none(loc),
-                        EvalOutcome.ofValue(new ValueDynamic(
-                                new ValueDynamicSource.Reg(DynUtil.sourceReg(b, vd.source())), vd.type())));
+                        EvalOutcome.ofValue(
+                                new ValueDynamic(new ValueDynamicSource.Reg(DynUtil.sourceReg(xx, b, vd)), vd.type())));
                 for (int i = 0; i < runtimeTuple.elements().size(); i++) {
                     elementResults.add(runtimeTuple.accessOrIndex(xx, loc, baseCv, Opt.some(i)));
                 }
@@ -595,7 +596,7 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
             var b = new JavaBytecodeBuilder(loc);
             var carryRes = b.addCode(loc, cv.code());
             if (carryRes.optIsSome()) return EResult.errs(carryRes.optUnwrap());
-            var srcReg = DynUtil.sourceReg(b, srcDyn.source());
+            var srcReg = DynUtil.sourceReg(xx, b, srcDyn);
             var srcKlass =
                     JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortTupleTypes(xx, srcDynTypes)));
             var srcSlotOf = slotOfIndex(xx, srcDynTypes);

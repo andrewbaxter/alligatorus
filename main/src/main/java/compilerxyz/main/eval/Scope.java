@@ -22,9 +22,9 @@ public final class Scope {
     }
 
     public ScopeLevel.Entry pushNamed(ConstKey name, Binding binding) {
-        var id = vx.dropStateCounter.next();
+        var id = vx.nextDropState();
         var entry = new ScopeLevel.Entry(
-                Opt.some(name), binding, false, id, id, new ScopeLevel.Emission(vx.emissionCounter.next()));
+                Opt.some(name), binding, false, id, id, new ScopeLevel.Emission(vx.nextEmission()));
         levels.add(entry);
         return entry;
     }
@@ -36,30 +36,22 @@ public final class Scope {
     }
 
     public ScopeLevel.Temp pushTemp(Value value) {
-        var id = vx.dropStateCounter.next();
-        var level = new ScopeLevel.Temp(value, id, id, new ScopeLevel.Emission(vx.emissionCounter.next()));
+        var id = vx.nextDropState();
+        var level = new ScopeLevel.Temp(value, id, id, new ScopeLevel.Emission(vx.nextEmission()));
         levels.add(level);
         return level;
     }
 
     public ScopeLevel.Labeled pushLabeled(Opt<String> label) {
         var level = new ScopeLevel.Labeled(
-                label,
-                true,
-                new JumpKey(),
-                new ScopeLevel.Landing(),
-                new ScopeLevel.Emission(vx.emissionCounter.next()));
+                label, true, new JumpKey(), new ScopeLevel.Landing(), new ScopeLevel.Emission(vx.nextEmission()));
         levels.add(level);
         return level;
     }
 
     public ScopeLevel.Labeled pushMergeLabeled() {
         var level = new ScopeLevel.Labeled(
-                Opt.none(),
-                false,
-                new JumpKey(),
-                new ScopeLevel.Landing(),
-                new ScopeLevel.Emission(vx.emissionCounter.next()));
+                Opt.none(), false, new JumpKey(), new ScopeLevel.Landing(), new ScopeLevel.Emission(vx.nextEmission()));
         levels.add(level);
         return level;
     }
@@ -157,8 +149,8 @@ public final class Scope {
                         if (mergedRes.hasErrors()) return mergedRes.errorsOpt();
                         merged.add(Opt.some(new MergedEntry(
                                 mergedRes.requireValue("Scope.merge binding"),
-                                vx.dropStateCounter.next(),
-                                anyDropStateDiffers ? vx.dropStateCounter.next() : entry.dropState)));
+                                vx.nextDropState(),
+                                anyDropStateDiffers ? vx.nextDropState() : entry.dropState)));
                     }
                 }
             }

@@ -10,45 +10,12 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 
 @BuiltinFull(uniqueId = 1043L)
 @BuiltinPath("eval.value_source")
-public sealed interface ValueDynamicSource {
-    JavaDataDescriptor valueDynamicSourceDesc();
+public sealed interface ValueDynamicSource permits ValueDynamicSource.Slot, ValueDynamicSourceJvm {
+    @BuiltinFull(uniqueId = 6521L)
+    record Slot(BindingId slot, BindingSetter setter) implements ValueDynamicSource {}
 
-    boolean valueDynamicSourceIsPlace();
-
-    record Reg(JavaBytecodeReg reg) implements ValueDynamicSource {
-        @Override
-        public JavaDataDescriptor valueDynamicSourceDesc() {
-            return reg.desc;
-        }
-
-        @Override
-        public boolean valueDynamicSourceIsPlace() {
-            return false;
-        }
-    }
-
-    record Slot(BindingId slot, JavaDataDescriptor desc, BindingSetter setter) implements ValueDynamicSource {
-        @Override
-        public JavaDataDescriptor valueDynamicSourceDesc() {
-            return desc;
-        }
-
-        @Override
-        public boolean valueDynamicSourceIsPlace() {
-            return true;
-        }
-    }
+    record Reg(JavaBytecodeReg reg) implements ValueDynamicSourceJvm {}
 
     record Field(ValueDynamicSource base, JavaInternalName klass, String field, JavaDataDescriptor desc)
-            implements ValueDynamicSource {
-        @Override
-        public JavaDataDescriptor valueDynamicSourceDesc() {
-            return desc;
-        }
-
-        @Override
-        public boolean valueDynamicSourceIsPlace() {
-            return base.valueDynamicSourceIsPlace();
-        }
-    }
+            implements ValueDynamicSourceJvm {}
 }
