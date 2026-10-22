@@ -11,7 +11,7 @@ public final class ExprArtifacts {
     private ExprArtifacts() {}
 
     public static EResult<Expr> exprFromArtifact(ExprContext xx, ArtifactExpr art) {
-        var loc = new QExprId(new SourceId(art.loc().source()), art.loc().expr());
+        var loc = art.loc().toQExprId();
         var v = art.variant();
         switch (v) {
             case ArtifactExpr.Variant.As a -> {
@@ -300,8 +300,7 @@ public final class ExprArtifacts {
     }
 
     public static EResult<ArtifactExpr> exprToArtifact(ExprContext xx, Expr expr) {
-        var loc = new ArtifactExpr.ArtifactQExprId(
-                expr.loc().source().value(), expr.loc().expr());
+        var loc = ArtifactExpr.ArtifactQExprId.fromQExprId(expr.loc());
         var v = expr.variant();
         switch (v) {
             case Expr.As a -> {

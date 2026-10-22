@@ -1335,7 +1335,8 @@ public final class T0170NodejsTest {
                                                                                 mb.bind(
                                                                                         "res",
                                                                                         mb.call(
-                                                                                                mb.evalConstEval(),
+                                                                                                mb
+                                                                                                        .evalConstEvalFunction(),
                                                                                                 mb.recordOf(
                                                                                                         TList.of(
                                                                                                                 rp(

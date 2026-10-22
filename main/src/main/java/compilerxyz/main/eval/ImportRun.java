@@ -180,7 +180,7 @@ public final class ImportRun {
                 var scope = new Scope(xx.vx);
                 for (var entry : Eval.bodyBuiltinScope(xx).entrySet())
                     scope.pushNamed(entry.getKey(), entry.getValue());
-                var sx = new ExprContext(scope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
+                var sx = new ExprContext(scope, xx.target, xx.vx, xx.importState, xx.currentExceptionType, xx.site);
                 var fn = new Expr(
                         loc,
                         new Expr.Field(

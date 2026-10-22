@@ -13,7 +13,6 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.External;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.SourceId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.StageLiftCell;
@@ -90,8 +89,7 @@ public final class ExternalCodec {
             } else if (host instanceof Unique u) {
                 out.add(new ArtifactExternal.UniqueRef(u));
             } else if (host instanceof QExprId q) {
-                out.add(new ArtifactExternal.Loc(
-                        new ArtifactExpr.ArtifactQExprId(q.source().value(), q.expr())));
+                out.add(new ArtifactExternal.Loc(ArtifactExpr.ArtifactQExprId.fromQExprId(q)));
             } else {
                 var artRes = Exporters.exportData(xx, loc, TypeForms.constForm(xx, entry.type()), host);
                 if (artRes.hasErrors()) {
@@ -164,7 +162,7 @@ public final class ExternalCodec {
                             new BindingId(), new TypeUniqueDynamic(), new External(Unique.class, uq.unique())));
                 }
                 case ArtifactExternal.Loc l -> {
-                    var q = new QExprId(new SourceId(l.loc().source()), l.loc().expr());
+                    var q = l.loc().toQExprId();
                     out.add(new EvalContext.ExternalEntry(
                             new BindingId(), GenQExprId.dynamicType(), new External(QExprId.class, q)));
                 }

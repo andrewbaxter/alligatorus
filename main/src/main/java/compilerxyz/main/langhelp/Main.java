@@ -133,12 +133,7 @@ public final class Main {
                             w.name("errors").beginArray();
                             for (var e : err.error()) {
                                 w.beginObject();
-                                if (e.loc().optIsSome()) {
-                                    var loc = e.loc().optUnwrap();
-                                    w.name("source").value(loc.source().value());
-                                    if (loc.expr().optIsSome())
-                                        w.name("expr").value(loc.expr().optUnwrap());
-                                }
+                                if (e.loc().optIsSome()) writeLoc(w, e.loc().optUnwrap());
                                 w.name("messages").beginArray();
                                 for (var m : e.messages()) w.value(m);
                                 w.endArray();
@@ -194,6 +189,16 @@ public final class Main {
                 System.err.println(USAGE);
                 System.exit(2);
             }
+        }
+    }
+
+    private static void writeLoc(JsonWriter w, QExprId loc) throws IOException {
+        w.name("source").value(loc.source().value());
+        if (loc.expr().optIsSome()) w.name("expr").value(loc.expr().optUnwrap());
+        if (loc.site().optIsSome()) {
+            w.name("site").beginObject();
+            writeLoc(w, loc.site().optUnwrap());
+            w.endObject();
         }
     }
 

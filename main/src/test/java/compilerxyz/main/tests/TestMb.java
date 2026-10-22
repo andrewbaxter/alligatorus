@@ -381,6 +381,10 @@ public final class TestMb {
         return builtin("eval", "const_eval");
     }
 
+    public SourceExpr evalConstEvalFunction() {
+        return builtin("eval", "const_eval_function");
+    }
+
     public SourceExpr evalCodevalueDynamic() {
         return builtin("eval", "codevalue_dynamic");
     }

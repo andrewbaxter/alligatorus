@@ -79,7 +79,8 @@ public final class DynRuntime {
                         liftCell.target(),
                         liftCell.vx(),
                         liftCell.importState(),
-                        liftCell.currentExceptionType());
+                        liftCell.currentExceptionType(),
+                        liftCell.loc().site());
                 var liftRes = GenAspectLift.get(liftXx, liftCell.loc(), liftCell.sourceType());
                 if (liftRes.hasErrors()) {
                     throw new IllegalStateException("__stage: AspectLift lookup failed for source type "

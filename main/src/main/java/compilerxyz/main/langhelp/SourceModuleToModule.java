@@ -27,7 +27,7 @@ public final class SourceModuleToModule {
     }
 
     private static Expr sourceExprToExpr(SourceId sourceId, SourceExpr e) {
-        var loc = new QExprId(sourceId, Opt.some(e.id().value()));
+        var loc = QExprId.root(sourceId, Opt.some(e.id().value()));
         var variant =
                 switch (e.variant()) {
                     case SourceExpr.Literal lit ->

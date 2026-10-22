@@ -20,6 +20,7 @@ public final class T0165MutableDropForkTest {
                 mb.evalConstEval(),
                 mb.recordOf(TList.of(
                         new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                        new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
                         new TestMb.RecordPair(
                                 "staged", mb.stage(mb.seqOf(mb.call(mb.log(), mb.str(msg)), mb.returnEmpty())))))));
     }

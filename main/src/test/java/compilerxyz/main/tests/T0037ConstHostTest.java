@@ -13,7 +13,9 @@ import org.junit.jupiter.api.io.TempDir;
 public final class T0037ConstHostTest {
 
     private static SourceExpr evalIn(TestMbShorthand e, SourceExpr staged) {
-        return e.call(e.evalBuiltin("const_eval"), e.rec(e.p("xx", e.fld(e.v("arg"), "xx")), e.p("staged", staged)));
+        return e.call(
+                e.evalBuiltin("const_eval"),
+                e.rec(e.p("xx", e.fld(e.v("arg"), "xx")), e.p("loc", e.fld(e.v("arg"), "loc")), e.p("staged", staged)));
     }
 
     private static SourceExpr argumentAs(TestMbShorthand e, SourceExpr type) {

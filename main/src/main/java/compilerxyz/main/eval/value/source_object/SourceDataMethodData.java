@@ -152,7 +152,7 @@ public final class SourceDataMethodData {
                         new ConstKey.Str("arg"), bRes.requireValue("SourceDataMethodData::finish arg binding"));
             }
         }
-        var methodXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, Opt.none());
+        var methodXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, Opt.none(), Opt.none());
 
         var implResult = ConstEval.constEval(methodXx, implExprAst);
         if (implResult.hasErrors()) {

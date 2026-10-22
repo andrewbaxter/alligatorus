@@ -36,7 +36,7 @@ public final class Eval {
     public static ExprContext dropContext(ExprContext xx) {
         var scope = new Scope(xx.vx);
         scope.pushAll(bodyBuiltinScope(xx));
-        return new ExprContext(scope, xx.target, xx.vx, xx.importState, Opt.none());
+        return new ExprContext(scope, xx.target, xx.vx, xx.importState, Opt.none(), xx.site);
     }
 
     public static EResult<CodeValue> typecheckConvert(ExprContext xx, QExprId loc, Type destType, CodeValue source) {

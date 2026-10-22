@@ -66,7 +66,7 @@ public final class CompileModule {
                 switch (source) {
                     case Expr.Module.V1 v1 -> v1.source();
                 };
-        var rootLoc = new QExprId(sourceId, Opt.none());
+        var rootLoc = QExprId.root(sourceId, Opt.none());
         Expr rootExpr =
                 switch (source) {
                     case Expr.Module.V1 v1 -> new Expr(rootLoc, new Expr.Seq(v1.exprs()));
@@ -123,7 +123,7 @@ public final class CompileModule {
                 var evalTarget = new TargetDynamic(
                         Opt.some(JavaInternalName.of(EvalRootEmitter.toInternalName(evalBinaryName))));
                 var evalXx = new ExprContext(
-                        evalRootScope, evalTarget, evalVx, importState, Opt.some(new TypeStringConst()));
+                        evalRootScope, evalTarget, evalVx, importState, Opt.some(new TypeStringConst()), Opt.none());
                 var res = GenBuiltinTree.installRoot(evalXx, evalRootLoc, importState);
                 if (res.hasErrors()) {
                     evalResult = new EvalOutcome.Err(res.errorsOpt().optUnwrap());
@@ -364,7 +364,8 @@ public final class CompileModule {
                         var vx = new EvalContext(cix);
                         var rootScope = new Scope(vx);
                         var target = new TargetDynamic(Opt.none());
-                        var xx = new ExprContext(rootScope, target, vx, importState, Opt.some(new TypeStringDynamic()));
+                        var xx = new ExprContext(
+                                rootScope, target, vx, importState, Opt.some(new TypeStringDynamic()), Opt.none());
                         if (ok.value().optIsNone()) {
                             return new CompileModuleResult(
                                     new CompileRes(

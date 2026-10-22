@@ -15,6 +15,7 @@ import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.EvalOutcome;
+import compilerxyz.main.eval.EvalRes;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
@@ -320,13 +321,27 @@ public final class BuiltinBodies {
     }
 
     @BuiltinPath(value = "eval.const_eval", scopeId = 5008L)
-    public static EResult<CodeValue> constEval(ExprContext xx, StagedExprCell staged) {
+    public static EResult<CodeValue> constEval(ExprContext xx, QExprId loc, StagedExprCell staged) {
         Object exprValue = staged.value();
         if (!(exprValue instanceof Expr exprAst)) {
             throw new AssertionError(
                     "builtin 5008 (const_eval): staged payload is not Expr, got " + exprValue.getClass());
         }
-        var evalResult = ConstEval.constEval(xx, exprAst);
+        var sited = new ExprContext(xx.scope, xx.target, xx.vx, xx.importState, xx.currentExceptionType, Opt.some(loc));
+        return constEvalResult(ConstEval.constEvalAt(sited, exprAst.loc().withSite(sited.site), exprAst));
+    }
+
+    @BuiltinPath(value = "eval.const_eval_function", scopeId = 5055L)
+    public static EResult<CodeValue> constEvalFunction(ExprContext xx, StagedExprCell staged) {
+        Object exprValue = staged.value();
+        if (!(exprValue instanceof Expr exprAst)) {
+            throw new AssertionError(
+                    "builtin 5055 (const_eval_function): staged payload is not Expr, got " + exprValue.getClass());
+        }
+        return constEvalResult(ConstEval.constEval(xx, exprAst));
+    }
+
+    private static EResult<CodeValue> constEvalResult(EResult<EvalRes> evalResult) {
         if (evalResult.valueOpt().optIsNone()) return evalResult.reerr();
         var cv = evalResult.requireValue("const_eval map").cv();
         var errs = evalResult.errorsOpt();
@@ -336,7 +351,8 @@ public final class BuiltinBodies {
 
     @BuiltinPath(value = "eval.expr_context", scopeId = 5017L)
     public static ExprContext exprContext(Scope scope, Target target, EvalContext vx, Type exceptionType) {
-        return new ExprContext(scope, target, vx, EvalContextInternal.ix(vx).importState, Opt.some(exceptionType));
+        return new ExprContext(
+                scope, target, vx, EvalContextInternal.ix(vx).importState, Opt.some(exceptionType), Opt.none());
     }
 
     @BuiltinPath(value = "eval.code_none", scopeId = 5018L)

@@ -159,7 +159,7 @@ public final class SourceFunctionData {
             if (bRes.hasErrors()) return bRes.errorsOpt();
             bodyScope.pushNamed(new ConstKey.Str("arg"), bRes.requireValue("SourceFunctionData arg binding"));
         }
-        var funcXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, exceptionType);
+        var funcXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, exceptionType, Opt.none());
 
         var implResult = ConstEval.constEval(funcXx, implExprAst);
         if (implResult.hasErrors()) {

@@ -114,6 +114,7 @@ public final class T0160EvenOddTest {
                         mb.evalConstEval(),
                         mb.recordOf(TList.of(
                                 new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
                                 new TestMb.RecordPair("staged", mb.stage(mb.seqOf())))))))));
     }
 
@@ -3277,6 +3278,8 @@ public final class T0160EvenOddTest {
                                                 TList.of(
                                                         new TestMb.RecordPair(
                                                                 "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                                        new TestMb.RecordPair(
+                                                                "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
                                                         new TestMb.RecordPair(
                                                                 "staged",
                                                                 mb.stage(mb.throw_(mb.str("drop boom"))))))))))),

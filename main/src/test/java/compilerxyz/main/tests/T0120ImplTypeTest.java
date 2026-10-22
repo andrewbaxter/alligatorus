@@ -158,6 +158,14 @@ public final class T0120ImplTypeTest {
                                                                                                                 mb.str(
                                                                                                                         "xx"))),
                                                                                                 new TestMb.RecordPair(
+                                                                                                        "loc",
+                                                                                                        mb.field(
+                                                                                                                mb
+                                                                                                                        .scopeUse(
+                                                                                                                                "arg"),
+                                                                                                                mb.str(
+                                                                                                                        "loc"))),
+                                                                                                new TestMb.RecordPair(
                                                                                                         "staged",
                                                                                                         mb.stage(
                                                                                                                 mb.call(

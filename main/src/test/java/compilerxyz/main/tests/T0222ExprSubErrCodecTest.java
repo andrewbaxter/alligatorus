@@ -23,7 +23,7 @@ public final class T0222ExprSubErrCodecTest {
                         "https://example.invalid/lib.zip#frag", new HashValue.Sha256(new byte[] {1, 2, (byte) 255})),
                 "src/m.at");
         var err = new ExprErr(
-                new QExprId(new SourceId(7), Opt.some(42L)),
+                new QExprId(new SourceId(7), Opt.some(42L), Opt.some(QExprId.root(new SourceId(3), Opt.some(5L)))),
                 TList.of(
                         new ExprSubErr.ImportFailed(spec, "the module has compile errors"),
                         new ExprSubErr.Opaque("x")));

@@ -21,10 +21,7 @@ public record ArtifactExprErr(ArtifactExpr.ArtifactQExprId loc, TList<Sub> error
                             new Sub.ImportFailed(f.spec().sourceSpecAbsoluteSpecKey(), f.reason());
                     });
         }
-        return new ArtifactExprErr(
-                new ArtifactExpr.ArtifactQExprId(
-                        err.loc().source().value(), err.loc().expr()),
-                subs);
+        return new ArtifactExprErr(ArtifactExpr.ArtifactQExprId.fromQExprId(err.loc()), subs);
     }
 
     public ExprErr toExprErr() {
@@ -38,6 +35,6 @@ public record ArtifactExprErr(ArtifactExpr.ArtifactQExprId loc, TList<Sub> error
                                     SourceSpecAbsolute.sourceSpecAbsoluteParseKey(f.spec()), f.reason());
                     });
         }
-        return new ExprErr(new QExprId(new SourceId(loc.source()), loc.expr()), subs);
+        return new ExprErr(loc.toQExprId(), subs);
     }
 }

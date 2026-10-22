@@ -185,6 +185,17 @@ public final class T0130DropThrowTest {
                                                                                                                                                                                                                                                 "xx"))),
                                                                                                                                                                                                         new TestMb
                                                                                                                                                                                                                 .RecordPair(
+                                                                                                                                                                                                                "loc",
+                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                        .field(
+                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                        .scopeUse(
+                                                                                                                                                                                                                                                "arg"),
+                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                        .str(
+                                                                                                                                                                                                                                                "loc"))),
+                                                                                                                                                                                                        new TestMb
+                                                                                                                                                                                                                .RecordPair(
                                                                                                                                                                                                                 "staged",
                                                                                                                                                                                                                 mb
                                                                                                                                                                                                                         .stage(
@@ -456,6 +467,17 @@ public final class T0130DropThrowTest {
                                                                                                                                                                                         "xx"))),
                                                                                                                                                 new TestMb
                                                                                                                                                         .RecordPair(
+                                                                                                                                                        "loc",
+                                                                                                                                                        mb
+                                                                                                                                                                .field(
+                                                                                                                                                                        mb
+                                                                                                                                                                                .scopeUse(
+                                                                                                                                                                                        "arg"),
+                                                                                                                                                                        mb
+                                                                                                                                                                                .str(
+                                                                                                                                                                                        "loc"))),
+                                                                                                                                                new TestMb
+                                                                                                                                                        .RecordPair(
                                                                                                                                                         "staged",
                                                                                                                                                         mb
                                                                                                                                                                 .stage(
@@ -497,6 +519,17 @@ public final class T0130DropThrowTest {
                                                                                                                                 mb
                                                                                                                                         .str(
                                                                                                                                                 "xx"))),
+                                                                                                        new TestMb
+                                                                                                                .RecordPair(
+                                                                                                                "loc",
+                                                                                                                mb
+                                                                                                                        .field(
+                                                                                                                                mb
+                                                                                                                                        .scopeUse(
+                                                                                                                                                "arg"),
+                                                                                                                                mb
+                                                                                                                                        .str(
+                                                                                                                                                "loc"))),
                                                                                                         new TestMb
                                                                                                                 .RecordPair(
                                                                                                                 "staged",
@@ -551,6 +584,17 @@ public final class T0130DropThrowTest {
                                                                                                                                                                                                         mb
                                                                                                                                                                                                                 .str(
                                                                                                                                                                                                                         "xx"))),
+                                                                                                                                                                                new TestMb
+                                                                                                                                                                                        .RecordPair(
+                                                                                                                                                                                        "loc",
+                                                                                                                                                                                        mb
+                                                                                                                                                                                                .field(
+                                                                                                                                                                                                        mb
+                                                                                                                                                                                                                .scopeUse(
+                                                                                                                                                                                                                        "arg"),
+                                                                                                                                                                                                        mb
+                                                                                                                                                                                                                .str(
+                                                                                                                                                                                                                        "loc"))),
                                                                                                                                                                                 new TestMb
                                                                                                                                                                                         .RecordPair(
                                                                                                                                                                                         "staged",

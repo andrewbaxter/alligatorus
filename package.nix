@@ -8,7 +8,8 @@
 # repository don't invalidate the build. The lint module is left out of the
 # reactor (its pom is staged only so maven can read the reactor). The wrapper puts clang on PATH (the in-language llvm `build` runs it
 # through the `exec` builtin), wasmtime on PATH (the executor of apps built by
-# the wat target), git on PATH (git remote sources are fetched with it) and
+# the wat target), binaryen on PATH (web-wasm assembles with wasm-as, which
+# writes the source map) and wabt (merman's editor assembles with wat2wasm), git on PATH (git remote sources are fetched with it) and
 # libpipewire on LIBRARY_PATH so apps that declare the pipewire library link and
 # run.
 {
@@ -18,6 +19,7 @@
   clang,
   wasmtime,
   wabt,
+  binaryen,
   git,
   pipewire,
   makeWrapper,
@@ -76,7 +78,7 @@ maven.buildMavenPackage rec {
     mkdir -p $out/share/alligatorus $out/bin
     cp main/target/allig3-main-*.jar main/target/dependency/*.jar $out/share/alligatorus/
     makeWrapper ${jdk21}/bin/java $out/bin/alligatorus \
-      --prefix PATH : ${lib.makeBinPath [ clang wasmtime wabt git ]} \
+      --prefix PATH : ${lib.makeBinPath [ clang wasmtime wabt binaryen git ]} \
       --prefix LIBRARY_PATH : ${lib.makeLibraryPath [ pipewire ]} \
       --add-flag -cp \
       --add-flag "$out/share/alligatorus/*" \
