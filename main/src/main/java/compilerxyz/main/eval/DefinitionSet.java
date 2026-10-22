@@ -13,6 +13,7 @@ import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.definition_set.ArtifactDataDefSet;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
+import compilerxyz.main.eval.dynamic.CompileImportContextDynamic;
 import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.EvalRootEmitter;
@@ -91,12 +92,8 @@ public final class DefinitionSet {
             var depLoader = depResult.requireValue("DefinitionSet::install dependency loader");
             depLoaders.add(depLoader);
         }
-        if (EvalContextInternal.ix(xx.vx).dynamic.classLoader.optIsNone()) {
-            EvalContextInternal.ix(xx.vx).dynamic.classLoader = Opt.some(new DefinitionSetClassLoader(
-                    EvalContextInternal.ix(xx.vx).gx, DefinitionSetClassLoader.class.getClassLoader(), depLoaders));
-        }
-        var loader = EvalContextInternal.ix(xx.vx).dynamic.classLoader.optUnwrap();
-        if (!EvalContextInternal.ix(xx.vx).installedDefSets.add(defSetId)) {
+        var loader = CompileImportContextDynamic.of(xx.vx.ix.dynamic).classLoaderOrCreate(depLoaders);
+        if (!xx.vx.ix.installedDefSets.add(defSetId)) {
             return EResult.ok(loader);
         }
         if (!finished) {

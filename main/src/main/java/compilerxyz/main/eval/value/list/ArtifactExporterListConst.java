@@ -28,7 +28,7 @@ public record ArtifactExporterListConst<T extends Type>(TypeListConst<T> type) i
         }
         if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
         var body = new ArtifactListValue(elementTypeArt.optUnwrap(), elementArts);
-        return EResult.ok(new Artifact.Body(ExporterRoot.LIST_CONST.body(ArtifactListValueCodec.toValue(body))));
+        return EResult.ok(new Artifact.Inline(ExporterRoot.LIST_CONST.body(ArtifactListValueCodec.toValue(body))));
     }
 
     @Override

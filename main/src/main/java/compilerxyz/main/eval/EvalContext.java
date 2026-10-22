@@ -6,7 +6,7 @@ import compilerxyz.prelude.util.TList;
 @BuiltinFull(uniqueId = 6025L)
 public final class EvalContext {
 
-    final CompileImportContext ix;
+    public final CompileImportContext ix;
 
     private final Counter dropStateCounter = new Counter();
 

@@ -50,7 +50,7 @@ public record TypeExpr() implements Aspect, Type, Value {
             var expr = MustCast.mustCast(Expr.class, self);
             var artRes = ExprArtifacts.exprToArtifact(xx, expr);
             if (artRes.hasErrors()) return artRes.reerr();
-            return EResult.ok(new Artifact.Body(
+            return EResult.ok(new Artifact.Inline(
                     makeBody.apply(ArtifactExprCodec.toValue(artRes.requireValue("TypeExpr::export artifact")))));
         }
 

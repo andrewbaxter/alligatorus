@@ -6,6 +6,7 @@ import compilerxyz.main.artifact.Exporters;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeDynamicReg;
 import compilerxyz.main.eval.dynamic.CodeLoc;
+import compilerxyz.main.eval.dynamic.CompileImportContextDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.EvalRootEmitter;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
@@ -130,7 +131,7 @@ public final class CompileModule {
                     break evalBlock;
                 }
                 var binding = res.requireValue("Eval::eval installRoot");
-                EvalContextInternal.ix(evalXx.vx).builtinScopeRootBinding = Opt.some(binding);
+                evalXx.vx.ix.builtinScopeRootBinding = Opt.some(binding);
                 var scopeEntries = new TMap<ConstKey, Binding>();
                 scopeEntries.put(new ConstKey.Str(Eval.KEY_BUILTINS), binding);
                 for (var entry : scopeEntries.entrySet()) {
@@ -293,16 +294,8 @@ public final class CompileModule {
                         }
                         dependencyLoaders.add(installRes.requireValue("EvalRoot::run install"));
                     }
-                    if (EvalContextInternal.ix(evalXx.vx).dynamic.classLoader.optIsNone()) {
-                        EvalContextInternal.ix(evalXx.vx).dynamic.classLoader = Opt.some(new DefinitionSetClassLoader(
-                                EvalContextInternal.ix(evalXx.vx).gx,
-                                DefinitionSetClassLoader.class.getClassLoader(),
-                                dependencyLoaders));
-                    }
-                    var loader = EvalContextInternal.ix(evalXx.vx)
-                            .dynamic
-                            .classLoader
-                            .optUnwrap();
+                    var loader =
+                            CompileImportContextDynamic.of(evalXx.vx.ix.dynamic).classLoaderOrCreate(dependencyLoaders);
                     loader.registerClass(evalBinaryName, bytecode);
                     loader.registerLocs(evalBinaryName, locTable.locs());
                     rootStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, evalXx);

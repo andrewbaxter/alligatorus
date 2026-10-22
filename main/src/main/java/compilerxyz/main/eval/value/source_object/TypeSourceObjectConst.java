@@ -123,7 +123,7 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic) implements 
             if (dynamicArtRes.hasErrors()) return dynamicArtRes.reerr();
             var body = new ArtifactSourceObjectConstType(
                     dynamicArtRes.requireValue("TypeSourceObjectConst::export dynamic"));
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactSourceObjectConstTypeCodec.toValue(body))));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(ArtifactSourceObjectConstTypeCodec.toValue(body))));
         }
 
         @Override

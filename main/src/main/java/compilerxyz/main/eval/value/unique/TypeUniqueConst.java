@@ -42,7 +42,7 @@ public record TypeUniqueConst() implements Aspect, Type {
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var u = MustCast.mustCast(Unique.class, self);
-            return EResult.ok(new Artifact.Body(makeBody.apply(TypeUniqueDynamic.encodeUnique(u))));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(TypeUniqueDynamic.encodeUnique(u))));
         }
 
         @Override

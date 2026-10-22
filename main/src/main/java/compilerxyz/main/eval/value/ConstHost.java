@@ -4,11 +4,11 @@ import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalContext;
-import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.External;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.dynamic.CompileImportContextDynamic;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
@@ -60,12 +60,8 @@ public final class ConstHost {
                         .getClass();
             default -> {
                 var name = d.substring(1, d.length() - 1).replace('/', '.');
-                ClassLoader loader = EvalContextInternal.ix(xx.vx)
-                                .dynamic
-                                .classLoader
-                                .optIsSome()
-                        ? EvalContextInternal.ix(xx.vx).dynamic.classLoader.optUnwrap()
-                        : DynRuntime.class.getClassLoader();
+                var loaderOpt = CompileImportContextDynamic.of(xx.vx.ix.dynamic).classLoaderOpt();
+                ClassLoader loader = loaderOpt.optIsSome() ? loaderOpt.optUnwrap() : DynRuntime.class.getClassLoader();
                 try {
                     yield Class.forName(name, false, loader);
                 } catch (ClassNotFoundException e) {

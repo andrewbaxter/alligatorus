@@ -5,7 +5,7 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import compilerxyz.prelude.util.TMap;
+import compilerxyz.prelude.util.TOrderedMap;
 
 @BuiltinFull(uniqueId = 6482L)
 public sealed interface ScopeLevel {
@@ -142,7 +142,7 @@ public sealed interface ScopeLevel {
             this.id = id;
         }
 
-        public final TMap<DestKey, Opt<JumpKey>> dests = new TMap<>();
+        public final TOrderedMap<DestKey, Opt<JumpKey>> dests = new TOrderedMap<>();
         public final TList<Code> blocks = new TList<>();
         public final TList<Type> argumentTypes = new TList<>();
 

@@ -5,7 +5,6 @@ import compilerxyz.main.eval.ConstEval;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
-import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
@@ -72,7 +71,7 @@ public final class SourceObjectInterfaceMethodImplData {
             throw new AssertionError("Interface method impl for a no-value return is unsupported");
         }
         var retT = ifaceMethod.retType.optUnwrap();
-        var innerVx = new EvalContext(EvalContextInternal.ix(xx.vx));
+        var innerVx = new EvalContext(xx.vx.ix);
         var innerTarget = new TargetDynamic(Opt.some(JavaInternalName.of(dtData.internalName())));
         var selfId = new BindingId();
         innerBindingId = Opt.some(selfId);
@@ -166,6 +165,12 @@ public final class SourceObjectInterfaceMethodImplData {
             var bodyCodeRes = CodeDynamic.castRequired(
                     bodyLoc, convertedCv.code(), "Interface method impl body produced no compile-time value");
             if (bodyCodeRes.hasErrors()) return bodyCodeRes.errorsOpt();
+            if (!convertedCv.controlEnded()) {
+                return Opt.some(TList.of(ExprErr.opaque(
+                        bodyLoc,
+                        "Interface method '" + ifaceMethod.name
+                                + "' impl body produces no value but declares a return type")));
+            }
             bodyCode = bodyCodeRes.requireValue("bodyCode");
             bodyResult = Opt.none();
         }

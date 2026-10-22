@@ -755,7 +755,7 @@ public enum ExporterRoot implements ArtifactExporter {
             @Override
             public EResult<Artifact> exporterRootDelegateSelfExport(
                     ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
-                return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueNull())));
+                return EResult.ok(new Artifact.Inline(makeBody.apply(new JsonValueNull())));
             }
 
             @Override
@@ -778,7 +778,7 @@ public enum ExporterRoot implements ArtifactExporter {
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var er = mustCast(ExporterRoot.class, self);
-            return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueString(er.tag))));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(new JsonValueString(er.tag))));
         }
 
         @Override

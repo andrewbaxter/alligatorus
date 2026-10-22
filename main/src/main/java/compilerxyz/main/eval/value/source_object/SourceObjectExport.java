@@ -38,7 +38,7 @@ public final class SourceObjectExport {
                 Exporters.exportData(xx, loc, TypeForms.constForm(xx, type.underlyingType.optUnwrap()), underlying));
         if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
         var body = new ValueSourceObjectConst.ArtifactValueSourceObject(typeArt.optUnwrap(), underArt.optUnwrap());
-        return EResult.ok(new Artifact.Body(ExporterRoot.SOURCE_OBJECT_VALUE_CONST.body(
+        return EResult.ok(new Artifact.Inline(ExporterRoot.SOURCE_OBJECT_VALUE_CONST.body(
                 ValueSourceObjectConstArtifactValueSourceObjectCodec.toValue(body))));
     }
 

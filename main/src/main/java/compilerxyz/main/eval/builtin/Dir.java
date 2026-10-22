@@ -44,7 +44,7 @@ public record Dir(TOrderedMap<String, byte[]> files) {
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var dir = MustCast.mustCast(Dir.class, self);
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactDirCodec.toValue(toArtifactDir(dir)))));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(ArtifactDirCodec.toValue(toArtifactDir(dir)))));
         }
 
         @Override

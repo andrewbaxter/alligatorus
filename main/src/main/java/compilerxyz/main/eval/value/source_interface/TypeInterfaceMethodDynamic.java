@@ -110,7 +110,7 @@ public record TypeInterfaceMethodDynamic(InterfaceCell iface, InterfaceMethodDat
             if (iface.set.optIsNone()) {
                 var body = new ArtifactDataDefSetInterfaceMethod.Builtin(iface.identity, method.name);
                 return EResult.ok(
-                        new Artifact.Body(makeBody.apply(ArtifactDataDefSetInterfaceMethodCodec.toValue(body))));
+                        new Artifact.Inline(makeBody.apply(ArtifactDataDefSetInterfaceMethodCodec.toValue(body))));
             }
             return ArtifactSupport.implExportIndependentArtifact(xx, method.artifactIdCell, () -> {
                 var erb = new Erb(loc);

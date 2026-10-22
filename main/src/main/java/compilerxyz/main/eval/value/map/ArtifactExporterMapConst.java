@@ -38,7 +38,7 @@ public record ArtifactExporterMapConst<K extends Type, V extends Type>(TypeMapCo
         }
         if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
         var body = new ArtifactMapValue(keyTypeArt.optUnwrap(), valueTypeArt.optUnwrap(), entryArts);
-        return EResult.ok(new Artifact.Body(ExporterRoot.MAP_CONST.body(ArtifactMapValueCodec.toValue(body))));
+        return EResult.ok(new Artifact.Inline(ExporterRoot.MAP_CONST.body(ArtifactMapValueCodec.toValue(body))));
     }
 
     @Override

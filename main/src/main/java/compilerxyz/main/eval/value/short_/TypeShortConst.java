@@ -181,7 +181,7 @@ public record TypeShortConst() implements Aspect, Type {
                 ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var dv = MustCast.mustCast(Number.class, self);
             JsonValue data = new JsonValueNumberInt(dv.longValue());
-            return EResult.ok(new Artifact.Body(makeBody.apply(data)));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(data)));
         }
 
         @Override

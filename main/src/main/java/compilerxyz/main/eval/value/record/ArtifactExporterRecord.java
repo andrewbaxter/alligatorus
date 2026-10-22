@@ -28,7 +28,7 @@ public record ArtifactExporterRecord(Record type) implements ArtifactExporter {
                 ExporterRoot.RECORD.artifactExporterExport(xx, loc, liftedRes.requireValue("Record::export lifted")));
         if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
         var body = new ArtifactRecordData(typeArt.optUnwrap(), valueArt.optUnwrap());
-        return EResult.ok(new Artifact.Body(ExporterRoot.RECORD_DATA.body(ArtifactRecordDataCodec.toValue(body))));
+        return EResult.ok(new Artifact.Inline(ExporterRoot.RECORD_DATA.body(ArtifactRecordDataCodec.toValue(body))));
     }
 
     @Override

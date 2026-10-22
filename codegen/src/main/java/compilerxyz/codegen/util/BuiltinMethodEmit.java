@@ -61,7 +61,6 @@ public final class BuiltinMethodEmit {
             new Pair<>(ERESULT, TYPE_ERESULT_DYNAMIC),
             new Pair<>(OPT, TYPE_OPTION_DYNAMIC),
             new Pair<>(TLIST, TYPE_LIST_DYNAMIC),
-            new Pair<>(ClassName.get("compilerxyz.prelude.util", "TMap"), TYPE_MAP_DYNAMIC),
             new Pair<>(TORDERED_MAP, TYPE_MAP_DYNAMIC));
 
     private static ClassName valueType(String pkg, String cls) {

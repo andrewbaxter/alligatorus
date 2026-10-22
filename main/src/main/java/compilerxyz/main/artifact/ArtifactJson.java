@@ -12,6 +12,7 @@ import compilerxyz.main.safejson.JsonValueNumberFloat;
 import compilerxyz.main.safejson.JsonValueNumberInt;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
+import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.util.Map;
@@ -19,19 +20,21 @@ import java.util.Map;
 public final class ArtifactJson {
     private ArtifactJson() {}
 
+    @BuiltinPath(value = "eval.artifact_json_encode", scopeId = 5062L)
     public static JsonValue encodeArtifact(Artifact a) {
         var m = new TOrderedMap<String, JsonValue>();
         switch (a) {
-            case Artifact.Body b -> m.put("body", encodeArtifactBody(b.body()));
+            case Artifact.Inline b -> m.put("body", encodeArtifactBody(b.body()));
             case Artifact.Ref r -> m.put("ref", encodeArtifactIdSource(r.id()));
         }
         return new JsonValueObject(m);
     }
 
+    @BuiltinPath(value = "eval.artifact_json_decode", scopeId = 5063L)
     public static Artifact decodeArtifact(JsonValue v) {
         var entry = tagged(v, "decodeArtifact");
         return switch (entry.getKey()) {
-            case "body" -> new Artifact.Body(decodeArtifactBody(entry.getValue()));
+            case "body" -> new Artifact.Inline(decodeArtifactBody(entry.getValue()));
             case "ref" -> new Artifact.Ref(decodeArtifactIdSource(entry.getValue()));
             default -> throw new IllegalStateException("decodeArtifact: unknown tag " + entry.getKey());
         };

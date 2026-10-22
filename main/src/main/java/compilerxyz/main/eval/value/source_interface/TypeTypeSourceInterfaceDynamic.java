@@ -163,7 +163,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
                 ifaceArt = Opt.some(iRes.requireValue("TypeTypeSourceInterfaceDynamic::export interface"));
             }
             var body = new ArtifactDataSourceInterfaceType(ifaceArt);
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactDataSourceInterfaceTypeCodec.toValue(body))));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(ArtifactDataSourceInterfaceTypeCodec.toValue(body))));
         }
 
         @Override

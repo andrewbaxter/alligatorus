@@ -239,11 +239,8 @@ public final class Helpers {
         private long nextId = 0;
 
         @Override
-        public synchronized Result<ArtifactBody, String> artifactsGet(ArtifactIdSource id) {
-            var vOpt = data.getOpt(id);
-            if (vOpt.optIsNone()) return Result.err("Artifact not found: " + id);
-            var v = vOpt.optUnwrap();
-            return Result.ok(v);
+        public synchronized Opt<ArtifactBody> artifactsGet(ArtifactIdSource id) {
+            return data.getOpt(id);
         }
 
         @Override

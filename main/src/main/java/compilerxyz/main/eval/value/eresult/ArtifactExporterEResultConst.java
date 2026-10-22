@@ -40,7 +40,8 @@ public record ArtifactExporterEResultConst<T extends Type>(TypeEResultConst<T> t
         }
         if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
         var body = new ArtifactEResultValue(elementTypeArt.optUnwrap(), okArt, errArts);
-        return EResult.ok(new Artifact.Body(ExporterRoot.ERESULT_CONST.body(ArtifactEResultValueCodec.toValue(body))));
+        return EResult.ok(
+                new Artifact.Inline(ExporterRoot.ERESULT_CONST.body(ArtifactEResultValueCodec.toValue(body))));
     }
 
     @Override

@@ -194,7 +194,7 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
                                 + " got "
                                 + self.getClass());
             }
-            return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueString(obj.hostClass.getName()))));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(new JsonValueString(obj.hostClass.getName()))));
         }
 
         @Override

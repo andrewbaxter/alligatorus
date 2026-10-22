@@ -5,7 +5,7 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import compilerxyz.prelude.util.TMap;
+import compilerxyz.prelude.util.TOrderedMap;
 
 @BuiltinFull(uniqueId = 6024L)
 public final class Scope {
@@ -29,7 +29,7 @@ public final class Scope {
         return entry;
     }
 
-    public void pushAll(TMap<ConstKey, Binding> named) {
+    public void pushAll(TOrderedMap<ConstKey, Binding> named) {
         for (var entry : named.entrySet()) {
             pushNamed(entry.getKey(), entry.getValue());
         }

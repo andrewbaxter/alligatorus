@@ -102,7 +102,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type) implements A
             var uRes = Exporters.exportType(xx, loc, uc.type);
             if (uRes.hasErrors()) return uRes.reerr();
             var body = new ArtifactDataSourceUnionType(uRes.requireValue("TypeTypeSourceUnionConst::export union"));
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactDataSourceUnionTypeCodec.toValue(body))));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(ArtifactDataSourceUnionTypeCodec.toValue(body))));
         }
 
         @Override

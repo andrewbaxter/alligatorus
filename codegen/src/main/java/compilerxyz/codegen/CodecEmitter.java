@@ -49,10 +49,10 @@ final class CodecEmitter {
                     "compilerxyz.main.artifact.Artifact",
                     new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactCodec", Opt.none())),
             new Pair<>(
-                    "compilerxyz.main.artifact.Artifact.Body",
+                    "compilerxyz.main.artifact.Artifact.Inline",
                     new CodecTarget(
                             ARTIFACT_CODECS_REF + ".ArtifactCodec",
-                            Opt.some("compilerxyz.main.artifact.Artifact.Body"))),
+                            Opt.some("compilerxyz.main.artifact.Artifact.Inline"))),
             new Pair<>(
                     "compilerxyz.main.artifact.Artifact.Ref",
                     new CodecTarget(

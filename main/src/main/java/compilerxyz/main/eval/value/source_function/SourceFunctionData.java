@@ -8,7 +8,6 @@ import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
-import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
@@ -116,7 +115,7 @@ public final class SourceFunctionData {
             throw new AssertionError("Definition set function '" + nameStr + "' is not attached to a definition set");
         }
 
-        var innerVx = new EvalContext(EvalContextInternal.ix(xx.vx));
+        var innerVx = new EvalContext(xx.vx.ix);
         var innerTarget = new TargetDynamic(
                 Opt.some(JavaInternalName.of(DefSetFunctionsEmitter.functionsInternalName(funcSet.defSetId))));
 

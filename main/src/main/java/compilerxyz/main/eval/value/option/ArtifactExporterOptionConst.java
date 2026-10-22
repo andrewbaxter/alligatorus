@@ -35,7 +35,7 @@ public record ArtifactExporterOptionConst<T extends Type>(TypeOptionConst<T> typ
         }
         if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
         var body = new ArtifactOptionValue(elementTypeArt.optUnwrap(), payloadArt);
-        return EResult.ok(new Artifact.Body(ExporterRoot.OPTION_CONST.body(ArtifactOptionValueCodec.toValue(body))));
+        return EResult.ok(new Artifact.Inline(ExporterRoot.OPTION_CONST.body(ArtifactOptionValueCodec.toValue(body))));
     }
 
     @Override

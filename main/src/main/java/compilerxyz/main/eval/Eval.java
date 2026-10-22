@@ -6,7 +6,7 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
-import compilerxyz.prelude.util.TMap;
+import compilerxyz.prelude.util.TOrderedMap;
 
 public final class Eval {
 
@@ -69,12 +69,12 @@ public final class Eval {
         return EResult.ok(dest);
     }
 
-    public static TMap<ConstKey, Binding> bodyBuiltinScope(ExprContext xx) {
-        if (EvalContextInternal.ix(xx.vx).builtinScopeRootBinding.optIsNone()) {
+    public static TOrderedMap<ConstKey, Binding> bodyBuiltinScope(ExprContext xx) {
+        if (xx.vx.ix.builtinScopeRootBinding.optIsNone()) {
             throw new IllegalStateException("bodyBuiltinScope called before initBuiltinScope");
         }
-        var rootBinding = EvalContextInternal.ix(xx.vx).builtinScopeRootBinding.optUnwrap();
-        var scopeEntries = new TMap<ConstKey, Binding>();
+        var rootBinding = xx.vx.ix.builtinScopeRootBinding.optUnwrap();
+        var scopeEntries = new TOrderedMap<ConstKey, Binding>();
         scopeEntries.put(new ConstKey.Str(KEY_BUILTINS), rootBinding);
         return scopeEntries;
     }

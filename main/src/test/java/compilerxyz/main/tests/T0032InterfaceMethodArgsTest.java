@@ -157,6 +157,52 @@ public final class T0032InterfaceMethodArgsTest {
     }
 
     @Test
+    public void test00400ImplBodyWithoutValueIsAnError() {
+        var e = new TestMbShorthand();
+        var modules = new TMap<String, SourceModule>();
+        var body = e.seq(
+                e.let("a", e.intOf(1)),
+                e.mb.labeled(
+                        "m",
+                        e.seq(e.ifOnly(e.v("arg"), e.mb.return_("m", e.intOf(3))), e.mb.return_("m", e.intOf(5)))));
+        modules.put(
+                "main",
+                new SourceModule.V1(TList.of(
+                        e.let(
+                                "lib",
+                                e.lower(e.seq(
+                                        e.let("d", e.define()),
+                                        e.let("iface", e.callM0(e.v("d"), "interface")),
+                                        e.interfaceImpl(e.v("iface")),
+                                        e.callM(
+                                                e.v("iface"),
+                                                "func",
+                                                e.rec(
+                                                        e.p("name", e.s("pick")),
+                                                        e.p("arg", e.mb.typesBool()),
+                                                        e.p("ret", e.retSome(e.mb.typesInt())))),
+                                        e.let("o", e.defObject(e.v("d"), "o")),
+                                        e.objectImpl(e.v("o"), e.mb.typesInt()),
+                                        e.implInterface(e.v("o"), e.fld(e.v("iface"), "type"), e.p("pick", body)),
+                                        e.finish(e.v("d")),
+                                        e.ret(e.rec(
+                                                e.p("make", e.fld(e.v("o"), "new")),
+                                                e.p("iface_t", e.fld(e.v("iface"), "type"))))))),
+                        e.let("c", e.call(e.fld(e.v("lib"), "make"), e.intOf(7))),
+                        e.call(
+                                e.mb.log(),
+                                e.toStr(e.pipe(e.v("c"), e.fld(e.v("lib"), "iface_t", "pick"), e.mb.bool(true)))))));
+        var res = Helpers.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
+        switch (res) {
+            case Result.Ok<Compile.CompileResult, ?> o -> throw new AssertionError("expected a compile error");
+            case Result.Err<Compile.CompileResult, ?> err -> {
+                var text = err.error().toString();
+                assertTrue(text.contains("Interface method 'pick' impl body produces no value"), text);
+            }
+        }
+    }
+
+    @Test
     public void test00100RecordAndTupleMethodArgsThroughImport(@TempDir Path tmp) throws IOException {
         var e = new TestMbShorthand();
         var src = tmp.resolve("src");

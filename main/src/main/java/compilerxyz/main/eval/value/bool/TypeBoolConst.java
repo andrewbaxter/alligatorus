@@ -85,7 +85,7 @@ public record TypeBoolConst() implements Aspect, Type {
                 ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var bv = MustCast.mustCast(Boolean.class, self);
             JsonValue data = new JsonValueBoolean(bv);
-            return EResult.ok(new Artifact.Body(makeBody.apply(data)));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(data)));
         }
 
         @Override

@@ -1331,7 +1331,7 @@ public final class T0170NodejsTest {
                                                                                                                 rp(
                                                                                                                         "exception_type",
                                                                                                                         mb
-                                                                                                                                .typesString()))))),
+                                                                                                                                .optNoneType()))))),
                                                                                 mb.bind(
                                                                                         "res",
                                                                                         mb.call(

@@ -19,8 +19,11 @@ public final class ArtifactResolve {
 
     public static Result<ArtifactBody, String> artifactResolveBody(Artifacts artifacts, Artifact artifact) {
         return switch (artifact) {
-            case Artifact.Body b -> Result.ok(b.body());
-            case Artifact.Ref r -> artifacts.artifactsGet(r.id());
+            case Artifact.Inline b -> Result.ok(b.body());
+            case Artifact.Ref r -> {
+                var got = artifacts.artifactsGet(r.id());
+                yield got.optIsSome() ? Result.ok(got.optUnwrap()) : Result.err("Unknown artifact: " + r.id());
+            }
         };
     }
 

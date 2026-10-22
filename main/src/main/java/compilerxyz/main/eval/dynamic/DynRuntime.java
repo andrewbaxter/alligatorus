@@ -4,10 +4,8 @@ import static compilerxyz.prelude.util.MustCast.mustCast;
 
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
-import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalContext;
-import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
@@ -176,9 +174,7 @@ public final class DynRuntime {
     }
 
     public static Unique freshUnique(EvalContext vx) {
-        var ix = EvalContextInternal.ix(vx);
-        var compileId = new CompileId(ix.importState, ix.sourceId);
-        return new Unique.Source(compileId, ix.uniqueCounter.next());
+        return vx.ix.uniqueNext();
     }
 
     private sealed interface StageLowerValue {

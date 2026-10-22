@@ -103,7 +103,7 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
             var cell = MustCast.mustCast(TypeSourceInterfaceDynamic.class, self).cell;
             if (cell.set.optIsNone()) {
                 var body = new ArtifactDataDefSetInterface.Builtin(cell.identity);
-                return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactDataDefSetInterfaceCodec.toValue(body))));
+                return EResult.ok(new Artifact.Inline(makeBody.apply(ArtifactDataDefSetInterfaceCodec.toValue(body))));
             }
             var set = cell.set.optUnwrap();
             var frozenOpt = cell.frozenOpt();

@@ -33,7 +33,7 @@ public record App(Opt<String> executor, byte[] bytes) {
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var app = MustCast.mustCast(App.class, self);
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactAppCodec.toValue(toArtifactApp(app)))));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(ArtifactAppCodec.toValue(toArtifactApp(app)))));
         }
 
         @Override

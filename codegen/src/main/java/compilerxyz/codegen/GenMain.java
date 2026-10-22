@@ -722,6 +722,10 @@ public final class GenMain {
                             var paramDescs = new TList<CodeBlock>();
                             var paramRawClasses = new TList<TypeName>();
                             for (var p : method.params()) {
+                                if (p.name().equals("self")) {
+                                    throw new IllegalStateException("codegen: parameter self of " + where
+                                            + " is reserved for the receiver of a method call");
+                                }
                                 var pdOpt = BuiltinMethodEmit.resolveDescriptor(p.type(), leafDescriptors);
                                 if (pdOpt.optIsNone()) {
                                     throw new IllegalStateException("codegen: no language type for parameter "

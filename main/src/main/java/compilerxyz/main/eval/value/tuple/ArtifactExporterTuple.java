@@ -28,7 +28,7 @@ public record ArtifactExporterTuple(Tuple type) implements ArtifactExporter {
                 ExporterRoot.TUPLE.artifactExporterExport(xx, loc, liftedRes.requireValue("Tuple::export lifted")));
         if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
         var body = new ArtifactTupleData(typeArt.optUnwrap(), valueArt.optUnwrap());
-        return EResult.ok(new Artifact.Body(ExporterRoot.TUPLE_DATA.body(ArtifactTupleDataCodec.toValue(body))));
+        return EResult.ok(new Artifact.Inline(ExporterRoot.TUPLE_DATA.body(ArtifactTupleDataCodec.toValue(body))));
     }
 
     @Override

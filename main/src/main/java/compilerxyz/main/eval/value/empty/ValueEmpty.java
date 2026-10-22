@@ -32,7 +32,7 @@ public record ValueEmpty(Type type) implements Value {
             var typeRes = Exporters.exportType(xx, loc, value.type);
             if (typeRes.hasErrors()) return typeRes.reerr();
             var body = new ArtifactValueEmpty(typeRes.requireValue("ValueEmpty::export type"));
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactValueEmptyCodec.toValue(body))));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(ArtifactValueEmptyCodec.toValue(body))));
         }
 
         @Override

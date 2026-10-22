@@ -11,7 +11,7 @@ import compilerxyz.prelude.util.Opt;
 @BuiltinFull(uniqueId = 6400L)
 @BuiltinPath("eval.artifact_exporter")
 public interface ArtifactExporter {
-    EResult<Artifact> artifactExporterExport(ExprContext xx, QExprId loc, Object self);
+    EResult<Artifact> artifactExporterExport(ExprContext xx, QExprId loc, Object value);
 
     EResult<Object> artifactExporterImportFromData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data);

@@ -80,7 +80,7 @@ public record TypeTypeMap<K extends Type, V extends Type>(TypeMapDynamic<K, V> t
             var heldRes = Exporters.exportType(xx, loc, tt.type);
             if (heldRes.hasErrors()) return heldRes.reerr();
             var body = new ArtifactTypeOfType(heldRes.requireValue("TypeTypeMap::export held type"));
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactTypeOfTypeCodec.toValue(body))));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(ArtifactTypeOfTypeCodec.toValue(body))));
         }
 
         @Override

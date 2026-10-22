@@ -215,7 +215,8 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var type = MustCast.mustCast(TypeObjectConst.class, self);
-            return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueString(type.externalHostClass.getName()))));
+            return EResult.ok(
+                    new Artifact.Inline(makeBody.apply(new JsonValueString(type.externalHostClass.getName()))));
         }
 
         @Override

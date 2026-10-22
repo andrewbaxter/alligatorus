@@ -70,7 +70,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type) implements
             if (objRes.hasErrors()) return objRes.reerr();
             var body =
                     new ArtifactDataSourceObjectType(objRes.requireValue("TypeTypeSourceObjectConst::export object"));
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactDataSourceObjectTypeCodec.toValue(body))));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(ArtifactDataSourceObjectTypeCodec.toValue(body))));
         }
 
         @Override

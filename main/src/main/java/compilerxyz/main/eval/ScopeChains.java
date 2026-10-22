@@ -1,11 +1,13 @@
 package compilerxyz.main.eval;
 
+import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
 public final class ScopeChains {
     private ScopeChains() {}
 
+    @BuiltinPath(value = "eval.exc_dest", scopeId = 5061L)
     public static EResult<Opt<JumpKey>> excDest(ExprContext xx, QExprId loc) {
         var levels = xx.scope.levels;
         var cleanups = new TList<ScopeLevel>();

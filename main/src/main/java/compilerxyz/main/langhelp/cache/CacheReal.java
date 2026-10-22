@@ -578,11 +578,10 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
     }
 
     @Override
-    public synchronized Result<ArtifactBody, String> artifactsGet(ArtifactIdSource id) {
+    public synchronized Opt<ArtifactBody> artifactsGet(ArtifactIdSource id) {
         var memOpt = artifactMem.getOpt(id);
         if (memOpt.optIsSome()) {
-            var mem = memOpt.optUnwrap();
-            return Result.ok(mem);
+            return memOpt;
         }
         synchronized (dbLock) {
             try (var ps = conn.prepareStatement(
@@ -591,10 +590,10 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 ps.setLong(2, id.compileId().source().value());
                 ps.setLong(3, id.index());
                 try (var rs = ps.executeQuery()) {
-                    if (!rs.next()) return Result.err("Unknown artifact: " + id);
+                    if (!rs.next()) return Opt.none();
                     var body = ArtifactJson.decodeArtifactBody(parseJson(rs.getString(1)));
                     artifactMem.put(id, body);
-                    return Result.ok(body);
+                    return Opt.some(body);
                 }
             } catch (SQLException e) {
                 throw new RuntimeException("CacheReal.artifactsGet", e);

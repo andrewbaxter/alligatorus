@@ -1,14 +1,13 @@
 package compilerxyz.main.artifact;
 
-import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -19,27 +18,24 @@ import java.util.function.Supplier;
 public final class ArtifactSupport {
     private ArtifactSupport() {}
 
+    @BuiltinPath(value = "eval.artifact_import", scopeId = 5064L)
     public static EResult<Object> importArtifact(ExprContext xx, QExprId loc, Artifact artifact) {
         Opt<ArtifactIdSource> id;
         ArtifactBody body;
         switch (artifact) {
-            case Artifact.Body b -> {
+            case Artifact.Inline b -> {
                 id = Opt.none();
                 body = b.body();
             }
             case Artifact.Ref r -> {
                 id = Opt.some(r.id());
-                var cached = EvalContextInternal.ix(xx.vx).deserializedArtifacts.getOpt(r.id());
+                var cached = xx.vx.ix.deserializedArtifacts.getOpt(r.id());
                 if (cached.optIsSome()) {
                     return EResult.ok(cached.optUnwrap());
                 }
-                var got = EvalContextInternal.ix(xx.vx).gx.artifacts.artifactsGet(r.id());
-                switch (got) {
-                    case Result.Err<ArtifactBody, String> err -> {
-                        return EResult.err(loc, err.error());
-                    }
-                    case Result.Ok<ArtifactBody, String> ok -> body = ok.value();
-                }
+                var got = xx.vx.ix.artifacts.artifactsGet(r.id());
+                if (got.optIsNone()) return EResult.err(loc, "Unknown artifact: " + r.id());
+                body = got.optUnwrap();
             }
         }
         return importArtifactBody(xx, loc, id, body);
@@ -65,19 +61,13 @@ public final class ArtifactSupport {
             }
             case ArtifactBodyExporter.SourceRef sr -> {
                 Object exporterAny;
-                var cached = EvalContextInternal.ix(xx.vx).deserializedArtifacts.getOpt(sr.id());
+                var cached = xx.vx.ix.deserializedArtifacts.getOpt(sr.id());
                 if (cached.optIsSome()) {
                     exporterAny = cached.optUnwrap();
                 } else {
-                    var got = EvalContextInternal.ix(xx.vx).gx.artifacts.artifactsGet(sr.id());
-                    ArtifactBody gotBody;
-                    switch (got) {
-                        case Result.Err<ArtifactBody, String> err -> {
-                            return EResult.err(loc, err.error());
-                        }
-                        case Result.Ok<ArtifactBody, String> ok -> gotBody = ok.value();
-                    }
-                    var inner = importArtifactBody(xx, loc, Opt.some(sr.id()), gotBody);
+                    var got = xx.vx.ix.artifacts.artifactsGet(sr.id());
+                    if (got.optIsNone()) return EResult.err(loc, "Unknown artifact: " + sr.id());
+                    var inner = importArtifactBody(xx, loc, Opt.some(sr.id()), got.optUnwrap());
                     if (inner.hasErrors()) {
                         inner.drainInto(errors);
                         return errsOrEmpty(errors);
@@ -95,9 +85,8 @@ public final class ArtifactSupport {
         if (cell.id().optIsSome()) {
             return EResult.ok(new Artifact.Ref(cell.id().optUnwrap()));
         }
-        var artifacts = EvalContextInternal.ix(xx.vx).gx.artifacts;
-        var id = artifacts.artifactsReserveId(
-                new CompileId(EvalContextInternal.ix(xx.vx).importState, EvalContextInternal.ix(xx.vx).sourceId));
+        var artifacts = xx.vx.ix.artifacts;
+        var id = artifacts.artifactsReserveId(xx.vx.ix.compileId());
         cell.set(id);
         var bodyRes = produce.get();
         if (bodyRes.hasErrors()) return bodyRes.reerr();
@@ -129,9 +118,7 @@ public final class ArtifactSupport {
             case Result.Ok<ImportIndependentResult, String> ok -> triple = ok.value();
         }
         if (triple.early().optIsSome()) {
-            EvalContextInternal.ix(xx.vx)
-                    .deserializedArtifacts
-                    .put(id, triple.early().optUnwrap());
+            xx.vx.ix.deserializedArtifacts.put(id, triple.early().optUnwrap());
         }
         var errors = new TList<ExprErr>();
         for (var dep : triple.dependencies()) {
@@ -139,14 +126,14 @@ public final class ArtifactSupport {
             depRes.drainInto(errors);
         }
         var value = triple.finalizer().finalizerRun(xx, loc);
-        EvalContextInternal.ix(xx.vx).deserializedArtifacts.put(id, value);
+        xx.vx.ix.deserializedArtifacts.put(id, value);
         return errors.isEmpty() ? EResult.ok(value) : EResult.mixed(value, errors);
     }
 
     public static EResult<Object> independentFinalizeImportArtifact(ExprContext xx, QExprId loc, Artifact artifact) {
         return switch (artifact) {
             case Artifact.Ref r -> lookupRef(xx, loc, r.id());
-            case Artifact.Body b -> walkBody(xx, loc, b.body());
+            case Artifact.Inline b -> walkBody(xx, loc, b.body());
         };
     }
 
@@ -162,13 +149,13 @@ public final class ArtifactSupport {
     }
 
     private static EResult<Object> lookupRef(ExprContext xx, QExprId loc, ArtifactIdSource id) {
-        var cached = EvalContextInternal.ix(xx.vx).deserializedArtifacts.getOpt(id);
+        var cached = xx.vx.ix.deserializedArtifacts.getOpt(id);
         if (cached.optIsSome()) {
             return EResult.ok(cached.optUnwrap());
         }
         var cachedIds = new TList<ArtifactIdSource>();
 
-        for (var entry : EvalContextInternal.ix(xx.vx).deserializedArtifacts.entrySet()) {
+        for (var entry : xx.vx.ix.deserializedArtifacts.entrySet()) {
             cachedIds.add(entry.getKey());
         }
         return EResult.err(

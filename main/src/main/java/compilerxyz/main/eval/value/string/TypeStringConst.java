@@ -85,7 +85,7 @@ public record TypeStringConst() implements Aspect, Type {
                 ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var s = MustCast.mustCast(String.class, self);
             JsonValue data = new JsonValueString(s);
-            return EResult.ok(new Artifact.Body(makeBody.apply(data)));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(data)));
         }
 
         @Override

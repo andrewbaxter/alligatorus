@@ -23,8 +23,8 @@ public record ExprErr(QExprId loc, TList<ExprSubErr> errors) {
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Object self, Function<JsonValue, ArtifactBody> makeBody) {
             var err = MustCast.mustCast(ExprErr.class, self);
-            return EResult.ok(
-                    new Artifact.Body(makeBody.apply(ArtifactExprErrCodec.toValue(ArtifactExprErr.fromExprErr(err)))));
+            return EResult.ok(new Artifact.Inline(
+                    makeBody.apply(ArtifactExprErrCodec.toValue(ArtifactExprErr.fromExprErr(err)))));
         }
 
         @Override

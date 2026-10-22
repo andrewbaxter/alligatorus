@@ -55,7 +55,7 @@ public record ValueObjectConst(Type type, Object data) implements Value {
             var body = new ArtifactValueObjectConst(
                     typeRes.requireValue("ValueObjectConst::export type"),
                     dataRes.requireValue("ValueObjectConst::export data"));
-            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactValueObjectConstCodec.toValue(body))));
+            return EResult.ok(new Artifact.Inline(makeBody.apply(ArtifactValueObjectConstCodec.toValue(body))));
         }
 
         @Override

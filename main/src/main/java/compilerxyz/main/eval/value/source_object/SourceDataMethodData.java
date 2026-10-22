@@ -6,7 +6,6 @@ import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
-import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
@@ -86,7 +85,7 @@ public final class SourceDataMethodData {
         }
         var bodyLoc = implExprAst.loc();
         var retT = retType;
-        var innerVx = new EvalContext(EvalContextInternal.ix(xx.vx));
+        var innerVx = new EvalContext(xx.vx.ix);
         var innerTarget = new TargetDynamic(Opt.some(JavaInternalName.of(objectInternalName)));
         var selfId = new BindingId();
         innerBindingId = Opt.some(selfId);

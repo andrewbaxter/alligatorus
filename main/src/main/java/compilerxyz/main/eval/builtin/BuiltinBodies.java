@@ -1,19 +1,20 @@
 package compilerxyz.main.eval.builtin;
 
 import com.google.gson.stream.JsonWriter;
+import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactBody;
+import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
-import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.ConstEval;
 import compilerxyz.main.eval.ConstKey;
-import compilerxyz.main.eval.DefSetId;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
-import compilerxyz.main.eval.EvalContextInternal;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.EvalRes;
 import compilerxyz.main.eval.Expr;
@@ -51,7 +52,14 @@ import compilerxyz.main.gen.ListStoreByte;
 import compilerxyz.main.gen.ListStoreInt;
 import compilerxyz.main.gen.Target;
 import compilerxyz.main.gen.Value;
-import compilerxyz.main.langhelp.Sources;
+import compilerxyz.main.safejson.JsonValue;
+import compilerxyz.main.safejson.JsonValueArray;
+import compilerxyz.main.safejson.JsonValueBoolean;
+import compilerxyz.main.safejson.JsonValueNull;
+import compilerxyz.main.safejson.JsonValueNumberFloat;
+import compilerxyz.main.safejson.JsonValueNumberInt;
+import compilerxyz.main.safejson.JsonValueObject;
+import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.main.syntax.HashValue;
 import compilerxyz.main.syntax.RemoteOrigin;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
@@ -62,7 +70,6 @@ import compilerxyz.prelude.util.IOrderedMap;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
-import compilerxyz.prelude.util.TMap;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -110,10 +117,7 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "define", scopeId = 5002L)
     @BuiltinEvalContext
     public static DefinitionSetBuilder define(EvalContext vx) {
-        var compileId = new CompileId(EvalContextInternal.ix(vx).importState, EvalContextInternal.ix(vx).sourceId);
-        var defSetId =
-                new DefSetId(compileId, EvalContextInternal.ix(vx).defSetCounter.next());
-        return new DefinitionSetBuilder(new DefinitionSet(defSetId));
+        return new DefinitionSetBuilder(new DefinitionSet(vx.ix.defSetIdNext()));
     }
 
     @BuiltinPath(value = "types.record", scopeId = 5042L)
@@ -137,18 +141,14 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.scope", scopeId = 5006L)
     public static Scope scope(EvalContext vx, TOrderedMap<ConstKey, Binding> entries) {
         var scope = new Scope(vx);
-        var named = new TMap<ConstKey, Binding>();
-        for (var entry : entries.entrySet()) {
-            named.put(entry.getKey(), entry.getValue());
-        }
-        scope.pushAll(named);
+        scope.pushAll(entries);
         return scope;
     }
 
     @BuiltinPath(value = "eval.eval_context", scopeId = 5009L)
     @BuiltinEvalContext
     public static EvalContext evalContext(EvalContext vx) {
-        return new EvalContext(EvalContextInternal.ix(vx));
+        return new EvalContext(vx.ix);
     }
 
     @BuiltinPath(value = "eval.fresh_unique", scopeId = 5016L)
@@ -173,7 +173,7 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.import_file", scopeId = 5046L)
     @BuiltinEvalContext
     public static FileHandle importFile(EvalContext vx, String specKey) {
-        var ix = EvalContextInternal.ix(vx);
+        var ix = vx.ix;
         SourceSpecAbsolute abs;
         if (specKey.startsWith("local:")) {
             abs = new SourceSpecAbsolute.Local(specKey.substring("local:".length()));
@@ -204,13 +204,7 @@ public final class BuiltinBodies {
         } else {
             throw new IllegalArgumentException("not a local or remote spec key: " + specKey);
         }
-        Sources.SourceData data;
-        switch (ix.gx.sources.sourcesGetData(abs)) {
-            case Result.Ok<Sources.SourceData, String> ok -> data = ok.value();
-            case Result.Err<Sources.SourceData, String> err -> throw new DynPanic("import: " + err.error());
-        }
-        if (data.local().optIsSome()) ix.localData.add(data.local().optUnwrap());
-        return new FileHandle(data.bytes());
+        return ix.importFile(abs);
     }
 
     @BuiltinPath(value = "exec", scopeId = 5047L)
@@ -350,9 +344,8 @@ public final class BuiltinBodies {
     }
 
     @BuiltinPath(value = "eval.expr_context", scopeId = 5017L)
-    public static ExprContext exprContext(Scope scope, Target target, EvalContext vx, Type exceptionType) {
-        return new ExprContext(
-                scope, target, vx, EvalContextInternal.ix(vx).importState, Opt.some(exceptionType), Opt.none());
+    public static ExprContext exprContext(Scope scope, Target target, EvalContext vx, Opt<Type> exceptionType) {
+        return new ExprContext(scope, target, vx, vx.ix.importState, exceptionType, Opt.none());
     }
 
     @BuiltinPath(value = "eval.code_none", scopeId = 5018L)
@@ -403,6 +396,71 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.exit_value", scopeId = 5053L)
     public static Target.ExitValue exitValue(boolean carries, CodeValue cv) {
         return new Target.ExitValue(carries, cv);
+    }
+
+    @BuiltinPath(value = "eval.json_null", scopeId = 5065L)
+    public static JsonValue jsonNull() {
+        return new JsonValueNull();
+    }
+
+    @BuiltinPath(value = "eval.json_bool", scopeId = 5066L)
+    public static JsonValue jsonBool(boolean value) {
+        return new JsonValueBoolean(value);
+    }
+
+    @BuiltinPath(value = "eval.json_int", scopeId = 5067L)
+    public static JsonValue jsonInt(long value) {
+        return new JsonValueNumberInt(value);
+    }
+
+    @BuiltinPath(value = "eval.json_float", scopeId = 5068L)
+    public static JsonValue jsonFloat(double value) {
+        return new JsonValueNumberFloat(value);
+    }
+
+    @BuiltinPath(value = "eval.json_string", scopeId = 5069L)
+    public static JsonValue jsonString(String value) {
+        return new JsonValueString(value);
+    }
+
+    @BuiltinPath(value = "eval.json_array", scopeId = 5070L)
+    public static JsonValue jsonArray(TList<JsonValue> elements) {
+        return new JsonValueArray(elements);
+    }
+
+    @BuiltinPath(value = "eval.json_object", scopeId = 5071L)
+    public static JsonValue jsonObject(TOrderedMap<String, JsonValue> entries) {
+        return new JsonValueObject(entries);
+    }
+
+    @BuiltinPath(value = "eval.artifact_ref", scopeId = 5072L)
+    public static Artifact artifactRef(ArtifactIdSource id) {
+        return new Artifact.Ref(id);
+    }
+
+    @BuiltinPath(value = "eval.artifact_inline", scopeId = 5073L)
+    public static Artifact artifactInline(ArtifactBody body) {
+        return new Artifact.Inline(body);
+    }
+
+    @BuiltinPath(value = "eval.artifact_body", scopeId = 5074L)
+    public static ArtifactBody artifactBody(JsonValue data, ArtifactBodyExporter exporter) {
+        return new ArtifactBody(data, exporter);
+    }
+
+    @BuiltinPath(value = "eval.artifact_body_exporter_body", scopeId = 5075L)
+    public static ArtifactBodyExporter artifactBodyExporterBody(ArtifactBody inner) {
+        return new ArtifactBodyExporter.Body(inner);
+    }
+
+    @BuiltinPath(value = "eval.artifact_body_exporter_root", scopeId = 5076L)
+    public static ArtifactBodyExporter artifactBodyExporterRoot() {
+        return new ArtifactBodyExporter.Root();
+    }
+
+    @BuiltinPath(value = "eval.artifact_body_exporter_source_ref", scopeId = 5077L)
+    public static ArtifactBodyExporter artifactBodyExporterSourceRef(ArtifactIdSource id) {
+        return new ArtifactBodyExporter.SourceRef(id);
     }
 
     @BuiltinPath(value = "eval.aspect_union_variant", scopeId = 5054L)
