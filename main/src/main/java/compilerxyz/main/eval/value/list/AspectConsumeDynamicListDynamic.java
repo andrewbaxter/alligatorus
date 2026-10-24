@@ -8,8 +8,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 
-public record AspectConsumeDynamicListSpecializedDynamic<T extends Type>(TypeListSpecializedDynamic<T> type)
-        implements AspectConsumeDynamic {
+public record AspectConsumeDynamicListDynamic<T extends Type>(TypeListDynamic<T> type) implements AspectConsumeDynamic {
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {

@@ -287,7 +287,7 @@ public final class T0100ImportTest {
         var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
         assertEquals(1, ok.logs().size());
         assertEquals("HELLO", ok.logs().get(0).message());
-        assertEquals(3, gxa.artifacts().data.size());
+        assertEquals(4, gxa.artifacts().data.size());
         var tupleArt = Helpers.artifactByTag(gxa.artifacts(), "tuple");
         assertEquals(
                 new ArtifactBodyExporter.Body(new ArtifactBody(jsonStr("tuple"), new ArtifactBodyExporter.Root())),

@@ -10,8 +10,7 @@ import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.gen.AspectInitialBind;
 import compilerxyz.main.gen.Binding;
 
-public record AspectInitialBindListBoxedDynamic<T extends Type>(TypeListBoxedDynamic<T> type)
-        implements AspectInitialBind {
+public record AspectInitialBindListDynamic<T extends Type>(TypeListDynamic<T> type) implements AspectInitialBind {
 
     @Override
     public EResult<Binding> aspectInitialBindInitialBind(ExprContext xx, QExprId loc, BindingSlot slot) {

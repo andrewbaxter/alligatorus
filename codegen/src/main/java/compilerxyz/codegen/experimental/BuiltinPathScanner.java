@@ -194,7 +194,7 @@ public final class BuiltinPathScanner {
                     ClassName.get("compilerxyz.main.eval.value.option", "TypeOptionDynamic")),
             new Pair<>(
                     "compilerxyz.prelude.util.TList",
-                    ClassName.get("compilerxyz.main.eval.value.list", "TypeListBoxedDynamic")),
+                    ClassName.get("compilerxyz.main.eval.value.list", "TypeListDynamic")),
             new Pair<>(
                     "compilerxyz.prelude.util.TMap",
                     ClassName.get("compilerxyz.main.eval.value.map", "TypeMapDynamic")),
@@ -268,8 +268,8 @@ public final class BuiltinPathScanner {
                 for (var prim : ListsGen.PRIMS) {
                     if (!prim.storeSimple().equals(cn.simpleName())) continue;
                     specialized = Opt.some(CodeBlock.of(
-                            "new $T(new $T(), $T.fromClass($T.class), $T.$L)",
-                            ClassName.get("compilerxyz.main.eval.value.list", "TypeListSpecializedDynamic"),
+                            "new $T(new $T(), $T.fromClass($T.class), $T.$L, false)",
+                            ListsGen.LIST_DYNAMIC,
                             prim.elementClass(),
                             ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName"),
                             cn,

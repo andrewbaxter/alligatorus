@@ -18,12 +18,12 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinLight(uniqueId = 6120L)
-public record TypeListPushDynamic(Type elementType) implements Aspect, Type {
+@BuiltinLight(uniqueId = 6199L)
+public record TypeListPushDynamic(TypeListDynamic listType) implements Aspect, Type {
 
     @Override
     public String typeDesc() {
-        return "list(" + elementType.typeDesc() + ").push";
+        return listType.typeDesc() + ".push";
     }
 
     @Override
@@ -38,8 +38,7 @@ public record TypeListPushDynamic(Type elementType) implements Aspect, Type {
             return Opt.some(new AspectFunctionListPushDynamic(this));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
-            return Opt.some(
-                    new AspectConsumeDynamicMethod(JvmSort.descriptor(xx, new TypeListBoxedDynamic<>(elementType))));
+            return Opt.some(new AspectConsumeDynamicMethod(JvmSort.descriptor(xx, listType)));
         }
         if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);
@@ -57,7 +56,7 @@ public record TypeListPushDynamic(Type elementType) implements Aspect, Type {
     public boolean typeIsEqual(ExprContext xx, Type other) {
         var oOpt = AspectLookup.getMaybe(
                 xx, other, GenTrivialIdentityAspects.TYPE_LIST_PUSH_DYNAMIC_IDENTITY, TypeListPushDynamic.class);
-        return oOpt.optIsSome() && elementType.typeIsEqual(xx, oOpt.optUnwrap().elementType);
+        return oOpt.optIsSome() && listType.typeIsEqual(xx, oOpt.optUnwrap().listType());
     }
 
     @Override

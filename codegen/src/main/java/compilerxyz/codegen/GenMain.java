@@ -1133,7 +1133,7 @@ public final class GenMain {
         }
         {
             for (var store : ListsGen.STORES) {
-                for (var bytecodeCalled : new String[] {"push", "get", "set", "size"}) {
+                for (var bytecodeCalled : new String[] {"add", "get", "set", "size"}) {
                     dispatchRoots.add(ListsGen.GEN_PACKAGE + "." + store.simple() + "#" + bytecodeCalled);
                 }
                 TypeSpec storeClass;
@@ -1143,7 +1143,7 @@ public final class GenMain {
                     {
                         storeClass = TypeSpec.classBuilder(store.simple())
                                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                                .addSuperinterface(ClassName.get("compilerxyz.main.eval.value.list", "ListStore"))
+                                .addSuperinterface(ClassName.get("compilerxyz.prelude.util", "ListStore"))
                                 .addField(FieldSpec.builder(
                                                 arrayType, "EMPTY", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                                         .initializer("new $T[0]", store.javaPrim())
@@ -1153,7 +1153,7 @@ public final class GenMain {
                                         .build())
                                 .addField(FieldSpec.builder(TypeName.INT, "size", Modifier.PRIVATE)
                                         .build())
-                                .addMethod(MethodSpec.methodBuilder("push")
+                                .addMethod(MethodSpec.methodBuilder("add")
                                         .addModifiers(Modifier.PUBLIC)
                                         .addParameter(store.javaPrim(), "value")
                                         .beginControlFlow("if (size == data.length)")
@@ -1201,12 +1201,12 @@ public final class GenMain {
                                         .addParameter(TypeName.INT, "index")
                                         .addStatement("return get(index)")
                                         .build())
-                                .addMethod(MethodSpec.methodBuilder("listStorePushBoxed")
+                                .addMethod(MethodSpec.methodBuilder("listStoreAddBoxed")
                                         .addAnnotation(Override.class)
                                         .addModifiers(Modifier.PUBLIC)
                                         .addParameter(Object.class, "value")
                                         .addStatement(
-                                                "push($L)",
+                                                "add($L)",
                                                 store.javaPrim().equals(TypeName.BOOLEAN)
                                                         ? "(Boolean) value"
                                                         : "((Number) value)." + store.javaPrim() + "Value()")
@@ -1214,7 +1214,7 @@ public final class GenMain {
                                 .addMethod(MethodSpec.methodBuilder("listStoreCopy")
                                         .addAnnotation(Override.class)
                                         .addModifiers(Modifier.PUBLIC)
-                                        .returns(ClassName.get("compilerxyz.main.eval.value.list", "ListStore"))
+                                        .returns(ClassName.get("compilerxyz.prelude.util", "ListStore"))
                                         .addStatement("var out = new $L()", store.simple())
                                         .addStatement("out.data = $T.copyOf(data, size)", Arrays.class)
                                         .addStatement("out.size = size")
@@ -1244,8 +1244,8 @@ public final class GenMain {
                             ListsGen.constantName(
                                     ListsGen.snake(prim.elementClass().simpleName())));
                     method.addStatement(
-                            "return new $T(new $T(), $T.fromClass($T.class), $T.$L)",
-                            ListsGen.LIST_SPECIALIZED,
+                            "return new $T(new $T(), $T.fromClass($T.class), $T.$L, false)",
+                            ListsGen.LIST_DYNAMIC,
                             prim.elementClass(),
                             ListsGen.JAVA_INTERNAL_NAME,
                             ClassName.get(ListsGen.GEN_PACKAGE, prim.storeSimple()),
@@ -1253,7 +1253,7 @@ public final class GenMain {
                             ListsGen.constantName(ListsGen.snake(ListsGen.typeSimple(prim))));
                     method.endControlFlow();
                 }
-                method.addStatement("return new $T(elementType)", ListsGen.LIST_BOXED);
+                method.addStatement("return $T.ofObject(elementType)", ListsGen.LIST_DYNAMIC);
                 {
                     factoryClass = TypeSpec.classBuilder("GenLists")
                             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)

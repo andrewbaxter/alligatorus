@@ -8,7 +8,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.gen.AspectBind;
 
-public record AspectBindListBoxedDynamic<T extends Type>(TypeListBoxedDynamic<T> type) implements AspectBind {
+public record AspectBindListDynamic<T extends Type>(TypeListDynamic<T> type) implements AspectBind {
 
     @Override
     public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {

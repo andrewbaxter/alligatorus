@@ -364,6 +364,15 @@ public final class DefinitionSet {
                                 null,
                                 null)
                         .visitEnd();
+                soeCw.visitField(
+                                Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL,
+                                SourceObjectEmitter.ARTIFACT_ID_INSTANCE_FIELD,
+                                SourceObjectEmitter.DESC_ARTIFACT_ID.value(),
+                                null,
+                                null)
+                        .visitEnd();
+                var artifactIdCtor = JavaMethodDescriptor.fromConstructorParts(TList.of());
+                var artifactIdName = JavaInternalName.fromClass(ArtifactSupport.ArtifactIdHolder.class);
                 var ctor = soeCw.visitMethod(
                         Opcodes.ACC_PUBLIC, "<init>", JavaMethodDescriptor.VOID_NOARGS.value(), null, null);
                 ctor.visitCode();
@@ -372,6 +381,12 @@ public final class DefinitionSet {
                     var cb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
                     var self = cb.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName));
                     cb.invokeSpecialVoid(JvmConstants.INTNAME_OBJECT, "<init>", JavaMethodDescriptor.VOID_NOARGS, self);
+                    cb.putField(
+                            soeInternalName,
+                            SourceObjectEmitter.ARTIFACT_ID_INSTANCE_FIELD,
+                            SourceObjectEmitter.DESC_ARTIFACT_ID,
+                            cb.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName)),
+                            cb.newInstance(artifactIdName, artifactIdCtor));
                     cb.retVoid();
                     ctorSeq.add(cb.code());
                 }
@@ -389,10 +404,34 @@ public final class DefinitionSet {
                     var data = cb.loadIndexed(1, dataFieldDesc);
                     cb.putField(
                             soeInternalName, SourceObjectEmitter.DATA_INSTANCE_FIELD, dataFieldDesc, selfAgain, data);
+                    cb.putField(
+                            soeInternalName,
+                            SourceObjectEmitter.ARTIFACT_ID_INSTANCE_FIELD,
+                            SourceObjectEmitter.DESC_ARTIFACT_ID,
+                            cb.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName)),
+                            cb.newInstance(artifactIdName, artifactIdCtor));
                     cb.retVoid();
                     realCtorSeq.add(cb.code());
                 }
                 JavaBytecodeUtils.renderMethod(realCtorSeq, realCtor, TList.of(), soeInternalName, soeLocTable);
+                {
+                    var idMv = soeCw.visitMethod(
+                            Opcodes.ACC_PUBLIC,
+                            SourceObjectEmitter.ARTIFACT_ID_METHOD,
+                            JavaMethodDescriptor.fromParts(SourceObjectEmitter.DESC_ARTIFACT_ID, TList.of())
+                                    .value(),
+                            null,
+                            null);
+                    var idSeq = new JavaBytecodeSequence();
+                    var cb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+                    cb.ret(cb.getField(
+                            soeInternalName,
+                            SourceObjectEmitter.ARTIFACT_ID_INSTANCE_FIELD,
+                            SourceObjectEmitter.DESC_ARTIFACT_ID,
+                            cb.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName))));
+                    idSeq.add(cb.code());
+                    JavaBytecodeUtils.renderMethod(idSeq, idMv, TList.of(), soeInternalName, soeLocTable);
+                }
                 var staticFieldValues = new TOrderedMap<String, Object>();
                 soeCw.visitField(
                                 Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
@@ -752,8 +791,18 @@ public final class DefinitionSet {
                         }
                         var exType = eb.getStatic(
                                 exInternal, SourceObjectExport.EXPORTER_TYPE_FIELD, SourceObjectExport.DESC_TYPE);
+                        var exIdCell = eb.getField(
+                                soeInternalName,
+                                SourceObjectEmitter.ARTIFACT_ID_INSTANCE_FIELD,
+                                SourceObjectEmitter.DESC_ARTIFACT_ID,
+                                exInstance);
                         eb.ret(eb.invokeStatic(
-                                GenCodegenDescriptors.SOURCE_OBJECT_EXPORT_EXPORT, exXxReg, exLocReg, exType, exBoxed));
+                                GenCodegenDescriptors.SOURCE_OBJECT_EXPORT_EXPORT,
+                                exXxReg,
+                                exLocReg,
+                                exType,
+                                exIdCell,
+                                exBoxed));
                         exSeq.add(eb.code());
                         JavaBytecodeUtils.renderMethod(exSeq, exMv, TList.of(), exInternal, exLocTable);
                     }
@@ -772,11 +821,13 @@ public final class DefinitionSet {
                         var exSelf = eb.loadIndexed(0, exDesc);
                         var exXxReg = eb.loadIndexed(1, exDescXx);
                         var exLocReg = eb.loadIndexed(2, exDescLoc);
+                        var exIdReg = eb.loadIndexed(3, JavaDataDescriptor.fromClass(Opt.class));
                         var exDataReg = eb.loadIndexed(4, exDescJson);
                         eb.ret(eb.invokeStatic(
                                 GenCodegenDescriptors.SOURCE_OBJECT_EXPORT_IMPORT_INSTANCE,
                                 exXxReg,
                                 exLocReg,
+                                exIdReg,
                                 exDataReg,
                                 exSelf));
                         exSeq.add(eb.code());

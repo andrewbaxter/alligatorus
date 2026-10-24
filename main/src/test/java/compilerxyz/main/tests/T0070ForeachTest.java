@@ -88,13 +88,13 @@ public final class T0070ForeachTest {
             ASTORE 0
             ALOAD 0
             LDC 1
-            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.push (I)V
+            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.add (I)V
             ALOAD 0
             LDC 2
-            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.push (I)V
+            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.add (I)V
             ALOAD 0
             LDC 7
-            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.push (I)V
+            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.add (I)V
             ALOAD 0
             ASTORE 1
             ALOAD 1

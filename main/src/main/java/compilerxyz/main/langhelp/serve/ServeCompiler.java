@@ -8,6 +8,7 @@ import compilerxyz.main.eval.CompileResResult;
 import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.ImportStateId;
 import compilerxyz.main.eval.SourceId;
+import compilerxyz.main.langhelp.CacheDamaged;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.GlobalContext;
 import compilerxyz.main.langhelp.SourceModuleToModule;
@@ -120,7 +121,7 @@ public final class ServeCompiler {
                                     var compiles = new TList<Compiled>();
                                     for (var unit : cache.compilesUnitsOf(
                                             cache.sourcesIdFor(new SourceSpecAbsolute.Local(s.path())))) {
-                                        var stored = cache.compilesGetStored(unit);
+                                        var stored = cache.compilesGet(unit);
                                         if (stored.optIsSome()) compiles.add(compiled(unit, stored.optUnwrap()));
                                     }
                                     yield new ResponseFileState(
@@ -135,7 +136,7 @@ public final class ServeCompiler {
                                             };
                                     var unit =
                                             new CompileId(new ImportStateId(r.importState()), cache.sourcesIdFor(spec));
-                                    var stored = cache.compilesGetStored(unit);
+                                    var stored = cache.compilesGet(unit);
                                     if (stored.optIsNone()) {
                                         yield new ResponseFailed("the source has no compile under that import state");
                                     }
@@ -228,8 +229,10 @@ public final class ServeCompiler {
         roots.addAll(queued);
         queued.clear();
         var reported = new HashSet<CompileId>();
+        var repaired = new HashSet<Path>();
         var out = new TList<Compiled>();
-        for (var root : roots) {
+        for (int rootIndex = 0; rootIndex < roots.size(); rootIndex++) {
+            var root = roots.get(rootIndex);
             if (!Files.isRegularFile(root)) continue;
             var spec = new SourceSpecAbsolute.Local(root.toString());
             Sources.SourceResolved.Module module;
@@ -256,18 +259,26 @@ public final class ServeCompiler {
             }
             var rootId = new CompileId(new ImportStateId(0), module.id());
             cache.compilesPrepare(rootId);
-            cache.compilesGetOrCompute(rootId, spec, () -> {
-                var m = SourceModuleToModule.sourceModuleToModule(module.id(), module.module());
-                var cir = CompileModule.compileModuleId(gx, new ImportStateId(0), m, new TList<>(), spec);
-                return new Compiles.CompileProduct(cir.res(), module.local(), cir.localDeps(), cir.localData());
-            });
+            try {
+                cache.compilesGetOrCompute(rootId, spec, () -> {
+                    var m = SourceModuleToModule.sourceModuleToModule(module.id(), module.module());
+                    var cir = CompileModule.compileModuleId(gx, new ImportStateId(0), m, new TList<>(), spec);
+                    return new Compiles.CompileProduct(cir.res(), module.local(), cir.localDeps(), cir.localData());
+                });
+            } catch (CacheDamaged e) {
+                if (!repaired.add(root)) throw e;
+                System.err.println("cache damaged (" + e.getMessage() + "): cleared, rebuilding");
+                cache.cacheClear();
+                roots.add(root);
+                continue;
+            }
             var pending = new ArrayDeque<CompileId>();
             pending.add(rootId);
             while (!pending.isEmpty()) {
                 var unit = pending.poll();
                 if (!reported.add(unit)) continue;
                 for (var dep : cache.compilesDependencies(unit)) pending.add(dep);
-                var stored = cache.compilesGetStored(unit);
+                var stored = cache.compilesGet(unit);
                 if (stored.optIsNone()) continue;
                 var compiled = compiled(unit, stored.optUnwrap());
                 protocol.protocolWrite(new ServerMessageEv(new AnnounceCompiled(compiled)));

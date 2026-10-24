@@ -1,6 +1,5 @@
 package compilerxyz.main.eval;
 
-import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.Artifacts;
 import compilerxyz.main.eval.builtin.FileHandle;
 import compilerxyz.main.eval.dynamic.CompileImportContextDynamic;
@@ -15,7 +14,6 @@ import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
-import compilerxyz.prelude.util.TOrderedMap;
 import compilerxyz.prelude.util.TSet;
 
 @BuiltinFull(uniqueId = 6534L)
@@ -27,7 +25,7 @@ public final class CompileImportContext {
     final Counter evalRootCounter = new Counter();
     private final Counter uniqueCounter = new Counter();
     public final Artifacts artifacts;
-    public final TOrderedMap<ArtifactIdSource, Object> deserializedArtifacts = new TOrderedMap<>();
+    final ArtifactImportScope artifactImportScope = new ArtifactImportScope();
     final GlobalContext gx;
     public final ImportStateId importState;
     final TSet<DefSetId> installedDefSets = new TSet<>();

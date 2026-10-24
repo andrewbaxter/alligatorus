@@ -13,7 +13,7 @@ import compilerxyz.main.eval.binding.BindingIteratorIndexed;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
-import compilerxyz.main.eval.value.list.AspectIterableListBoxedDynamic;
+import compilerxyz.main.eval.value.list.AspectIterableListDynamic;
 import compilerxyz.main.gen.AspectIterable;
 import compilerxyz.main.gen.Binding;
 
@@ -36,7 +36,7 @@ public record AspectIterableArrayDynamic<T extends Type>(TypeArrayDynamic<T> typ
             ExprContext xx, QExprId loc, CodeValue base, Binding loop, Code elementBind, CodeValue body) {
         var baseRes = DynUtil.materialize(xx, loc, base);
         if (baseRes.hasErrors()) return baseRes.reerr();
-        var bodyCodeRes = AspectIterableListBoxedDynamic.foreachBody(xx, loc, body);
+        var bodyCodeRes = AspectIterableListDynamic.foreachBody(xx, loc, body);
         if (bodyCodeRes.hasErrors()) return bodyCodeRes.reerr();
         var elementBindCast = CodeDynamic.castOpt(loc, elementBind);
         if (elementBindCast.hasErrors()) return elementBindCast.reerr();

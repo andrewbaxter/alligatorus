@@ -1,20 +1,19 @@
 package compilerxyz.main.langhelp.cache;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.luben.zstd.ZstdInputStream;
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactJson;
 import compilerxyz.main.artifact.Artifacts;
-import compilerxyz.main.eval.ArtifactExprErr;
 import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.CompileRes;
 import compilerxyz.main.eval.CompileResResult;
-import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ImportStateId;
 import compilerxyz.main.eval.LogEntry;
 import compilerxyz.main.eval.SourceId;
-import compilerxyz.main.gen.codec.ArtifactExprErrCodec;
 import compilerxyz.main.gen.codec.SourceModuleCodec;
 import compilerxyz.main.langhelp.Compiles;
 import compilerxyz.main.langhelp.Sources;
@@ -66,7 +65,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 34;
+    private static final int SCHEMA_VERSION = 38;
 
     private final Connection conn;
     private final Object dbLock = new Object();
@@ -75,7 +74,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
 
     private final TMap<String, SourceSlot> sourceMem = new TMap<>();
     private final ReentrantLock sourceMapLock = new ReentrantLock();
-    private final TMap<ArtifactIdSource, ArtifactBody> artifactMem = new TMap<>();
+    private final Cache<ArtifactIdSource, ArtifactBody> artifactCache =
+            Caffeine.newBuilder().softValues().build();
     private final TMap<ArtifactIdSource, ArtifactBody> pendingArtifacts = new TMap<>();
     private final TMap<CompileId, CompileSlot> compileMem = new TMap<>();
     private final ReentrantLock compileMapLock = new ReentrantLock();
@@ -121,25 +121,40 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             var existing = readSchemaVersion();
             if (existing.optIsSome() && existing.optUnwrap() != SCHEMA_VERSION) {
                 System.err.println("cache cleared: schema version " + existing.optUnwrap() + " -> " + SCHEMA_VERSION);
-                try (var st = conn.createStatement()) {
-                    st.executeUpdate("DROP TABLE IF EXISTS schema_version");
-                    st.executeUpdate("DROP TABLE IF EXISTS artifact_seq");
-                    st.executeUpdate("DROP TABLE IF EXISTS source_seq");
-                    st.executeUpdate("DROP TABLE IF EXISTS sources");
-                    st.executeUpdate("DROP TABLE IF EXISTS artifact_ids");
-                    st.executeUpdate("DROP TABLE IF EXISTS source_ids");
-                    st.executeUpdate("DROP TABLE IF EXISTS remote_bytes");
-                    st.executeUpdate("DROP TABLE IF EXISTS artifacts");
-                    st.executeUpdate("DROP TABLE IF EXISTS compiles");
-                    st.executeUpdate("DROP TABLE IF EXISTS compile_deps");
-                    st.executeUpdate("DROP TABLE IF EXISTS compile_data");
-                }
+                dropTablesLocked();
             }
+            createTablesLocked();
+        } catch (ClassNotFoundException | SQLException | IOException e) {
+            throw new RuntimeException("CacheReal: failed to open cache database", e);
+        }
+    }
+
+    private void dropTablesLocked() throws SQLException {
+        try (var st = conn.createStatement()) {
+            st.executeUpdate("DROP TABLE IF EXISTS schema_version");
+            st.executeUpdate("DROP TABLE IF EXISTS artifact_seq");
+            st.executeUpdate("DROP TABLE IF EXISTS source_seq");
+            st.executeUpdate("DROP TABLE IF EXISTS sources");
+            st.executeUpdate("DROP TABLE IF EXISTS artifact_ids");
+            st.executeUpdate("DROP TABLE IF EXISTS source_ids");
+            st.executeUpdate("DROP TABLE IF EXISTS remote_bytes");
+            st.executeUpdate("DROP TABLE IF EXISTS artifacts");
+            st.executeUpdate("DROP TABLE IF EXISTS compiles");
+            st.executeUpdate("DROP TABLE IF EXISTS compile_deps");
+            st.executeUpdate("DROP TABLE IF EXISTS compile_data");
+            st.executeUpdate("VACUUM");
+        }
+    }
+
+    private void createTablesLocked() throws SQLException {
+        {
             try (var st = conn.createStatement()) {
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)");
                 st.executeUpdate(
                         "CREATE TABLE IF NOT EXISTS artifact_ids ("
                                 + "idx INTEGER PRIMARY KEY AUTOINCREMENT, import_state INTEGER NOT NULL, source INTEGER NOT NULL)");
+                st.executeUpdate(
+                        "CREATE INDEX IF NOT EXISTS artifact_ids_by_compile ON artifact_ids (import_state, source)");
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS source_ids ("
                         + "id INTEGER PRIMARY KEY AUTOINCREMENT, spec_key TEXT NOT NULL UNIQUE)");
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS remote_bytes (url TEXT PRIMARY KEY, bytes BLOB NOT NULL)");
@@ -168,8 +183,33 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                     ins.executeUpdate();
                 }
             }
-        } catch (ClassNotFoundException | SQLException | IOException e) {
-            throw new RuntimeException("CacheReal: failed to open cache database", e);
+        }
+    }
+
+    public void cacheClear() {
+        synchronized (this) {
+            sourceMapLock.lock();
+            try {
+                sourceMem.clear();
+            } finally {
+                sourceMapLock.unlock();
+            }
+            compileMapLock.lock();
+            try {
+                compileMem.clear();
+            } finally {
+                compileMapLock.unlock();
+            }
+            pendingArtifacts.clear();
+            artifactCache.invalidateAll();
+            synchronized (dbLock) {
+                try {
+                    dropTablesLocked();
+                    createTablesLocked();
+                } catch (SQLException e) {
+                    throw new RuntimeException("CacheReal.cacheClear", e);
+                }
+            }
         }
     }
 
@@ -579,9 +619,13 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
 
     @Override
     public synchronized Opt<ArtifactBody> artifactsGet(ArtifactIdSource id) {
-        var memOpt = artifactMem.getOpt(id);
-        if (memOpt.optIsSome()) {
-            return memOpt;
+        var pending = pendingArtifacts.getOpt(id);
+        if (pending.optIsSome()) {
+            return pending;
+        }
+        var cached = artifactCache.getIfPresent(id);
+        if (cached != null) {
+            return Opt.some(cached);
         }
         synchronized (dbLock) {
             try (var ps = conn.prepareStatement(
@@ -592,7 +636,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 try (var rs = ps.executeQuery()) {
                     if (!rs.next()) return Opt.none();
                     var body = ArtifactJson.decodeArtifactBody(parseJson(rs.getString(1)));
-                    artifactMem.put(id, body);
+                    artifactCache.put(id, body);
                     return Opt.some(body);
                 }
             } catch (SQLException e) {
@@ -621,7 +665,6 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
 
     @Override
     public synchronized void artifactsSet(ArtifactIdSource id, ArtifactBody body) {
-        artifactMem.put(id, body);
         pendingArtifacts.put(id, body);
     }
 
@@ -692,13 +735,32 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
     }
 
     private void evictLocked(CompileId id) {
+        compileMapLock.lock();
+        try {
+            compileMem.remove(id);
+        } finally {
+            compileMapLock.unlock();
+        }
+        evictStoredLocked(id);
+    }
+
+    private void evictStoredLocked(CompileId id) {
+        TList<CompileId> dependents;
+        try (var ps = conn.prepareStatement(
+                "SELECT import_state, source FROM compile_deps WHERE dep_import_state = ? AND dep_source = ?")) {
+            ps.setLong(1, id.importState().value());
+            ps.setLong(2, id.source().value());
+            dependents = compileIdRows(ps);
+        } catch (SQLException e) {
+            throw new RuntimeException("CacheReal.evictDependents", e);
+        }
         try {
             try (var ps = conn.prepareStatement("DELETE FROM compiles WHERE import_state = ? AND source = ?")) {
                 ps.setLong(1, id.importState().value());
                 ps.setLong(2, id.source().value());
                 ps.executeUpdate();
             }
-            for (var table : new String[] {"compile_deps", "compile_data"}) {
+            for (var table : new String[] {"compile_deps", "compile_data", "artifacts", "artifact_ids"}) {
                 try (var ps =
                         conn.prepareStatement("DELETE FROM " + table + " WHERE import_state = ? AND source = ?")) {
                     ps.setLong(1, id.importState().value());
@@ -709,12 +771,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         } catch (SQLException e) {
             throw new RuntimeException("CacheReal.deleteCompile", e);
         }
-        compileMapLock.lock();
-        try {
-            compileMem.remove(id);
-        } finally {
-            compileMapLock.unlock();
-        }
+        artifactCache.asMap().keySet().removeIf(aid -> aid.compileId().equals(id));
+        for (var dependent : dependents) evictLocked(dependent);
     }
 
     public TList<CompileId> compilesDependencies(CompileId id) {
@@ -773,6 +831,17 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         return out;
     }
 
+    public Opt<CompileRes> compilesGet(CompileId id) {
+        compileMapLock.lock();
+        try {
+            var slot = compileMem.getOpt(id);
+            if (slot.optIsSome() && slot.optUnwrap().value.optIsSome()) return slot.optUnwrap().value;
+        } finally {
+            compileMapLock.unlock();
+        }
+        return compilesGetStored(id);
+    }
+
     public Opt<CompileRes> compilesGetStored(CompileId id) {
         synchronized (dbLock) {
             try (var ps = conn.prepareStatement("SELECT result FROM compiles WHERE import_state = ? AND source = ?")) {
@@ -781,27 +850,17 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 try (var rs = ps.executeQuery()) {
                     if (!rs.next()) return Opt.none();
                     var obj = (JsonValueObject) parseJson(rs.getString(1));
-                    var startMs =
-                            ((JsonValueNumberInt) obj.entries().getOpt("start").optUnwrap()).value();
-                    var endMs =
-                            ((JsonValueNumberInt) obj.entries().getOpt("end").optUnwrap()).value();
-                    var logsArr = (JsonValueArray) obj.entries().getOpt("logs").optUnwrap();
+                    var startMs = ((JsonValueNumberInt) obj.get("start").optUnwrap()).value();
+                    var endMs = ((JsonValueNumberInt) obj.get("end").optUnwrap()).value();
+                    var logsArr = (JsonValueArray) obj.get("logs").optUnwrap();
                     var logs = new TList<LogEntry>();
                     for (var e : logsArr.elements()) {
                         var lo = (JsonValueObject) e;
-                        var t = ((JsonValueNumberInt) lo.entries().getOpt("t").optUnwrap()).value();
-                        var m = ((JsonValueString) lo.entries().getOpt("m").optUnwrap()).value();
+                        var t = ((JsonValueNumberInt) lo.get("t").optUnwrap()).value();
+                        var m = ((JsonValueString) lo.get("m").optUnwrap()).value();
                         logs.add(new LogEntry(t, m));
                     }
-                    var errorsJsonOpt = obj.entries().getOpt("errors");
-                    if (errorsJsonOpt.optIsSome()) {
-                        var out = new TList<ExprErr>();
-                        for (var e : ((JsonValueArray) errorsJsonOpt.optUnwrap()).elements()) {
-                            out.add(ArtifactExprErrCodec.fromValue(e).toExprErr());
-                        }
-                        return Opt.some(new CompileRes(startMs, endMs, logs, new CompileResResult.Err(out)));
-                    }
-                    var artifactJson = obj.entries().getOpt("artifact");
+                    var artifactJson = obj.get("artifact");
                     Opt<Artifact> art = Opt.none();
                     if (artifactJson.optIsSome()) {
                         art = Opt.some(ArtifactJson.decodeArtifact(artifactJson.optUnwrap()));
@@ -883,6 +942,9 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                 slot.value = fromDb;
                 return fromDb.optUnwrap();
             }
+            synchronized (dbLock) {
+                evictStoredLocked(id);
+            }
             var module = spec.sourceSpecAbsoluteSpecKey() + " (import state "
                     + id.importState().value() + ")";
             System.err.println("compile start " + module);
@@ -896,118 +958,111 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                     + logTime(product.res().endMs())
                     + " (" + (product.res().endMs() - product.res().startMs()) + " ms)");
             slot.value = Opt.some(product.res());
-            {
-                TMap<ArtifactIdSource, ArtifactBody> artifacts;
-                synchronized (this) {
-                    artifacts = new TMap<ArtifactIdSource, ArtifactBody>();
-                    for (var e : pendingArtifacts.entrySet()) artifacts.put(e.getKey(), e.getValue());
-                    pendingArtifacts.clear();
-                }
-                synchronized (dbLock) {
+            TMap<ArtifactIdSource, ArtifactBody> artifacts;
+            synchronized (this) {
+                artifacts = new TMap<ArtifactIdSource, ArtifactBody>();
+                for (var e : pendingArtifacts.entrySet()) artifacts.put(e.getKey(), e.getValue());
+                pendingArtifacts.clear();
+            }
+            synchronized (dbLock) {
+                try {
+                    conn.setAutoCommit(false);
                     try {
-                        conn.setAutoCommit(false);
-                        try {
-                            try (var ps = conn.prepareStatement(
-                                    "INSERT OR REPLACE INTO artifacts (import_state, source, idx, body) VALUES (?, ?, ?, ?)")) {
-                                for (var e : artifacts.entrySet()) {
-                                    var aid = e.getKey();
-                                    ps.setLong(1, aid.compileId().importState().value());
-                                    ps.setLong(2, aid.compileId().source().value());
-                                    ps.setLong(3, aid.index());
-                                    ps.setString(
-                                            4, JsonValues.serialize(ArtifactJson.encodeArtifactBody(e.getValue())));
-                                    ps.addBatch();
-                                }
-                                ps.executeBatch();
-                            }
-                            try (var ps = conn.prepareStatement("INSERT OR REPLACE INTO compiles"
-                                    + " (import_state, source, result, local_path, local_mtime)"
-                                    + " VALUES (?, ?, ?, ?, ?)")) {
-                                ps.setLong(1, id.importState().value());
-                                ps.setLong(2, id.source().value());
-                                {
-                                    var res = product.res();
-                                    var obj = new TOrderedMap<String, JsonValue>();
-                                    obj.put("start", new JsonValueNumberInt(res.startMs()));
-                                    obj.put("end", new JsonValueNumberInt(res.endMs()));
-                                    var logsArr = new TList<JsonValue>();
-                                    for (var log : res.logs()) {
-                                        var lm = new TOrderedMap<String, JsonValue>();
-                                        lm.put("t", new JsonValueNumberInt(log.timestampMs()));
-                                        lm.put("m", new JsonValueString(log.message()));
-                                        logsArr.add(new JsonValueObject(lm));
-                                    }
-                                    obj.put("logs", new JsonValueArray(logsArr));
-                                    switch (res.result()) {
-                                        case CompileResResult.Ok ok -> {
-                                            if (ok.artifact().optIsSome()) {
-                                                obj.put(
-                                                        "artifact",
-                                                        ArtifactJson.encodeArtifact(
-                                                                ok.artifact().optUnwrap()));
-                                            }
-                                        }
-                                        case CompileResResult.Err err -> {
-                                            var errArr = new TList<JsonValue>();
-                                            for (var e : err.errors()) {
-                                                errArr.add(
-                                                        ArtifactExprErrCodec.toValue(ArtifactExprErr.fromExprErr(e)));
-                                            }
-                                            obj.put("errors", new JsonValueArray(errArr));
-                                        }
-                                    }
-                                    ps.setString(3, JsonValues.serialize(new JsonValueObject(obj)));
-                                }
-                                if (product.local().optIsSome()) {
-                                    var localMeta = product.local().optUnwrap();
-                                    ps.setString(4, localMeta.path());
-                                    ps.setLong(5, localMeta.timestampMs());
-                                } else {
-                                    ps.setNull(4, Types.VARCHAR);
-                                    ps.setNull(5, Types.INTEGER);
-                                }
-                                ps.executeUpdate();
-                            }
-                            for (var table : new String[] {"compile_deps", "compile_data"}) {
+                        switch (product.res().result()) {
+                            case CompileResResult.Err err -> {}
+                            case CompileResResult.Ok ok -> {
                                 try (var ps = conn.prepareStatement(
-                                        "DELETE FROM " + table + " WHERE import_state = ? AND source = ?")) {
+                                        "INSERT OR REPLACE INTO artifacts (import_state, source, idx, body) VALUES (?, ?, ?, ?)")) {
+                                    for (var e : artifacts.entrySet()) {
+                                        var aid = e.getKey();
+                                        ps.setLong(
+                                                1, aid.compileId().importState().value());
+                                        ps.setLong(2, aid.compileId().source().value());
+                                        ps.setLong(3, aid.index());
+                                        ps.setString(
+                                                4, JsonValues.serialize(ArtifactJson.encodeArtifactBody(e.getValue())));
+                                        ps.addBatch();
+                                        artifactCache.put(aid, e.getValue());
+                                    }
+                                    ps.executeBatch();
+                                }
+                                try (var ps = conn.prepareStatement("INSERT OR REPLACE INTO compiles"
+                                        + " (import_state, source, result, local_path, local_mtime)"
+                                        + " VALUES (?, ?, ?, ?, ?)")) {
                                     ps.setLong(1, id.importState().value());
                                     ps.setLong(2, id.source().value());
+                                    {
+                                        var res = product.res();
+                                        var obj = new TOrderedMap<String, JsonValue>();
+                                        obj.put("start", new JsonValueNumberInt(res.startMs()));
+                                        obj.put("end", new JsonValueNumberInt(res.endMs()));
+                                        var logsArr = new TList<JsonValue>();
+                                        for (var log : res.logs()) {
+                                            var lm = new TOrderedMap<String, JsonValue>();
+                                            lm.put("t", new JsonValueNumberInt(log.timestampMs()));
+                                            lm.put("m", new JsonValueString(log.message()));
+                                            logsArr.add(new JsonValueObject(lm));
+                                        }
+                                        obj.put("logs", new JsonValueArray(logsArr));
+                                        if (ok.artifact().optIsSome()) {
+                                            obj.put(
+                                                    "artifact",
+                                                    ArtifactJson.encodeArtifact(
+                                                            ok.artifact().optUnwrap()));
+                                        }
+                                        ps.setString(3, JsonValues.serialize(new JsonValueObject(obj)));
+                                    }
+                                    if (product.local().optIsSome()) {
+                                        var localMeta = product.local().optUnwrap();
+                                        ps.setString(4, localMeta.path());
+                                        ps.setLong(5, localMeta.timestampMs());
+                                    } else {
+                                        ps.setNull(4, Types.VARCHAR);
+                                        ps.setNull(5, Types.INTEGER);
+                                    }
                                     ps.executeUpdate();
                                 }
                             }
-                            try (var ps = conn.prepareStatement("INSERT OR REPLACE INTO compile_data"
-                                    + " (import_state, source, path, mtime) VALUES (?, ?, ?, ?)")) {
-                                for (var data : product.localData()) {
-                                    ps.setLong(1, id.importState().value());
-                                    ps.setLong(2, id.source().value());
-                                    ps.setString(3, data.path());
-                                    ps.setLong(4, data.timestampMs());
-                                    ps.addBatch();
-                                }
-                                ps.executeBatch();
-                            }
-                            try (var ps = conn.prepareStatement("INSERT OR IGNORE INTO compile_deps"
-                                    + " (import_state, source, dep_import_state, dep_source) VALUES (?, ?, ?, ?)")) {
-                                for (var depId : product.localDeps()) {
-                                    ps.setLong(1, id.importState().value());
-                                    ps.setLong(2, id.source().value());
-                                    ps.setLong(3, depId.importState().value());
-                                    ps.setLong(4, depId.source().value());
-                                    ps.addBatch();
-                                }
-                                ps.executeBatch();
-                            }
-                            conn.commit();
-                        } catch (SQLException e) {
-                            conn.rollback();
-                            throw e;
-                        } finally {
-                            conn.setAutoCommit(true);
                         }
+                        for (var table : new String[] {"compile_deps", "compile_data"}) {
+                            try (var ps = conn.prepareStatement(
+                                    "DELETE FROM " + table + " WHERE import_state = ? AND source = ?")) {
+                                ps.setLong(1, id.importState().value());
+                                ps.setLong(2, id.source().value());
+                                ps.executeUpdate();
+                            }
+                        }
+                        try (var ps = conn.prepareStatement("INSERT OR REPLACE INTO compile_data"
+                                + " (import_state, source, path, mtime) VALUES (?, ?, ?, ?)")) {
+                            for (var data : product.localData()) {
+                                ps.setLong(1, id.importState().value());
+                                ps.setLong(2, id.source().value());
+                                ps.setString(3, data.path());
+                                ps.setLong(4, data.timestampMs());
+                                ps.addBatch();
+                            }
+                            ps.executeBatch();
+                        }
+                        try (var ps = conn.prepareStatement("INSERT OR IGNORE INTO compile_deps"
+                                + " (import_state, source, dep_import_state, dep_source) VALUES (?, ?, ?, ?)")) {
+                            for (var depId : product.localDeps()) {
+                                ps.setLong(1, id.importState().value());
+                                ps.setLong(2, id.source().value());
+                                ps.setLong(3, depId.importState().value());
+                                ps.setLong(4, depId.source().value());
+                                ps.addBatch();
+                            }
+                            ps.executeBatch();
+                        }
+                        conn.commit();
                     } catch (SQLException e) {
-                        throw new RuntimeException("CacheReal.flush", e);
+                        conn.rollback();
+                        throw e;
+                    } finally {
+                        conn.setAutoCommit(true);
                     }
+                } catch (SQLException e) {
+                    throw new RuntimeException("CacheReal.flush", e);
                 }
             }
             return slot.value.optUnwrap();

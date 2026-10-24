@@ -16,15 +16,10 @@ import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 
-public record AspectFieldTypeTypeList(ListDynamic type) implements AspectField {
+public record AspectFieldTypeTypeList(TypeListDynamic type) implements AspectField {
 
     private TMap<ConstKey, Type> constructors() {
-        return TMap.ofEntries(new Pair<>(
-                new ConstKey.Str("new"),
-                switch (type) {
-                    case TypeListBoxedDynamic<?> boxed -> new TypeListNewDynamic(boxed.elementType);
-                    case TypeListSpecializedDynamic<?> specialized -> new TypeListSpecializedNewDynamic(specialized);
-                }));
+        return TMap.ofEntries(new Pair<>(new ConstKey.Str("new"), new TypeListNewDynamic(type)));
     }
 
     @Override

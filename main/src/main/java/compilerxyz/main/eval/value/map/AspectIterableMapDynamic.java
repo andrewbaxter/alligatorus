@@ -16,7 +16,7 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.value.list.AspectIterableListBoxedDynamic;
+import compilerxyz.main.eval.value.list.AspectIterableListDynamic;
 import compilerxyz.main.gen.AspectIterable;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.prelude.util.TList;
@@ -60,7 +60,7 @@ public record AspectIterableMapDynamic<K extends Type, V extends Type>(TypeMapDy
             return EResult.err(loc, "foreach: element bind produced no code");
         }
 
-        var bodyCodeRes = AspectIterableListBoxedDynamic.foreachBody(xx, loc, body);
+        var bodyCodeRes = AspectIterableListDynamic.foreachBody(xx, loc, body);
         if (bodyCodeRes.hasErrors()) return bodyCodeRes.reerr();
         var bodyCode = bodyCodeRes.requireValue("foreach body");
         var iteratorSlot = mustCast(BindingIteratorSlot.class, loop).iteratorSlot();

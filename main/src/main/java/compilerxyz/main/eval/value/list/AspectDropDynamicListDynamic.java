@@ -7,31 +7,28 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.binding.BindingIteratorIndexed;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.AspectDropDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
+import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import java.util.Iterator;
 
-public record AspectDropDynamicListBoxedDynamic<T extends Type>(TypeListBoxedDynamic<T> type)
-        implements AspectDropDynamic {
-
+public record AspectDropDynamicListDynamic<T extends Type>(TypeListDynamic<T> type) implements AspectDropDynamic {
     @Override
     public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
         var elemDropRes = GenAspectDropDynamic.get(xx, loc, type.elementType);
         if (elemDropRes.hasErrors()) return elemDropRes.reerr();
-        var elemDrop = elemDropRes.requireValue("TypeListBoxedDynamic::drop element AspectDropDynamic");
+        var elemDrop = elemDropRes.requireValue("TypeListDynamic::drop element AspectDropDynamic");
         if (cv.value().optIsNone() || !(cv.value().optUnwrap() instanceof ValueDynamic vd)) {
             return EResult.ok(Code.none(loc));
         }
         var elementSlot = new BindingId();
-        var iteratorSlot = new BindingId();
+        var slots = new BindingIteratorIndexed(new BindingId(), new BindingId());
         var elementLoad = new JavaBytecodeBuilder(loc);
         var elementCv = DynUtil.regToValue(
                 elementLoad.code(),
@@ -43,21 +40,18 @@ public record AspectDropDynamicListBoxedDynamic<T extends Type>(TypeListBoxedDyn
                 loc,
                 TList.of(
                         Code.target(elementLoad.code()),
-                        elemDropCodeRes.requireValue("TypeListBoxedDynamic::drop element drop")));
+                        elemDropCodeRes.requireValue("TypeListDynamic::drop element drop")));
         if (bodyRes.hasErrors()) return bodyRes.reerr();
-
-        var iterableName = JavaInternalName.fromClass(Iterable.class);
-        var iteratorName = JavaInternalName.fromClass(Iterator.class);
-        var iterMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
-        var setup = new JavaBytecodeBuilder(loc);
-        var iteratorSetup = setup.code(
-                setup.invokeInterface(iterableName, "iterator", iterMethod, DynUtil.sourceReg(xx, setup, vd)));
-
         var bind = new JavaBytecodeBuilder(loc);
-        bind.store(elementSlot, bind.reg(DynUtil.iteratorNext(loc, iteratorSlot, type.elementDecodeCast(xx))));
-        var loopRes =
-                DynUtil.foreachSkeleton(loc, iteratorSetup, iteratorSlot, bind.code(), bodyRes.requireValue("body"));
+        var list = bind.load(slots.baseSlot(), type.storeDescriptor());
+        var index = bind.load(slots.indexSlot(), JavaDataDescriptor.DESC_INT);
+        var raw = bind.invokeVirtual(type.storeName, "get", type.getDescriptor(xx), list, index);
+        bind.store(elementSlot, type.elementDecode(xx, bind, raw));
+        var b = new JavaBytecodeBuilder(loc);
+        b.store(slots.baseSlot(), DynUtil.sourceReg(xx, b, vd));
+        var loopRes = AspectIterableListDynamic.indexLoop(
+                loc, type, slots, b, Opt.some(bind.code()), bodyRes.requireValue("body"));
         if (loopRes.hasErrors()) return loopRes.reerr();
-        return EResult.ok(loopRes.requireValue("loop").code());
+        return EResult.ok(Code.target(b.code()));
     }
 }

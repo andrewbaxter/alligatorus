@@ -32,6 +32,7 @@ import compilerxyz.main.gen.codec.ArtifactListTypeCodec;
 import compilerxyz.main.gen.codec.ArtifactListValueCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.util.ListStore;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -93,13 +94,9 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
     }
 
     static TList<Object> hostElements(Object host) {
-        if (host instanceof ListStore store) {
-            var out = new TList<Object>(store.listStoreSize());
-            for (int i = 0; i < store.listStoreSize(); i++) out.add(store.listStoreBoxed(i));
-            return out;
-        }
-        var out = new TList<Object>();
-        for (var element : MustCast.mustCast(TList.class, host)) out.add(element);
+        var store = MustCast.mustCast(ListStore.class, host);
+        var out = new TList<Object>(store.listStoreSize());
+        for (int i = 0; i < store.listStoreSize(); i++) out.add(store.listStoreBoxed(i));
         return out;
     }
 
@@ -130,16 +127,10 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
                 if (element.optIsSome()) hosts.add(element.optUnwrap());
             }
             if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-            Object host =
-                    switch (GenLists.listDynamic(xx, TypeForms.dynamicForm(xx, elementType))) {
-                        case TypeListSpecializedDynamic<?> spec -> {
-                            var store = spec.newStore();
-                            for (var element : hosts) store.listStorePushBoxed(element);
-                            yield store;
-                        }
-                        case TypeListBoxedDynamic<?> boxed -> hosts;
-                    };
-            return EResult.ok(host);
+            var store = GenLists.listDynamic(xx, TypeForms.dynamicForm(xx, elementType))
+                    .newStore();
+            for (var element : hosts) store.listStoreAddBoxed(element);
+            return EResult.ok(store);
         }
     };
 
@@ -220,10 +211,7 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_LIST_BOXED_DYNAMIC_IDENTITY)
-                        .optIsSome()
-                || GenLists.listDynamic(xx, TypeForms.dynamicForm(xx, elementType))
-                        .typeIsEqual(xx, destType);
+        return GenLists.listDynamic(xx, TypeForms.dynamicForm(xx, elementType)).typeIsEqual(xx, destType);
     }
 
     @Override

@@ -44,7 +44,7 @@ public final class AspectFunctionZbase32Decode implements AspectFunction {
                 return EResult.err(loc, "zbase32.decode: " + e.getMessage());
             }
             var store = new ListStoreByte();
-            for (var b : bytes) store.push(b);
+            for (var b : bytes) store.add(b);
             var listType = new TypeListConst<>(new TypeByteConst());
             var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
             if (concatRes.hasErrors()) return concatRes.reerr();

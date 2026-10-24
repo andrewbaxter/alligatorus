@@ -83,9 +83,8 @@ public final class Helpers {
         return switch (value) {
             case JsonValueObject o -> {
                 var out = new TOrderedMap<String, JsonValue>();
-                for (var entry : o.entries().entrySet()) {
-                    var k = entry.getKey();
-                    var v = entry.getValue();
+                for (var k : o.keys()) {
+                    var v = o.get(k).optUnwrap();
                     var redacted =
                             switch (v) {
                                 case JsonValueString ignored ->
@@ -95,7 +94,7 @@ public final class Helpers {
                                 case JsonValueBoolean ignored -> v;
                                 case JsonValueArray ignored -> k.equals("locs") ? jsonStr("LOCS") : jsonRedacted(v);
                                 case JsonValueObject inner -> {
-                                    var someOpt = inner.entries().getOpt("some");
+                                    var someOpt = inner.get("some");
                                     boolean someIsString = someOpt.optIsSome()
                                             && switch (someOpt.optUnwrap()) {
                                                 case JsonValueString ignored2 -> true;
@@ -116,7 +115,7 @@ public final class Helpers {
                 yield new JsonValueObject(out);
             }
             case JsonValueArray a -> {
-                var out = new TList<JsonValue>(a.elements().size());
+                var out = new TList<JsonValue>(a.len());
                 for (var e : a.elements()) out.add(Helpers.jsonRedacted(e));
                 yield new JsonValueArray(out);
             }

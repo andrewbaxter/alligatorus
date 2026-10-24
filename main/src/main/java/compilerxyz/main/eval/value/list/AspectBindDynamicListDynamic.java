@@ -10,8 +10,7 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.prelude.util.Opt;
 
-public record AspectBindDynamicListSpecializedDynamic<T extends Type>(TypeListSpecializedDynamic<T> type)
-        implements AspectBindDynamic {
+public record AspectBindDynamicListDynamic<T extends Type>(TypeListDynamic<T> type) implements AspectBindDynamic {
 
     @Override
     public EResult<Opt<BindSubDynamic>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {

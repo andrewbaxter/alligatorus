@@ -5,8 +5,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.gen.AspectDynamicConst;
 
-public record AspectDynamicConstListSpecializedDynamic<T extends Type>(TypeListSpecializedDynamic<T> type)
-        implements AspectDynamicConst {
+public record AspectDynamicConstListDynamic<T extends Type>(TypeListDynamic<T> type) implements AspectDynamicConst {
 
     @Override
     public Type aspectDynamicConstConstForm(ExprContext xx) {

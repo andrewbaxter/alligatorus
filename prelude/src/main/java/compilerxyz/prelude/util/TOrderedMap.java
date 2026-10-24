@@ -49,6 +49,10 @@ public final class TOrderedMap<K, V> {
         backing.putAll(source.backing);
     }
 
+    public void clear() {
+        backing.clear();
+    }
+
     public Set<K> keySet() {
         return backing.keySet();
     }

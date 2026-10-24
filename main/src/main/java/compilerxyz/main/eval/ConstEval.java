@@ -714,7 +714,17 @@ public final class ConstEval {
                         break foreachCompute;
                     }
                     var iterSplice = iterSpliceOpt.optUnwrap();
+                    var elemDropOpt = entryDrop(xx, loc, erb, bodyRanScope, elemEntry);
+                    if (elemDropOpt.optIsNone()) {
+                        res = EResult.errs(erb.errors());
+                        break foreachCompute;
+                    }
                     popByBox(bodyRanScope, elemEntry);
+                    var iterDropOpt = entryDrop(xx, loc, erb, bodyRanScope, iterEntry);
+                    if (iterDropOpt.optIsNone()) {
+                        res = EResult.errs(erb.errors());
+                        break foreachCompute;
+                    }
                     popByBox(bodyRanScope, iterEntry);
                     var others = new TList<Scope>();
                     others.add(xx.scope);
@@ -724,14 +734,22 @@ public final class ConstEval {
                         break foreachCompute;
                     }
                     xx.scope.adopt(bodyRanScope);
+                    var iterBodyOpt = seqCode(xx, loc, erb, TList.of(bodyEv.cv().code(), elemDropOpt.optUnwrap()));
+                    if (iterBodyOpt.optIsNone()) {
+                        res = EResult.errs(erb.errors());
+                        break foreachCompute;
+                    }
+                    var iterBody =
+                            new CodeValue(iterBodyOpt.optUnwrap(), bodyEv.cv().outcome());
                     var out = erb.mustErMaybeUnreachable(
-                            iterable.aspectIterableForeach(xx, loc, base, loopBinding, elemBind.code(), bodyEv.cv()));
+                            iterable.aspectIterableForeach(xx, loc, base, loopBinding, elemBind.code(), iterBody));
                     if (out.optIsNone()) {
                         res = EResult.errs(erb.errors());
                         break foreachCompute;
                     }
                     var outCv = out.optUnwrap();
-                    var outSeq = seqCode(xx, loc, erb, TList.of(outCv.code(), elemSplice, iterSplice));
+                    var outSeq = seqCode(
+                            xx, loc, erb, TList.of(outCv.code(), iterDropOpt.optUnwrap(), elemSplice, iterSplice));
                     if (outSeq.optIsNone()) {
                         res = EResult.errs(erb.errors());
                         break foreachCompute;
@@ -933,7 +951,16 @@ public final class ConstEval {
                             break matchCompute;
                         }
                         var payloadSplice = payloadSpliceOpt.optUnwrap();
-                        var bodySeq = seqCode(xx, loc, erb, TList.of(payloadBind.code(), bodyCv.code(), payloadSplice));
+                        var payloadDropOpt = entryDrop(xx, loc, erb, caseRanScope, payloadEntry);
+                        if (payloadDropOpt.optIsNone()) {
+                            res = EResult.errs(erb.errors());
+                            break matchCompute;
+                        }
+                        var bodySeq = seqCode(
+                                xx,
+                                loc,
+                                erb,
+                                TList.of(payloadBind.code(), bodyCv.code(), payloadDropOpt.optUnwrap(), payloadSplice));
                         if (bodySeq.optIsNone()) {
                             res = EResult.errs(erb.errors());
                             break matchCompute;
@@ -997,7 +1024,17 @@ public final class ConstEval {
                             break matchCompute;
                         }
                         var fallbackSplice = fallbackSpliceOpt.optUnwrap();
-                        var fbSeq = seqCode(xx, loc, erb, TList.of(fallbackBind.code(), fbCv.code(), fallbackSplice));
+                        var fallbackDropOpt = entryDrop(xx, loc, erb, fallbackRanScope, fallbackEntry);
+                        if (fallbackDropOpt.optIsNone()) {
+                            res = EResult.errs(erb.errors());
+                            break matchCompute;
+                        }
+                        var fbSeq = seqCode(
+                                xx,
+                                loc,
+                                erb,
+                                TList.of(
+                                        fallbackBind.code(), fbCv.code(), fallbackDropOpt.optUnwrap(), fallbackSplice));
                         if (fbSeq.optIsNone()) {
                             res = EResult.errs(erb.errors());
                             break matchCompute;
@@ -1336,7 +1373,10 @@ public final class ConstEval {
                     var payloadSpliceOpt = blocksSplice(catchXx, loc, payloadEntry.scopeLevelEmission().blocks, erb);
                     if (payloadSpliceOpt.optIsNone()) yield EResult.errs(erb.errors());
                     var payloadSplice = payloadSpliceOpt.optUnwrap();
-                    var catchSeq = seqCode(xx, loc, erb, TList.of(catchCv.code(), payloadSplice));
+                    var payloadDropOpt = entryDrop(xx, loc, erb, catchRanScope, payloadEntry);
+                    if (payloadDropOpt.optIsNone()) yield EResult.errs(erb.errors());
+                    var catchSeq =
+                            seqCode(xx, loc, erb, TList.of(catchCv.code(), payloadDropOpt.optUnwrap(), payloadSplice));
                     if (catchSeq.optIsNone()) yield EResult.errs(erb.errors());
                     catchCv = new CodeValue(catchSeq.optUnwrap(), catchCv.outcome());
                     popByBox(catchRanScope, payloadEntry);
@@ -1752,6 +1792,27 @@ public final class ConstEval {
         var cv = res.valueOpt().optUnwrap();
         if (cv.value().optIsSome()) xx.scope.pushTemp(cv.value().optUnwrap());
         return res;
+    }
+
+    private static Opt<Code> entryDrop(ExprContext xx, QExprId loc, Erb erb, Scope ranScope, ScopeLevel.Entry entry) {
+        var top = ranScope.levels.get(ranScope.levels.size() - 1);
+        ScopeLevel.Entry current;
+        switch (top) {
+            case ScopeLevel.Entry en -> current = en;
+            case ScopeLevel.Labeled lb -> throw new AssertionError("entry drop: top level is not the expected entry");
+            case ScopeLevel.Temp t -> throw new AssertionError("entry drop: top level is not the expected entry");
+            case ScopeLevel.Catch c -> throw new AssertionError("entry drop: top level is not the expected entry");
+            case ScopeLevel.Finally f -> throw new AssertionError("entry drop: top level is not the expected entry");
+        }
+        if (current.scopeLevelEmission().id != entry.scopeLevelEmission().id) {
+            throw new AssertionError("entry drop: top level is not the expected entry");
+        }
+        var dropRes = current.binding.bindingDrop(Eval.dropContext(xx), loc);
+        if (dropRes.hasErrors()) {
+            dropRes.drainInto(erb.errors());
+            return Opt.none();
+        }
+        return Opt.some(dropRes.requireValue("entry drop"));
     }
 
     private static void popByBox(Scope scope, ScopeLevel level) {

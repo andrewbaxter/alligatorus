@@ -11,9 +11,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.value.int_.TypeIntDynamic;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectTuple;
@@ -21,7 +19,6 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
 public record AspectFunctionListSetDynamic(TypeListSetDynamic type) implements AspectFunction {
-
     @Override
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
         if (argument.value().optIsNone()) {
@@ -47,12 +44,9 @@ public record AspectFunctionListSetDynamic(TypeListSetDynamic type) implements A
         if (indexConvertedRes.hasErrors()) return indexConvertedRes.reerr();
         var indexDynRes = DynUtil.materialize(xx, loc, indexConvertedRes.requireValue("set index converted"));
         if (indexDynRes.hasErrors()) return indexDynRes.reerr();
-        Type elementType =
-                switch (type.listType()) {
-                    case TypeListSpecializedDynamic<?> specialized -> specialized.elementType;
-                    case TypeListBoxedDynamic<?> boxed -> boxed.elementType;
-                };
-        var valueConvertedRes = Eval.typecheckConvert(xx, loc, elementType, valueRes.requireValue("set value"));
+        var listType = type.listType();
+        var valueConvertedRes =
+                Eval.typecheckConvert(xx, loc, listType.elementType, valueRes.requireValue("set value"));
         if (valueConvertedRes.hasErrors()) return valueConvertedRes.reerr();
         var valueDynRes = DynUtil.materialize(xx, loc, valueConvertedRes.requireValue("set value converted"));
         if (valueDynRes.hasErrors()) return valueDynRes.reerr();
@@ -64,19 +58,9 @@ public record AspectFunctionListSetDynamic(TypeListSetDynamic type) implements A
         if (argumentAdd.optIsSome()) return EResult.errs(argumentAdd.optUnwrap());
         var index = b.reg(indexDynRes.requireValue("toDynamic index"));
         var value = b.reg(valueDynRes.requireValue("toDynamic value"));
-        switch (type.listType()) {
-            case TypeListSpecializedDynamic<?> specialized -> {
-                var setDesc = JavaMethodDescriptor.fromParts(
-                        JavaDataDescriptor.DESC_VOID,
-                        TList.of(JavaDataDescriptor.DESC_INT, specialized.elementDescriptor(xx)));
-                b.invokeVirtualVoid(specialized.storeName, "set", setDesc, list, index, value);
-            }
-            case TypeListBoxedDynamic<?> boxed -> {
-                var setDesc = JavaMethodDescriptor.fromParts(
-                        JavaDataDescriptor.DESC_VOID, TList.of(JavaDataDescriptor.DESC_INT, JvmConstants.DESC_OBJECT));
-                b.invokeVirtualVoid(JavaInternalName.fromClass(TList.class), "set", setDesc, list, index, value);
-            }
-        }
+        var setDesc = JavaMethodDescriptor.fromParts(
+                JavaDataDescriptor.DESC_VOID, TList.of(JavaDataDescriptor.DESC_INT, listType.slotDescriptor(xx)));
+        b.invokeVirtualVoid(listType.storeName, "set", setDesc, list, index, value);
         return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
     }
 

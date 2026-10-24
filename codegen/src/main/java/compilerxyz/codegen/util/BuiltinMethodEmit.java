@@ -43,7 +43,7 @@ public final class BuiltinMethodEmit {
     private static final ClassName TYPE_ERESULT_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.eresult", "TypeEResultDynamic");
     private static final ClassName TYPE_LIST_DYNAMIC =
-            ClassName.get("compilerxyz.main.eval.value.list", "TypeListBoxedDynamic");
+            ClassName.get("compilerxyz.main.eval.value.list", "TypeListDynamic");
     private static final ClassName TYPE_OPTION_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.option", "TypeOptionDynamic");
     private static final ClassName TYPE_MAP_DYNAMIC =
@@ -127,6 +127,9 @@ public final class BuiltinMethodEmit {
             for (int i = 0; i < parts.size(); i++) {
                 if (i > 0) joined.add(", ");
                 joined.add(parts.get(i));
+            }
+            if (wrapper.equals(TYPE_LIST_DYNAMIC)) {
+                return Opt.some(CodeBlock.of("$T.ofObject($L)", wrapper, joined.build()));
             }
             return Opt.some(CodeBlock.of("new $T($L)", wrapper, joined.build()));
         }

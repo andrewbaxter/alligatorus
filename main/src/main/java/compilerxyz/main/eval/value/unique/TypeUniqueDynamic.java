@@ -105,11 +105,10 @@ public record TypeUniqueDynamic() implements Aspect, Type {
     }
 
     static EResult<Unique> decodeUnique(QExprId loc, JsonValueObject obj) {
-        if (obj.entries().size() != 1) return EResult.err(loc, "expected tagged object");
-        var entry = obj.entries().entrySet().iterator().next();
-        var tag = entry.getKey();
+        if (obj.len() != 1) return EResult.err(loc, "expected tagged object");
+        var tag = obj.keys().get(0);
         JsonValueObject inner;
-        switch (entry.getValue()) {
+        switch (obj.get(tag).optUnwrap()) {
             case JsonValueObject o -> inner = o;
             case JsonValueNull jn -> {
                 return EResult.err(loc, "expected inner object");
@@ -129,7 +128,7 @@ public record TypeUniqueDynamic() implements Aspect, Type {
         }
         return switch (tag) {
             case "builtin" -> {
-                var idRawOpt = inner.entries().getOpt("id");
+                var idRawOpt = inner.get("id");
                 if (idRawOpt.optIsNone()) yield EResult.err(loc, "builtin: missing id");
                 var idRaw = idRawOpt.optUnwrap();
                 yield switch (idRaw) {
@@ -143,8 +142,8 @@ public record TypeUniqueDynamic() implements Aspect, Type {
                 };
             }
             case "source" -> {
-                var ciRawOpt = inner.entries().getOpt("compile_id");
-                var idRawOpt = inner.entries().getOpt("id");
+                var ciRawOpt = inner.get("compile_id");
+                var idRawOpt = inner.get("id");
                 if (ciRawOpt.optIsNone() || idRawOpt.optIsNone())
                     yield EResult.err(loc, "source: malformed compile_id/id");
                 var ciRaw = ciRawOpt.optUnwrap();
@@ -190,8 +189,8 @@ public record TypeUniqueDynamic() implements Aspect, Type {
                         yield EResult.err(loc, "source: malformed compile_id/id");
                     }
                 }
-                var isRawOpt = ci.entries().getOpt("import_state");
-                var srcRawOpt = ci.entries().getOpt("source");
+                var isRawOpt = ci.get("import_state");
+                var srcRawOpt = ci.get("source");
                 if (isRawOpt.optIsNone() || srcRawOpt.optIsNone())
                     yield EResult.err(loc, "source: malformed compile_id/id");
                 var isRaw = isRawOpt.optUnwrap();

@@ -221,6 +221,16 @@ public final class Main {
     }
 
     private static Result<Compile.CompileResult, TList<MainError>> compileRoot(CacheReal cache, String path) {
+        try {
+            return compileRootOnce(cache, path);
+        } catch (CacheDamaged e) {
+            System.err.println("cache damaged (" + e.getMessage() + "): cleared, rebuilding");
+            cache.cacheClear();
+            return compileRootOnce(cache, path);
+        }
+    }
+
+    private static Result<Compile.CompileResult, TList<MainError>> compileRootOnce(CacheReal cache, String path) {
         var gx = GlobalContext.newContext(cache, cache, cache);
         var entry = new SourceSpecAbsolute.Local(path);
         Sources.SourceResolved.Module module;

@@ -5,6 +5,7 @@ import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
+import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
 import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
@@ -143,7 +144,7 @@ public final class CodegenDescriptorScanner {
             return ArrayTypeName.of(typeNameOf(t.asArrayType().getComponentType(), imports, pkg, typeParams));
         }
         if (t.isClassOrInterfaceType()) {
-            var name = t.asClassOrInterfaceType().getNameAsString();
+            var name = scopedName(t.asClassOrInterfaceType());
             if (typeParams.contains(name)) return ClassName.get(Object.class);
             String resolve;
             _resolve:
@@ -169,6 +170,11 @@ public final class CodegenDescriptorScanner {
             return ClassName.bestGuess(resolve);
         }
         throw new IllegalStateException("Unsupported @CodegenDescriptor type: " + t);
+    }
+
+    private static String scopedName(ClassOrInterfaceType t) {
+        var scope = t.getScope();
+        return scope.isPresent() ? scopedName(scope.get()) + "." + t.getNameAsString() : t.getNameAsString();
     }
 
     private static final IList<String> JAVA_LANG = IList.of(

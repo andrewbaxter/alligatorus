@@ -1,10 +1,12 @@
 package compilerxyz.main.artifact;
 
+import compilerxyz.main.eval.ArtifactImportScope;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.langhelp.CacheDamaged;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
@@ -20,25 +22,51 @@ public final class ArtifactSupport {
 
     @BuiltinPath(value = "eval.artifact_import", scopeId = 5064L)
     public static EResult<Object> importArtifact(ExprContext xx, QExprId loc, Artifact artifact) {
-        Opt<ArtifactIdSource> id;
-        ArtifactBody body;
-        switch (artifact) {
-            case Artifact.Inline b -> {
-                id = Opt.none();
-                body = b.body();
-            }
-            case Artifact.Ref r -> {
-                id = Opt.some(r.id());
-                var cached = xx.vx.ix.deserializedArtifacts.getOpt(r.id());
-                if (cached.optIsSome()) {
-                    return EResult.ok(cached.optUnwrap());
+        var scope = ArtifactImportScope.of(xx.vx.ix);
+        scope.depth++;
+        try {
+            Opt<ArtifactIdSource> id;
+            ArtifactBody body;
+            switch (artifact) {
+                case Artifact.Inline b -> {
+                    id = Opt.none();
+                    body = b.body();
                 }
-                var got = xx.vx.ix.artifacts.artifactsGet(r.id());
-                if (got.optIsNone()) return EResult.err(loc, "Unknown artifact: " + r.id());
-                body = got.optUnwrap();
+                case Artifact.Ref r -> {
+                    id = Opt.some(r.id());
+                    var imported = scope.imported.getOpt(r.id());
+                    if (imported.optIsSome()) {
+                        return EResult.ok(imported.optUnwrap());
+                    }
+                    body = artifactBody(xx, r.id());
+                }
             }
+            var imported = importArtifactBody(xx, loc, id, body);
+            if (id.optIsSome()
+                    && !imported.hasErrors()
+                    && scope.imported.getOpt(id.optUnwrap()).optIsNone()) {
+                scope.imported.put(id.optUnwrap(), imported.requireValue("ArtifactSupport::importArtifact imported"));
+            }
+            return imported;
+        } finally {
+            scope.depth--;
+            if (scope.depth == 0) scope.imported.clear();
         }
-        return importArtifactBody(xx, loc, id, body);
+    }
+
+    @BuiltinPath(value = "eval.artifact_import_early", scopeId = 5078L)
+    public static void artifactImportEarly(ExprContext xx, ArtifactIdSource id, Object value) {
+        var scope = ArtifactImportScope.of(xx.vx.ix);
+        if (scope.depth == 0) {
+            throw new IllegalStateException("artifact_import_early: no artifact import is running");
+        }
+        scope.imported.put(id, value);
+    }
+
+    private static ArtifactBody artifactBody(ExprContext xx, ArtifactIdSource id) {
+        var got = xx.vx.ix.artifacts.artifactsGet(id);
+        if (got.optIsNone()) throw new CacheDamaged("Unknown artifact: " + id);
+        return got.optUnwrap();
     }
 
     private static EResult<Object> importArtifactBody(
@@ -61,13 +89,11 @@ public final class ArtifactSupport {
             }
             case ArtifactBodyExporter.SourceRef sr -> {
                 Object exporterAny;
-                var cached = xx.vx.ix.deserializedArtifacts.getOpt(sr.id());
-                if (cached.optIsSome()) {
-                    exporterAny = cached.optUnwrap();
+                var imported = ArtifactImportScope.of(xx.vx.ix).imported.getOpt(sr.id());
+                if (imported.optIsSome()) {
+                    exporterAny = imported.optUnwrap();
                 } else {
-                    var got = xx.vx.ix.artifacts.artifactsGet(sr.id());
-                    if (got.optIsNone()) return EResult.err(loc, "Unknown artifact: " + sr.id());
-                    var inner = importArtifactBody(xx, loc, Opt.some(sr.id()), got.optUnwrap());
+                    var inner = importArtifactBody(xx, loc, Opt.some(sr.id()), artifactBody(xx, sr.id()));
                     if (inner.hasErrors()) {
                         inner.drainInto(errors);
                         return errsOrEmpty(errors);
@@ -118,7 +144,7 @@ public final class ArtifactSupport {
             case Result.Ok<ImportIndependentResult, String> ok -> triple = ok.value();
         }
         if (triple.early().optIsSome()) {
-            xx.vx.ix.deserializedArtifacts.put(id, triple.early().optUnwrap());
+            ArtifactImportScope.of(xx.vx.ix).imported.put(id, triple.early().optUnwrap());
         }
         var errors = new TList<ExprErr>();
         for (var dep : triple.dependencies()) {
@@ -126,13 +152,13 @@ public final class ArtifactSupport {
             depRes.drainInto(errors);
         }
         var value = triple.finalizer().finalizerRun(xx, loc);
-        xx.vx.ix.deserializedArtifacts.put(id, value);
+        ArtifactImportScope.of(xx.vx.ix).imported.put(id, value);
         return errors.isEmpty() ? EResult.ok(value) : EResult.mixed(value, errors);
     }
 
     public static EResult<Object> independentFinalizeImportArtifact(ExprContext xx, QExprId loc, Artifact artifact) {
         return switch (artifact) {
-            case Artifact.Ref r -> lookupRef(xx, loc, r.id());
+            case Artifact.Ref r -> EResult.ok(lookupRef(xx, r.id()));
             case Artifact.Inline b -> walkBody(xx, loc, b.body());
         };
     }
@@ -148,18 +174,13 @@ public final class ArtifactSupport {
                 Type.class, res.requireValue("ArtifactSupport::independentFinalizeImportTypeArtifact imported")));
     }
 
-    private static EResult<Object> lookupRef(ExprContext xx, QExprId loc, ArtifactIdSource id) {
-        var cached = xx.vx.ix.deserializedArtifacts.getOpt(id);
-        if (cached.optIsSome()) {
-            return EResult.ok(cached.optUnwrap());
+    private static Object lookupRef(ExprContext xx, ArtifactIdSource id) {
+        var imported = ArtifactImportScope.of(xx.vx.ix).imported.getOpt(id);
+        if (imported.optIsNone()) {
+            throw new IllegalStateException(
+                    "independentFinalizeImportArtifact: artifact " + id + " was not imported as a dependency");
         }
-        var cachedIds = new TList<ArtifactIdSource>();
-
-        for (var entry : xx.vx.ix.deserializedArtifacts.entrySet()) {
-            cachedIds.add(entry.getKey());
-        }
-        return EResult.err(
-                loc, "independentFinalizeImportArtifact: artifact " + id + " not in cache. Cached=" + cachedIds);
+        return imported.optUnwrap();
     }
 
     private static EResult<Object> walkBody(ExprContext xx, QExprId loc, ArtifactBody body) {
@@ -183,13 +204,7 @@ public final class ArtifactSupport {
                 yield errors.isEmpty() ? res : EResult.errs(errors);
             }
             case ArtifactBodyExporter.SourceRef sr -> {
-                var ref = lookupRef(xx, loc, sr.id());
-                if (ref.hasErrors()) {
-                    ref.drainInto(errors);
-                    yield errsOrEmpty(errors);
-                }
-                var v = ref.requireValue("ArtifactSupport::walkBody SourceRef ref");
-                var exporter = MustCast.mustCast(ArtifactExporter.class, v);
+                var exporter = MustCast.mustCast(ArtifactExporter.class, lookupRef(xx, sr.id()));
                 var res = exporter.artifactExporterImportFromData(xx, loc, Opt.none(), body.data());
                 res.drainInto(errors);
                 yield errors.isEmpty() ? res : EResult.errs(errors);

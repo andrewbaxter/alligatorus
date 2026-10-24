@@ -14,7 +14,7 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.value.eresult.TypeEResultVariantConstructorDynamic.Kind;
-import compilerxyz.main.eval.value.list.TypeListBoxedDynamic;
+import compilerxyz.main.eval.value.list.TypeListDynamic;
 import compilerxyz.main.eval.value.string.TypeStringDynamic;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleElement;
@@ -48,7 +48,7 @@ public record AspectFunctionEResultVariantConstructorDynamic(TypeEResultVariantC
             return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));
         }
         if (type.kind() == Kind.ERRS) {
-            var errsArgType = new TypeListBoxedDynamic(GenExprErr.dynamicType());
+            var errsArgType = TypeListDynamic.ofObject(GenExprErr.dynamicType());
             var convertedErrsOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, errsArgType, argument));
             if (convertedErrsOpt.optIsNone()) return EResult.errs(erb.errors());
             var listRes = DynUtil.materialize(xx, loc, convertedErrsOpt.optUnwrap());

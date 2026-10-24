@@ -51,7 +51,7 @@ public final class Zbase32 {
     public static ListStoreByte decodeToStore(String encoded) {
         var bytes = decode(encoded);
         var list = new ListStoreByte();
-        for (var b : bytes) list.push(b);
+        for (var b : bytes) list.add(b);
         return list;
     }
 }

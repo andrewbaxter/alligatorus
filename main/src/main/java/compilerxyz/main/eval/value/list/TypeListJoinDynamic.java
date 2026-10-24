@@ -39,7 +39,7 @@ public record TypeListJoinDynamic(Type elementType) implements Aspect, Type {
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(
-                    new AspectConsumeDynamicMethod(JvmSort.descriptor(xx, new TypeListBoxedDynamic<>(elementType))));
+                    new AspectConsumeDynamicMethod(JvmSort.descriptor(xx, TypeListDynamic.ofObject(elementType))));
         }
         if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);

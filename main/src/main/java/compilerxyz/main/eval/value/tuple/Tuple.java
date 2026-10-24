@@ -758,7 +758,7 @@ public record Tuple(IList<TupleElement> elements, ArtifactSupport.ArtifactIdHold
                                 return new Result.Err<>("Tuple data: expected object");
                             }
                         }
-                        var elementsJsonOpt = obj.entries().getOpt("elements");
+                        var elementsJsonOpt = obj.get("elements");
                         if (elementsJsonOpt.optIsNone()) {
                             return new Result.Err<>("Tuple data: missing 'elements'");
                         }

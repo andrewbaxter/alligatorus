@@ -34,8 +34,8 @@ import compilerxyz.main.eval.value.int_.TypeIntDynamic;
 import compilerxyz.main.eval.value.int_.TypeIntDynamicBox;
 import compilerxyz.main.eval.value.jvm_object.TypeJvmObjectConst;
 import compilerxyz.main.eval.value.jvm_object.TypeJvmObjectDynamic;
-import compilerxyz.main.eval.value.list.TypeListBoxedDynamic;
 import compilerxyz.main.eval.value.list.TypeListConst;
+import compilerxyz.main.eval.value.list.TypeListDynamic;
 import compilerxyz.main.eval.value.list.TypeTypeList;
 import compilerxyz.main.eval.value.long_.TypeLongConst;
 import compilerxyz.main.eval.value.long_.TypeLongDynamic;
@@ -119,7 +119,7 @@ public enum ExporterRoot implements ArtifactExporter {
     LIST_DYNAMIC("list_dynamic") {
         @Override
         ExporterRootDelegate delegate() {
-            return TypeListBoxedDynamic.DELEGATE;
+            return TypeListDynamic.DELEGATE;
         }
     },
     MAP_CONST("map_const") {

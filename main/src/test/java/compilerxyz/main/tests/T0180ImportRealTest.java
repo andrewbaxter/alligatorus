@@ -1,6 +1,7 @@
 package compilerxyz.main.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.stream.JsonWriter;
@@ -8,6 +9,7 @@ import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.ImportStateId;
 import compilerxyz.main.eval.builtin.Zbase32;
 import compilerxyz.main.gen.codec.SourceModuleCodec;
+import compilerxyz.main.langhelp.CacheDamaged;
 import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.langhelp.GlobalContext;
 import compilerxyz.main.langhelp.cache.CacheReal;
@@ -209,6 +211,85 @@ public final class T0180ImportRealTest {
         }
     }
 
+    private static long artifactRows(Path cacheDir) throws Exception {
+        try (var conn = DriverManager.getConnection("jdbc:sqlite:" + cacheDir.resolve("cache.sqlite"));
+                var st = conn.createStatement();
+                var rs = st.executeQuery("SELECT count(*) FROM artifacts")) {
+            rs.next();
+            return rs.getLong(1);
+        }
+    }
+
+    @Test
+    public void test00365DependencyRebuiltAsRootEvictsDependents(@TempDir Path tmp) throws Exception {
+        var mb = new TestMb();
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
+        var cacheDir = tmp.resolve("cache");
+        var oneFile = src.resolve("one.at");
+        var twoFile = src.resolve("two.at");
+        writeModule(oneFile, TList.of(mb.return_(mb.recordOf(TList.of(new TestMb.RecordPair("v", mb.str("v1")))))));
+        writeModule(
+                twoFile,
+                TList.of(mb.call(
+                        mb.log(), mb.field(importField(mb, "r", mb.sourceLocal(mb.str("one.at"))), mb.str("v")))));
+
+        try (var cache = new CacheReal(cacheDir)) {
+            var ok = expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(twoFile.toString())));
+            assertEquals("v1", ok.logs().get(0).message());
+        }
+        var rows = artifactRows(cacheDir);
+        assertTrue(rows > 0, "the record export stores artifacts");
+
+        writeModule(oneFile, TList.of(mb.return_(mb.recordOf(TList.of(new TestMb.RecordPair("v", mb.str("v2")))))));
+        Files.setLastModifiedTime(
+                oneFile, FileTime.fromMillis(Files.getLastModifiedTime(oneFile).toMillis() + 100000));
+        try (var cache = new CacheReal(cacheDir)) {
+            expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(oneFile.toString())));
+        }
+        try (var cache = new CacheReal(cacheDir)) {
+            var ok = expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(twoFile.toString())));
+            assertEquals("v2", ok.logs().get(0).message());
+        }
+        assertEquals(rows, artifactRows(cacheDir));
+    }
+
+    @Test
+    public void test00366MissingArtifactIsCacheDamage(@TempDir Path tmp) throws Exception {
+        var mb = new TestMb();
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
+        var cacheDir = tmp.resolve("cache");
+        var oneFile = src.resolve("one.at");
+        var twoFile = src.resolve("two.at");
+        writeModule(oneFile, TList.of(mb.return_(mb.recordOf(TList.of(new TestMb.RecordPair("v", mb.str("v1")))))));
+        writeModule(
+                twoFile,
+                TList.of(mb.call(
+                        mb.log(), mb.field(importField(mb, "r", mb.sourceLocal(mb.str("one.at"))), mb.str("v")))));
+        try (var cache = new CacheReal(cacheDir)) {
+            expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(twoFile.toString())));
+        }
+        try (var conn = DriverManager.getConnection("jdbc:sqlite:" + cacheDir.resolve("cache.sqlite"));
+                var st = conn.createStatement()) {
+            st.executeUpdate("DELETE FROM artifacts");
+        }
+        writeModule(
+                twoFile,
+                TList.of(mb.call(
+                        mb.log(), mb.field(importField(mb, "r", mb.sourceLocal(mb.str("one.at"))), mb.str("v")))));
+        Files.setLastModifiedTime(
+                twoFile, FileTime.fromMillis(Files.getLastModifiedTime(twoFile).toMillis() + 100000));
+        try (var cache = new CacheReal(cacheDir)) {
+            assertThrows(
+                    CacheDamaged.class,
+                    () -> Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(twoFile.toString())));
+            cache.cacheClear();
+            var ok = expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(twoFile.toString())));
+            assertEquals("v1", ok.logs().get(0).message());
+        }
+    }
+
     @Test
     public void test00370SecondInstanceSharesTheCache(@TempDir Path tmp) throws IOException {
         var mb = new TestMb();
@@ -228,7 +309,7 @@ public final class T0180ImportRealTest {
     }
 
     @Test
-    public void test00380FailedCompileIsCachedThenRecompiledOnFix(@TempDir Path tmp) throws IOException {
+    public void test00380FailedCompileIsNotStored(@TempDir Path tmp) throws IOException {
         var mb = new TestMb();
         var src = tmp.resolve("src");
         Files.createDirectories(src);
@@ -243,20 +324,12 @@ public final class T0180ImportRealTest {
                         case Result.Err<?, ?> e -> true;
                     },
                     () -> "expected failure, got " + res);
-        }
-        try (var cache = new CacheReal(cacheDir)) {
-            var res = Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
-            assertTrue(
-                    switch (res) {
-                        case Result.Ok<?, ?> o -> false;
-                        case Result.Err<?, ?> e -> true;
-                    },
-                    () -> "expected cached failure, got " + res);
+            var id = new CompileId(
+                    new ImportStateId(0), cache.sourcesIdFor(new SourceSpecAbsolute.Local(mainFile.toString())));
+            assertTrue(cache.compilesGet(id).optIsSome(), "the session keeps the failed result");
+            assertTrue(cache.compilesGetStored(id).optIsNone(), "a failed compile is not stored");
         }
         writeModule(mainFile, TList.of(mb.call(mb.log(), mb.str("fixed"))));
-        Files.setLastModifiedTime(
-                mainFile,
-                FileTime.fromMillis(Files.getLastModifiedTime(mainFile).toMillis() + 100000));
         try (var cache = new CacheReal(cacheDir)) {
             var ok = expectOk(Helpers.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString())));
             assertEquals("fixed", ok.logs().get(0).message());

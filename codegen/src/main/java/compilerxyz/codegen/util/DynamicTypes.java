@@ -10,7 +10,7 @@ import compilerxyz.prelude.util.TMap;
 public final class DynamicTypes {
     private DynamicTypes() {}
 
-    private record CompositeEntry(int arity, TypeName valueClass) {}
+    private record CompositeEntry(int arity, TypeName valueClass, String construct) {}
 
     private static final ClassName TYPE_ARRAY_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.array", "TypeArrayDynamic");
@@ -29,7 +29,7 @@ public final class DynamicTypes {
 
     private static void composite(
             TMap<ClassName, CompositeEntry> composites, String pkg, String cls, int arity, TypeName valueClass) {
-        composites.put(ClassName.get(pkg, cls), new CompositeEntry(arity, valueClass));
+        composites.put(ClassName.get(pkg, cls), new CompositeEntry(arity, valueClass, "new $T($L)"));
     }
 
     static {
@@ -101,12 +101,9 @@ public final class DynamicTypes {
         nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceRemoteHttp");
         nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceRemoteGit");
         nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceSha256");
-        composite(
-                composites,
-                "compilerxyz.main.eval.value.list",
-                "TypeListBoxedDynamic",
-                1,
-                ClassName.get("compilerxyz.prelude.util", "TList"));
+        composites.put(
+                ClassName.get("compilerxyz.main.eval.value.list", "TypeListDynamic"),
+                new CompositeEntry(1, ClassName.get("compilerxyz.prelude.util", "TList"), "$T.ofObject($L)"));
         composite(
                 composites,
                 "compilerxyz.main.eval.value.option",
@@ -156,7 +153,7 @@ public final class DynamicTypes {
             if (i > 0) joined.add(", ");
             joined.add(params[i]);
         }
-        return CodeBlock.of("new $T($L)", wrapper, joined.build());
+        return CodeBlock.of(spec.construct(), wrapper, joined.build());
     }
 
     public static CodeBlock array(CodeBlock element) {

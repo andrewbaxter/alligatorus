@@ -11,7 +11,7 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.bool.TypeBoolDynamic;
-import compilerxyz.main.eval.value.list.TypeListBoxedDynamic;
+import compilerxyz.main.eval.value.list.TypeListDynamic;
 import compilerxyz.main.gen.AspectUnion;
 import compilerxyz.main.gen.AspectUnion.Variant;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -26,7 +26,7 @@ public record AspectUnionEResultDynamic<T extends Type>(TypeEResultDynamic<T> ty
     public TList<Variant> aspectUnionVariants() {
         var out = new TList<Variant>();
         out.add(new Variant(new ConstKey.Str("ok"), type.elementType()));
-        out.add(new Variant(new ConstKey.Str("errs"), new TypeListBoxedDynamic(GenExprErr.dynamicType())));
+        out.add(new Variant(new ConstKey.Str("errs"), TypeListDynamic.ofObject(GenExprErr.dynamicType())));
         return out;
     }
 
@@ -65,6 +65,6 @@ public record AspectUnionEResultDynamic<T extends Type>(TypeEResultDynamic<T> ty
         var errsOpt = b.invokeVirtual(GenCodegenDescriptors.E_RESULT_ERRORS_OPT, baseReg);
         var errs = b.invokeVirtual(GenCodegenDescriptors.OPT_OPT_UNWRAP, errsOpt);
         var casted = b.checkcast(JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(TList.class)), errs);
-        return EResult.ok(DynUtil.regToValue(b.code(), casted, new TypeListBoxedDynamic(GenExprErr.dynamicType())));
+        return EResult.ok(DynUtil.regToValue(b.code(), casted, TypeListDynamic.ofObject(GenExprErr.dynamicType())));
     }
 }

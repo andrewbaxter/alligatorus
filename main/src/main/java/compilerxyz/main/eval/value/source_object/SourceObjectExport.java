@@ -1,6 +1,7 @@
 package compilerxyz.main.eval.value.source_object;
 
 import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.Exporters;
@@ -15,6 +16,8 @@ import compilerxyz.main.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.main.gen.codec.ValueSourceObjectConstArtifactValueSourceObjectCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
+import compilerxyz.prelude.util.MustCast;
+import compilerxyz.prelude.util.Opt;
 
 public final class SourceObjectExport {
     private SourceObjectExport() {}
@@ -31,20 +34,30 @@ public final class SourceObjectExport {
 
     @CodegenDescriptor
     public static EResult<Artifact> export(
-            ExprContext xx, QExprId loc, TypeSourceObjectDynamic type, Object underlying) {
-        var erb = new Erb(loc);
-        var typeArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, type));
-        var underArt = erb.mustErMaybeUnreachable(
-                Exporters.exportData(xx, loc, TypeForms.constForm(xx, type.underlyingType.optUnwrap()), underlying));
-        if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
-        var body = new ValueSourceObjectConst.ArtifactValueSourceObject(typeArt.optUnwrap(), underArt.optUnwrap());
-        return EResult.ok(new Artifact.Inline(ExporterRoot.SOURCE_OBJECT_VALUE_CONST.body(
-                ValueSourceObjectConstArtifactValueSourceObjectCodec.toValue(body))));
+            ExprContext xx,
+            QExprId loc,
+            TypeSourceObjectDynamic type,
+            ArtifactSupport.ArtifactIdHolder cell,
+            Object underlying) {
+        return ArtifactSupport.implExportIndependentArtifact(xx, cell, () -> {
+            var erb = new Erb(loc);
+            var typeArt = erb.mustErMaybeUnreachable(Exporters.exportType(xx, loc, type));
+            var underArt = erb.mustErMaybeUnreachable(Exporters.exportData(
+                    xx, loc, TypeForms.constForm(xx, type.underlyingType.optUnwrap()), underlying));
+            if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
+            var body = new ValueSourceObjectConst.ArtifactValueSourceObject(typeArt.optUnwrap(), underArt.optUnwrap());
+            return EResult.ok(ExporterRoot.SOURCE_OBJECT_VALUE_CONST.body(
+                    ValueSourceObjectConstArtifactValueSourceObjectCodec.toValue(body)));
+        });
     }
 
     @CodegenDescriptor
     public static EResult<Object> importInstance(
-            ExprContext xx, QExprId loc, JsonValue data, SourceObjectConstructor constructor) {
+            ExprContext xx,
+            QExprId loc,
+            Opt<ArtifactIdSource> id,
+            JsonValue data,
+            SourceObjectConstructor constructor) {
         ValueSourceObjectConst.ArtifactValueSourceObject body;
         try {
             body = ValueSourceObjectConstArtifactValueSourceObjectCodec.fromValue(data);
@@ -54,7 +67,13 @@ public final class SourceObjectExport {
         }
         var underlyingRes = ArtifactSupport.importArtifact(xx, loc, body.underlying());
         if (underlyingRes.hasErrors()) return underlyingRes.reerr();
-        return EResult.ok(constructor.sourceObjectConstructorNew(
-                underlyingRes.requireValue("SourceObjectExport::import underlying")));
+        var instance = constructor.sourceObjectConstructorNew(
+                underlyingRes.requireValue("SourceObjectExport::import underlying"));
+        if (id.optIsSome()) {
+            MustCast.mustCast(SourceObjectInstance.class, instance)
+                    .sourceObjectInstanceArtifactId()
+                    .set(id.optUnwrap());
+        }
+        return EResult.ok(instance);
     }
 }

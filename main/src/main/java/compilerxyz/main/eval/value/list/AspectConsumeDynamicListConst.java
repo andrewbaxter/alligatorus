@@ -6,24 +6,20 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ConstHost;
 import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenLists;
-import compilerxyz.prelude.util.TList;
 
 public record AspectConsumeDynamicListConst<T extends Type>(TypeListConst<T> type) implements AspectConsumeDynamic {
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-        return switch (GenLists.listDynamic(xx, TypeForms.dynamicForm(xx, type.elementType))) {
-            case TypeListSpecializedDynamic<?> spec ->
-                GenAspectConsumeDynamic.getMaybe(xx, spec).optUnwrap().aspectConsumeDynamicJvmClass(xx);
-            case TypeListBoxedDynamic<?> boxed ->
-                JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(TList.class));
-        };
+        return GenAspectConsumeDynamic.getMaybe(
+                        xx, GenLists.listDynamic(xx, TypeForms.dynamicForm(xx, type.elementType)))
+                .optUnwrap()
+                .aspectConsumeDynamicJvmClass(xx);
     }
 
     @Override

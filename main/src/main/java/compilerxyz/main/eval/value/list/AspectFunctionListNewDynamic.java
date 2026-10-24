@@ -9,10 +9,6 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamicReg;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
-import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.prelude.util.Opt;
@@ -35,29 +31,22 @@ public record AspectFunctionListNewDynamic(TypeListNewDynamic type) implements A
             var elements = argTupleOpt.optUnwrap().aspectTupleTakeElements(xx, loc, argValue);
             for (var elemRes : elements) {
                 if (elemRes.hasErrors()) return elemRes.reerr();
-                var dynRes = DynUtil.materialize(xx, loc, type.elementType(), elemRes.requireValue("takeElements"));
+                var dynRes = type.elementToDynamic(xx, loc, elemRes.requireValue("takeElements"));
                 if (dynRes.hasErrors()) return dynRes.reerr();
-                dynamicElements.add(dynRes.requireValue("toDynamic"));
+                dynamicElements.add(dynRes.requireValue("elementToDynamic"));
             }
         } else {
-            var dynRes = DynUtil.materialize(xx, loc, type.elementType(), argument);
+            var dynRes = type.elementToDynamic(xx, loc, argument);
             if (dynRes.hasErrors()) return dynRes.reerr();
-            dynamicElements.add(dynRes.requireValue("toDynamic"));
+            dynamicElements.add(dynRes.requireValue("elementToDynamic"));
         }
-        Type instanceType = new TypeListBoxedDynamic(type.elementType());
-        var tlistIntname = JavaInternalName.fromClass(TList.class);
-        var descObject = JavaDataDescriptor.fromClass(Object.class);
-        var addDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(descObject));
         var b = new JavaBytecodeBuilder(loc);
-        var carryAdd = b.addCode(loc, elementsCarry);
-        if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
-        var regs = new TList<JavaBytecodeReg>(dynamicElements.size());
-        for (var element : dynamicElements) regs.add(b.reg(element));
         var selfRes = b.addCode(loc, self.code());
         if (selfRes.optIsSome()) return EResult.errs(selfRes.optUnwrap());
-        var list = b.newInstance(tlistIntname, JavaMethodDescriptor.fromConstructorParts(TList.of()));
-        for (var reg : regs) b.invokeVirtualVoid(tlistIntname, "add", addDesc, list, reg);
-        return EResult.ok(DynUtil.regToValue(b.code(), list, instanceType));
+        var carryAdd = b.addCode(loc, elementsCarry);
+        if (carryAdd.optIsSome()) return EResult.errs(carryAdd.optUnwrap());
+        var list = b.reg(type.listType().emitNew(xx, loc, dynamicElements));
+        return EResult.ok(DynUtil.regToValue(b.code(), list, type.listType()));
     }
 
     @Override

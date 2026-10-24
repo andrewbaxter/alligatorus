@@ -32,11 +32,12 @@ public final class ValueSourceObjectConst {
         @Override
         public EResult<Object> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-            return importInstance(xx, loc, data);
+            return importInstance(xx, loc, id, data);
         }
     };
 
-    private static EResult<Object> importInstance(ExprContext xx, QExprId loc, JsonValue data) {
+    private static EResult<Object> importInstance(
+            ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
         ArtifactValueSourceObject body;
         try {
             body = ValueSourceObjectConstArtifactValueSourceObjectCodec.fromValue(data);
@@ -54,6 +55,6 @@ public final class ValueSourceObjectConst {
         var exporter = dt.exporter(xx, loc);
         if (exporter.hasErrors()) return exporter.reerr();
         return exporter.requireValue("ValueSourceObjectConst::import exporter")
-                .artifactExporterImportFromData(xx, loc, Opt.none(), data);
+                .artifactExporterImportFromData(xx, loc, id, data);
     }
 }

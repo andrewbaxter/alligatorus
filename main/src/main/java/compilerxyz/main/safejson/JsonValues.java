@@ -21,14 +21,14 @@ public final class JsonValues {
             case JsonValueString s -> writer.value(s.value());
             case JsonValueArray a -> {
                 writer.beginArray();
-                for (var element : a.elements()) {
+                for (var element : a.view()) {
                     encode(writer, element);
                 }
                 writer.endArray();
             }
             case JsonValueObject o -> {
                 writer.beginObject();
-                for (var entry : o.entries().entrySet()) {
+                for (var entry : o.view()) {
                     writer.name(entry.getKey());
                     encode(writer, entry.getValue());
                 }
@@ -114,7 +114,7 @@ public final class JsonValues {
 
     public static TList<JsonValue> array(JsonValue value, Json.FieldPath path) {
         return switch (value) {
-            case JsonValueArray a -> a.elements();
+            case JsonValueArray a -> TList.from(a.view());
             default ->
                 throw new Json.DeserializationException(
                         "Expected array, got " + value.getClass().getSimpleName(), path);
@@ -123,7 +123,11 @@ public final class JsonValues {
 
     public static TOrderedMap<String, JsonValue> object(JsonValue value, Json.FieldPath path) {
         return switch (value) {
-            case JsonValueObject o -> o.entries();
+            case JsonValueObject o -> {
+                var out = new TOrderedMap<String, JsonValue>();
+                for (var entry : o.view()) out.put(entry.getKey(), entry.getValue());
+                yield out;
+            }
             default ->
                 throw new Json.DeserializationException(
                         "Expected object, got " + value.getClass().getSimpleName(), path);

@@ -11,7 +11,7 @@ import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.AspectFieldUseDynamic;
 
-public record AspectFieldUseDynamicListSpecializedDynamic<T extends Type>(TypeListSpecializedDynamic<T> type)
+public record AspectFieldUseDynamicListDynamic<T extends Type>(TypeListDynamic<T> type)
         implements AspectFieldUseDynamic {
 
     @Override

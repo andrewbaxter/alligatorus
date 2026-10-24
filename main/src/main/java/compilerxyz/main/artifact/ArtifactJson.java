@@ -108,7 +108,7 @@ public final class ArtifactJson {
                     case JsonValueString s -> throw new IllegalStateException("decodeArtifactList: expected array");
                     case JsonValueObject o -> throw new IllegalStateException("decodeArtifactList: expected array");
                 };
-        var out = new TList<Artifact>(arr.elements().size());
+        var out = new TList<Artifact>(arr.len());
         for (var e : arr.elements()) out.add(decodeArtifact(e));
         return out;
     }
@@ -126,14 +126,15 @@ public final class ArtifactJson {
 
     private static Map.Entry<String, JsonValue> tagged(JsonValue v, String what) {
         var obj = object(v, what);
-        if (obj.entries().size() != 1) {
+        if (obj.len() != 1) {
             throw new IllegalStateException(what + ": expected tagged object");
         }
-        return obj.entries().entrySet().iterator().next();
+        var key = obj.keys().get(0);
+        return Map.entry(key, obj.get(key).optUnwrap());
     }
 
     private static JsonValue field(JsonValueObject obj, String key, String what) {
-        var found = obj.entries().getOpt(key);
+        var found = obj.get(key);
         if (found.optIsNone()) {
             throw new IllegalStateException(what + ": missing '" + key + "'");
         }

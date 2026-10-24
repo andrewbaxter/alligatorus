@@ -6,7 +6,7 @@ import java.util.Iterator;
 import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
-public final class TList<T> implements Iterable<T> {
+public final class TList<T> implements Iterable<T>, ListStore {
     private final ArrayList<T> backing;
 
     public TList() {
@@ -89,6 +89,26 @@ public final class TList<T> implements Iterable<T> {
 
     public void sort(Comparator<? super T> comparator) {
         backing.sort(comparator);
+    }
+
+    @Override
+    public int listStoreSize() {
+        return backing.size();
+    }
+
+    @Override
+    public Object listStoreBoxed(int index) {
+        return backing.get(index);
+    }
+
+    @Override
+    public void listStoreAddBoxed(Object value) {
+        backing.add((T) value);
+    }
+
+    @Override
+    public ListStore listStoreCopy() {
+        return TList.from(this);
     }
 
     @Override

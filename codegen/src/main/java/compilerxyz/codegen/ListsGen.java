@@ -13,11 +13,7 @@ public final class ListsGen {
     public static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.main.eval", "ExprContext");
     public static final ClassName JAVA_INTERNAL_NAME =
             ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName");
-    public static final ClassName LIST_SPECIALIZED =
-            ClassName.get("compilerxyz.main.eval.value.list", "TypeListSpecializedDynamic");
-    public static final ClassName LIST_DYNAMIC = ClassName.get("compilerxyz.main.eval.value.list", "ListDynamic");
-    public static final ClassName LIST_BOXED =
-            ClassName.get("compilerxyz.main.eval.value.list", "TypeListBoxedDynamic");
+    public static final ClassName LIST_DYNAMIC = ClassName.get("compilerxyz.main.eval.value.list", "TypeListDynamic");
     public static final ClassName GEN_IDENTITIES = ClassName.get(GEN_PACKAGE, "GenTrivialIdentityAspects");
 
     public record Store(String simple, TypeName javaPrim) {}

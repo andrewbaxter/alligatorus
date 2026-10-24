@@ -19,7 +19,7 @@ import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinLight(uniqueId = 6476L)
-public record TypeListSetDynamic(ListDynamic listType) implements Aspect, Type {
+public record TypeListSetDynamic(TypeListDynamic listType) implements Aspect, Type {
 
     @Override
     public String typeDesc() {

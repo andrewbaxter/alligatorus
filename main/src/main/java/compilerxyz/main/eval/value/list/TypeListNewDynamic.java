@@ -9,18 +9,20 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
+import compilerxyz.main.eval.dynamic.CodeDynamicReg;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinLight(uniqueId = 6119L)
-public record TypeListNewDynamic(Type elementType) implements Aspect, Type {
+@BuiltinLight(uniqueId = 6198L)
+public record TypeListNewDynamic(TypeListDynamic listType) implements Aspect, Type {
 
     @Override
     public String typeDesc() {
-        return "list(" + elementType.typeDesc() + ").new";
+        return listType.typeDesc() + ".new";
     }
 
     @Override
@@ -37,6 +39,10 @@ public record TypeListNewDynamic(Type elementType) implements Aspect, Type {
         return Opt.none();
     }
 
+    EResult<CodeDynamicReg> elementToDynamic(ExprContext xx, QExprId loc, CodeValue element) {
+        return DynUtil.materialize(xx, loc, listType.elementType, element);
+    }
+
     @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         throw new UnsupportedOperationException(
@@ -47,7 +53,7 @@ public record TypeListNewDynamic(Type elementType) implements Aspect, Type {
     public boolean typeIsEqual(ExprContext xx, Type other) {
         var oOpt = AspectLookup.getMaybe(
                 xx, other, GenTrivialIdentityAspects.TYPE_LIST_NEW_DYNAMIC_IDENTITY, TypeListNewDynamic.class);
-        return oOpt.optIsSome() && elementType.typeIsEqual(xx, oOpt.optUnwrap().elementType);
+        return oOpt.optIsSome() && listType.typeIsEqual(xx, oOpt.optUnwrap().listType());
     }
 
     @Override

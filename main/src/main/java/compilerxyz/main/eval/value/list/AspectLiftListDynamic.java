@@ -8,10 +8,10 @@ import compilerxyz.main.eval.value.TypeForms;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.Value;
+import compilerxyz.prelude.util.ListStore;
 import compilerxyz.prelude.util.MustCast;
 
-public record AspectLiftListSpecializedDynamic<T extends Type>(TypeListSpecializedDynamic<T> type)
-        implements AspectLift {
+public record AspectLiftListDynamic<T extends Type>(TypeListDynamic<T> type) implements AspectLift {
 
     @Override
     public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Object externalHostValue) {

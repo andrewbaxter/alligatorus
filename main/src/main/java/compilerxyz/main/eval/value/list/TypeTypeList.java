@@ -37,7 +37,7 @@ import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
 @BuiltinLight(uniqueId = 6480L)
-public record TypeTypeList(ListDynamic type) implements Aspect, Type {
+public record TypeTypeList(TypeListDynamic type) implements Aspect, Type {
 
     @Override
     public String typeDesc() {
@@ -95,7 +95,7 @@ public record TypeTypeList(ListDynamic type) implements Aspect, Type {
             var heldRes = ArtifactSupport.importArtifact(xx, loc, body.type());
             if (heldRes.hasErrors()) return heldRes.reerr();
             return EResult.ok(new TypeTypeList(
-                    MustCast.mustCast(ListDynamic.class, heldRes.requireValue("TypeTypeList::import held type"))));
+                    MustCast.mustCast(TypeListDynamic.class, heldRes.requireValue("TypeTypeList::import held type"))));
         }
     };
 

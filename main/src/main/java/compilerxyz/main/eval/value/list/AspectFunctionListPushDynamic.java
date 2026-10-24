@@ -10,31 +10,25 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.TList;
 
 public record AspectFunctionListPushDynamic(TypeListPushDynamic type) implements AspectFunction {
 
     @Override
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-        var convertedRes = Eval.typecheckConvert(xx, loc, type.elementType(), argument);
+        var elementType = type.listType().elementType;
+        var convertedRes = Eval.typecheckConvert(xx, loc, elementType, argument);
         if (convertedRes.hasErrors()) return convertedRes.reerr();
         var converted = convertedRes.requireValue("typecheckConvert");
         var argRes = DynUtil.materialize(xx, loc, converted);
         if (argRes.hasErrors()) return argRes.reerr();
         var selfRes = DynUtil.valueReg(xx, loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
-        var listName = JavaInternalName.fromClass(TList.class);
-        var descObject = JavaDataDescriptor.fromClass(Object.class);
-        var addDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(descObject));
         var b = new JavaBytecodeBuilder(loc);
         var selfReg = b.reg(selfRes.requireValue("selfDyn"));
         var argReg = b.reg(argRes.requireValue("toDynamic"));
-        b.invokeVirtualVoid(listName, "add", addDesc, selfReg, argReg);
+        b.invokeVirtualVoid(type.listType().storeName, "add", type.listType().addDescriptor(xx), selfReg, argReg);
         return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
     }
 

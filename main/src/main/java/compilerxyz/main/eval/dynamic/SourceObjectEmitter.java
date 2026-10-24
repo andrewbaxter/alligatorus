@@ -1,5 +1,6 @@
 package compilerxyz.main.eval.dynamic;
 
+import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.main.eval.value.source_object.SourceObjectInstance;
@@ -19,6 +20,10 @@ public final class SourceObjectEmitter {
             JavaInternalName.fromClass(SourceObjectInstance.class);
 
     public static final String DATA_INSTANCE_FIELD = "_data";
+    public static final String ARTIFACT_ID_INSTANCE_FIELD = "_artifact_id";
+    public static final String ARTIFACT_ID_METHOD = "sourceObjectInstanceArtifactId";
+    public static final JavaDataDescriptor DESC_ARTIFACT_ID =
+            JavaDataDescriptor.fromClass(ArtifactSupport.ArtifactIdHolder.class);
 
     public static TOrderedMap<String, Object> rebuildStaticFieldValues(TypeSourceObjectDynamic data) {
         var staticFieldValues = new TOrderedMap<String, Object>();

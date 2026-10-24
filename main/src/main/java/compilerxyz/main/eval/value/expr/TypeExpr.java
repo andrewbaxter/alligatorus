@@ -19,6 +19,7 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.object.TypeObjectDynamic;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
@@ -118,7 +119,12 @@ public record TypeExpr() implements Aspect, Type, Value {
 
     @Override
     public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-        return true;
+        return sourceType
+                        .typeAspect(xx, GenTrivialIdentityAspects.TYPE_EXPR_IDENTITY)
+                        .optIsSome()
+                || sourceType
+                        .typeAspect(xx, GenTrivialIdentityAspects.TYPE_EXPR_STAGED_PLACEHOLDER_IDENTITY)
+                        .optIsSome();
     }
 
     @Override
@@ -136,8 +142,13 @@ public record TypeExpr() implements Aspect, Type, Value {
             }
             return EResult.ok(cv);
         }
-        var literalExpr = new Expr(loc, new Expr.Literal(new Expr.LitValue(sourceValue)));
-        return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(literalExpr)));
+        if (sourceType
+                .typeAspect(xx, GenTrivialIdentityAspects.TYPE_EXPR_STAGED_PLACEHOLDER_IDENTITY)
+                .optIsSome()) {
+            return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, this));
+        }
+        throw new UnsupportedOperationException(
+                getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
     }
 
     @Override
